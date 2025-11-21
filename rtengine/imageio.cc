@@ -671,6 +671,9 @@ int ImageIO::getTIFFSampleFormat (const Glib::ustring &fname, IIOSampleFormat &s
             sFormat = IIOSF_LOGLUV32;
             return IMIO_SUCCESS;
         }
+    } else if (samplesperpixel == 1 && bitspersample == 8 && photometric == PHOTOMETRIC_PALETTE) {
+        sFormat = IIOSF_UNSIGNED_CHAR;
+        return IMIO_SUCCESS;
     }
 
     return IMIO_VARIANTNOTSUPPORTED;
@@ -757,9 +760,15 @@ int ImageIO::loadTIFF(const Glib::ustring &fname)
     TIFFGetField(in, TIFFTAG_IMAGEWIDTH, &width);
     TIFFGetField(in, TIFFTAG_IMAGELENGTH, &height);
 
-    uint16 bitspersample, samplesperpixel;
+    uint16 bitspersample, samplesperpixel, photometric;
     int hasTag = TIFFGetField(in, TIFFTAG_BITSPERSAMPLE, &bitspersample);
     hasTag &= TIFFGetField(in, TIFFTAG_SAMPLESPERPIXEL, &samplesperpixel);
+    hasTag &= TIFFGetField(in, TIFFTAG_PHOTOMETRIC, &photometric);
+
+    uint16 *red_map, *green_map, *blue_map;
+    if (photometric == PHOTOMETRIC_PALETTE) {
+        hasTag &= TIFFGetField(in, TIFFTAG_COLORMAP, &red_map, &green_map, &blue_map);
+    }
 
     if (!hasTag) {
         // These are needed
@@ -779,7 +788,7 @@ int ImageIO::loadTIFF(const Glib::ustring &fname)
         TIFFSetField(in, TIFFTAG_SGILOGDATAFMT, SGILOGDATAFMT_FLOAT);
     }
 
-    /*
+     /*
      * We could use the min/max values set in TIFFTAG_SMINSAMPLEVALUE and
      * TIFFTAG_SMAXSAMPLEVALUE, but for now, we normalize the image to the
      * effective minimum and maximum values
@@ -843,7 +852,21 @@ int ImageIO::loadTIFF(const Glib::ustring &fname)
             return IMIO_READERROR;
         }
 
-        if (samplesperpixel > 3) {
+        if (photometric == PHOTOMETRIC_PALETTE) {
+            for (int i = width - 1; i >= 0; --i) {
+                unsigned int palette_index = linebuffer[i];
+
+                unsigned char r = static_cast<unsigned char>(red_map[palette_index] >> 8);
+                unsigned char g = static_cast<unsigned char>(green_map[palette_index] >> 8);
+                unsigned char b = static_cast<unsigned char>(blue_map[palette_index] >> 8);
+
+                int output_index = i * 3;
+                linebuffer[output_index + 0] = r;
+                linebuffer[output_index + 1] = g;
+                linebuffer[output_index + 2] = b;
+            }
+        }
+        else if (samplesperpixel > 3) {
             for (int i = 0; i < width; i++) {
                 memmove(linebuffer + i * 3 * bitspersample / 8, linebuffer + i * samplesperpixel * bitspersample / 8, 3 * bitspersample / 8);
             }
