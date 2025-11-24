@@ -146,6 +146,7 @@ class Preferences : public Gtk::Dialog, public ProfileStoreListener {
     Gtk::Button*    moveExtDown;
     Gtk::CheckButton* overlayedFileNames;
     Gtk::CheckButton* filmStripOverlayedFileNames;
+    Gtk::CheckButton *highlight_selected_thumbnails;
     Gtk::CheckButton* sameThumbSize;
 
     Gtk::SpinButton*  threadsSpinBtn;

@@ -85,7 +85,7 @@ protected:
     std::vector<Glib::RefPtr<Gdk::Pixbuf>> bbSpecificityIcons;
     CursorShape cursor_type;
 
-    void drawFrame(Cairo::RefPtr<Cairo::Context> cr, const Gdk::RGBA &bg, const Gdk::RGBA &fg);
+    void drawFrame(Cairo::RefPtr<Cairo::Context> cr, const Gdk::RGBA &bg, const Gdk::RGBA &fg, bool highlight);
     void getTextSizes(int &w, int &h);
 
     // called during updateBackBuffer for custom overlays

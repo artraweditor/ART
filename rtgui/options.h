@@ -315,6 +315,7 @@ public:
     bool filmStripOverlayedFileNames;
     bool showFileNames;
     bool filmStripShowFileNames;
+    bool highlight_selected_thumbnails;
     bool tabbedUI;
     bool rememberZoomAndPan;
     int multiDisplayMode;  // 0=none, 1=Edit panels on other display

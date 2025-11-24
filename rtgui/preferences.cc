@@ -1292,6 +1292,7 @@ Gtk::Widget* Preferences::getFileBrowserPanel ()
     Gtk::HBox* hbro0 = Gtk::manage ( new Gtk::HBox () );
     overlayedFileNames = Gtk::manage ( new Gtk::CheckButton (M ("PREFERENCES_OVERLAY_FILENAMES")) );
     filmStripOverlayedFileNames = Gtk::manage ( new Gtk::CheckButton (M ("PREFERENCES_OVERLAY_FILENAMES_FILMSTRIP")) );
+    highlight_selected_thumbnails = Gtk::manage(new Gtk::CheckButton(M("PREFERENCES_HIGHLIGHT_SELECTED_THUMBNAILS")));
     sameThumbSize = Gtk::manage ( new Gtk::CheckButton (M ("PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT")) );
     sameThumbSize->set_tooltip_text (M ("PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT_HINT"));
     ckbInternalThumbIfUntouched = Gtk::manage ( new Gtk::CheckButton (M ("PREFERENCES_INTERNALTHUMBIFUNTOUCHED")));
@@ -1312,6 +1313,7 @@ Gtk::Widget* Preferences::getFileBrowserPanel ()
     vbro->pack_start (*overlayedFileNames, Gtk::PACK_SHRINK, 0);
     vbro->pack_start (*filmStripOverlayedFileNames, Gtk::PACK_SHRINK, 0);
     vbro->pack_start (*sameThumbSize, Gtk::PACK_SHRINK, 0);
+    vbro->pack_start(*highlight_selected_thumbnails, Gtk::PACK_SHRINK, 0);
     vbro->pack_start (*ckbInternalThumbIfUntouched, Gtk::PACK_SHRINK, 0);
 
     thumbRatingMode = Gtk::manage(new Gtk::CheckButton(M("PREFERENCES_THUMBNAIL_RATING")));
@@ -1869,6 +1871,7 @@ void Preferences::storePreferences ()
     moptions.maxCacheEntries = (int)maxCacheEntriesSB->get_value ();
     moptions.overlayedFileNames = overlayedFileNames->get_active ();
     moptions.filmStripOverlayedFileNames = filmStripOverlayedFileNames->get_active();
+    moptions.highlight_selected_thumbnails = highlight_selected_thumbnails->get_active();
     moptions.sameThumbSize = sameThumbSize->get_active();
     moptions.internalThumbIfUntouched = ckbInternalThumbIfUntouched->get_active ();
 
@@ -2145,6 +2148,7 @@ void Preferences::fillPreferences ()
     maxCacheEntriesSB->set_value (moptions.maxCacheEntries);
     overlayedFileNames->set_active (moptions.overlayedFileNames);
     filmStripOverlayedFileNames->set_active (moptions.filmStripOverlayedFileNames);
+    highlight_selected_thumbnails->set_active(moptions.highlight_selected_thumbnails);
     sameThumbSize->set_active (moptions.sameThumbSize);
     ckbInternalThumbIfUntouched->set_active (moptions.internalThumbIfUntouched);
 

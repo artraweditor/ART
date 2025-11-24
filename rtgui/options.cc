@@ -490,6 +490,7 @@ void Options::setDefaults()
     internalThumbIfUntouched = true;    // if TRUE, only fast, internal preview images are taken if the image is not edited yet
     showFileNames = true;
     filmStripShowFileNames = false;
+    highlight_selected_thumbnails = false;
     tabbedUI = false;
     multiDisplayMode = 0;
     filmstripBottom = true;
@@ -1098,6 +1099,10 @@ void Options::readFromFile(Glib::ustring fname)
 
                 if (keyFile.has_key("File Browser", "FilmStripShowFileNames")) {
                     filmStripShowFileNames = keyFile.get_boolean("File Browser", "FilmStripShowFileNames");
+                }
+
+                if (keyFile.has_key("File Browser", "HighlightSelected")) {
+                    highlight_selected_thumbnails = keyFile.get_boolean("File Browser", "HighlightSelected");
                 }
 
                 if (keyFile.has_key("File Browser", "InternalThumbIfUntouched")) {
@@ -1901,6 +1906,7 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_boolean("File Browser", "FilmStripOverlayedFileNames", filmStripOverlayedFileNames);
         keyFile.set_boolean("File Browser", "ShowFileNames", showFileNames);
         keyFile.set_boolean("File Browser", "FilmStripShowFileNames", filmStripShowFileNames);
+        keyFile.set_boolean("File Browser", "HighlightSelected", highlight_selected_thumbnails);
         keyFile.set_boolean("File Browser", "InternalThumbIfUntouched", internalThumbIfUntouched);
         // keyFile.set_boolean("File Browser", "menuGroupRank", menuGroupRank);
         // keyFile.set_boolean("File Browser", "menuGroupLabel", menuGroupLabel);
