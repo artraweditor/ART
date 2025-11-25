@@ -642,7 +642,7 @@ void ThumbBrowserEntryBase::drawFrame(Cairo::RefPtr<Cairo::Context> cc, const Gd
         cc->arc (-2 + 0.5 + exp_width - 1 - radius, +2 + 0.5 + radius, radius, -rtengine::RT_PI / 2, 0);
         cc->arc (-2 + 0.5 + exp_width - 1 - radius, -2 + 0.5 + exp_height - 1 - radius, radius, 0, rtengine::RT_PI / 2);
         cc->arc (+2 + 0.5 + radius, -2 + exp_height - 1 - radius, radius, rtengine::RT_PI / 2, rtengine::RT_PI);
-        cc->arc (+2 + 0.5 + radius, +2 + radius, radius, rtengine::RT_PI, -rtengine::RT_PI / 2);
+        cc->arc (+2 + 0.5 + radius, +2 + 0.5 + radius, radius, rtengine::RT_PI, -rtengine::RT_PI / 2);
         cc->close_path ();
         cc->set_source_rgb (fg.get_red(), fg.get_green(), fg.get_blue());
         cc->set_line_width (2.0);
