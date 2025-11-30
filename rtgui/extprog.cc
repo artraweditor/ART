@@ -186,6 +186,28 @@ void UserCommand::execute(const std::vector<Thumbnail *> &args) const
 }
 
 
+void UserCommand::executeWithDirectory(const Glib::ustring path) const
+{
+    std::vector<Glib::ustring> argv = rtengine::subprocess::split_command_line(command);
+    argv.push_back(path);
+
+    const auto doit =
+        [=](bool verb) -> void
+        {
+            try {
+                PathSetter ps;
+                rtengine::subprocess::exec_sync(UserCommandStore::getInstance()->dir(), argv, true, nullptr, nullptr);
+            } catch (rtengine::subprocess::error &exc) {
+                if (verb) {
+                    std::cerr << "Failed to execute \"" << command << "\": " << exc.what() << std::endl;
+                }
+            }
+        };
+
+    std::thread(doit, options.rtSettings.verbose).detach();
+}
+
+
 UserCommandStore *UserCommandStore::getInstance()
 {
     static UserCommandStore instance;
@@ -291,6 +313,8 @@ void UserCommandStore::init(const Glib::ustring &dirname)
                         cmd.filetype = UserCommand::RAW;
                     } else if (tp == "nonraw") {
                         cmd.filetype = UserCommand::NONRAW;
+                    } else if (tp == "directory") {
+                        cmd.filetype = UserCommand::DIRECTORY;
                     } else {
                         cmd.filetype = UserCommand::ANY;
                     }

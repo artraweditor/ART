@@ -23,6 +23,8 @@
 #include <giomm.h>
 
 #include "guiutils.h"
+#include "dirtreeview.h"
+
 #ifdef WIN32
 #include "windows.h"
 #endif
@@ -61,7 +63,7 @@ private:
     Glib::ustring selected_dir_;
 
 
-    Gtk::TreeView *dirtree;
+    DirTreeView *dirtree;
     Gtk::ScrolledWindow *scrolledwindow4;
     DirSelectionSignal dirSelectionSignal;
 
@@ -105,6 +107,7 @@ public:
     void file_changed   (const Glib::RefPtr<Gio::File>& file, const Glib::RefPtr<Gio::File>& other_file, Gio::FileMonitorEvent event_type, const Gtk::TreeModel::iterator& iter, const Glib::ustring& dirName);
     void open           (const Glib::ustring& dirName, const Glib::ustring& fileName = ""); // goes to dir "dirName" and selects file "fileName"
     void selectDir      (Glib::ustring dir);
+    void menu_item_activated(const UserCommand& cmd);
 
     DirSelectionSignal dirSelected () const;
 };

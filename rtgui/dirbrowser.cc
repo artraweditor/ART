@@ -94,7 +94,7 @@ DirBrowser::DirBrowser () : dirTreeModel(),
 #endif
 {
 
-    dirtree = Gtk::manage ( new Gtk::TreeView() );
+    dirtree = Gtk::manage ( new DirTreeView() );
     scrolledwindow4 = Gtk::manage ( new Gtk::ScrolledWindow() );
     crt.property_ellipsize() = Pango::ELLIPSIZE_END;
 
@@ -163,6 +163,7 @@ void DirBrowser::fillDirTree ()
 
     dirtree->signal_row_expanded().connect(sigc::mem_fun(*this, &DirBrowser::row_expanded));
     dirtree->signal_row_activated().connect(sigc::mem_fun(*this, &DirBrowser::row_activated));
+    dirtree->signal_menu_item_activated().connect(sigc::mem_fun(*this, &DirBrowser::menu_item_activated));
     dirTreeModel->signal_sort_column_changed().connect(sigc::mem_fun(*this, &DirBrowser::on_sort_column_changed));
 }
 
@@ -418,6 +419,13 @@ void DirBrowser::row_activated (const Gtk::TreeModel::Path& path, Gtk::TreeViewC
         dirSelectionSignal (dname, Glib::ustring());
         dirtree->queue_draw();
     }
+}
+
+void DirBrowser::menu_item_activated (const UserCommand& cmd)
+{
+    if (!dirtree->get_selection()->count_selected_rows()) return;
+    Gtk::TreeModel::Row row = *(dirtree->get_selection()->get_selected());
+    cmd.executeWithDirectory(row.get_value(dtColumns.dirname));
 }
 
 Gtk::TreePath DirBrowser::expandToDir (const Glib::ustring& absDirPath)

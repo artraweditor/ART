@@ -353,14 +353,16 @@ void FileBrowser::build_menu()
         Gtk::Menu *submenuExtProg = Gtk::manage(new Gtk::Menu());
 
         for (auto &cmd : commands) {
-            Gtk::MenuItem *m = new Gtk::MenuItem(cmd.label);
-            usercommands_menu_.emplace_back();
-            usercommands_menu_.back().first.reset(m);
-            usercommands_menu_.back().second = cmd;
-            submenuExtProg->attach(*m, 0, 1, p, p + 1);
-            p++;
+            if (cmd.filetype != UserCommand::DIRECTORY) {
+                Gtk::MenuItem *m = new Gtk::MenuItem(cmd.label);
+                usercommands_menu_.emplace_back();
+                usercommands_menu_.back().first.reset(m);
+                usercommands_menu_.back().second = cmd;
+                submenuExtProg->attach(*m, 0, 1, p, p + 1);
+                p++;
 
-            m->signal_activate().connect(sigc::bind(sigc::mem_fun(*this, &FileBrowser::menuItemActivated), m));
+                m->signal_activate().connect(sigc::bind(sigc::mem_fun(*this, &FileBrowser::menuItemActivated), m));
+            }
         }
 
         submenuExtProg->show_all();

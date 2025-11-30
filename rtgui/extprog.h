@@ -39,7 +39,8 @@ public:
     enum FileType {
         RAW,
         NONRAW,
-        ANY
+        ANY,
+        DIRECTORY
     };
     FileType filetype;
     
@@ -54,6 +55,7 @@ public:
     UserCommand();
     bool matches(const std::vector<Thumbnail *> &args) const;
     void execute(const std::vector<Thumbnail *> &args) const;
+    void executeWithDirectory(const Glib::ustring path) const;
 };
 
 

@@ -138,6 +138,7 @@ set(NONCLISOURCEFILES
     toolbar.cc
     toolpanel.cc
     toolpanelcoord.cc
+    dirtreeview.cc
     vignetting.cc
     whitebalance.cc
     xtransprocess.cc
