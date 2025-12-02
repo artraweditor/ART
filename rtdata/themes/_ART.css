@@ -2722,6 +2722,18 @@ menuitem:hover > * > cellview {
     color: @ART-bgDark05;
 }
 
+#MenuTitle:hover {
+    background-color: @ART-bgDark05;
+}
+
+#MenuTitle:hover > label {
+    color: @ART-fg;
+}
+
+#MenuTitle:hover > * > label {
+    color: @ART-fg;
+}
+
 entry selection {
     background-color: @ART-fg;
     color: @ART-bgDark05;

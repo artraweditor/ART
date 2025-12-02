@@ -19,6 +19,8 @@
  */
 
 #include "dirtreeview.h"
+#include "multilangmgr.h"
+#include "guiutils.h"
 #include <iostream>
 
 DirTreeView::DirTreeView()
@@ -30,7 +32,16 @@ DirTreeView::DirTreeView()
     {
         if (cmd.filetype == UserCommand::DIRECTORY)
         {
-            if (!pmenu) pmenu = new Gtk::Menu();
+            if (!pmenu) {
+                pmenu = Gtk::manage(new Gtk::Menu());
+                auto lbl = Gtk::manage(new Gtk::Label());
+                setExpandAlignProperties(lbl, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+                lbl->set_markup("<b><i>" + M("FILEBROWSER_EXTPROGMENU") + "</i></b>");
+                auto title = Gtk::manage(new Gtk::MenuItem(*lbl));
+                pmenu->append(*title);
+                title->set_name("MenuTitle");
+                pmenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+            }
             auto item = Gtk::make_managed<Gtk::MenuItem>(cmd.label, true);
             item->signal_activate().connect(sigc::bind(sigc::mem_fun(*this, &DirTreeView::on_menu_item_activate), item));
             pmenu->append(*item);
@@ -49,7 +60,7 @@ DirTreeView::DirTreeView()
 
 DirTreeView::~DirTreeView()
 {
-    delete pmenu;
+//    delete pmenu;
 }
 
 DirTreeView::type_signal_menu_item_activated DirTreeView::signal_menu_item_activated()
