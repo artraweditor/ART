@@ -343,6 +343,7 @@ std::shared_ptr<InspectorBuffer> InspectorArea::doCacheImage(const Glib::ustring
 
 void InspectorArea::preloadImage(const Glib::ustring &fullPath)
 {
+    std::cout << "PRELOAD: " << fullPath << std::endl;
     doCacheImage(fullPath);
 }
 
@@ -676,17 +677,18 @@ void Inspector::switchImage(const Glib::ustring &fullPath)
     size_t ilo = cur_image_idx_[active_];
     size_t ihi = cur_image_idx_[active_];
     while (ilo > 0 || ihi < entries.size()) {
-        if (!entries[ilo]->filtered && entries[ilo]->filename == fullPath) {
-            j = ilo;
-            break;
-        } else if (!entries[ihi]->filtered && entries[ihi]->filename == fullPath) {
-            j = ihi;
-            break;
-        }
         if (ilo > 0) {
+            if (!entries[ilo-1]->filtered && entries[ilo-1]->filename == fullPath) {
+                j = ilo-1;
+                break;
+            }
             --ilo;
         }
         if (ihi < entries.size()) {
+            if (!entries[ihi]->filtered && entries[ihi]->filename == fullPath) {
+                j = ihi;
+                break;
+            }
             ++ihi;
         }
     }
