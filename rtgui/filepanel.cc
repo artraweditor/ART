@@ -196,11 +196,14 @@ void FilePanel::init ()
         } else if (options.startupDir == Options::STARTUPDIR_CURRENT) {
             dirBrowser->open (options.ART_base_dir);
         } else if (options.startupDir == Options::STARTUPDIR_CUSTOM || options.startupDir == Options::STARTUPDIR_LAST) {
-            if (options.startupPath.length() && ((Glib::file_test(options.startupPath, Glib::FILE_TEST_EXISTS) && Glib::file_test(options.startupPath, Glib::FILE_TEST_IS_DIR)) || art::session::check(options.startupPath))) {
-                dirBrowser->open (options.startupPath);
+            if (art::session::check(options.startupPath)) {
+                art::session::load(art::session::filename() + ".last");
+                dirBrowser->open(options.startupPath);
+            } else if (options.startupPath.length() && ((Glib::file_test(options.startupPath, Glib::FILE_TEST_EXISTS) && Glib::file_test(options.startupPath, Glib::FILE_TEST_IS_DIR)))) {
+                dirBrowser->open(options.startupPath);
             } else {
                 // Fallback option if the path is empty or the folder doesn't exist
-                dirBrowser->open (PlacesBrowser::userPicturesDir ());
+                dirBrowser->open(PlacesBrowser::userPicturesDir());
             }
         }
     }
