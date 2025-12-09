@@ -20,77 +20,70 @@
 #ifndef __COLORPICKER__
 #define __COLORPICKER__
 
-
 #include "../rtengine/coord.h"
-#include "guiutils.h"
 #include "edit.h"
+#include "guiutils.h"
 
 class CropWindow;
 
-class LockablePickerToolListener
-{
+class LockablePickerToolListener {
 public:
-    virtual ~LockablePickerToolListener () = default;
+    virtual ~LockablePickerToolListener() = default;
 
     /// Callback on Color Picker's visibility switch
     virtual void switchPickerVisibility(bool isVisible) = 0;
 };
 
-class LockableColorPicker : BackBuffer
-{
+class LockableColorPicker: BackBuffer {
 public:
     enum class Size {
-        S5=5,
-        S10=10,
-        S15=15,
-        S20=20,
-        S25=25,
-        S30=30
+        S5 = 5,
+        S10 = 10,
+        S15 = 15,
+        S20 = 20,
+        S25 = 25,
+        S30 = 30
     };
-    enum class Validity {
-        INSIDE,
-        CROSSING,
-        OUTSIDE
-    };
+    enum class Validity { INSIDE, CROSSING, OUTSIDE };
+
 private:
-    enum class ColorPickerType {
-        RGB,
-        LCH,
-        LAB
-    };
-    CropWindow* cropWindow;  // the color picker is displayed in a single cropWindow, the one that the user has clicked in
+    enum class ColorPickerType { RGB, LCH, LAB };
+    CropWindow *cropWindow; // the color picker is displayed in a single
+                            // cropWindow, the one that the user has clicked in
     ColorPickerType displayedValues;
-    rtengine::Coord position;  // Coordinate in image space
+    rtengine::Coord position; // Coordinate in image space
     rtengine::Coord anchorOffset;
     Size size;
     Glib::ustring *outputProfile;
     Glib::ustring *workingProfile;
     Validity validity;
-    float r, g, b;  // red green blue in [0;1] range
+    float r, g, b; // red green blue in [0;1] range
     float rpreview, gpreview, bpreview;
     float l, c, h;  // lch in [0;1] range
-    float L, a, bb;  // L*a*b value in [0;1] range
+    float L, a, bb; // L*a*b value in [0;1] range
 
-    void updateBackBuffer ();
+    void updateBackBuffer();
 
 public:
+    LockableColorPicker(CropWindow *cropWindow, Glib::ustring *oProfile,
+                        Glib::ustring *wProfile);
 
-    LockableColorPicker (CropWindow* cropWindow, Glib::ustring *oProfile, Glib::ustring *wProfile);
-
-    void draw (Cairo::RefPtr<Cairo::Context> &cr);
+    void draw(Cairo::RefPtr<Cairo::Context> &cr);
 
     // Used to update the RGB color, the HSV values will be updated accordingly
-    void setPosition (const rtengine::Coord &newPos);
-    void setRGB (const float R, const float G, const float B, const float previewR, const float previewG, const float previewB);
-    void getImagePosition (rtengine::Coord &imgPos);
-    void getScreenPosition (rtengine::Coord &screenPos);
-    Size getSize ();
-    bool isOver (int x, int y);
-    void setValidity (Validity isValid);
-    void setSize (Size newSize);
-    void rollDisplayedValues ();
-    bool incSize ();
-    bool decSize ();
+    void setPosition(const rtengine::Coord &newPos);
+    void setRGB(const float R, const float G, const float B,
+                const float previewR, const float previewG,
+                const float previewB);
+    void getImagePosition(rtengine::Coord &imgPos);
+    void getScreenPosition(rtengine::Coord &screenPos);
+    Size getSize();
+    bool isOver(int x, int y);
+    void setValidity(Validity isValid);
+    void setSize(Size newSize);
+    void rollDisplayedValues();
+    bool incSize();
+    bool decSize();
     bool cycleRGB();
     bool cycleLCH();
 };

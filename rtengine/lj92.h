@@ -25,8 +25,7 @@ SOFTWARE.
 #define LJ92_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 enum LJ92_ERRORS {
     LJ92_ERROR_NONE = 0,
@@ -36,7 +35,7 @@ enum LJ92_ERRORS {
     LJ92_ERROR_TOO_WIDE = -4,
 };
 
-typedef struct _ljp* lj92;
+typedef struct _ljp *lj92;
 
 /* Parse a lossless JPEG (1992) structure returning
  * - a handle that can be used to decode the data
@@ -44,22 +43,26 @@ typedef struct _ljp* lj92;
  * Returns status code.
  * If status == LJ92_ERROR_NONE, handle must be closed with lj92_close
  */
-int lj92_open(lj92* lj, // Return handle here
-              uint8_t* data,int datalen, // The encoded data
-              int* width,int* height,int* bitdepth); // Width, height and bitdepth
+int lj92_open(lj92 *lj,                   // Return handle here
+              uint8_t *data, int datalen, // The encoded data
+              int *width, int *height,
+              int *bitdepth); // Width, height and bitdepth
 
 /* Release a decoder object */
 void lj92_close(lj92 lj);
 
 /*
  * Decode previously opened lossless JPEG (1992) into a 2D tile of memory
- * Starting at target, write writeLength 16bit values, then skip 16bit skipLength value before writing again
- * If linearize is not NULL, use table at linearize to convert data values from output value to target value
- * Data is only correct if LJ92_ERROR_NONE is returned
+ * Starting at target, write writeLength 16bit values, then skip 16bit
+ * skipLength value before writing again If linearize is not NULL, use table at
+ * linearize to convert data values from output value to target value Data is
+ * only correct if LJ92_ERROR_NONE is returned
  */
-int lj92_decode(lj92 lj,
-                uint16_t* target, int writeLength, int skipLength, // The image is written to target as a tile
-                uint16_t* linearize, int linearizeLength); // If not null, linearize the data using this table
+int lj92_decode(
+    lj92 lj, uint16_t *target, int writeLength,
+    int skipLength, // The image is written to target as a tile
+    uint16_t *linearize,
+    int linearizeLength); // If not null, linearize the data using this table
 
 #endif
 

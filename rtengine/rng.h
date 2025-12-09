@@ -22,17 +22,18 @@
 #include "rt_math.h"
 #include "sleef.h"
 #include "sleefsseavx.h"
-#include <math.h>
 #include <inttypes.h>
 #include <limits>
+#include <math.h>
 
 namespace rtengine {
 
 class RandomNumberGenerator {
 public:
     RandomNumberGenerator(uint32_t seed): seed_(seed) { assert(seed_); }
-    
-    uint32_t randint(uint32_t upper_bound=std::numeric_limits<uint32_t>::max())
+
+    uint32_t
+    randint(uint32_t upper_bound = std::numeric_limits<uint32_t>::max())
     {
         seed_ = next();
         return uint32_t(seed_ >> 16U) % upper_bound;
@@ -43,25 +44,23 @@ public:
         uint32_t ub = std::numeric_limits<int>::max();
         return float(randint(ub)) / float(ub);
     }
-    
+
 private:
-    uint64_t next() const
-    {
-        return ((seed_ * a_) + c_) & mask_;
-    }
-    
+    uint64_t next() const { return ((seed_ * a_) + c_) & mask_; }
+
     static constexpr uint64_t a_ = 25214903917ULL;
     static constexpr uint64_t c_ = 11U;
     static constexpr uint64_t mask_ = ~(2ULL << 48);
     uint64_t seed_;
 };
 
-
 // see https://en.wikipedia.org/wiki/Marsaglia_polar_method
 class NormalDistribution {
 public:
-    explicit NormalDistribution(float mean=0, float std_dev=1):
-        mean_(mean), std_dev_(std_dev), spare_(0), has_spare_(false) {}
+    explicit NormalDistribution(float mean = 0, float std_dev = 1)
+        : mean_(mean), std_dev_(std_dev), spare_(0), has_spare_(false)
+    {
+    }
 
     float operator()(RandomNumberGenerator &rng)
     {

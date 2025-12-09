@@ -5,20 +5,20 @@
 
 #include "iccstore.h"
 #include "imagefloat.h"
+#include "linalgebra.h"
 #include "opthelper.h"
 #include "rt_math.h"
-#include "stdimagesource.h"
-#include "linalgebra.h"
 #include "settings.h"
+#include "stdimagesource.h"
 
-#include <giomm.h>
-#include <sstream>
-#include <iostream>
 #include <fstream>
+#include <giomm.h>
+#include <iostream>
 #include <locale.h>
+#include <sstream>
 
-#include "../rtgui/options.h"
 #include "../rtgui/multilangmgr.h"
+#include "../rtgui/options.h"
 #include "../rtgui/pathutils.h"
 #include "cJSON.h"
 
@@ -26,7 +26,7 @@
 #include "StopWatch.h"
 
 #ifdef _OPENMP
-# include <omp.h>
+#include <omp.h>
 #endif
 
 namespace rtengine {
@@ -35,16 +35,15 @@ extern const Settings *settings;
 
 namespace {
 
-bool loadFile(
-    const Glib::ustring& filename,
-    const Glib::ustring& working_color_space,
-    AlignedBuffer<std::uint16_t>& clut_image,
-    unsigned int& clut_level
-)
+bool loadFile(const Glib::ustring &filename,
+              const Glib::ustring &working_color_space,
+              AlignedBuffer<std::uint16_t> &clut_image,
+              unsigned int &clut_level)
 {
     rtengine::StdImageSource img_src;
 
-    if (!Glib::file_test(filename, Glib::FILE_TEST_EXISTS) || img_src.load(filename)) {
+    if (!Glib::file_test(filename, Glib::FILE_TEST_EXISTS) ||
+        img_src.load(filename)) {
         return false;
     }
 
@@ -68,19 +67,24 @@ bool loadFile(
 
     if (res) {
         rtengine::ColorTemp curr_wb = img_src.getWB();
-        std::unique_ptr<rtengine::Imagefloat> img_float = std::unique_ptr<rtengine::Imagefloat>(new rtengine::Imagefloat(fw, fh));
+        std::unique_ptr<rtengine::Imagefloat> img_float =
+            std::unique_ptr<rtengine::Imagefloat>(
+                new rtengine::Imagefloat(fw, fh));
         const PreviewProps pp(0, 0, fw, fh, 1);
 
         rtengine::procparams::ColorManagementParams icm;
         icm.workingProfile = working_color_space;
 
-        img_src.getImage(curr_wb, TR_NONE, img_float.get(), pp, rtengine::procparams::ExposureParams(), rtengine::procparams::RAWParams());
+        img_src.getImage(curr_wb, TR_NONE, img_float.get(), pp,
+                         rtengine::procparams::ExposureParams(),
+                         rtengine::procparams::RAWParams());
 
         if (!working_color_space.empty()) {
             img_src.convertColorSpace(img_float.get(), icm, curr_wb);
         }
 
-        AlignedBuffer<std::uint16_t> image(fw * fh * 4 + 4); // getClutValues() loads one pixel in advance
+        AlignedBuffer<std::uint16_t> image(
+            fw * fh * 4 + 4); // getClutValues() loads one pixel in advance
 
         std::size_t index = 0;
 
@@ -102,14 +106,14 @@ bool loadFile(
 }
 
 #ifdef __SSE2__
-vfloat2 getClutValues(const AlignedBuffer<std::uint16_t>& clut_image, size_t index)
+vfloat2 getClutValues(const AlignedBuffer<std::uint16_t> &clut_image,
+                      size_t index)
 {
-    const vint v_values = _mm_loadu_si128(reinterpret_cast<const vint*>(clut_image.data + index));
+    const vint v_values = _mm_loadu_si128(
+        reinterpret_cast<const vint *>(clut_image.data + index));
 #ifdef __SSE4_1__
-    return {
-        _mm_cvtepi32_ps(_mm_cvtepu16_epi32(v_values)),
-        _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_srli_si128(v_values, 8)))
-    };
+    return {_mm_cvtepi32_ps(_mm_cvtepu16_epi32(v_values)),
+            _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_srli_si128(v_values, 8)))};
 #else
     const vint v_mask = _mm_set1_epi32(0x0000FFFF);
 
@@ -122,33 +126,27 @@ vfloat2 getClutValues(const AlignedBuffer<std::uint16_t>& clut_image, size_t ind
     v_low = vandm(v_low, v_mask);
     v_high = vandm(v_high, v_mask);
 
-    return {
-        _mm_cvtepi32_ps(v_low),
-        _mm_cvtepi32_ps(v_high)
-    };
+    return {_mm_cvtepi32_ps(v_low), _mm_cvtepi32_ps(v_high)};
 #endif
 }
 #endif
 
 } // namespace
 
-rtengine::HaldCLUT::HaldCLUT() :
-    clut_level(0),
-    flevel_minus_one(0.0f),
-    flevel_minus_two(0.0f),
-    clut_profile("sRGB")
+rtengine::HaldCLUT::HaldCLUT()
+    : clut_level(0), flevel_minus_one(0.0f), flevel_minus_two(0.0f),
+      clut_profile("sRGB")
 {
 }
 
-rtengine::HaldCLUT::~HaldCLUT()
-{
-}
+rtengine::HaldCLUT::~HaldCLUT() {}
 
-bool rtengine::HaldCLUT::load(const Glib::ustring& filename)
+bool rtengine::HaldCLUT::load(const Glib::ustring &filename)
 {
     if (loadFile(filename, "", clut_image, clut_level)) {
         Glib::ustring name, ext;
-        rtengine::CLUTStore::splitClutFilename(filename, name, ext, clut_profile);
+        rtengine::CLUTStore::splitClutFilename(filename, name, ext,
+                                               clut_profile);
 
         clut_filename = filename;
         clut_level *= clut_level;
@@ -160,29 +158,15 @@ bool rtengine::HaldCLUT::load(const Glib::ustring& filename)
     return false;
 }
 
-rtengine::HaldCLUT::operator bool() const
-{
-    return !clut_image.isEmpty();
-}
+rtengine::HaldCLUT::operator bool() const { return !clut_image.isEmpty(); }
 
-Glib::ustring rtengine::HaldCLUT::getFilename() const
-{
-    return clut_filename;
-}
+Glib::ustring rtengine::HaldCLUT::getFilename() const { return clut_filename; }
 
-Glib::ustring rtengine::HaldCLUT::getProfile() const
-{
-    return clut_profile;
-}
+Glib::ustring rtengine::HaldCLUT::getProfile() const { return clut_profile; }
 
-void rtengine::HaldCLUT::getRGB(
-    float strength,
-    std::size_t line_size,
-    const float* r,
-    const float* g,
-    const float* b,
-    float* out_rgbx
-) const
+void rtengine::HaldCLUT::getRGB(float strength, std::size_t line_size,
+                                const float *r, const float *g, const float *b,
+                                float *out_rgbx) const
 {
     const unsigned int level = clut_level; // This is important
 
@@ -192,10 +176,14 @@ void rtengine::HaldCLUT::getRGB(
     const vfloat v_strength = F2V(strength);
 #endif
 
-    for (std::size_t column = 0; column < line_size; ++column, ++r, ++g, ++b, out_rgbx += 4) {
-        const unsigned int red = std::min(flevel_minus_two, *r * flevel_minus_one);
-        const unsigned int green = std::min(flevel_minus_two, *g * flevel_minus_one);
-        const unsigned int blue = std::min(flevel_minus_two, *b * flevel_minus_one);
+    for (std::size_t column = 0; column < line_size;
+         ++column, ++r, ++g, ++b, out_rgbx += 4) {
+        const unsigned int red =
+            std::min(flevel_minus_two, *r * flevel_minus_one);
+        const unsigned int green =
+            std::min(flevel_minus_two, *g * flevel_minus_one);
+        const unsigned int blue =
+            std::min(flevel_minus_two, *b * flevel_minus_one);
 
         const unsigned int color = red + green * level + blue * level_square;
 
@@ -207,16 +195,22 @@ void rtengine::HaldCLUT::getRGB(
         size_t index = color * 4;
 
         float tmp1[4] ALIGNED16;
-        tmp1[0] = intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
-        tmp1[1] = intp<float>(re, clut_image.data[index + 5], clut_image.data[index + 1]);
-        tmp1[2] = intp<float>(re, clut_image.data[index + 6], clut_image.data[index + 2]);
+        tmp1[0] =
+            intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
+        tmp1[1] = intp<float>(re, clut_image.data[index + 5],
+                              clut_image.data[index + 1]);
+        tmp1[2] = intp<float>(re, clut_image.data[index + 6],
+                              clut_image.data[index + 2]);
 
         index = (color + level) * 4;
 
         float tmp2[4] ALIGNED16;
-        tmp2[0] = intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
-        tmp2[1] = intp<float>(re, clut_image.data[index + 5], clut_image.data[index + 1]);
-        tmp2[2] = intp<float>(re, clut_image.data[index + 6], clut_image.data[index + 2]);
+        tmp2[0] =
+            intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
+        tmp2[1] = intp<float>(re, clut_image.data[index + 5],
+                              clut_image.data[index + 1]);
+        tmp2[2] = intp<float>(re, clut_image.data[index + 6],
+                              clut_image.data[index + 2]);
 
         out_rgbx[0] = intp<float>(gr, tmp2[0], tmp1[0]);
         out_rgbx[1] = intp<float>(gr, tmp2[1], tmp1[1]);
@@ -224,15 +218,21 @@ void rtengine::HaldCLUT::getRGB(
 
         index = (color + level_square) * 4;
 
-        tmp1[0] = intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
-        tmp1[1] = intp<float>(re, clut_image.data[index + 5], clut_image.data[index + 1]);
-        tmp1[2] = intp<float>(re, clut_image.data[index + 6], clut_image.data[index + 2]);
+        tmp1[0] =
+            intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
+        tmp1[1] = intp<float>(re, clut_image.data[index + 5],
+                              clut_image.data[index + 1]);
+        tmp1[2] = intp<float>(re, clut_image.data[index + 6],
+                              clut_image.data[index + 2]);
 
         index = (color + level + level_square) * 4;
 
-        tmp2[0] = intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
-        tmp2[1] = intp<float>(re, clut_image.data[index + 5], clut_image.data[index + 1]);
-        tmp2[2] = intp<float>(re, clut_image.data[index + 6], clut_image.data[index + 2]);
+        tmp2[0] =
+            intp<float>(re, clut_image.data[index + 4], clut_image.data[index]);
+        tmp2[1] = intp<float>(re, clut_image.data[index + 5],
+                              clut_image.data[index + 1]);
+        tmp2[2] = intp<float>(re, clut_image.data[index + 6],
+                              clut_image.data[index + 2]);
 
         tmp1[0] = intp<float>(gr, tmp2[0], tmp1[0]);
         tmp1[1] = intp<float>(gr, tmp2[1], tmp1[1]);
@@ -248,7 +248,8 @@ void rtengine::HaldCLUT::getRGB(
 #else
         const vfloat v_in = _mm_set_ps(0.0f, *b, *g, *r);
         const vfloat v_tmp = v_in * F2V(flevel_minus_one);
-        const vfloat v_rgb = v_tmp - _mm_cvtepi32_ps(_mm_cvttps_epi32(vminf(v_tmp, F2V(flevel_minus_two))));
+        const vfloat v_rgb = v_tmp - _mm_cvtepi32_ps(_mm_cvttps_epi32(
+                                         vminf(v_tmp, F2V(flevel_minus_two))));
 
         size_t index = color * 4;
 
@@ -287,17 +288,18 @@ void rtengine::HaldCLUT::getRGB(
     }
 }
 
-
-rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib::ustring &filename)
+rtengine::CLUTStore::CLUTName
+rtengine::CLUTStore::getClutDisplayName(const Glib::ustring &filename)
 {
     Glib::ustring name;
-    
+
 #ifdef ART_USE_CTL
     if (getFileExtension(filename) == "ctl") {
         const Glib::ustring full_filename =
             !Glib::path_is_absolute(filename)
-            ? Glib::ustring(Glib::build_filename(options.clutsDir, filename))
-            : filename;
+                ? Glib::ustring(
+                      Glib::build_filename(options.clutsDir, filename))
+                : filename;
         if (Glib::file_test(filename, Glib::FILE_TEST_EXISTS)) {
             auto fn = Glib::filename_from_utf8(filename);
             std::ifstream src(fn.c_str());
@@ -309,7 +311,8 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
                 while (s < line.size() && std::isspace(line[s])) {
                     ++s;
                 }
-                if (s+1 < line.size() && line[s] == '/' && line[s+1] == '/') {
+                if (s + 1 < line.size() && line[s] == '/' &&
+                    line[s + 1] == '/') {
                     s += 2;
                 } else {
                     continue;
@@ -318,7 +321,7 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
                     ++s;
                 }
                 if (line.find("@ART-label:", s) == s) {
-                    line = line.substr(11+s);
+                    line = line.substr(11 + s);
                     cJSON *root = cJSON_Parse(line.c_str());
                     if (root) {
                         if (cJSON_IsString(root)) {
@@ -326,12 +329,12 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
                             if (!name.empty() && name[0] == '$') {
                                 auto pos = name.find(';');
                                 if (pos != Glib::ustring::npos) {
-                                    auto key = name.substr(1, pos-1);
-                                    auto dflt = name.substr(pos+1);
+                                    auto key = name.substr(1, pos - 1);
+                                    auto dflt = name.substr(pos + 1);
                                     auto res = M(key);
                                     name = (res == key) ? dflt : res;
                                 } else {
-                                    name = M(name.c_str()+1);
+                                    name = M(name.c_str() + 1);
                                 }
                             }
                             found = !name.empty();
@@ -342,7 +345,7 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
                         break;
                     }
                 } else if (line.find("@ART-order:", s) == s) {
-                    line = line.substr(11+s);
+                    line = line.substr(11 + s);
                     cJSON *root = cJSON_Parse(line.c_str());
                     if (root) {
                         if (cJSON_IsNumber(root)) {
@@ -361,7 +364,7 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
         }
     }
 #endif // ART_USE_CTL
-    
+
 #ifdef ART_USE_OCIO
     if (getFileExtension(filename) == "json") {
         ExternalLUT3D extlut(filename);
@@ -372,19 +375,16 @@ rtengine::CLUTStore::CLUTName rtengine::CLUTStore::getClutDisplayName(const Glib
         }
     }
 #endif // ART_USE_OCIO
-    
+
     Glib::ustring dummy;
     splitClutFilename(filename, name, dummy, dummy);
     return name;
 }
 
-
-void rtengine::CLUTStore::splitClutFilename(
-    const Glib::ustring& filename,
-    Glib::ustring& name,
-    Glib::ustring& extension,
-    Glib::ustring& profile_name
-)
+void rtengine::CLUTStore::splitClutFilename(const Glib::ustring &filename,
+                                            Glib::ustring &name,
+                                            Glib::ustring &extension,
+                                            Glib::ustring &profile_name)
 {
     Glib::ustring basename = Glib::path_get_basename(filename);
 
@@ -401,17 +401,22 @@ void rtengine::CLUTStore::splitClutFilename(
 
     bool search_profile_name = true;
 #ifdef ART_USE_OCIO
-    search_profile_name = !(extension.casefold().find("clf") == 0) && !(extension.casefold() == "json");
+    search_profile_name = !(extension.casefold().find("clf") == 0) &&
+                          !(extension.casefold() == "json");
 #endif // ART_USE_OCIO
 #ifdef ART_USE_CTL
-    search_profile_name = search_profile_name && !(extension.casefold().find("ctl") == 0);
+    search_profile_name =
+        search_profile_name && !(extension.casefold().find("ctl") == 0);
 #endif // ART_USE_CTL
     if (search_profile_name && !name.empty()) {
-        for (const auto& working_profile : rtengine::ICCStore::getInstance()->getWorkingProfiles()) {
-            if (
-                !working_profile.empty() // This isn't strictly needed, but an empty wp name should be skipped anyway
-                && std::search(name.rbegin(), name.rend(), working_profile.rbegin(), working_profile.rend()) == name.rbegin()
-            ) {
+        for (const auto &working_profile :
+             rtengine::ICCStore::getInstance()->getWorkingProfiles()) {
+            if (!working_profile
+                     .empty() // This isn't strictly needed, but an empty wp
+                              // name should be skipped anyway
+                && std::search(name.rbegin(), name.rend(),
+                               working_profile.rbegin(),
+                               working_profile.rend()) == name.rbegin()) {
                 profile_name = working_profile;
                 name.erase(name.size() - working_profile.size());
                 break;
@@ -422,13 +427,14 @@ void rtengine::CLUTStore::splitClutFilename(
     }
 }
 
-rtengine::CLUTStore& rtengine::CLUTStore::getInstance()
+rtengine::CLUTStore &rtengine::CLUTStore::getInstance()
 {
     static CLUTStore instance;
     return instance;
 }
 
-std::shared_ptr<rtengine::HaldCLUT> rtengine::CLUTStore::getHaldClut(const Glib::ustring& filename) const
+std::shared_ptr<rtengine::HaldCLUT>
+rtengine::CLUTStore::getHaldClut(const Glib::ustring &filename) const
 {
     MyMutex::MyLock lock(mutex_);
     std::shared_ptr<rtengine::HaldCLUT> result;
@@ -450,14 +456,16 @@ std::shared_ptr<rtengine::HaldCLUT> rtengine::CLUTStore::getHaldClut(const Glib:
     return result;
 }
 
-
 #ifdef ART_USE_OCIO
 
 namespace {
 
 std::string decompress_to_temp(const Glib::ustring &fname)
 {
-    std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX", Glib::path_get_basename(fname)));
+    std::string templ = Glib::build_filename(
+        Glib::get_tmp_dir(),
+        Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX",
+                               Glib::path_get_basename(fname)));
     int fd = Glib::mkstemp(templ);
     if (fd < 0) {
         throw "error";
@@ -477,7 +485,7 @@ std::string decompress_to_temp(const Glib::ustring &fname)
         auto src_fname = Glib::filename_from_utf8(fname);
         FILE *src = g_fopen(src_fname.c_str(), "rb");
         if (!src) {
-            err = true; 
+            err = true;
         } else {
             try {
                 size_t n = 0;
@@ -498,10 +506,12 @@ std::string decompress_to_temp(const Glib::ustring &fname)
     return templ;
 }
 
-
 std::string copy_to_temp(const Glib::ustring &fname)
 {
-    std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX", Glib::path_get_basename(fname)));
+    std::string templ = Glib::build_filename(
+        Glib::get_tmp_dir(),
+        Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX",
+                               Glib::path_get_basename(fname)));
     int fd = Glib::mkstemp(templ);
     if (fd < 0) {
         throw "error";
@@ -518,7 +528,7 @@ std::string copy_to_temp(const Glib::ustring &fname)
         auto src_fname = Glib::filename_from_utf8(fname);
         FILE *src = g_fopen(src_fname.c_str(), "rb");
         if (!src) {
-            err = true; 
+            err = true;
         } else {
             try {
                 size_t n = 0;
@@ -541,11 +551,11 @@ std::string copy_to_temp(const Glib::ustring &fname)
 
 } // namespace
 
-OCIO::ConstProcessorRcPtr rtengine::CLUTStore::getOCIOLut(const Glib::ustring& filename) const
+OCIO::ConstProcessorRcPtr
+rtengine::CLUTStore::getOCIOLut(const Glib::ustring &filename) const
 {
     MyMutex::MyLock lock(mutex_);
 
-    
     OCIOCacheEntry result;
     OCIO::ConstProcessorRcPtr retval;
 
@@ -558,7 +568,7 @@ OCIO::ConstProcessorRcPtr rtengine::CLUTStore::getOCIOLut(const Glib::ustring& f
     if (ext != "clf" && ext != "clfz") {
         return retval;
     }
-    
+
     const auto md5 = getMD5(full_filename, true);
 
     bool found = ocio_cache_.get(full_filename, result);
@@ -567,7 +577,7 @@ OCIO::ConstProcessorRcPtr rtengine::CLUTStore::getOCIOLut(const Glib::ustring& f
             std::cout << "CLF cache miss: " << full_filename << std::endl;
         }
         StopWatch load_CLF("CLF LUT load", true);
-        
+
         std::string fn = "";
         bool del_fn = false;
         try {
@@ -597,11 +607,10 @@ OCIO::ConstProcessorRcPtr rtengine::CLUTStore::getOCIOLut(const Glib::ustring& f
     return retval;
 }
 
-
-ExternalLUT3D CLUTStore::getExternalLut(const Glib::ustring& filename) const
+ExternalLUT3D CLUTStore::getExternalLut(const Glib::ustring &filename) const
 {
     MyMutex::MyLock lock(mutex_);
-    
+
     ExternalLUT3D retval;
 
     const Glib::ustring full_filename =
@@ -613,7 +622,7 @@ ExternalLUT3D CLUTStore::getExternalLut(const Glib::ustring& filename) const
     if (ext != "json") {
         return retval;
     }
-    
+
     retval.init(full_filename);
     return retval;
 }
@@ -624,17 +633,19 @@ ExternalLUT3D CLUTStore::getExternalLut(const Glib::ustring& filename) const
 
 namespace {
 
-bool fill_from_json(std::unordered_map<std::string, int> &name2pos, CLUTParamDescriptorList &params, cJSON *root, std::string &name)
+bool fill_from_json(std::unordered_map<std::string, int> &name2pos,
+                    CLUTParamDescriptorList &params, cJSON *root,
+                    std::string &name)
 {
     if (!cJSON_IsArray(root)) {
         return false;
     }
-    
+
     auto sz = cJSON_GetArraySize(root);
     if (sz < 2) {
         return false;
     }
-    
+
     auto n = cJSON_GetArrayItem(root, 0);
     if (!cJSON_IsString(n)) {
         return false;
@@ -672,53 +683,48 @@ bool fill_from_json(std::unordered_map<std::string, int> &name2pos, CLUTParamDes
  * // @ART-param: ["param_float", "A float slider", -1.0, 1.0, 0.5, 0.1]
  * // @ART-param: ["param_int", "An int slider", -10, 10]
  * // @ART-param: ["param_bool", "A checkbox", true]
- * // @ART-param: ["param_choice", "A combo box", ["Option A", "Option B"], 1, "Select between option A (value 0) and option B (value 1)"]
- * 
+ * // @ART-param: ["param_choice", "A combo box", ["Option A", "Option B"], 1,
+ * "Select between option A (value 0) and option B (value 1)"]
+ *
  * void ART_main(varying float r, varying float g, varying float b,
- *               output varying float or, output varying float og, output varying float ob,
- *               float param_float,
- *               int param_int,
- *               bool param_bool,
- *               int param_choice)
+ *               output varying float or, output varying float og, output
+ * varying float ob, float param_float, int param_int, bool param_bool, int
+ * param_choice)
  * {
  *    // ...
  * }
- */ 
-bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpreter> intp, Ctl::FunctionCallPtr func, CLUTParamDescriptorList &out, Glib::ustring &colorspace, int &lut_dim)
+ */
+bool get_CTL_params(const Glib::ustring &filename,
+                    std::shared_ptr<Ctl::Interpreter> intp,
+                    Ctl::FunctionCallPtr func, CLUTParamDescriptorList &out,
+                    Glib::ustring &colorspace, int &lut_dim)
 {
     setlocale(LC_NUMERIC, "C");
-    
+
     out.clear();
     std::unordered_map<std::string, int> name2pos;
 
     colorspace = "";
 
     static std::unordered_map<std::string, std::string> profilemap = {
-        {"aces2065-1", "ACESp0"},
-        {"acescg", "ACESp1"},
-        {"rec2020", "Rec2020"},
-        {"prophoto", "ProPhoto"},
-        {"rec709", "sRGB"},
-        {"srgb", "sRGB"},
-        {"adobergb", "Adobe RGB"},
-        {"adobe", "Adobe RGB"}
-    };
+        {"aces2065-1", "ACESp0"},  {"acescg", "ACESp1"},
+        {"rec2020", "Rec2020"},    {"prophoto", "ProPhoto"},
+        {"rec709", "sRGB"},        {"srgb", "sRGB"},
+        {"adobergb", "Adobe RGB"}, {"adobe", "Adobe RGB"}};
 
     int cur_line = 0;
-    
-    const auto err =
-        [&](const std::string &msg) -> bool
-        {
-            if (settings->verbose) {
-                std::cout << filename << ":";
-                if (cur_line > 0) {
-                    std::cout << cur_line << ":";
-                }
-                std::cout << " Error: " << msg << "\n" << std::endl;
+
+    const auto err = [&](const std::string &msg) -> bool {
+        if (settings->verbose) {
+            std::cout << filename << ":";
+            if (cur_line > 0) {
+                std::cout << cur_line << ":";
             }
-            return false;
-        };
-    
+            std::cout << " Error: " << msg << "\n" << std::endl;
+        }
+        return false;
+    };
+
     for (size_t i = 3, n = func->numInputArgs(); i < n; ++i) {
         auto a = func->inputArg(i);
         if (a->isVarying()) {
@@ -730,13 +736,17 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
             tp = CLUTParamType::PT_BOOL;
             break;
         case Ctl::IntTypeEnum:
-            tp = a->type().cast<Ctl::BoolType>() ? CLUTParamType::PT_BOOL : CLUTParamType::PT_INT;
+            tp = a->type().cast<Ctl::BoolType>() ? CLUTParamType::PT_BOOL
+                                                 : CLUTParamType::PT_INT;
             break;
         case Ctl::FloatTypeEnum:
             tp = CLUTParamType::PT_FLOAT;
             break;
         case Ctl::ArrayTypeEnum:
-            if (a->type().cast<Ctl::ArrayType>()->elementType().cast<Ctl::FloatType>()) {
+            if (a->type()
+                    .cast<Ctl::ArrayType>()
+                    ->elementType()
+                    .cast<Ctl::FloatType>()) {
                 tp = CLUTParamType::PT_CURVE;
                 break;
             } else {
@@ -748,7 +758,7 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
 
         std::string name = a->name();
         name2pos[name] = out.size();
-        
+
         out.emplace_back();
         auto &desc = out.back();
         desc.name = name;
@@ -756,7 +766,7 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
 
         desc.value_min = 0;
         desc.value_max = 1;
-        desc.value_default = { 0 };
+        desc.value_default = {0};
 
         if (a->hasDefaultValue()) {
             switch (tp) {
@@ -775,7 +785,7 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
     }
 
     std::unordered_map<std::string, int> order;
-    
+
     if (Glib::file_test(filename, Glib::FILE_TEST_EXISTS)) {
         auto fn = Glib::filename_from_utf8(filename);
         std::ifstream src(fn.c_str());
@@ -787,14 +797,14 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
             while (s < line.size() && std::isspace(line[s])) {
                 ++s;
             }
-            if (s+1 < line.size() && line[s] == '/' && line[s+1] == '/') {
+            if (s + 1 < line.size() && line[s] == '/' && line[s + 1] == '/') {
                 s += 2;
             }
             while (s < line.size() && std::isspace(line[s])) {
                 ++s;
             }
             if (line.find("@ART-param:", s) == s) {
-                line = line.substr(11+s);
+                line = line.substr(11 + s);
                 cJSON *root = cJSON_Parse(line.c_str());
                 if (!root) {
                     return err("bad parameter definition:\n  " + line);
@@ -806,12 +816,13 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
                 }
                 order[name] = cur_line;
             } else if (line.find("@ART-colorspace:", s) == s) {
-                line = line.substr(16+s);
+                line = line.substr(16 + s);
                 cJSON *root = cJSON_Parse(line.c_str());
                 if (!root || !cJSON_IsString(root)) {
                     return err("invalid colorspace definition:\n  " + line);
                 }
-                std::string name = Glib::ustring(cJSON_GetStringValue(root)).casefold();
+                std::string name =
+                    Glib::ustring(cJSON_GetStringValue(root)).casefold();
                 cJSON_Delete(root);
                 auto it = profilemap.find(name);
                 if (it != profilemap.end()) {
@@ -820,7 +831,7 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
                     return err("invalid colorspace definition:\n  " + line);
                 }
             } else if (line.find("@ART-lut:", s) == s) {
-                line = line.substr(9+s);
+                line = line.substr(9 + s);
                 cJSON *root = cJSON_Parse(line.c_str());
                 if (!root || !cJSON_IsNumber(root)) {
                     return err("invalid lut definition:\n  " + line);
@@ -832,7 +843,7 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
                     return err("invalid lut definition:\n  " + line);
                 }
             } else if (line.find("@ART-preset:", s) == s) {
-                line = line.substr(12+s);
+                line = line.substr(12 + s);
                 cJSON *root = cJSON_Parse(line.c_str());
                 if (!root) {
                     return err("invalid preset definition:\n  " + line);
@@ -850,7 +861,8 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
 
     cur_line = 0;
     if (!name2pos.empty() && !out.empty()) {
-        std::string msg = "the following parameter definitions are missing:\n  ";
+        std::string msg =
+            "the following parameter definitions are missing:\n  ";
         const char *sep = "";
         for (auto &p : name2pos) {
             msg += sep + p.first;
@@ -859,48 +871,49 @@ bool get_CTL_params(const Glib::ustring &filename, std::shared_ptr<Ctl::Interpre
         return err(msg);
     }
 
-    const auto lt =
-        [&](const CLUTParamDescriptor &a, const CLUTParamDescriptor &b) -> bool
-        {
-            return order[a.name] < order[b.name];
-        };
+    const auto lt = [&](const CLUTParamDescriptor &a,
+                        const CLUTParamDescriptor &b) -> bool {
+        return order[a.name] < order[b.name];
+    };
     std::sort(out.begin(), out.end(), lt);
-    
+
     return true;
 }
 
 } // namespace
 
-std::pair<std::shared_ptr<Ctl::Interpreter>, std::vector<Ctl::FunctionCallPtr>> rtengine::CLUTStore::getCTLLut(const Glib::ustring& filename, int num_threads, int &chunk_size, CLUTParamDescriptorList &params, Glib::ustring &colorspace, int &lut_dim) const
+std::pair<std::shared_ptr<Ctl::Interpreter>, std::vector<Ctl::FunctionCallPtr>>
+rtengine::CLUTStore::getCTLLut(const Glib::ustring &filename, int num_threads,
+                               int &chunk_size, CLUTParamDescriptorList &params,
+                               Glib::ustring &colorspace, int &lut_dim) const
 {
     MyMutex::MyLock lock(mutex_);
 
     lut_dim = 0;
-    
+
     CTLCacheEntry result;
     std::vector<Ctl::FunctionCallPtr> retval;
     std::shared_ptr<Ctl::Interpreter> intp;
-    
+
     const Glib::ustring full_filename =
         !Glib::path_is_absolute(filename)
             ? Glib::ustring(Glib::build_filename(options.clutsDir, filename))
             : filename;
-    if (!Glib::file_test(full_filename, Glib::FILE_TEST_IS_REGULAR) || getFileExtension(full_filename) != "ctl") {
+    if (!Glib::file_test(full_filename, Glib::FILE_TEST_IS_REGULAR) ||
+        getFileExtension(full_filename) != "ctl") {
         return std::make_pair(intp, retval);
     }
     const auto md5 = getMD5(full_filename, true);
 
-    const auto err =
-        [&](const char *msg)
-        {
-            if (settings->verbose) {
-                std::cout << "Error in CTL script from " << full_filename << ": "
-                          << msg << std::endl;
-            }
-            retval.clear();
-            intp.reset();
-            return std::make_pair(intp, retval);
-        };
+    const auto err = [&](const char *msg) {
+        if (settings->verbose) {
+            std::cout << "Error in CTL script from " << full_filename << ": "
+                      << msg << std::endl;
+        }
+        retval.clear();
+        intp.reset();
+        return std::make_pair(intp, retval);
+    };
 
     try {
         std::string key = Glib::filename_from_utf8(full_filename);
@@ -910,18 +923,19 @@ std::pair<std::shared_ptr<Ctl::Interpreter>, std::vector<Ctl::FunctionCallPtr>> 
                 std::cout << "CTL cache miss: " << full_filename << std::endl;
             }
             StopWatch load_CTL("CTL script load", true);
-            
+
             intp = std::make_shared<Ctl::SimdInterpreter>();
-            intp->setMaxInstCount(10*10000000);
+            intp->setMaxInstCount(10 * 10000000);
             std::vector<std::string> module_paths{
-                    Glib::path_get_dirname(full_filename),
-                    Glib::build_filename(options.user_config_dir, "ctlscripts"),
-                    Glib::build_filename(options.ART_base_dir, "ctlscripts")
-            };
+                Glib::path_get_dirname(full_filename),
+                Glib::build_filename(options.user_config_dir, "ctlscripts"),
+                Glib::build_filename(options.ART_base_dir, "ctlscripts")};
             auto pth = intp->modulePaths();
             module_paths.insert(module_paths.end(), pth.begin(), pth.end());
             intp->setModulePaths(module_paths);
-            intp->loadFile(full_filename, removeExtension(Glib::path_get_basename(full_filename)));
+            intp->loadFile(
+                full_filename,
+                removeExtension(Glib::path_get_basename(full_filename)));
 
             auto f = intp->newFunctionCall("ART_main");
             if (f->numInputArgs() < 3) {
@@ -978,11 +992,10 @@ std::pair<std::shared_ptr<Ctl::Interpreter>, std::vector<Ctl::FunctionCallPtr>> 
 
 #endif // ART_USE_CTL
 
-
 void rtengine::CLUTStore::clearCache()
 {
     MyMutex::MyLock lock(mutex_);
-    
+
     cache.clear();
 #ifdef ART_USE_OCIO
     ocio_cache_.clear();
@@ -991,7 +1004,6 @@ void rtengine::CLUTStore::clearCache()
     ctl_cache_.clear();
 #endif // ART_USE_CTL
 }
-
 
 namespace {
 
@@ -1002,33 +1014,34 @@ inline float CTL_shaper_func(float a, bool inv)
     constexpr float c1 = 107.0 / 128.0;
     constexpr float c2 = 2413.0 / 128.0;
     constexpr float c3 = 2392.0 / 128.0;
-    constexpr float scale = 100.0; 
+    constexpr float scale = 100.0;
 
     if (a <= 0.f) {
         return 0.f;
     }
-    
+
     if (!inv) {
         a /= scale;
         float aa = pow_F(a, m1);
-        return pow_F((c1 + c2 * aa)/(1.f + c3 * aa), m2);
+        return pow_F((c1 + c2 * aa) / (1.f + c3 * aa), m2);
     } else {
-        float p = pow_F(a, 1.f/m2);
+        float p = pow_F(a, 1.f / m2);
         float aa = std::max(p - c1, 0.f) / (c2 - c3 * p);
-        return pow_F(aa, 1.f/m1) * scale;
+        return pow_F(aa, 1.f / m1) * scale;
     }
 }
 
 } // namespace
 
-
-rtengine::CLUTStore::CLUTStore() :
-    cache(options.clutCacheSize)
+rtengine::CLUTStore::CLUTStore()
+    : cache(options.clutCacheSize)
 #ifdef ART_USE_OCIO
-    , ocio_cache_(options.clutCacheSize)
+      ,
+      ocio_cache_(options.clutCacheSize)
 #endif // ART_USE_OCIO
 #ifdef ART_USE_CTL
-    , ctl_cache_(options.clutCacheSize * 4)
+      ,
+      ctl_cache_(options.clutCacheSize * 4)
 #endif // ART_USE_CTL
 {
 #ifdef ART_USE_CTL
@@ -1038,39 +1051,36 @@ rtengine::CLUTStore::CLUTStore() :
         float x = float(i) / 65535.f;
         ctl_shaper_lut_[i] = CTL_shaper_func(x, false);
         ctl_shaper_lut_inv_[i] = CTL_shaper_func(x, true);
-    }    
+    }
 #endif
 }
-
 
 #ifdef ART_USE_CTL
 
 float CLUTStore::CTL_shaper(float a, bool inv)
 {
     if (a >= 0.f && a <= 1.f) {
-        return inv ? ctl_shaper_lut_inv_[a * 65535.f] : ctl_shaper_lut_[a * 65535.f];
+        return inv ? ctl_shaper_lut_inv_[a * 65535.f]
+                   : ctl_shaper_lut_[a * 65535.f];
     }
     return CTL_shaper_func(a, inv);
 }
 
 #endif // ART_USE_CTL
 
-
 //-----------------------------------------------------------------------------
 // CLUTApplication
 //-----------------------------------------------------------------------------
 
-CLUTApplication::CLUTApplication(const Glib::ustring &clut_filename, const Glib::ustring &working_profile, float strength, int num_threads):
-    clut_filename_(clut_filename),
-    working_profile_(working_profile),
-    ok_(false),
-    clut_and_working_profiles_are_same_(false),
-    num_threads_(num_threads),
-    strength_(strength)
+CLUTApplication::CLUTApplication(const Glib::ustring &clut_filename,
+                                 const Glib::ustring &working_profile,
+                                 float strength, int num_threads)
+    : clut_filename_(clut_filename), working_profile_(working_profile),
+      ok_(false), clut_and_working_profiles_are_same_(false),
+      num_threads_(num_threads), strength_(strength)
 {
     init(num_threads);
 }
-
 
 void CLUTApplication::init(int num_threads)
 {
@@ -1078,23 +1088,27 @@ void CLUTApplication::init(int num_threads)
     if (!hald_clut_) {
 #ifdef ART_USE_OCIO
         if (!OCIO_init())
-        if (!extlut_init())
+            if (!extlut_init())
 #endif // ART_USE_OCIO
 #ifdef ART_USE_CTL
-        if (!CTL_init(num_threads))
+                if (!CTL_init(num_threads))
 #endif // ART_USE_CTL
-            ok_ = false;
+                    ok_ = false;
         return;
     }
 
-    clut_and_working_profiles_are_same_ = hald_clut_->getProfile() == working_profile_;
+    clut_and_working_profiles_are_same_ =
+        hald_clut_->getProfile() == working_profile_;
 
     if (!clut_and_working_profiles_are_same_) {
         wprof_ = ICCStore::getInstance()->workingSpaceMatrix(working_profile_);
-        wiprof_ = ICCStore::getInstance()->workingSpaceInverseMatrix(working_profile_);
-        
-        xyz2clut_ = ICCStore::getInstance()->workingSpaceInverseMatrix(hald_clut_->getProfile());
-        clut2xyz_ = ICCStore::getInstance()->workingSpaceMatrix(hald_clut_->getProfile());
+        wiprof_ = ICCStore::getInstance()->workingSpaceInverseMatrix(
+            working_profile_);
+
+        xyz2clut_ = ICCStore::getInstance()->workingSpaceInverseMatrix(
+            hald_clut_->getProfile());
+        clut2xyz_ = ICCStore::getInstance()->workingSpaceMatrix(
+            hald_clut_->getProfile());
 
 #ifdef __SSE2__
         for (int i = 0; i < 3; ++i) {
@@ -1111,7 +1125,6 @@ void CLUTApplication::init(int num_threads)
     ok_ = true;
 }
 
-
 #ifdef ART_USE_OCIO
 
 bool CLUTApplication::OCIO_init()
@@ -1125,9 +1138,9 @@ bool CLUTApplication::OCIO_init()
     try {
         ok_ = true;
 
-        ocio_processor_ = proc->getOptimizedCPUProcessor(OCIO::BIT_DEPTH_F32, 
-                                                         OCIO::BIT_DEPTH_F32,
-                                                         OCIO::OPTIMIZATION_DEFAULT);
+        ocio_processor_ = proc->getOptimizedCPUProcessor(
+            OCIO::BIT_DEPTH_F32, OCIO::BIT_DEPTH_F32,
+            OCIO::OPTIMIZATION_DEFAULT);
         init_matrices("ACESp0");
         return true;
     } catch (...) {
@@ -1135,7 +1148,6 @@ bool CLUTApplication::OCIO_init()
         return false;
     }
 }
-
 
 bool CLUTApplication::extlut_init()
 {
@@ -1151,7 +1163,6 @@ bool CLUTApplication::extlut_init()
 }
 #endif // ART_USE_OCIO
 
-
 #ifdef ART_USE_CTL
 
 bool CLUTApplication::CTL_init(int num_threads)
@@ -1160,7 +1171,9 @@ bool CLUTApplication::CTL_init(int num_threads)
     try {
         Glib::ustring colorspace = "";
         Glib::ustring lbl;
-        auto res = CLUTStore::getInstance().getCTLLut(clut_filename_, num_threads, ctl_chunk_size_, ctl_params_, colorspace, ctl_lut_dim_);
+        auto res = CLUTStore::getInstance().getCTLLut(
+            clut_filename_, num_threads, ctl_chunk_size_, ctl_params_,
+            colorspace, ctl_lut_dim_);
         auto intp = res.first;
         auto &func = res.second;
         if (func.empty()) {
@@ -1178,7 +1191,6 @@ bool CLUTApplication::CTL_init(int num_threads)
         return false;
     }
 }
-
 
 bool CLUTApplication::CTL_set_params(const CLUTParamValueMap &values, Quality q)
 {
@@ -1200,7 +1212,8 @@ bool CLUTApplication::CTL_set_params(const CLUTParamValueMap &values, Quality q)
             }
             if (arg < 0) {
                 if (settings->verbose) {
-                    std::cout << "Error: no parameter " << desc.name << " in LUT " << clut_filename_ << std::endl;
+                    std::cout << "Error: no parameter " << desc.name
+                              << " in LUT " << clut_filename_ << std::endl;
                 }
                 return false;
             }
@@ -1222,18 +1235,20 @@ bool CLUTApplication::CTL_set_params(const CLUTParamValueMap &values, Quality q)
                 if (desc.type == CLUTParamType::PT_CURVE) {
                     curve.reset(new DiagonalCurve(vv));
                 } else {
-                    curve.reset(new FlatCurve(vv, desc.type == CLUTParamType::PT_FLATCURVE_PERIODIC));
+                    curve.reset(new FlatCurve(
+                        vv, desc.type == CLUTParamType::PT_FLATCURVE_PERIODIC));
                 }
                 for (auto f : ctl_func_) {
-                    Ctl::ArrayTypePtr atp = f->inputArg(arg)->type().cast<Ctl::ArrayType>();
+                    Ctl::ArrayTypePtr atp =
+                        f->inputArg(arg)->type().cast<Ctl::ArrayType>();
                     auto d = f->inputArg(arg)->data();
                     size_t n = atp->size();
                     for (size_t j = 0; j < n; ++j) {
-                        double x = double(j) / double(n-1);
+                        double x = double(j) / double(n - 1);
                         *(reinterpret_cast<float *>(d) + j) = curve->getVal(x);
                     }
                 }
-            }   break;
+            } break;
             case CLUTParamType::PT_INT:
             case CLUTParamType::PT_CHOICE:
             default:
@@ -1250,25 +1265,29 @@ bool CLUTApplication::CTL_set_params(const CLUTParamValueMap &values, Quality q)
             }
             for (auto &p : values) {
                 if (valid.find(p.first) == valid.end()) {
-                    std::cout << "Warning: invalid parameter " << p.first << " for LUT " << clut_filename_ << std::endl;
+                    std::cout << "Warning: invalid parameter " << p.first
+                              << " for LUT " << clut_filename_ << std::endl;
                 }
             }
         }
     } catch (std::exception &exc) {
         if (settings->verbose) {
-            std::cout << "Error in setting parameters for LUT " << clut_filename_ << ": " << exc.what() << std::endl;
+            std::cout << "Error in setting parameters for LUT "
+                      << clut_filename_ << ": " << exc.what() << std::endl;
         }
         return false;
     } catch (...) {
         if (settings->verbose) {
-            std::cout << "UNKNOWN Error in setting parameters for LUT " << clut_filename_ << std::endl;
+            std::cout << "UNKNOWN Error in setting parameters for LUT "
+                      << clut_filename_ << std::endl;
         }
         return false;
     }
 
     int dim = ctl_lut_dim_;
-    if (dim >= 0 && settings->ctl_scripts_fast_preview && q != Quality::HIGHEST) {
-        dim = !dim ? int(q) : std::min(dim, int (q));
+    if (dim >= 0 && settings->ctl_scripts_fast_preview &&
+        q != Quality::HIGHEST) {
+        dim = !dim ? int(q) : std::min(dim, int(q));
         // switch (q) {
         // case Quality::LOW:
         //     dim = !dim ? 24 : std::min(dim, 24);
@@ -1297,12 +1316,10 @@ inline float CTL_shaper(float a, bool inv)
     return CLUTStore::getInstance().CTL_shaper(a, inv);
 }
 
-
 class CTLLutInitializer: public LUT3D::initializer {
 public:
-    CTLLutInitializer(const std::vector<float> *rgb):
-        rgb_(rgb), i_(0) {}
-    
+    CTLLutInitializer(const std::vector<float> *rgb): rgb_(rgb), i_(0) {}
+
     void operator()(float &r, float &g, float &b) override
     {
         r = rgb_[0][i_];
@@ -1318,27 +1335,27 @@ private:
 
 } // namespace
 
-
 void CLUTApplication::CTL_init_lut(int dim)
 {
     BENCHFUN
     if (settings->verbose > 1) {
-        std::cout << "computing CTL lut for: " << clut_filename_ << " of dimension: " << dim << std::endl;
+        std::cout << "computing CTL lut for: " << clut_filename_
+                  << " of dimension: " << dim << std::endl;
     }
-            
+
     std::vector<float> rgb[3];
 
     int sz = SQR(dim) * dim;
     for (int i = 0; i < 3; ++i) {
         rgb[i].reserve(sz);
     }
-    
+
     for (int i = 0; i < dim; ++i) {
-        float r = float(i)/(dim-1);
+        float r = float(i) / (dim - 1);
         for (int j = 0; j < dim; ++j) {
-            float g = float(j)/(dim-1);
+            float g = float(j) / (dim - 1);
             for (int k = 0; k < dim; ++k) {
-                float b = float(k)/(dim-1);
+                float b = float(k) / (dim - 1);
                 rgb[0].push_back(CTL_shaper(r, true));
                 rgb[1].push_back(CTL_shaper(g, true));
                 rgb[2].push_back(CTL_shaper(b, true));
@@ -1365,7 +1382,6 @@ void CLUTApplication::CTL_init_lut(int dim)
 
 #endif // ART_USE_CTL
 
-
 CLUTParamDescriptorList CLUTApplication::get_param_descriptors() const
 {
 #ifdef ART_USE_CTL
@@ -1381,8 +1397,8 @@ CLUTParamDescriptorList CLUTApplication::get_param_descriptors() const
     return {};
 }
 
-
-bool CLUTApplication::set_param_values(const CLUTParamValueMap &values, Quality q)
+bool CLUTApplication::set_param_values(const CLUTParamValueMap &values,
+                                       Quality q)
 {
 #ifdef ART_USE_CTL
     if (!ctl_func_.empty()) {
@@ -1402,8 +1418,8 @@ bool CLUTApplication::set_param_values(const CLUTParamValueMap &values, Quality 
     return values.empty();
 }
 
-
-CLUTParamDescriptorList CLUTApplication::get_param_descriptors(const Glib::ustring &filename)
+CLUTParamDescriptorList
+CLUTApplication::get_param_descriptors(const Glib::ustring &filename)
 {
 #ifdef ART_USE_OCIO
     if (getFileExtension(filename) == "json") {
@@ -1416,24 +1432,26 @@ CLUTParamDescriptorList CLUTApplication::get_param_descriptors(const Glib::ustri
     } else
 #endif // ART_USE_OCIO
 #ifdef ART_USE_CTL
-    try {
-        CLUTParamDescriptorList params;
-        int n = 0;
-        Glib::ustring colorspace;
-        auto p = CLUTStore::getInstance().getCTLLut(filename, 1, n, params, colorspace, n);
-        return params;
-    } catch (...) {}
+        try {
+            CLUTParamDescriptorList params;
+            int n = 0;
+            Glib::ustring colorspace;
+            auto p = CLUTStore::getInstance().getCTLLut(filename, 1, n, params,
+                                                        colorspace, n);
+            return params;
+        } catch (...) {
+        }
 #endif // ART_USE_CTL
     return {};
 }
-
 
 #if defined ART_USE_OCIO || defined ART_USE_CTL
 
 void CLUTApplication::init_matrices(const Glib::ustring &lut_profile)
 {
     wprof_ = ICCStore::getInstance()->workingSpaceMatrix(working_profile_);
-    wiprof_ = ICCStore::getInstance()->workingSpaceInverseMatrix(working_profile_);
+    wiprof_ =
+        ICCStore::getInstance()->workingSpaceInverseMatrix(working_profile_);
     if (lut_profile.empty()) {
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
@@ -1444,8 +1462,9 @@ void CLUTApplication::init_matrices(const Glib::ustring &lut_profile)
         }
     } else {
         auto lprof = ICCStore::getInstance()->workingSpaceMatrix(lut_profile);
-        auto liprof = ICCStore::getInstance()->workingSpaceInverseMatrix(lut_profile);
-    
+        auto liprof =
+            ICCStore::getInstance()->workingSpaceInverseMatrix(lut_profile);
+
         auto ws = dot_product(liprof, wprof_);
         auto iws = dot_product(wiprof_, lprof);
 
@@ -1460,7 +1479,6 @@ void CLUTApplication::init_matrices(const Glib::ustring &lut_profile)
 
 #endif // ART_USE_OCIO || ART_USE_CTL
 
-
 void CLUTApplication::operator()(Imagefloat *img)
 {
     if (!ok_) {
@@ -1471,7 +1489,7 @@ void CLUTApplication::operator()(Imagefloat *img)
     const int H = img->getHeight();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (num_threads_ > 1) num_threads(num_threads_)
+#pragma omp parallel for if (num_threads_ > 1) num_threads(num_threads_)
 #endif
     for (int y = 0; y < H; ++y) {
 #ifdef _OPENMP
@@ -1482,7 +1500,6 @@ void CLUTApplication::operator()(Imagefloat *img)
         apply(thread_id, W, img->r(y), img->g(y), img->b(y));
     }
 }
-
 
 bool CLUTApplication::set_num_threads(int num_threads)
 {
@@ -1498,7 +1515,6 @@ bool CLUTApplication::set_num_threads(int num_threads)
     return true;
 }
 
-
 inline void CLUTApplication::do_apply(int W, float *r, float *g, float *b)
 {
     AlignedBuffer<float> buf_out_rgbx(4 * W); // Line buffer for CLUT
@@ -1509,7 +1525,7 @@ inline void CLUTApplication::do_apply(int W, float *r, float *g, float *b)
     float *clutr = buf_clutr.data;
     float *clutg = buf_clutg.data;
     float *clutb = buf_clutb.data;
-    
+
     if (!clut_and_working_profiles_are_same_) {
         // Convert from working to clut profile
         int j = 0;
@@ -1614,7 +1630,6 @@ inline void CLUTApplication::do_apply(int W, float *r, float *g, float *b)
     }
 }
 
-
 #ifdef ART_USE_OCIO
 
 inline void CLUTApplication::OCIO_apply(int W, float *r, float *g, float *b)
@@ -1635,7 +1650,7 @@ inline void CLUTApplication::OCIO_apply(int W, float *r, float *g, float *b)
 
     OCIO::PackedImageDesc pd(&data[0], W, 1, 3);
     ocio_processor_->apply(pd);
-            
+
     for (int x = 0, i = 0; x < W; ++x) {
         v[0] = data[i++];
         v[1] = data[i++];
@@ -1656,10 +1671,10 @@ inline void CLUTApplication::OCIO_apply(int W, float *r, float *g, float *b)
 
 #endif // ART_USE_OCIO
 
-
 #ifdef ART_USE_CTL
 
-inline void CLUTApplication::CTL_apply(int thread_id, int W, float *r, float *g, float *b)
+inline void CLUTApplication::CTL_apply(int thread_id, int W, float *r, float *g,
+                                       float *b)
 {
     if (!ctl_func_.empty()) {
         auto func = ctl_func_[thread_id];
@@ -1668,7 +1683,7 @@ inline void CLUTApplication::CTL_apply(int thread_id, int W, float *r, float *g,
         for (int i = 0; i < 3; ++i) {
             rgb[i].resize(W);
         }
-        
+
         for (int x = 0; x < W; ++x) {
             v[0] = r[x] / 65535.f;
             v[1] = g[x] / 65535.f;
@@ -1688,22 +1703,25 @@ inline void CLUTApplication::CTL_apply(int thread_id, int W, float *r, float *g,
                 rgb[0][x] = r;
                 rgb[1][x] = g;
                 rgb[2][x] = b;
-            }            
+            }
         } else {
             for (int x = 0; x < W; x += ctl_chunk_size_) {
-                const auto n = (x + ctl_chunk_size_ < W ? ctl_chunk_size_ : W - x);
+                const auto n =
+                    (x + ctl_chunk_size_ < W ? ctl_chunk_size_ : W - x);
                 for (int i = 0; i < 3; ++i) {
-                    memcpy(func->inputArg(i)->data(), &(rgb[i][x]), sizeof(float) * n);
+                    memcpy(func->inputArg(i)->data(), &(rgb[i][x]),
+                           sizeof(float) * n);
                 }
                 func->callFunction(n);
                 for (int i = 0; i < 3; ++i) {
-                    memcpy(&(rgb[i][x]), func->outputArg(i)->data(), sizeof(float) * n);
+                    memcpy(&(rgb[i][x]), func->outputArg(i)->data(),
+                           sizeof(float) * n);
                 }
             }
         }
-        
+
         const bool blend = strength_ < 1.f;
-        
+
         for (int x = 0; x < W; ++x) {
             v[0] = rgb[0][x];
             v[1] = rgb[1][x];
@@ -1720,12 +1738,10 @@ inline void CLUTApplication::CTL_apply(int thread_id, int W, float *r, float *g,
                 b[x] = v[2];
             }
         }
-
     }
 }
 
 #endif // ART_USE_CTL
-
 
 void CLUTApplication::apply(int thread_id, int W, float *r, float *g, float *b)
 {
@@ -1745,7 +1761,8 @@ void CLUTApplication::apply(int thread_id, int W, float *r, float *g, float *b)
             CTL_apply(thread_id, W, r, g, b);
         } catch (std::exception &exc) {
             if (settings->verbose) {
-                std::cout << "Error in applying CTL LUT " << clut_filename_ << ": " << exc.what() << std::endl;
+                std::cout << "Error in applying CTL LUT " << clut_filename_
+                          << ": " << exc.what() << std::endl;
             }
         }
         return;
@@ -1755,11 +1772,15 @@ void CLUTApplication::apply(int thread_id, int W, float *r, float *g, float *b)
     do_apply(W, r, g, b);
 }
 
-
 #ifdef ART_USE_OCIO
 
-OCIOInputProfile::OCIOInputProfile(const Glib::ustring &clut_filename, const Glib::ustring &working_profile, int num_threads):
-    CLUTApplication(!clut_filename.compare(0, 5, "file:") ? clut_filename.substr(5) : clut_filename, working_profile, 1.f, num_threads)
+OCIOInputProfile::OCIOInputProfile(const Glib::ustring &clut_filename,
+                                   const Glib::ustring &working_profile,
+                                   int num_threads)
+    : CLUTApplication(!clut_filename.compare(0, 5, "file:")
+                          ? clut_filename.substr(5)
+                          : clut_filename,
+                      working_profile, 1.f, num_threads)
 {
     if (!ok_ || !ocio_processor_) {
         ok_ = false;

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,98 +20,92 @@
 #ifndef _HISTORY_
 #define _HISTORY_
 
-#include <gtkmm.h>
 #include "../rtengine/rtengine.h"
+#include "paramsedited.h"
 #include "pparamschangelistener.h"
 #include "profilechangelistener.h"
-#include "paramsedited.h"
+#include <gtkmm.h>
 
-class HistoryBeforeAfterListener
-{
+class HistoryBeforeAfterListener {
 public:
     virtual ~HistoryBeforeAfterListener() = default;
-    virtual void historyBeforeAfterChanged(const rtengine::procparams::ProcParams& params) = 0;
+    virtual void historyBeforeAfterChanged(
+        const rtengine::procparams::ProcParams &params) = 0;
 };
 
-class History : public Gtk::VBox, public PParamsChangeListener
-{
+class History: public Gtk::VBox, public PParamsChangeListener {
 
 public:
-
-    class HistoryColumns : public Gtk::TreeModel::ColumnRecord
-    {
+    class HistoryColumns: public Gtk::TreeModel::ColumnRecord {
     public:
-        Gtk::TreeModelColumn<Glib::ustring>  text;
-        Gtk::TreeModelColumn<Glib::ustring>  value;
-        Gtk::TreeModelColumn<rtengine::procparams::ProcParams>     params;
-        Gtk::TreeModelColumn<rtengine::ProcEvent>    chev;
-        //Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
+        Gtk::TreeModelColumn<Glib::ustring> text;
+        Gtk::TreeModelColumn<Glib::ustring> value;
+        Gtk::TreeModelColumn<rtengine::procparams::ProcParams> params;
+        Gtk::TreeModelColumn<rtengine::ProcEvent> chev;
+        // Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
         HistoryColumns()
         {
             add(text);
             add(value);
             add(chev);
             add(params);
-            //add(paramsEdited);
+            // add(paramsEdited);
         }
     };
     HistoryColumns historyColumns;
-    class BookmarkColumns : public Gtk::TreeModel::ColumnRecord
-    {
+    class BookmarkColumns: public Gtk::TreeModel::ColumnRecord {
     public:
-        Gtk::TreeModelColumn<Glib::ustring>  text;
-        Gtk::TreeModelColumn<rtengine::procparams::ProcParams>     params;
-        //Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
+        Gtk::TreeModelColumn<Glib::ustring> text;
+        Gtk::TreeModelColumn<rtengine::procparams::ProcParams> params;
+        // Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
         BookmarkColumns()
         {
             add(text);
             add(params);
-            //add(paramsEdited);
+            // add(paramsEdited);
         }
     };
     BookmarkColumns bookmarkColumns;
 
 protected:
-    Gtk::VPaned*            historyVPaned;
-    Gtk::TreeView*          hTreeView;
+    Gtk::VPaned *historyVPaned;
+    Gtk::TreeView *hTreeView;
     Glib::RefPtr<Gtk::ListStore> historyModel;
 
-    Gtk::ScrolledWindow*    bscrollw;
-    Gtk::TreeView*          bTreeView;
+    Gtk::ScrolledWindow *bscrollw;
+    Gtk::TreeView *bTreeView;
     Glib::RefPtr<Gtk::ListStore> bookmarkModel;
 
-    Gtk::Button*            addBookmark;
-    Gtk::Button*            delBookmark;
+    Gtk::Button *addBookmark;
+    Gtk::Button *delBookmark;
 
-    sigc::connection        selchangehist;
-    sigc::connection        selchangebm;
+    sigc::connection selchangehist;
+    sigc::connection selchangebm;
 
-    HistoryBeforeAfterListener * blistener;
-    ProfileChangeListener* tpc;
-    //ParamsEdited defParamsEdited;
+    HistoryBeforeAfterListener *blistener;
+    ProfileChangeListener *tpc;
+    // ParamsEdited defParamsEdited;
     int bmnum;
 
     PParamsSnapshotListener *snapshotListener;
     bool shapshot_update_;
 
     bool blistenerLock;
-    
-    bool on_query_tooltip(int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip>& tooltip);
 
-    std::vector<std::pair<Glib::ustring, rtengine::procparams::ProcParams>> getSnapshots();
+    bool on_query_tooltip(int x, int y, bool keyboard_tooltip,
+                          const Glib::RefPtr<Gtk::Tooltip> &tooltip);
+
+    std::vector<std::pair<Glib::ustring, rtengine::procparams::ProcParams>>
+    getSnapshots();
 
     bool onPressEvent(GdkEventButton *event);
     bool confirmBookmarkUpdate();
 
 public:
+    explicit History(bool bookmarkSupport = true);
 
-    explicit History (bool bookmarkSupport = true);
-
-    void setProfileChangeListener     (ProfileChangeListener* tpc_)
-    {
-        tpc = tpc_;
-    }
-    void setHistoryBeforeAfterListener (HistoryBeforeAfterListener* bll)
+    void setProfileChangeListener(ProfileChangeListener *tpc_) { tpc = tpc_; }
+    void setHistoryBeforeAfterListener(HistoryBeforeAfterListener *bll)
     {
         blistener = bll;
     }
@@ -120,37 +114,36 @@ public:
     bool getBeforeAfterLock() const { return blistenerLock; }
 
     // pparamschangelistener interface
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr
-    ) override;
-    void clearParamChanges () override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
+    void clearParamChanges() override;
 
-    void historySelectionChanged ();
-    void bookmarkSelectionChanged ();
-    void initHistory ();
+    void historySelectionChanged();
+    void bookmarkSelectionChanged();
+    void initHistory();
 
-    bool getBeforeAfterParams(rtengine::procparams::ProcParams& params);
+    bool getBeforeAfterParams(rtengine::procparams::ProcParams &params);
 
-    void addBookmarkWithText (Glib::ustring text);
-    void addBookmarkPressed ();
-    void delBookmarkPressed ();
-    void snapshotNameEdited(const Glib::ustring &sold, const Glib::ustring &snew);
+    void addBookmarkWithText(Glib::ustring text);
+    void addBookmarkPressed();
+    void delBookmarkPressed();
+    void snapshotNameEdited(const Glib::ustring &sold,
+                            const Glib::ustring &snew);
 
-    //void resized (Gtk::Allocation& req);
+    // void resized (Gtk::Allocation& req);
 
-    void undo ();
-    void redo ();
+    void undo();
+    void redo();
 
-    void resetSnapShotNumber()
-    {
-        bmnum = 1;
-    }
+    void resetSnapShotNumber() { bmnum = 1; }
 
     void setPParamsSnapshotListener(PParamsSnapshotListener *l);
-    void setSnapshots(const std::vector<std::pair<Glib::ustring, rtengine::procparams::ProcParams>> &snapshots);
+    void
+    setSnapshots(const std::vector<
+                 std::pair<Glib::ustring, rtengine::procparams::ProcParams>>
+                     &snapshots);
     void enableSnapshots(bool yes);
 
     void activateNextSnapshot();

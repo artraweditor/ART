@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2019 Alberto Griggio <alberto.griggio@gmail.com>
@@ -26,8 +26,10 @@ void adjust_fast_params(rtengine::procparams::ProcParams &params)
 {
     params.resize.unit = rtengine::procparams::ResizeParams::PX;
     if (params.resize.enabled) {
-        params.resize.width = rtengine::min(params.resize.get_width(), options.fastexport_resize_width);
-        params.resize.height = rtengine::min(params.resize.get_height(), options.fastexport_resize_height);
+        params.resize.width = rtengine::min(params.resize.get_width(),
+                                            options.fastexport_resize_width);
+        params.resize.height = rtengine::min(params.resize.get_height(),
+                                             options.fastexport_resize_height);
     } else {
         params.resize.width = options.fastexport_resize_width;
         params.resize.height = options.fastexport_resize_height;
@@ -42,7 +44,9 @@ void adjust_fast_params(rtengine::procparams::ProcParams &params)
 
 } // namespace
 
-rtengine::ProcessingJob *create_processing_job(const Glib::ustring &fname, bool is_raw, rtengine::procparams::ProcParams params, bool fast)
+rtengine::ProcessingJob *
+create_processing_job(const Glib::ustring &fname, bool is_raw,
+                      rtengine::procparams::ProcParams params, bool fast)
 {
     if (fast) {
         adjust_fast_params(params);
@@ -52,8 +56,9 @@ rtengine::ProcessingJob *create_processing_job(const Glib::ustring &fname, bool 
     return ret;
 }
 
-
-rtengine::ProcessingJob *create_processing_job(rtengine::InitialImage *initialImage, rtengine::procparams::ProcParams params, bool fast)
+rtengine::ProcessingJob *
+create_processing_job(rtengine::InitialImage *initialImage,
+                      rtengine::procparams::ProcParams params, bool fast)
 {
     if (fast) {
         adjust_fast_params(params);

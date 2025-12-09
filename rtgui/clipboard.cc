@@ -20,17 +20,10 @@
 
 Clipboard clipboard;
 
-Clipboard::Clipboard ():
-    _hasIPTC(false),
-    pedited(false),
-    has_pparams_(false),
-    has_pedited_(false),
-    hasDiagonalCurveDataType(DCT_Empty),
-    hasFlatCurveDataType(FCT_Empty)
+Clipboard::Clipboard()
+    : _hasIPTC(false), pedited(false), has_pparams_(false), has_pedited_(false),
+      hasDiagonalCurveDataType(DCT_Empty), hasFlatCurveDataType(FCT_Empty)
 {
 }
 
-Clipboard::~Clipboard ()
-{
-}
-
+Clipboard::~Clipboard() {}

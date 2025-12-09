@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -18,15 +18,17 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <glibmm.h>
 #include <glib/gstdio.h>
+#include <glibmm.h>
 #include <iostream>
 
-#include "wbprovider.h"
 #include "../rtengine/cJSON.h"
 #include "../rtengine/settings.h"
+#include "wbprovider.h"
 
-namespace rtengine { extern const Settings* settings; }
+namespace rtengine {
+extern const Settings *settings;
+}
 
 namespace wb_presets {
 
@@ -35,23 +37,24 @@ namespace {
 std::map<std::string, std::vector<WBPreset>> load(const Glib::ustring &path)
 {
     std::map<std::string, std::vector<WBPreset>> ret;
-    
+
     Glib::ustring fileName = Glib::build_filename(path, "wbpresets.json");
     if (!Glib::file_test(fileName, Glib::FILE_TEST_EXISTS)) {
         return ret;
     }
-    
+
     FILE *const f = g_fopen(fileName.c_str(), "r");
 
     if (rtengine::settings->verbose > 1) {
-        std::cout << "trying to load white balance presets from " << fileName << std::flush;
+        std::cout << "trying to load white balance presets from " << fileName
+                  << std::flush;
     }
-    
+
     if (!f) {
         if (rtengine::settings->verbose > 1) {
             std::cout << " FAIL" << std::endl;
         }
-        
+
         return ret;
     }
 
@@ -62,7 +65,7 @@ std::map<std::string, std::vector<WBPreset>> load(const Glib::ustring &path)
         if (rtengine::settings->verbose > 1) {
             std::cout << " FAIL" << std::endl;
         }
-        
+
         fclose(f);
         return ret;
     }
@@ -153,7 +156,7 @@ std::map<std::string, std::vector<WBPreset>> load(const Glib::ustring &path)
 
     return ret;
 
-  parse_error:
+parse_error:
 
     if (rtengine::settings->verbose) {
         std::cout << " ERROR in parsing " << fileName << std::endl;
@@ -167,11 +170,10 @@ std::map<std::string, std::vector<WBPreset>> presets;
 
 } // namespace
 
-
 void init(const Glib::ustring &baseDir, const Glib::ustring &userSettingsDir)
 {
     std::map<Glib::ustring, WBPreset> seen;
-    
+
     presets = load(baseDir);
     auto user_presets = load(userSettingsDir);
     for (auto &p : user_presets) {
@@ -203,7 +205,6 @@ void init(const Glib::ustring &baseDir, const Glib::ustring &userSettingsDir)
         }
     }
 }
-
 
 const std::map<std::string, std::vector<WBPreset>> &getPresets()
 {

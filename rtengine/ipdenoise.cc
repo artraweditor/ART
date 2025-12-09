@@ -16,11 +16,11 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "improcfun.h"
+#include "ipdenoise.h"
 #include "imagesource.h"
+#include "improcfun.h"
 #include "mytime.h"
 #include "rt_algo.h"
-#include "ipdenoise.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -37,88 +37,95 @@ void adjust_params(procparams::DenoiseParams &dnparams, double scale)
     if (scale <= 1.0) {
         return;
     }
-    
-    const auto c =
-        [](double x, double f) -> double
-        {
-            int s = SGN(x);
-            double y = LIM01(std::abs(x)/100.0);
-            return s * intp(y, y * f, y) * 100.0;
-        };
+
+    const auto c = [](double x, double f) -> double {
+        int s = SGN(x);
+        double y = LIM01(std::abs(x) / 100.0);
+        return s * intp(y, y * f, y) * 100.0;
+    };
 
     double scale_factor = 1.0 / scale;
     double noise_factor_c = std::pow(scale_factor, 0.46);
     double noise_factor_l = std::pow(scale_factor, 0.62) * scale_factor;
-    //noise_factor_l *= intp(std::pow(LIM01(dnparams.luminance / 100.0), 3.0), scale_factor, 1.0);
-    //std::cout << "ADJUSTING LUMINANCE SCALE: " << noise_factor_l << std::endl;
-    //dnparams.luminance *= noise_factor_l;
+    // noise_factor_l *= intp(std::pow(LIM01(dnparams.luminance / 100.0), 3.0),
+    // scale_factor, 1.0); std::cout << "ADJUSTING LUMINANCE SCALE: " <<
+    // noise_factor_l << std::endl; dnparams.luminance *= noise_factor_l;
     dnparams.luminance = c(dnparams.luminance, noise_factor_l);
     dnparams.luminanceDetail *= (1.0 + std::pow(1.0 - scale_factor, 2.2));
     dnparams.chrominance = c(dnparams.chrominance, noise_factor_c);
-    dnparams.chrominanceRedGreen = c(dnparams.chrominanceRedGreen, noise_factor_c);
-    dnparams.chrominanceBlueYellow = c(dnparams.chrominanceBlueYellow, noise_factor_c);
+    dnparams.chrominanceRedGreen =
+        c(dnparams.chrominanceRedGreen, noise_factor_c);
+    dnparams.chrominanceBlueYellow =
+        c(dnparams.chrominanceBlueYellow, noise_factor_c);
     // dnparams.chrominance *= noise_factor_c;
     // dnparams.chrominanceRedGreen *= noise_factor_c;
     // dnparams.chrominanceBlueYellow *= noise_factor_c;
 }
 
-
-void calcautodn_info(const ProcParams *params, float &chaut, float &delta, int Nb, int levaut, float maxmax, float lumema, float chromina, int mode, int lissage, float redyel, float skinc, float nsknc)
+void calcautodn_info(const ProcParams *params, float &chaut, float &delta,
+                     int Nb, int levaut, float maxmax, float lumema,
+                     float chromina, int mode, int lissage, float redyel,
+                     float skinc, float nsknc)
 {
 
     float reducdelta = 1.f;
 
     if (params->denoise.aggressive) {
-        reducdelta = static_cast<float>(0.9/*settings->nrhigh*/);
+        reducdelta = static_cast<float>(0.9 /*settings->nrhigh*/);
     }
 
-    chaut = (chaut * Nb - maxmax) / (Nb - 1); //suppress maximum for chaut calcul
+    chaut =
+        (chaut * Nb - maxmax) / (Nb - 1); // suppress maximum for chaut calcul
 
-    if ((redyel > 5000.f || skinc > 1000.f) && nsknc < 0.4f  && chromina > 3000.f) {
-        chaut *= 0.45f;    //reduct action in red zone, except skin for high / med chroma
-    } else if ((redyel > 12000.f || skinc > 1200.f) && nsknc < 0.3f && chromina > 3000.f) {
+    if ((redyel > 5000.f || skinc > 1000.f) && nsknc < 0.4f &&
+        chromina > 3000.f) {
+        chaut *= 0.45f; // reduct action in red zone, except skin for high / med
+                        // chroma
+    } else if ((redyel > 12000.f || skinc > 1200.f) && nsknc < 0.3f &&
+               chromina > 3000.f) {
         chaut *= 0.3f;
     }
 
-    if (mode == 0 || mode == 2) { //Preview or Auto multizone
+    if (mode == 0 || mode == 2) { // Preview or Auto multizone
         if (chromina > 10000.f) {
-            chaut *= 0.7f;    //decrease action for high chroma  (visible noise)
+            chaut *= 0.7f; // decrease action for high chroma  (visible noise)
         } else if (chromina > 6000.f) {
             chaut *= 0.9f;
         } else if (chromina < 3000.f) {
-            chaut *= 1.2f;    //increase action in low chroma==> 1.2  /==>2.0 ==> curve CC
+            chaut *= 1.2f; // increase action in low chroma==> 1.2  /==>2.0 ==>
+                           // curve CC
         } else if (chromina < 2000.f) {
-            chaut *= 1.5f;    //increase action in low chroma==> 1.5 / ==>2.7
+            chaut *= 1.5f; // increase action in low chroma==> 1.5 / ==>2.7
         }
 
         if (lumema < 2500.f) {
-            chaut *= 1.3f;    //increase action for low light
+            chaut *= 1.3f; // increase action for low light
         } else if (lumema < 5000.f) {
             chaut *= 1.2f;
         } else if (lumema > 20000.f) {
-            chaut *= 0.9f;    //decrease for high light
+            chaut *= 0.9f; // decrease for high light
         }
-    } else if (mode == 1) {//auto ==> less coefficient because interaction
+    } else if (mode == 1) { // auto ==> less coefficient because interaction
         if (chromina > 10000.f) {
-            chaut *= 0.8f;    //decrease action for high chroma  (visible noise)
+            chaut *= 0.8f; // decrease action for high chroma  (visible noise)
         } else if (chromina > 6000.f) {
             chaut *= 0.9f;
         } else if (chromina < 3000.f) {
-            chaut *= 1.5f;    //increase action in low chroma
+            chaut *= 1.5f; // increase action in low chroma
         } else if (chromina < 2000.f) {
-            chaut *= 2.2f;    //increase action in low chroma
+            chaut *= 2.2f; // increase action in low chroma
         }
 
         if (lumema < 2500.f) {
-            chaut *= 1.2f;    //increase action for low light
+            chaut *= 1.2f; // increase action for low light
         } else if (lumema < 5000.f) {
             chaut *= 1.1f;
         } else if (lumema > 20000.f) {
-            chaut *= 0.9f;    //decrease for high light
+            chaut *= 0.9f; // decrease for high light
         }
     }
 
-    if (levaut == 0) { //Low denoise
+    if (levaut == 0) { // Low denoise
         if (chaut > 300.f) {
             chaut = 0.714286f * chaut + 85.71428f;
         }
@@ -146,17 +153,17 @@ void calcautodn_info(const ProcParams *params, float &chaut, float &delta, int N
             delta *= 0.07f;
         }
 
-        if (mode == 0 || mode == 2) { //Preview or Auto multizone
+        if (mode == 0 || mode == 2) { // Preview or Auto multizone
             if (chromina < 6000.f) {
-                delta *= 1.4f;    //increase maxi
+                delta *= 1.4f; // increase maxi
             }
 
             if (lumema < 5000.f) {
                 delta *= 1.4f;
             }
-        } else if (mode == 1) { //Auto
+        } else if (mode == 1) { // Auto
             if (chromina < 6000.f) {
-                delta *= 1.2f;    //increase maxi
+                delta *= 1.2f; // increase maxi
             }
 
             if (lumema < 5000.f) {
@@ -184,17 +191,17 @@ void calcautodn_info(const ProcParams *params, float &chaut, float &delta, int N
             delta *= 0.15f;
         }
 
-        if (mode == 0 || mode == 2) { //Preview or Auto multizone
+        if (mode == 0 || mode == 2) { // Preview or Auto multizone
             if (chromina < 6000.f) {
-                delta *= 1.4f;    //increase maxi
+                delta *= 1.4f; // increase maxi
             }
 
             if (lumema < 5000.f) {
                 delta *= 1.4f;
             }
-        } else if (mode == 1) { //Auto
+        } else if (mode == 1) { // Auto
             if (chromina < 6000.f) {
-                delta *= 1.2f;    //increase maxi
+                delta *= 1.2f; // increase maxi
             }
 
             if (lumema < 5000.f) {
@@ -202,18 +209,18 @@ void calcautodn_info(const ProcParams *params, float &chaut, float &delta, int N
             }
         }
     }
-
 }
 
-
-void RGB_denoise_infoGamCurve(const procparams::DenoiseParams & dnparams, bool isRAW, LUTf &gamcurve, float &gam, float &gamthresh, float &gamslope)
+void RGB_denoise_infoGamCurve(const procparams::DenoiseParams &dnparams,
+                              bool isRAW, LUTf &gamcurve, float &gam,
+                              float &gamthresh, float &gamslope)
 {
     gam = dnparams.gamma;
     gamthresh = 0.001f;
 
-    if (!isRAW) {//reduce gamma under 1 for Lab mode ==> TIF and JPG
+    if (!isRAW) { // reduce gamma under 1 for Lab mode ==> TIF and JPG
         if (gam < 1.9f) {
-            gam = 1.f - (1.9f - gam) / 3.f;    //minimum gamma 0.7
+            gam = 1.f - (1.9f - gam) / 3.f; // minimum gamma 0.7
         } else if (gam >= 1.9f && gam <= 3.f) {
             gam = (1.4f / 1.1f) * gam - 1.41818f;
         }
@@ -223,52 +230,63 @@ void RGB_denoise_infoGamCurve(const procparams::DenoiseParams & dnparams, bool i
     Color::gammaf2lut(gamcurve, gam, gamthresh, gamslope, 65535.f, 32768.f);
 }
 
-
-void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, const bool isRAW, LUTf &gamcurve, float gam, float gamthresh, float gamslope, const procparams::DenoiseParams & dnparams, const double expcomp, float &chaut, int &Nb,  float &redaut, float &blueaut, float &maxredaut, float &maxblueaut, float &minredaut, float &minblueaut, float &chromina, float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc, float &nsknc)
+void RGB_denoise_info(ImProcData &im, Imagefloat *src, Imagefloat *provicalc,
+                      const bool isRAW, LUTf &gamcurve, float gam,
+                      float gamthresh, float gamslope,
+                      const procparams::DenoiseParams &dnparams,
+                      const double expcomp, float &chaut, int &Nb,
+                      float &redaut, float &blueaut, float &maxredaut,
+                      float &maxblueaut, float &minredaut, float &minblueaut,
+                      float &chromina, float &sigma, float &lumema,
+                      float &sigma_L, float &redyel, float &skinc, float &nsknc)
 {
     const ProcParams *params = im.params;
     double scale = im.scale;
     bool multiThread = im.multiThread;
-    
-    if (dnparams.chrominanceMethod != procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
-        //nothing to do
+
+    if (dnparams.chrominanceMethod !=
+        procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
+        // nothing to do
         return;
     }
 
     int hei, wid;
-    float** lumcalc;
-    float** acalc;
-    float** bcalc;
+    float **lumcalc;
+    float **acalc;
+    float **bcalc;
     hei = provicalc->getHeight();
     wid = provicalc->getWidth();
-    TMatrix wprofi = ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
+    TMatrix wprofi =
+        ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
 
     const float wpi[3][3] = {
-        {static_cast<float>(wprofi[0][0]), static_cast<float>(wprofi[0][1]), static_cast<float>(wprofi[0][2])},
-        {static_cast<float>(wprofi[1][0]), static_cast<float>(wprofi[1][1]), static_cast<float>(wprofi[1][2])},
-        {static_cast<float>(wprofi[2][0]), static_cast<float>(wprofi[2][1]), static_cast<float>(wprofi[2][2])}
-    };
+        {static_cast<float>(wprofi[0][0]), static_cast<float>(wprofi[0][1]),
+         static_cast<float>(wprofi[0][2])},
+        {static_cast<float>(wprofi[1][0]), static_cast<float>(wprofi[1][1]),
+         static_cast<float>(wprofi[1][2])},
+        {static_cast<float>(wprofi[2][0]), static_cast<float>(wprofi[2][1]),
+         static_cast<float>(wprofi[2][2])}};
 
-    lumcalc = new float*[hei];
+    lumcalc = new float *[hei];
 
     for (int i = 0; i < hei; ++i) {
         lumcalc[i] = new float[wid];
     }
 
-    acalc = new float*[hei];
+    acalc = new float *[hei];
 
     for (int i = 0; i < hei; ++i) {
         acalc[i] = new float[wid];
     }
 
-    bcalc = new float*[hei];
+    bcalc = new float *[hei];
 
     for (int i = 0; i < hei; ++i) {
         bcalc[i] = new float[wid];
     }
 
 #ifdef _OPENMP
-    #pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
 
     for (int ii = 0; ii < hei; ++ii) {
@@ -296,8 +314,8 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
     int overlap;
 
     // if (settings->leveldnti == 0) {
-        tilesize = 1024;
-        overlap = 128;
+    tilesize = 1024;
+    overlap = 128;
     // }
 
     // if (settings->leveldnti == 1) {
@@ -307,18 +325,23 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
     int numtiles_W, numtiles_H, tilewidth, tileheight, tileWskip, tileHskip;
 
-    //always no Tiles
+    // always no Tiles
     int kall = 0;
-    rtengine::denoise::Tile_calc(tilesize, overlap, kall, imwidth, imheight, numtiles_W, numtiles_H, tilewidth, tileheight, tileWskip, tileHskip);
+    rtengine::denoise::Tile_calc(tilesize, overlap, kall, imwidth, imheight,
+                                 numtiles_W, numtiles_H, tilewidth, tileheight,
+                                 tileWskip, tileHskip);
 
     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    TMatrix wprof = ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
+    TMatrix wprof =
+        ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
     const float wp[3][3] = {
-        {static_cast<float>(wprof[0][0]), static_cast<float>(wprof[0][1]), static_cast<float>(wprof[0][2])},
-        {static_cast<float>(wprof[1][0]), static_cast<float>(wprof[1][1]), static_cast<float>(wprof[1][2])},
-        {static_cast<float>(wprof[2][0]), static_cast<float>(wprof[2][1]), static_cast<float>(wprof[2][2])}
-    };
+        {static_cast<float>(wprof[0][0]), static_cast<float>(wprof[0][1]),
+         static_cast<float>(wprof[0][2])},
+        {static_cast<float>(wprof[1][0]), static_cast<float>(wprof[1][1]),
+         static_cast<float>(wprof[1][2])},
+        {static_cast<float>(wprof[2][0]), static_cast<float>(wprof[2][1]),
+         static_cast<float>(wprof[2][2])}};
 
     float chau = 0.f;
     float chred = 0.f;
@@ -335,29 +358,30 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
             int tileright = MIN(imwidth, tileleft + tilewidth);
             int tilebottom = MIN(imheight, tiletop + tileheight);
-            int width  = tileright - tileleft;
+            int width = tileright - tileleft;
             int height = tilebottom - tiletop;
-            LabImage * labdn = new LabImage(width, height);
-            float** noisevarlum = new float*[(height + 1) / 2];
+            LabImage *labdn = new LabImage(width, height);
+            float **noisevarlum = new float *[(height + 1) / 2];
 
             for (int i = 0; i < (height + 1) / 2; ++i) {
                 noisevarlum[i] = new float[(width + 1) / 2];
             }
 
-            float** noisevarchrom = new float*[(height + 1) / 2];
+            float **noisevarchrom = new float *[(height + 1) / 2];
 
             for (int i = 0; i < (height + 1) / 2; ++i) {
                 noisevarchrom[i] = new float[(width + 1) / 2];
             }
 
-            float** noisevarhue = new float*[(height + 1) / 2];
+            float **noisevarhue = new float *[(height + 1) / 2];
 
             for (int i = 0; i < (height + 1) / 2; ++i) {
                 noisevarhue[i] = new float[(width + 1) / 2];
             }
 
             float realred, realblue;
-            float interm_med = 1.5f; //static_cast<float>(dnparams.chrominance) / 10.0;
+            float interm_med =
+                1.5f; // static_cast<float>(dnparams.chrominance) / 10.0;
             float intermred, intermblue;
 
             intermred = 0.f;
@@ -365,13 +389,16 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
             // if (dnparams.chrominanceRedGreen > 0.) {
             //     intermred = (dnparams.chrominanceRedGreen / 10.);
             // } else {
-            //     intermred = static_cast<float>(dnparams.chrominanceRedGreen) / 7.0;     //increase slower than linear for more sensit
+            //     intermred = static_cast<float>(dnparams.chrominanceRedGreen)
+            //     / 7.0;     //increase slower than linear for more sensit
             // }
 
             // if (dnparams.chrominanceBlueYellow > 0.) {
             //     intermblue = (dnparams.chrominanceBlueYellow / 10.);
             // } else {
-            //     intermblue = static_cast<float>(dnparams.chrominanceBlueYellow) / 7.0;     //increase slower than linear for more sensit
+            //     intermblue =
+            //     static_cast<float>(dnparams.chrominanceBlueYellow) / 7.0;
+            //     //increase slower than linear for more sensit
             // }
 
             realred = interm_med + intermred;
@@ -386,11 +413,12 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                 realblue = 0.001f;
             }
 
-            //fill tile from image; convert RGB to "luma/chroma"
+            // fill tile from image; convert RGB to "luma/chroma"
 
-            if (isRAW) {//image is raw; use channel differences for chroma channels
+            if (isRAW) { // image is raw; use channel differences for chroma
+                         // channels
 #ifdef _OPENMP
-                #pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
 
                 for (int i = tiletop; i < tilebottom; i += 2) {
@@ -404,8 +432,11 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                         int j1 = j - tileleft;
                         aNv = LVFU(acalc[i >> 1][j >> 1]);
                         bNv = LVFU(bcalc[i >> 1][j >> 1]);
-                        _mm_storeu_ps(&noisevarhue[i1 >> 1][j1 >> 1], xatan2f(bNv, aNv));
-                        _mm_storeu_ps(&noisevarchrom[i1 >> 1][j1 >> 1], vmaxf(vsqrtf(SQRV(aNv) + SQRV(bNv)),c100v));
+                        _mm_storeu_ps(&noisevarhue[i1 >> 1][j1 >> 1],
+                                      xatan2f(bNv, aNv));
+                        _mm_storeu_ps(
+                            &noisevarchrom[i1 >> 1][j1 >> 1],
+                            vmaxf(vsqrtf(SQRV(aNv) + SQRV(bNv)), c100v));
                     }
 
                     for (; j < tileright; j += 2) {
@@ -416,7 +447,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                         noisevarhue[i1 >> 1][j1 >> 1] = xatan2f(bN, aN);
 
                         if (cN < 100.f) {
-                            cN = 100.f;    //avoid divided by zero
+                            cN = 100.f; // avoid divided by zero
                         }
 
                         noisevarchrom[i1 >> 1][j1 >> 1] = cN;
@@ -432,7 +463,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                         float hN = xatan2f(bN, aN);
 
                         if (cN < 100.f) {
-                            cN = 100.f;    //avoid divided by zero
+                            cN = 100.f; // avoid divided by zero
                         }
 
                         noisevarchrom[i1 >> 1][j1 >> 1] = cN;
@@ -443,7 +474,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                 }
 
 #ifdef _OPENMP
-                #pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
 
                 for (int i = tiletop; i < tilebottom; i += 2) {
@@ -452,25 +483,38 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                     for (int j = tileleft; j < tileright; j += 2) {
                         int j1 = j - tileleft;
                         float Llum = lumcalc[i >> 1][j >> 1];
-                        Llum = Llum < 2.f ? 2.f : Llum; //avoid divided by zero ?
-                        Llum = Llum > 32768.f ? 32768.f : Llum; // not strictly necessary
+                        Llum =
+                            Llum < 2.f ? 2.f : Llum; // avoid divided by zero ?
+                        Llum = Llum > 32768.f ? 32768.f
+                                              : Llum; // not strictly necessary
                         noisevarlum[i1 >> 1][j1 >> 1] = Llum;
                     }
                 }
 
-                for (int i = tiletop/*, i1=0*/; i < tilebottom; ++i/*, ++i1*/) {
+                for (int i = tiletop /*, i1=0*/; i < tilebottom;
+                     ++i /*, ++i1*/) {
                     int i1 = i - tiletop;
 
-                    for (int j = tileleft/*, j1=0*/; j < tileright; ++j/*, ++j1*/) {
+                    for (int j = tileleft /*, j1=0*/; j < tileright;
+                         ++j /*, ++j1*/) {
                         int j1 = j - tileleft;
 
                         float X = gain * src->r(i, j);
                         float Y = gain * src->g(i, j);
                         float Z = gain * src->b(i, j);
 
-                        X = X < 65535.f ? gamcurve[X] : (Color::gammaf(X / 65535.f, gam, gamthresh, gamslope) * 32768.f);
-                        Y = Y < 65535.f ? gamcurve[Y] : (Color::gammaf(Y / 65535.f, gam, gamthresh, gamslope) * 32768.f);
-                        Z = Z < 65535.f ? gamcurve[Z] : (Color::gammaf(Z / 65535.f, gam, gamthresh, gamslope) * 32768.f);
+                        X = X < 65535.f ? gamcurve[X]
+                                        : (Color::gammaf(X / 65535.f, gam,
+                                                         gamthresh, gamslope) *
+                                           32768.f);
+                        Y = Y < 65535.f ? gamcurve[Y]
+                                        : (Color::gammaf(Y / 65535.f, gam,
+                                                         gamthresh, gamslope) *
+                                           32768.f);
+                        Z = Z < 65535.f ? gamcurve[Z]
+                                        : (Color::gammaf(Z / 65535.f, gam,
+                                                         gamthresh, gamslope) *
+                                           32768.f);
 
                         // labdn->a[i1][j1] = (X - Y);
                         // labdn->b[i1][j1] = (Y - Z);
@@ -480,28 +524,41 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                         labdn->b[i1][j1] = u;
                     }
                 }
-            } else {//image is not raw; use Lab parametrization
-                for (int i = tiletop/*, i1=0*/; i < tilebottom; ++i/*, ++i1*/) {
+            } else { // image is not raw; use Lab parametrization
+                for (int i = tiletop /*, i1=0*/; i < tilebottom;
+                     ++i /*, ++i1*/) {
                     int i1 = i - tiletop;
 
-                    for (int j = tileleft/*, j1=0*/; j < tileright; ++j/*, ++j1*/) {
+                    for (int j = tileleft /*, j1=0*/; j < tileright;
+                         ++j /*, ++j1*/) {
                         int j1 = j - tileleft;
-                        //float L, a, b;
-                        float rLum = src->r(i, j) ; //for luminance denoise curve
-                        float gLum = src->g(i, j) ;
-                        float bLum = src->b(i, j) ;
+                        // float L, a, b;
+                        float rLum = src->r(i, j); // for luminance denoise
+                                                   // curve
+                        float gLum = src->g(i, j);
+                        float bLum = src->b(i, j);
 
-                        //use gamma sRGB, not good if TIF (JPG) Output profil not with gamma sRGB  (eg : gamma =1.0, or 1.8...)
-                        //very difficult to solve !
-                        // solution ==> save TIF with gamma sRGB and re open
-                        float rtmp = Color::igammatab_srgb[ src->r(i, j) ];
-                        float gtmp = Color::igammatab_srgb[ src->g(i, j) ];
-                        float btmp = Color::igammatab_srgb[ src->b(i, j) ];
-                        //modification Jacques feb 2013
-                        // gamma slider different from raw
-                        rtmp = rtmp < 65535.f ? gamcurve[rtmp] : (Color::gammanf(rtmp / 65535.f, gam) * 32768.f);
-                        gtmp = gtmp < 65535.f ? gamcurve[gtmp] : (Color::gammanf(gtmp / 65535.f, gam) * 32768.f);
-                        btmp = btmp < 65535.f ? gamcurve[btmp] : (Color::gammanf(btmp / 65535.f, gam) * 32768.f);
+                        // use gamma sRGB, not good if TIF (JPG) Output profil
+                        // not with gamma sRGB  (eg : gamma =1.0, or 1.8...)
+                        // very difficult to solve !
+                        //  solution ==> save TIF with gamma sRGB and re open
+                        float rtmp = Color::igammatab_srgb[src->r(i, j)];
+                        float gtmp = Color::igammatab_srgb[src->g(i, j)];
+                        float btmp = Color::igammatab_srgb[src->b(i, j)];
+                        // modification Jacques feb 2013
+                        //  gamma slider different from raw
+                        rtmp = rtmp < 65535.f
+                                   ? gamcurve[rtmp]
+                                   : (Color::gammanf(rtmp / 65535.f, gam) *
+                                      32768.f);
+                        gtmp = gtmp < 65535.f
+                                   ? gamcurve[gtmp]
+                                   : (Color::gammanf(gtmp / 65535.f, gam) *
+                                      32768.f);
+                        btmp = btmp < 65535.f
+                                   ? gamcurve[btmp]
+                                   : (Color::gammanf(btmp / 65535.f, gam) *
+                                      32768.f);
 
                         // float X, Y, Z;
                         // Color::rgbxyz(rtmp, gtmp, btmp, X, Y, Z, wp);
@@ -533,7 +590,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
                             float cN = sqrt(SQR(aN) + SQR(bN));
 
                             if (cN < 100.f) {
-                                cN = 100.f;    //avoid divided by zero
+                                cN = 100.f; // avoid divided by zero
                             }
 
                             noisevarchrom[i1 >> 1][j1 >> 1] = cN;
@@ -548,16 +605,18 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
             int datalen = labdn->W * labdn->H;
 
-            //now perform basic wavelet denoise
-            //last two arguments of wavelet decomposition are max number of wavelet decomposition levels;
-            //and whether to subsample the image after wavelet filtering.  Subsampling is coded as
-            //binary 1 or 0 for each level, eg subsampling = 0 means no subsampling, 1 means subsample
-            //the first level only, 7 means subsample the first three levels, etc.
+            // now perform basic wavelet denoise
+            // last two arguments of wavelet decomposition are max number of
+            // wavelet decomposition levels; and whether to subsample the image
+            // after wavelet filtering.  Subsampling is coded as binary 1 or 0
+            // for each level, eg subsampling = 0 means no subsampling, 1 means
+            // subsample the first level only, 7 means subsample the first three
+            // levels, etc.
 
-            wavelet_decomposition* adecomp;
-            wavelet_decomposition* bdecomp;
+            wavelet_decomposition *adecomp;
+            wavelet_decomposition *bdecomp;
 
-            int schoice = 0;//shrink method
+            int schoice = 0; // shrink method
 
             if (dnparams.aggressive) {
                 schoice = 2;
@@ -565,56 +624,34 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
             const int levwav = max(2, int(5 - std::ceil(std::log(scale))));
 #ifdef _OPENMP
-            #pragma omp parallel sections if (multiThread)
+#pragma omp parallel sections if (multiThread)
 #endif
             {
 #ifdef _OPENMP
-                #pragma omp section
+#pragma omp section
 #endif
                 {
-                    adecomp = new wavelet_decomposition(labdn->data + datalen, labdn->W, labdn->H, levwav, 1);
+                    adecomp = new wavelet_decomposition(
+                        labdn->data + datalen, labdn->W, labdn->H, levwav, 1);
                 }
 #ifdef _OPENMP
-                #pragma omp section
+#pragma omp section
 #endif
                 {
-                    bdecomp = new wavelet_decomposition(labdn->data + 2 * datalen, labdn->W, labdn->H, levwav, 1);
+                    bdecomp = new wavelet_decomposition(
+                        labdn->data + 2 * datalen, labdn->W, labdn->H, levwav,
+                        1);
                 }
             }
 
             if (comptlevel == 0) {
                 denoise::WaveletDenoiseAll_info(
-                    levwav,
-                    *adecomp,
-                    *bdecomp,
-                    noisevarlum,
-                    noisevarchrom,
-                    noisevarhue,
-                    chaut,
-                    Nb,
-                    redaut,
-                    blueaut,
-                    maxredaut,
-                    maxblueaut,
-                    minredaut,
-                    minblueaut,
-                    schoice,
-                    chromina,
-                    sigma,
-                    lumema,
-                    sigma_L,
-                    redyel,
-                    skinc,
-                    nsknc,
-                    maxchred,
-                    maxchblue,
-                    minchred,
-                    minchblue,
-                    nb,
-                    chau,
-                    chred,
-                    chblue
-                ); // Enhance mode
+                    levwav, *adecomp, *bdecomp, noisevarlum, noisevarchrom,
+                    noisevarhue, chaut, Nb, redaut, blueaut, maxredaut,
+                    maxblueaut, minredaut, minblueaut, schoice, chromina, sigma,
+                    lumema, sigma_L, redyel, skinc, nsknc, maxchred, maxchblue,
+                    minchred, minchblue, nb, chau, chred,
+                    chblue); // Enhance mode
             }
 
             comptlevel += 1;
@@ -640,8 +677,8 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
             delete[] noisevarhue;
 
-        }//end of tile row
-    }//end of tile loop
+        } // end of tile row
+    } // end of tile loop
 
     for (int i = 0; i < hei; ++i) {
         delete[] lumcalc[i];
@@ -662,7 +699,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
     delete[] bcalc;
 
 #undef TS
-//#undef fTS
+// #undef fTS
 #undef offset
 #undef epsilon
 
@@ -670,10 +707,9 @@ void RGB_denoise_info(ImProcData &im, Imagefloat * src, Imagefloat * provicalc, 
 
 } // namespace
 
-
 namespace denoise {
 
-NoiseCurve::NoiseCurve() : sum(0.f) {}
+NoiseCurve::NoiseCurve(): sum(0.f) {}
 
 void NoiseCurve::Reset()
 {
@@ -684,30 +720,35 @@ void NoiseCurve::Reset()
 void NoiseCurve::Set(const Curve &pCurve)
 {
     if (pCurve.isIdentity()) {
-        Reset(); // raise this value if the quality suffers from this number of samples
+        Reset(); // raise this value if the quality suffers from this number of
+                 // samples
         return;
     }
 
-    lutNoiseCurve(501); // raise this value if the quality suffers from this number of samples
+    lutNoiseCurve(501); // raise this value if the quality suffers from this
+                        // number of samples
     sum = 0.f;
 
     for (int i = 0; i < 501; i++) {
         lutNoiseCurve[i] = pCurve.getVal(double(i) / 500.);
 
-        if(lutNoiseCurve[i] < 0.01f) {
-            lutNoiseCurve[i] = 0.01f;    //avoid 0.f for wavelet : under 0.01f quasi no action for each value
+        if (lutNoiseCurve[i] < 0.01f) {
+            lutNoiseCurve[i] = 0.01f; // avoid 0.f for wavelet : under 0.01f
+                                      // quasi no action for each value
         }
 
-        sum += lutNoiseCurve[i]; //minima for Wavelet about 6.f or 7.f quasi no action
+        sum += lutNoiseCurve[i]; // minima for Wavelet about 6.f or 7.f quasi no
+                                 // action
     }
 
-    //lutNoisCurve.dump("Nois");
+    // lutNoisCurve.dump("Nois");
 }
 
 void NoiseCurve::Set(const std::vector<double> &curvePoints)
 {
 
-    if (!curvePoints.empty() && curvePoints[0] > FCT_Linear && curvePoints[0] < FCT_Unchanged) {
+    if (!curvePoints.empty() && curvePoints[0] > FCT_Linear &&
+        curvePoints[0] < FCT_Unchanged) {
         FlatCurve tcurve(curvePoints, false, CURVES_MIN_POLY_POINTS / 2);
         tcurve.setIdentityValue(0.);
         Set(tcurve);
@@ -717,8 +758,6 @@ void NoiseCurve::Set(const std::vector<double> &curvePoints)
 }
 
 } // namespace denoise
-
-
 
 void ImProcFunctions::DenoiseInfoStore::reset()
 {
@@ -735,8 +774,8 @@ void ImProcFunctions::DenoiseInfoStore::reset()
     chrominanceBlueYellow = p.chrominanceBlueYellow;
 }
 
-
-bool ImProcFunctions::DenoiseInfoStore::update_pparams(const procparams::ProcParams &p)
+bool ImProcFunctions::DenoiseInfoStore::update_pparams(
+    const procparams::ProcParams &p)
 {
     if (!valid) {
         // std::cout << "** INVALID ** " << std::endl;
@@ -745,49 +784,41 @@ bool ImProcFunctions::DenoiseInfoStore::update_pparams(const procparams::ProcPar
     } else {
         const auto &d1 = pparams.denoise;
         const auto &d2 = p.denoise;
-        const auto dn_eq =
-            [&]() -> bool
-            {
-                return (d1.enabled == d2.enabled)
-                    && (d1.colorSpace == d2.colorSpace)
-                    && (d1.aggressive == d2.aggressive)
-                    && (d1.gamma == d2.gamma);
-            };
+        const auto dn_eq = [&]() -> bool {
+            return (d1.enabled == d2.enabled) &&
+                   (d1.colorSpace == d2.colorSpace) &&
+                   (d1.aggressive == d2.aggressive) && (d1.gamma == d2.gamma);
+        };
         const auto &w1 = pparams.wb;
         const auto &w2 = p.wb;
-        const auto wb_eq =
-            [&]() -> bool
-            {
-                if (w1.enabled == w2.enabled && w1.method == w2.method &&
-                    (w1.method == procparams::WBParams::CAMERA ||
-                     w1.method == procparams::WBParams::AUTO)) {
-                    return true;
-                }
-                return w1 == w2;
-            };
+        const auto wb_eq = [&]() -> bool {
+            if (w1.enabled == w2.enabled && w1.method == w2.method &&
+                (w1.method == procparams::WBParams::CAMERA ||
+                 w1.method == procparams::WBParams::AUTO)) {
+                return true;
+            }
+            return w1 == w2;
+        };
         const auto &e1 = pparams.exposure;
         const auto &e2 = p.exposure;
-        const auto exposure_eq =
-            [&]() -> bool
-            {
-                return e1.enabled == e2.enabled && e1.hrmode == e2.hrmode;
-            };
+        const auto exposure_eq = [&]() -> bool {
+            return e1.enabled == e2.enabled && e1.hrmode == e2.hrmode;
+        };
         const auto &r1 = pparams.raw;
         const auto &r2 = p.raw;
-        const auto raw_eq =
-            [&]() -> bool
-            {
-                auto r2b = r2;
+        const auto raw_eq = [&]() -> bool {
+            auto r2b = r2;
 #define MK_EQ_(k) r2b.k = r1.k
-                MK_EQ_(bayersensor.method);
-                MK_EQ_(bayersensor.lmmse_iterations);
-                MK_EQ_(bayersensor.dualDemosaicAutoContrast);
-                MK_EQ_(bayersensor.dualDemosaicContrast);
-                MK_EQ_(xtranssensor.method);
+            MK_EQ_(bayersensor.method);
+            MK_EQ_(bayersensor.lmmse_iterations);
+            MK_EQ_(bayersensor.dualDemosaicAutoContrast);
+            MK_EQ_(bayersensor.dualDemosaicContrast);
+            MK_EQ_(xtranssensor.method);
 #undef MK_EQ_
-                return r1 == r2b;
-            };
-        const bool changed = !dn_eq() || !wb_eq() || !exposure_eq() || !raw_eq();
+            return r1 == r2b;
+        };
+        const bool changed =
+            !dn_eq() || !wb_eq() || !exposure_eq() || !raw_eq();
         // if (changed) {
         //     std::cout << "** CHANGED " << std::endl;
         // }
@@ -796,38 +827,47 @@ bool ImProcFunctions::DenoiseInfoStore::update_pparams(const procparams::ProcPar
     }
 }
 
-
-void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp &currWB, DenoiseInfoStore &store, procparams::DenoiseParams &dnparams)
+void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc,
+                                           const ColorTemp &currWB,
+                                           DenoiseInfoStore &store,
+                                           procparams::DenoiseParams &dnparams)
 {
-    if (store.valid || dnparams.chrominanceMethod != procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
-        if (dnparams.chrominanceMethod == procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
-            dnparams.chrominance = store.chrominance * dnparams.chrominanceAutoFactor;
-            dnparams.chrominanceRedGreen = store.chrominanceRedGreen * dnparams.chrominanceAutoFactor;
-            dnparams.chrominanceBlueYellow = store.chrominanceBlueYellow * dnparams.chrominanceAutoFactor;
+    if (store.valid ||
+        dnparams.chrominanceMethod !=
+            procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
+        if (dnparams.chrominanceMethod ==
+            procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
+            dnparams.chrominance =
+                store.chrominance * dnparams.chrominanceAutoFactor;
+            dnparams.chrominanceRedGreen =
+                store.chrominanceRedGreen * dnparams.chrominanceAutoFactor;
+            dnparams.chrominanceBlueYellow =
+                store.chrominanceBlueYellow * dnparams.chrominanceAutoFactor;
         }
         return;
     }
 
     if (settings->verbose) {
-        std::cout << "Denoise: computing auto chrominance params..." << std::endl;
+        std::cout << "Denoise: computing auto chrominance params..."
+                  << std::endl;
     }
-    
-    float autoNR = 10;//settings->nrauto;
-    float autoNRmax = 40;//settings->nrautomax;
+
+    float autoNR = 10;    // settings->nrauto;
+    float autoNRmax = 40; // settings->nrautomax;
 
     int tilesize;
     int overlap;
 
     // if (settings->leveldnti == 0) {
-        tilesize = 1024;
-        overlap = 128;
+    tilesize = 1024;
+    overlap = 128;
     // }
 
     // if (settings->leveldnti == 1) {
     //     tilesize = 768;
     //     overlap = 96;
     // }
-    
+
     int numtiles_W, numtiles_H, tilewidth, tileheight, tileWskip, tileHskip;
     int kall = 2;
 
@@ -835,7 +875,8 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
     int tr = getCoarseBitMask(params->coarse);
     imgsrc->getFullSize(widIm, heiIm, tr);
 
-    denoise::Tile_calc(tilesize, overlap, kall, widIm, heiIm, numtiles_W, numtiles_H, tilewidth, tileheight, tileWskip, tileHskip);
+    denoise::Tile_calc(tilesize, overlap, kall, widIm, heiIm, numtiles_W,
+                       numtiles_H, tilewidth, tileheight, tileWskip, tileHskip);
     kall = 0;
 
     float min_b[9];
@@ -856,11 +897,13 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
         centerTile_Y[cY] = tileHskip / 2 + tileHskip * cY;
     }
 
-    if (!store.valid && dnparams.chrominanceMethod == procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
+    if (!store.valid &&
+        dnparams.chrominanceMethod ==
+            procparams::DenoiseParams::ChrominanceMethod::AUTOMATIC) {
         MyTime t1aue, t2aue;
         t1aue.set();
 
-        store.reset();// = DenoiseInfoStore();
+        store.reset(); // = DenoiseInfoStore();
 
         int crW = 100; // settings->leveldnv == 0
         int crH = 100; // settings->leveldnv == 0
@@ -870,10 +913,11 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
         //     crH = 250;
         // }
 
-        // //  if(settings->leveldnv ==2) {crW=int(tileWskip/2);crH=int((tileWskip/2));}//adapted to scale of preview
-        // if (settings->leveldnv == 2) {
-            crW = int (tileWskip / 2);
-            crH = int (tileHskip / 2);
+        // //  if(settings->leveldnv ==2)
+        // {crW=int(tileWskip/2);crH=int((tileWskip/2));}//adapted to scale of
+        // preview if (settings->leveldnv == 2) {
+        crW = int(tileWskip / 2);
+        crH = int(tileHskip / 2);
         // }
 
         // if (settings->leveldnv == 3) {
@@ -890,18 +934,21 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
 
         LUTf gamcurve(65536, 0);
         float gam, gamthresh, gamslope;
-        RGB_denoise_infoGamCurve(dnparams, imgsrc->isRAW(), gamcurve, gam, gamthresh, gamslope);
+        RGB_denoise_infoGamCurve(dnparams, imgsrc->isRAW(), gamcurve, gam,
+                                 gamthresh, gamslope);
         int Nb[9];
 
 #ifdef _OPENMP
 #pragma omp parallel if (multiThread)
 #endif
         {
-            Imagefloat *origCropPart = new Imagefloat(crW, crH); //allocate memory
-            Imagefloat *provicalc = new Imagefloat((crW + 1) / 2, (crH + 1) / 2);  //for denoise curves
+            Imagefloat *origCropPart =
+                new Imagefloat(crW, crH); // allocate memory
+            Imagefloat *provicalc = new Imagefloat(
+                (crW + 1) / 2, (crH + 1) / 2); // for denoise curves
 
-            int  coordW[3];//coordinate of part of image to measure noise
-            int  coordH[3];
+            int coordW[3]; // coordinate of part of image to measure noise
+            int coordH[3];
             int begW = 50;
             int begH = 50;
             coordW[0] = begW;
@@ -911,34 +958,52 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
             coordH[1] = heiIm / 2 - crH / 2;
             coordH[2] = heiIm - crH - begH;
 
-
 #ifdef _OPENMP
-#           pragma omp for schedule(dynamic) collapse(2) nowait
+#pragma omp for schedule(dynamic) collapse(2) nowait
 #endif
 
             for (int wcr = 0; wcr <= 2; wcr++) {
                 for (int hcr = 0; hcr <= 2; hcr++) {
                     PreviewProps ppP(coordW[wcr], coordH[hcr], crW, crH, 1);
-                    imgsrc->getImage(currWB, tr, origCropPart, ppP, params->exposure, params->raw);
+                    imgsrc->getImage(currWB, tr, origCropPart, ppP,
+                                     params->exposure, params->raw);
 
                     // we only need image reduced to 1/4 here
                     for (int ii = 0; ii < crH; ii += 2) {
                         for (int jj = 0; jj < crW; jj += 2) {
-                            provicalc->r(ii >> 1, jj >> 1) = origCropPart->r(ii, jj);
-                            provicalc->g(ii >> 1, jj >> 1) = origCropPart->g(ii, jj);
-                            provicalc->b(ii >> 1, jj >> 1) = origCropPart->b(ii, jj);
+                            provicalc->r(ii >> 1, jj >> 1) =
+                                origCropPart->r(ii, jj);
+                            provicalc->g(ii >> 1, jj >> 1) =
+                                origCropPart->g(ii, jj);
+                            provicalc->b(ii >> 1, jj >> 1) =
+                                origCropPart->b(ii, jj);
                         }
                     }
 
-                    imgsrc->convertColorSpace(provicalc, params->icm, currWB);  //for denoise luminance curve
+                    imgsrc->convertColorSpace(
+                        provicalc, params->icm,
+                        currWB); // for denoise luminance curve
 
                     float pondcorrec = 1.0f;
-                    float chaut = 0.f, redaut = 0.f, blueaut = 0.f, maxredaut = 0.f, maxblueaut = 0.f, minredaut = 0.f, minblueaut = 0.f, chromina = 0.f, sigma = 0.f, lumema = 0.f, sigma_L = 0.f, redyel = 0.f, skinc = 0.f, nsknc = 0.f;
+                    float chaut = 0.f, redaut = 0.f, blueaut = 0.f,
+                          maxredaut = 0.f, maxblueaut = 0.f, minredaut = 0.f,
+                          minblueaut = 0.f, chromina = 0.f, sigma = 0.f,
+                          lumema = 0.f, sigma_L = 0.f, redyel = 0.f,
+                          skinc = 0.f, nsknc = 0.f;
                     int nb = 0;
-                    ImProcData im(params, 1.f/*scale*/, multiThread);
-                    RGB_denoise_info(im, origCropPart, provicalc, imgsrc->isRAW(), gamcurve, gam, gamthresh, gamslope, dnparams, std::log(5.f)/std::log(2.f)/*imgsrc->getDirPyrDenoiseExpComp()*/, chaut, nb, redaut, blueaut, maxredaut, maxblueaut, minredaut, minblueaut, chromina, sigma, lumema, sigma_L, redyel, skinc, nsknc);
+                    ImProcData im(params, 1.f /*scale*/, multiThread);
+                    RGB_denoise_info(
+                        im, origCropPart, provicalc, imgsrc->isRAW(), gamcurve,
+                        gam, gamthresh, gamslope, dnparams,
+                        std::log(5.f) /
+                            std::log(2.f) /*imgsrc->getDirPyrDenoiseExpComp()*/,
+                        chaut, nb, redaut, blueaut, maxredaut, maxblueaut,
+                        minredaut, minblueaut, chromina, sigma, lumema, sigma_L,
+                        redyel, skinc, nsknc);
 
-                    //printf("DCROP skip=%d cha=%f red=%f bl=%f redM=%f bluM=%f chrom=%f sigm=%f lum=%f\n",skip, chaut,redaut,blueaut, maxredaut, maxblueaut, chromina, sigma, lumema);
+                    // printf("DCROP skip=%d cha=%f red=%f bl=%f redM=%f bluM=%f
+                    // chrom=%f sigm=%f lum=%f\n",skip, chaut,redaut,blueaut,
+                    // maxredaut, maxblueaut, chromina, sigma, lumema);
                     Nb[hcr * 3 + wcr] = nb;
                     store.ch_M[hcr * 3 + wcr] = pondcorrec * chaut;
                     store.max_r[hcr * 3 + wcr] = pondcorrec * maxredaut;
@@ -950,7 +1015,6 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
                     ry[hcr * 3 + wcr] = redyel;
                     sk[hcr * 3 + wcr] = skinc;
                     pcsk[hcr * 3 + wcr] = nsknc;
-
                 }
             }
 
@@ -977,7 +1041,8 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
         float multip = 1.f;
 
         if (!imgsrc->isRAW()) {
-            multip = 2.f;    //take into account gamma for TIF / JPG approximate value...not good for gamma=1
+            multip = 2.f; // take into account gamma for TIF / JPG approximate
+                          // value...not good for gamma=1
         }
 
         float adjustr = 1.f;
@@ -1000,30 +1065,37 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
 
         float delta[9];
         int mode = 1;
-        int lissage = 0;//settings->leveldnliss;
+        int lissage = 0; // settings->leveldnliss;
 
         for (int k = 0; k < 9; k++) {
             float maxmax = max(store.max_r[k], store.max_b[k]);
-            calcautodn_info(params, store.ch_M[k], delta[k], Nb[k], levaut, maxmax, lumL[k], chromC[k], mode, lissage, ry[k], sk[k], pcsk[k]);
+            calcautodn_info(params, store.ch_M[k], delta[k], Nb[k], levaut,
+                            maxmax, lumL[k], chromC[k], mode, lissage, ry[k],
+                            sk[k], pcsk[k]);
             //  printf("ch_M=%f delta=%f\n",ch_M[k], delta[k]);
         }
 
         for (int k = 0; k < 9; k++) {
             if (store.max_r[k] > store.max_b[k]) {
-                Max_R[k] = (delta[k]) / ((autoNRmax * multip * adjustr * lowdenoise) / 2.f);
-                Min_B[k] = - (store.ch_M[k] - min_b[k]) / (autoNRmax * multip * adjustr * lowdenoise);
+                Max_R[k] = (delta[k]) /
+                           ((autoNRmax * multip * adjustr * lowdenoise) / 2.f);
+                Min_B[k] = -(store.ch_M[k] - min_b[k]) /
+                           (autoNRmax * multip * adjustr * lowdenoise);
                 Max_B[k] = 0.f;
                 Min_R[k] = 0.f;
             } else {
-                Max_B[k] = (delta[k]) / ((autoNRmax * multip * adjustr * lowdenoise) / 2.f);
-                Min_R[k] = - (store.ch_M[k] - min_r[k])   / (autoNRmax * multip * adjustr * lowdenoise);
+                Max_B[k] = (delta[k]) /
+                           ((autoNRmax * multip * adjustr * lowdenoise) / 2.f);
+                Min_R[k] = -(store.ch_M[k] - min_r[k]) /
+                           (autoNRmax * multip * adjustr * lowdenoise);
                 Min_B[k] = 0.f;
                 Max_R[k] = 0.f;
             }
         }
 
         for (int k = 0; k < 9; k++) {
-            //  printf("ch_M= %f Max_R=%f Max_B=%f min_r=%f min_b=%f\n",ch_M[k],Max_R[k], Max_B[k],Min_R[k], Min_B[k]);
+            //  printf("ch_M= %f Max_R=%f Max_B=%f min_r=%f
+            //  min_b=%f\n",ch_M[k],Max_R[k], Max_B[k],Min_R[k], Min_B[k]);
             chM += store.ch_M[k];
             MaxBMoy += Max_B[k];
             MaxRMoy += Max_R[k];
@@ -1054,23 +1126,27 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
         MinRMoy /= 9;
 
         if (MaxR > MaxB) {
-            maxr = MaxRMoy + (MaxR - MaxRMoy) * 0.66f; //#std Dev
-            //maxb=MinB;
+            maxr = MaxRMoy + (MaxR - MaxRMoy) * 0.66f; // #std Dev
+            // maxb=MinB;
             maxb = MinBMoy + (MinB - MinBMoy) * 0.66f;
         } else {
             maxb = MaxBMoy + (MaxB - MaxBMoy) * 0.66f;
             maxr = MinRMoy + (MinR - MinRMoy) * 0.66f;
         }
 
-//                  printf("DCROP skip=%d cha=%f red=%f bl=%f \n",skip, chM,maxr,maxb);
+        //                  printf("DCROP skip=%d cha=%f red=%f bl=%f \n",skip,
+        //                  chM,maxr,maxb);
         store.chrominance = chM / (autoNR * multip * adjustr);
         store.chrominanceRedGreen = maxr;
         store.chrominanceBlueYellow = maxb;
 
-        dnparams.chrominance = store.chrominance * dnparams.chrominanceAutoFactor;
-        dnparams.chrominanceRedGreen = store.chrominanceRedGreen * dnparams.chrominanceAutoFactor;
-        dnparams.chrominanceBlueYellow = store.chrominanceBlueYellow * dnparams.chrominanceAutoFactor;
-        
+        dnparams.chrominance =
+            store.chrominance * dnparams.chrominanceAutoFactor;
+        dnparams.chrominanceRedGreen =
+            store.chrominanceRedGreen * dnparams.chrominanceAutoFactor;
+        dnparams.chrominanceBlueYellow =
+            store.chrominanceBlueYellow * dnparams.chrominanceAutoFactor;
+
         store.valid = true;
 
         // printf("DENOISE STORE FINAL:\n  chM = %.6f", store.chM);
@@ -1086,14 +1162,16 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc, const ColorTemp 
 
         if (settings->verbose) {
             t2aue.set();
-            printf("Info denoise auto performed in %d usec:\n", t2aue.etime(t1aue));
+            printf("Info denoise auto performed in %d usec:\n",
+                   t2aue.etime(t1aue));
         }
-        //end evaluate noise
+        // end evaluate noise
     }
 }
 
-
-void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imagefloat *img, const DenoiseInfoStore &store, const procparams::DenoiseParams &dnparams)
+void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB,
+                              Imagefloat *img, const DenoiseInfoStore &store,
+                              const procparams::DenoiseParams &dnparams)
 {
     if (!dnparams.enabled) {
         return;
@@ -1103,7 +1181,7 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
         plistener->setProgressStr("PROGRESSBAR_DENOISING");
         plistener->setProgress(0);
     }
-    
+
     procparams::DenoiseParams denoiseParams = dnparams;
     denoise::NoiseCurve noiseLCurve;
     denoise::NoiseCurve noiseCCurve;
@@ -1116,9 +1194,10 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
         const int fw = W;
         const int fh = H;
         // we only need image reduced to 1/4 here
-        calclum = new Imagefloat((fw + 1) / 2, (fh + 1) / 2); //for luminance denoise curve
+        calclum = new Imagefloat((fw + 1) / 2,
+                                 (fh + 1) / 2); // for luminance denoise curve
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
 
         for (int ii = 0; ii < fh; ii += 2) {
@@ -1130,23 +1209,14 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
         }
         imgsrc->convertColorSpace(calclum, params->icm, currWB);
     }
-    
+
     float nresi, highresi;
     DenoiseInfoStore &dnstore = const_cast<DenoiseInfoStore &>(store);
 
     adjust_params(denoiseParams, scale);
 
-    noiseCCurve.Set({
-        FCT_MinMaxCPoints,
-        0.05,
-        0.50,
-        0.35,
-        0.35,
-        0.35,
-        0.05,
-        0.35,
-        0.35
-        });
+    noiseCCurve.Set(
+        {FCT_MinMaxCPoints, 0.05, 0.50, 0.35, 0.35, 0.35, 0.05, 0.35, 0.35});
 
     if (plistener) {
         plistener->setProgress(0.1);
@@ -1161,8 +1231,10 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
     if (ecomp > 0) {
         expcomp(img, &expparams);
     }
-    
-    denoise::RGB_denoise(im, 0, img, img, calclum, dnstore.ch_M, dnstore.max_r, dnstore.max_b, true/*imgsrc->isRAW()*/, denoiseParams, 0, noiseLCurve, noiseCCurve, nresi, highresi);
+
+    denoise::RGB_denoise(im, 0, img, img, calclum, dnstore.ch_M, dnstore.max_r,
+                         dnstore.max_b, true /*imgsrc->isRAW()*/, denoiseParams,
+                         0, noiseLCurve, noiseCCurve, nresi, highresi);
 
     if (plistener) {
         plistener->setProgress(0.8);
@@ -1172,8 +1244,10 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
         denoise::denoiseGuidedSmoothing(im, img);
         if (denoiseParams.nlStrength) {
             img->setMode(Imagefloat::Mode::YUV, multiThread);
-            array2D<float> tmp(img->getWidth(), img->getHeight(), img->g.ptrs, ARRAY2D_BYREFERENCE);
-            denoise::NLMeans(tmp, 65535.f, denoiseParams.nlStrength, denoiseParams.nlDetail, scale, multiThread);
+            array2D<float> tmp(img->getWidth(), img->getHeight(), img->g.ptrs,
+                               ARRAY2D_BYREFERENCE);
+            denoise::NLMeans(tmp, 65535.f, denoiseParams.nlStrength,
+                             denoiseParams.nlDetail, scale, multiThread);
             img->setMode(Imagefloat::Mode::RGB, multiThread);
         }
     }
@@ -1187,6 +1261,5 @@ void ImProcFunctions::denoise(ImageSource *imgsrc, const ColorTemp &currWB, Imag
         plistener->setProgress(1);
     }
 }
-
 
 } // namespace rtengine

@@ -24,12 +24,11 @@
 #include "rt_math.h"
 #include "sleef.h"
 
-//#define PROFILE
+// #define PROFILE
 
 #ifdef PROFILE
-#   include <iostream>
+#include <iostream>
 #endif
-
 
 namespace rtengine {
 
@@ -42,13 +41,12 @@ inline float Lanc(float x, float a)
     } else if (x * x > a * a) {
         return 0.0f;
     } else {
-        x = static_cast<float> (rtengine::RT_PI) * x;
-        return a * xsinf (x) * xsinf (x / a) / (x * x);
+        x = static_cast<float>(rtengine::RT_PI) * x;
+        return a * xsinf(x) * xsinf(x / a) / (x * x);
     }
 }
 
 } // namespace
-
 
 void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
 {
@@ -60,16 +58,16 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
     const int sH = src->getHeight();
     const int dW = dst->getWidth();
     const int dH = dst->getHeight();
-    
+
     const float delta = 1.0f / scale;
     const float a = 3.0f;
-    const float sc = min (scale, 1.0f);
-    const int support = static_cast<int> (2.0f * a / sc) + 1;
+    const float sc = min(scale, 1.0f);
+    const int support = static_cast<int>(2.0f * a / sc) + 1;
 
     // storage for precomputed parameters for horizontal interpolation
-    float* const wwh = new float[support * dW];
-    int* const jj0 = new int[dW];
-    int* const jj1 = new int[dW];
+    float *const wwh = new float[support * dW];
+    int *const jj0 = new int[dW];
+    int *const jj1 = new int[dW];
 
     const auto sL = src->g.ptrs;
     const auto sa = src->r.ptrs;
@@ -83,22 +81,22 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
     for (int j = 0; j < dW; j++) {
 
         // x coord of the center of pixel on src image
-        float x0 = (static_cast<float> (j) + 0.5f) * delta - 0.5f;
+        float x0 = (static_cast<float>(j) + 0.5f) * delta - 0.5f;
 
         // weights for interpolation in horizontal direction
-        float * w = wwh + j * support;
+        float *w = wwh + j * support;
 
         // sum of weights used for normalization
         float ws = 0.0f;
 
-        jj0[j] = max (0, static_cast<int> (floorf (x0 - a / sc)) + 1);
-        jj1[j] = min (sW, static_cast<int> (floorf (x0 + a / sc)) + 1);
+        jj0[j] = max(0, static_cast<int>(floorf(x0 - a / sc)) + 1);
+        jj1[j] = min(sW, static_cast<int>(floorf(x0 + a / sc)) + 1);
 
         // calculate weights
         for (int jj = jj0[j]; jj < jj1[j]; jj++) {
             int k = jj - jj0[j];
-            float z = sc * (x0 - static_cast<float> (jj));
-            w[k] = Lanc (z, a);
+            float z = sc * (x0 - static_cast<float>(jj));
+            w[k] = Lanc(z, a);
             ws += w[k];
         }
 
@@ -109,40 +107,40 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
     }
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
         // temporal storage for vertically-interpolated row of pixels
         AlignedBuffer<float> aligned_buffer_ll(sW);
         AlignedBuffer<float> aligned_buffer_la(sW);
         AlignedBuffer<float> aligned_buffer_lb(sW);
-        float* const lL = aligned_buffer_ll.data;
-        float* const la = aligned_buffer_la.data;
-        float* const lb = aligned_buffer_lb.data;
+        float *const lL = aligned_buffer_ll.data;
+        float *const la = aligned_buffer_la.data;
+        float *const lb = aligned_buffer_lb.data;
         // weights for interpolation in y direction
         float w[support] ALIGNED64;
         memset(w, 0, sizeof(w));
 
         // Phase 2: do actual interpolation
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
         for (int i = 0; i < dH; i++) {
             // y coord of the center of pixel on src image
-            float y0 = (static_cast<float> (i) + 0.5f) * delta - 0.5f;
+            float y0 = (static_cast<float>(i) + 0.5f) * delta - 0.5f;
 
             // sum of weights used for normalization
             float ws = 0.0f;
 
-            int ii0 = max (0, static_cast<int> (floorf (y0 - a / sc)) + 1);
-            int ii1 = min (sH, static_cast<int> (floorf (y0 + a / sc)) + 1);
+            int ii0 = max(0, static_cast<int>(floorf(y0 - a / sc)) + 1);
+            int ii1 = min(sH, static_cast<int>(floorf(y0 + a / sc)) + 1);
 
             // calculate weights for vertical interpolation
             for (int ii = ii0; ii < ii1; ii++) {
                 int k = ii - ii0;
-                float z = sc * (y0 - static_cast<float> (ii));
-                w[k] = Lanc (z, a);
+                float z = sc * (y0 - static_cast<float>(ii));
+                w[k] = Lanc(z, a);
                 ws += w[k];
             }
 
@@ -163,15 +161,15 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
 
                 for (int ii = ii0; ii < ii1; ii++) {
                     int k = ii - ii0;
-                    wkv = _mm_set1_ps (w[k]);
-                    Lv += wkv * LVFU (sL[ii][j]);
-                    av += wkv * LVFU (sa[ii][j]);
-                    bv += wkv * LVFU (sb[ii][j]);
+                    wkv = _mm_set1_ps(w[k]);
+                    Lv += wkv * LVFU(sL[ii][j]);
+                    av += wkv * LVFU(sa[ii][j]);
+                    bv += wkv * LVFU(sb[ii][j]);
                 }
 
-                STVF (lL[j], Lv);
-                STVF (la[j], av);
-                STVF (lb[j], bv);
+                STVF(lL[j], Lv);
+                STVF(la[j], av);
+                STVF(lb[j], bv);
             }
 
 #else
@@ -197,7 +195,7 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
             // Do horizontal interpolation
             for (int j = 0; j < dW; j++) {
 
-                float * wh = wwh + support * j;
+                float *wh = wwh + support * j;
 
                 float L = 0.0f, a = 0.0f, b = 0.0f;
 
@@ -222,8 +220,8 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
     dst->setMode(mode, multiThread);
 }
 
-
-float ImProcFunctions::resizeScale(const ProcParams* params, int fw, int fh, int &imw, int &imh)
+float ImProcFunctions::resizeScale(const ProcParams *params, int fw, int fh,
+                                   int &imw, int &imh)
 {
     imw = fw;
     imh = fh;
@@ -251,35 +249,36 @@ float ImProcFunctions::resizeScale(const ProcParams* params, int fw, int fh, int
     int r_height = params->resize.get_height();
 
     switch (params->resize.dataspec) {
-        case (1):
-            // Width
+    case (1):
+        // Width
+        dScale = (double)r_width / (double)refw;
+        break;
+
+    case (2):
+        // Height
+        dScale = (double)r_height / (double)refh;
+        break;
+
+    case (3):
+
+        // FitBox
+        if ((double)refw / (double)refh > (double)r_width / (double)r_height) {
             dScale = (double)r_width / (double)refw;
-            break;
-
-        case (2):
-            // Height
+        } else {
             dScale = (double)r_height / (double)refh;
-            break;
+        }
+        dScale =
+            (dScale > 1.0 && !params->resize.allowUpscaling) ? 1.0 : dScale;
 
-        case (3):
+        break;
 
-            // FitBox
-            if ((double)refw / (double)refh > (double)r_width / (double)r_height) {
-                dScale = (double)r_width / (double)refw;
-            } else {
-                dScale = (double)r_height / (double)refh;
-            }
-            dScale = (dScale > 1.0 && !params->resize.allowUpscaling) ? 1.0 : dScale;
-
-            break;
-
-        default:
-            // Scale
-            dScale = params->resize.scale;
-            break;
+    default:
+        // Scale
+        dScale = params->resize.scale;
+        break;
     }
 
-    if (fabs (dScale - 1.0) <= 1e-5) {
+    if (fabs(dScale - 1.0) <= 1e-5) {
         return 1.0;
     }
 
@@ -291,13 +290,12 @@ float ImProcFunctions::resizeScale(const ProcParams* params, int fw, int fh, int
         imh = refh;
     }
 
-    imw = (int) ( (double)imw * dScale + 0.5 );
-    imh = (int) ( (double)imh * dScale + 0.5 );
+    imw = (int)((double)imw * dScale + 0.5);
+    imh = (int)((double)imh * dScale + 0.5);
     return (float)dScale;
 }
 
-
-void ImProcFunctions::resize(Imagefloat* src, Imagefloat* dst, float dScale)
+void ImProcFunctions::resize(Imagefloat *src, Imagefloat *dst, float dScale)
 {
 #ifdef PROFILE
     time_t t1 = clock();
@@ -307,8 +305,7 @@ void ImProcFunctions::resize(Imagefloat* src, Imagefloat* dst, float dScale)
 
 #ifdef PROFILE
     time_t t2 = clock();
-    std::cout << "Resize: "
-              << (float) (t2 - t1) / CLOCKS_PER_SEC << std::endl;
+    std::cout << "Resize: " << (float)(t2 - t1) / CLOCKS_PER_SEC << std::endl;
 #endif
 }
 

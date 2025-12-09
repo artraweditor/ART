@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,32 +20,30 @@
 #ifndef __COARSEPANEL__
 #define __COARSEPANEL__
 
-#include <gtkmm.h>
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class CoarsePanel : public Gtk::HBox, public ToolPanel
-{
+class CoarsePanel: public Gtk::HBox, public ToolPanel {
 
 protected:
-    Gtk::Button* rotate_left;
-    Gtk::Button* rotate_right;
-    Gtk::ToggleButton* hflip;
-    Gtk::ToggleButton* vflip;
+    Gtk::Button *rotate_left;
+    Gtk::Button *rotate_right;
+    Gtk::ToggleButton *hflip;
+    Gtk::ToggleButton *vflip;
     int degree;
     bool oldhflip, oldvflip, degreechanged;
 
 public:
-
     CoarsePanel();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void initBatchBehavior  ();
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void initBatchBehavior();
 
-    void rotateLeft     ();
-    void rotateRight    ();
-    void flipHorizontal ();
-    void flipVertical   ();
+    void rotateLeft();
+    void rotateRight();
+    void flipHorizontal();
+    void flipVertical();
 };
 
 #endif

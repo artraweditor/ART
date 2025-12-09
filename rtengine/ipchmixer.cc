@@ -40,49 +40,43 @@ using namespace procparams;
 //
 // implemented by Alberto Griggio
 //
-void get_mixer_matrix(const ChannelMixerParams &chmix, const Glib::ustring &workingProfile,
-                      float &rr, float &rg, float &rb,
-                      float &gr, float &gg, float &gb,
-                      float &br, float &bg, float &bb)
+void get_mixer_matrix(const ChannelMixerParams &chmix,
+                      const Glib::ustring &workingProfile, float &rr, float &rg,
+                      float &rb, float &gr, float &gg, float &gb, float &br,
+                      float &bg, float &bb)
 {
     typedef Vec3f A3;
     typedef Mat33f M33;
-    
+
     TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(workingProfile);
 
     constexpr float D65_x = 0.3127f;
     constexpr float D65_y = 0.3290f;
 
-    
     const A3 D65_bb_white(D65_x, D65_y, 1.f - D65_x - D65_y);
 
-    const auto rgb2xy =
-        [&](const A3 &rgb) -> A3
-        {
-            A3 xyz = dot_product(ws, rgb);
-            float sum = xyz[0] + xyz[1] + xyz[2];
-            if (sum == 0.f) {
-                return D65_bb_white;
-            }
-            float x = xyz[0] / sum;
-            float y = xyz[1] / sum;
-            return A3(x, y, 1.f - x - y);
-        };
+    const auto rgb2xy = [&](const A3 &rgb) -> A3 {
+        A3 xyz = dot_product(ws, rgb);
+        float sum = xyz[0] + xyz[1] + xyz[2];
+        if (sum == 0.f) {
+            return D65_bb_white;
+        }
+        float x = xyz[0] / sum;
+        float y = xyz[1] / sum;
+        return A3(x, y, 1.f - x - y);
+    };
 
-    const auto get_matrix =
-        [&](const A3 &r_xy, const A3 &g_xy, const A3 &b_xy, const A3 &white) -> M33
-        {
-            M33 m(r_xy[0], g_xy[0], b_xy[0],
-                  r_xy[1], g_xy[1], b_xy[1],
-                  r_xy[2], g_xy[2], b_xy[2]
-                );
+    const auto get_matrix = [&](const A3 &r_xy, const A3 &g_xy, const A3 &b_xy,
+                                const A3 &white) -> M33 {
+        M33 m(r_xy[0], g_xy[0], b_xy[0], r_xy[1], g_xy[1], b_xy[1], r_xy[2],
+              g_xy[2], b_xy[2]);
 
-            M33 mi = inverse(m);
-            A3 kr = dot_product(mi, white);
-            M33 kr_m = diagonal(kr[0], kr[1], kr[2]);
-            M33 ret = dot_product(m, kr_m);
-            return ret;
-        };
+        M33 mi = inverse(m);
+        A3 kr = dot_product(mi, white);
+        M33 kr_m = diagonal(kr[0], kr[1], kr[2]);
+        M33 ret = dot_product(m, kr_m);
+        return ret;
+    };
 
     A3 red(1.f, 0.f, 0.f);
     A3 green(0.f, 1.f, 0.f);
@@ -93,30 +87,27 @@ void get_mixer_matrix(const ChannelMixerParams &chmix, const Glib::ustring &work
     A3 b_xy = rgb2xy(blue);
     M33 M = get_matrix(r_xy, g_xy, b_xy, D65_bb_white);
 
-    const auto tweak =
-        [&](const A3 &c, int hue, int sat, float hrange, float srange) -> A3
-        {
-            const float x = c[0], y = c[1];
-            const CoordD w(D65_x, D65_y);
-            
-            PolarCoord p(CoordD(x, y) - w);
-            const float dh = float(hue) / 100.f * 360.f * hrange;
-            const float ds = 1.f + (float(sat) / 100.f * srange);
-            p.radius *= ds;
-            p.angle += dh;
-            CoordD d(p);
-            d += w;
+    const auto tweak = [&](const A3 &c, int hue, int sat, float hrange,
+                           float srange) -> A3 {
+        const float x = c[0], y = c[1];
+        const CoordD w(D65_x, D65_y);
 
-            return A3(float(d.x), float(d.y), float(1.0 - d.x - d.y));
-        };
+        PolarCoord p(CoordD(x, y) - w);
+        const float dh = float(hue) / 100.f * 360.f * hrange;
+        const float ds = 1.f + (float(sat) / 100.f * srange);
+        p.radius *= ds;
+        p.angle += dh;
+        CoordD d(p);
+        d += w;
 
-    M33 N = get_matrix(tweak(r_xy, chmix.hue_tweak[0], chmix.sat_tweak[0],
-                             0.075f, 0.3f),
-                       tweak(g_xy, chmix.hue_tweak[1], chmix.sat_tweak[1],
-                             0.1f, 0.5f),
-                       tweak(b_xy, chmix.hue_tweak[2], chmix.sat_tweak[2],
-                             0.075f, 0.5f),
-                       D65_bb_white);
+        return A3(float(d.x), float(d.y), float(1.0 - d.x - d.y));
+    };
+
+    M33 N = get_matrix(
+        tweak(r_xy, chmix.hue_tweak[0], chmix.sat_tweak[0], 0.075f, 0.3f),
+        tweak(g_xy, chmix.hue_tweak[1], chmix.sat_tweak[1], 0.1f, 0.5f),
+        tweak(b_xy, chmix.hue_tweak[2], chmix.sat_tweak[2], 0.075f, 0.5f),
+        D65_bb_white);
 
     M33 Minv = inverse(M);
     if (!Minv[1][1]) {
@@ -148,36 +139,31 @@ void get_mixer_matrix(const ChannelMixerParams &chmix, const Glib::ustring &work
     }
 }
 
-
 void ImProcFunctions::channelMixer(Imagefloat *img)
 {
     if (params->chmixer.enabled) {
         img->setMode(Imagefloat::Mode::RGB, multiThread);
-        
-        float RR = float(params->chmixer.red[0])/1000.f;
-        float RG = float(params->chmixer.red[1])/1000.f;
-        float RB = float(params->chmixer.red[2])/1000.f;
-        float GR = float(params->chmixer.green[0])/1000.f;
-        float GG = float(params->chmixer.green[1])/1000.f;
-        float GB = float(params->chmixer.green[2])/1000.f;
-        float BR = float(params->chmixer.blue[0])/1000.f;
-        float BG = float(params->chmixer.blue[1])/1000.f;
-        float BB = float(params->chmixer.blue[2])/1000.f;
 
+        float RR = float(params->chmixer.red[0]) / 1000.f;
+        float RG = float(params->chmixer.red[1]) / 1000.f;
+        float RB = float(params->chmixer.red[2]) / 1000.f;
+        float GR = float(params->chmixer.green[0]) / 1000.f;
+        float GG = float(params->chmixer.green[1]) / 1000.f;
+        float GB = float(params->chmixer.green[2]) / 1000.f;
+        float BR = float(params->chmixer.blue[0]) / 1000.f;
+        float BG = float(params->chmixer.blue[1]) / 1000.f;
+        float BB = float(params->chmixer.blue[2]) / 1000.f;
 
-        if (params->chmixer.mode == ChannelMixerParams::Mode::PRIMARIES_CHROMA){
-            get_mixer_matrix(params->chmixer, params->icm.workingProfile,
-                             RR, RG, RB,
-                             GR, GG, GB,
-                             BR, BG, BB);
+        if (params->chmixer.mode ==
+            ChannelMixerParams::Mode::PRIMARIES_CHROMA) {
+            get_mixer_matrix(params->chmixer, params->icm.workingProfile, RR,
+                             RG, RB, GR, GG, GB, BR, BG, BB);
             if (options.rtSettings.verbose) {
                 printf("Channel mixer matrix:\n"
                        "   %.1f %.1f %.1f\n"
                        "   %.1f %.1f %.1f\n"
                        "   %.1f %.1f %.1f\n",
-                       RR, RG, RB,
-                       GR, GG, GB,
-                       BR, BG, BB);
+                       RR, RG, RB, GR, GG, GB, BR, BG, BB);
                 fflush(stdout);
             }
         }
@@ -195,12 +181,12 @@ void ImProcFunctions::channelMixer(Imagefloat *img)
 #endif // __SSE2__
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < img->getHeight(); ++y) {
             int x = 0;
 #ifdef __SSE2__
-            for (; x < img->getWidth()-3; x += 4) {
+            for (; x < img->getWidth() - 3; x += 4) {
                 vfloat r = LVF(img->r(y, x));
                 vfloat g = LVF(img->g(y, x));
                 vfloat b = LVF(img->b(y, x));

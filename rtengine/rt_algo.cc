@@ -17,34 +17,34 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <complex.h>
-#include <fftw3.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <complex.h>
 #include <cstddef>
 #include <cstdint>
+#include <fftw3.h>
 #include <vector>
-#include <algorithm>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include "../rtgui/threadutils.h"
 #include "gauss.h"
+#include "imagefloat.h"
 #include "opthelper.h"
+#include "rescale.h"
 #include "rt_algo.h"
 #include "rt_math.h"
 #include "sleef.h"
-#include "../rtgui/threadutils.h"
-#include "imagefloat.h"
-#include "rescale.h"
 
 #define BENCHMARK
 #include "StopWatch.h"
 
 namespace {
 
-float calcBlendFactor(float val, float threshold) {
+float calcBlendFactor(float val, float threshold)
+{
     // sigmoid function
     // result is in ]0;1] range
     // inflexion point is at (x, y) (threshold, 0.5)
@@ -52,7 +52,8 @@ float calcBlendFactor(float val, float threshold) {
 }
 
 #ifdef __SSE2__
-vfloat calcBlendFactor(vfloat valv, vfloat thresholdv) {
+vfloat calcBlendFactor(vfloat valv, vfloat thresholdv)
+{
     // sigmoid function
     // result is in ]0;1] range
     // inflexion point is at (x, y) (threshold, 0.5)
@@ -62,7 +63,8 @@ vfloat calcBlendFactor(vfloat valv, vfloat thresholdv) {
 }
 #endif
 
-float tileAverage(float **data, size_t tileY, size_t tileX, size_t tilesize) {
+float tileAverage(float **data, size_t tileY, size_t tileX, size_t tilesize)
+{
 
     float avg = 0.f;
 #ifdef __SSE2__
@@ -85,7 +87,9 @@ float tileAverage(float **data, size_t tileY, size_t tileX, size_t tilesize) {
     return avg / rtengine::SQR(tilesize);
 }
 
-float tileVariance(float **data, size_t tileY, size_t tileX, size_t tilesize, float avg) {
+float tileVariance(float **data, size_t tileY, size_t tileX, size_t tilesize,
+                   float avg)
+{
 
     float var = 0.f;
 #ifdef __SSE2__
@@ -109,28 +113,43 @@ float tileVariance(float **data, size_t tileY, size_t tileX, size_t tilesize, fl
     return var / (rtengine::SQR(tilesize) * avg);
 }
 
-float calcContrastThreshold(float** luminance, int tileY, int tileX, int tilesize, float factor) {
+float calcContrastThreshold(float **luminance, int tileY, int tileX,
+                            int tilesize, float factor)
+{
 
     const float scale = 0.0625f / 327.68f * factor;
-    std::vector<std::vector<float>> blend(tilesize - 4, std::vector<float>(tilesize - 4));
+    std::vector<std::vector<float>> blend(tilesize - 4,
+                                          std::vector<float>(tilesize - 4));
 
 #ifdef __SSE2__
     const vfloat scalev = F2V(scale);
 #endif
 
-    for(int j = tileY + 2; j < tileY + tilesize - 2; ++j) {
+    for (int j = tileY + 2; j < tileY + tilesize - 2; ++j) {
         int i = tileX + 2;
 #ifdef __SSE2__
-        for(; i < tileX + tilesize - 5; i += 4) {
-            vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i+1]) - LVFU(luminance[j][i-1])) + SQRV(LVFU(luminance[j+1][i]) - LVFU(luminance[j-1][i])) +
-                                      SQRV(LVFU(luminance[j][i+2]) - LVFU(luminance[j][i-2])) + SQRV(LVFU(luminance[j+2][i]) - LVFU(luminance[j-2][i]))) * scalev;
+        for (; i < tileX + tilesize - 5; i += 4) {
+            vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i + 1]) -
+                                           LVFU(luminance[j][i - 1])) +
+                                      SQRV(LVFU(luminance[j + 1][i]) -
+                                           LVFU(luminance[j - 1][i])) +
+                                      SQRV(LVFU(luminance[j][i + 2]) -
+                                           LVFU(luminance[j][i - 2])) +
+                                      SQRV(LVFU(luminance[j + 2][i]) -
+                                           LVFU(luminance[j - 2][i]))) *
+                               scalev;
             STVFU(blend[j - tileY - 2][i - tileX - 2], contrastv);
         }
 #endif
-        for(; i < tileX + tilesize - 2; ++i) {
+        for (; i < tileX + tilesize - 2; ++i) {
 
-            float contrast = sqrtf(rtengine::SQR(luminance[j][i+1] - luminance[j][i-1]) + rtengine::SQR(luminance[j+1][i] - luminance[j-1][i]) + 
-                                   rtengine::SQR(luminance[j][i+2] - luminance[j][i-2]) + rtengine::SQR(luminance[j+2][i] - luminance[j-2][i])) * scale;
+            float contrast =
+                sqrtf(
+                    rtengine::SQR(luminance[j][i + 1] - luminance[j][i - 1]) +
+                    rtengine::SQR(luminance[j + 1][i] - luminance[j - 1][i]) +
+                    rtengine::SQR(luminance[j][i + 2] - luminance[j][i - 2]) +
+                    rtengine::SQR(luminance[j + 2][i] - luminance[j - 2][i])) *
+                scale;
 
             blend[j - tileY - 2][i - tileX - 2] = contrast;
         }
@@ -147,14 +166,14 @@ float calcContrastThreshold(float** luminance, int tileY, int tileX, int tilesiz
         vfloat sumv = ZEROV;
 #endif
 
-        for(int j = 0; j < tilesize - 4; ++j) {
+        for (int j = 0; j < tilesize - 4; ++j) {
             int i = 0;
 #ifdef __SSE2__
-            for(; i < tilesize - 7; i += 4) {
+            for (; i < tilesize - 7; i += 4) {
                 sumv += calcBlendFactor(LVFU(blend[j][i]), contrastThresholdv);
             }
 #endif
-            for(; i < tilesize - 4; ++i) {
+            for (; i < tilesize - 4; ++i) {
                 sum += calcBlendFactor(blend[j][i], contrastThreshold);
             }
         }
@@ -175,17 +194,19 @@ namespace rtengine {
 
 extern MyMutex *fftwMutex;
 
-
-void findMinMaxPercentile(const float* data, size_t size, float minPrct, float& minOut, float maxPrct, float& maxOut, bool multithread)
+void findMinMaxPercentile(const float *data, size_t size, float minPrct,
+                          float &minOut, float maxPrct, float &maxOut,
+                          bool multithread)
 {
     // Copyright (c) 2017 Ingo Weyrich <heckflosse67@gmx.de>
-    // We need to find the (minPrct*size) smallest value and the (maxPrct*size) smallest value in data.
-    // We use a histogram based search for speed and to reduce memory usage.
-    // Memory usage of this method is histoSize * sizeof(uint32_t) * (t + 1) byte,
-    // where t is the number of threads and histoSize is in [1;65536].
-    // Processing time is O(n) where n is size of the input array.
-    // It scales well with multiple threads if the size of the input array is large.
-    // The current implementation is not guaranteed to work correctly if size > 2^32 (4294967296).
+    // We need to find the (minPrct*size) smallest value and the (maxPrct*size)
+    // smallest value in data. We use a histogram based search for speed and to
+    // reduce memory usage. Memory usage of this method is histoSize *
+    // sizeof(uint32_t) * (t + 1) byte, where t is the number of threads and
+    // histoSize is in [1;65536]. Processing time is O(n) where n is size of the
+    // input array. It scales well with multiple threads if the size of the
+    // input array is large. The current implementation is not guaranteed to
+    // work correctly if size > 2^32 (4294967296).
 
     assert(minPrct <= maxPrct);
 
@@ -195,35 +216,41 @@ void findMinMaxPercentile(const float* data, size_t size, float minPrct, float& 
 
     size_t numThreads = 1;
 #ifdef _OPENMP
-    // Because we have an overhead in the critical region of the main loop for each thread
-    // we make a rough calculation to reduce the number of threads for small data size.
-    // This also works fine for the minmax loop.
+    // Because we have an overhead in the critical region of the main loop for
+    // each thread we make a rough calculation to reduce the number of threads
+    // for small data size. This also works fine for the minmax loop.
     if (multithread) {
         const size_t maxThreads = omp_get_num_procs();
-        while (size > numThreads * numThreads * 16384 && numThreads < maxThreads) {
+        while (size > numThreads * numThreads * 16384 &&
+               numThreads < maxThreads) {
             ++numThreads;
         }
     }
 #endif
 
-    // We need min and max value of data to calculate the scale factor for the histogram
+    // We need min and max value of data to calculate the scale factor for the
+    // histogram
     float minVal = data[0];
     float maxVal = data[0];
 #ifdef _OPENMP
-    #pragma omp parallel for reduction(min:minVal) reduction(max:maxVal) num_threads(numThreads)
+#pragma omp parallel for reduction(min : minVal) reduction(max : maxVal)       \
+    num_threads(numThreads)
 #endif
     for (size_t i = 1; i < size; ++i) {
         minVal = std::min(minVal, data[i]);
         maxVal = std::max(maxVal, data[i]);
     }
 
-    if (std::fabs(maxVal - minVal) == 0.f) { // fast exit, also avoids division by zero in calculation of scale factor
+    if (std::fabs(maxVal - minVal) ==
+        0.f) { // fast exit, also avoids division by zero in calculation of
+               // scale factor
         minOut = maxOut = minVal;
         return;
     }
 
-    // Caution: Currently this works correctly only for histoSize in range[1;65536].
-    // For small data size (i.e. thumbnails) we reduce the size of the histogram to the size of data.
+    // Caution: Currently this works correctly only for histoSize in
+    // range[1;65536]. For small data size (i.e. thumbnails) we reduce the size
+    // of the histogram to the size of data.
     const unsigned int histoSize = std::min<size_t>(65536, size);
 
     // calculate scale factor to use full range of histogram
@@ -235,32 +262,34 @@ void findMinMaxPercentile(const float* data, size_t size, float minPrct, float& 
     if (numThreads == 1) {
         // just one thread => use main histogram
         for (size_t i = 0; i < size; ++i) {
-            // we have to subtract minVal and multiply with scale to get the data in [0;histosize] range
+            // we have to subtract minVal and multiply with scale to get the
+            // data in [0;histosize] range
             histo[static_cast<uint16_t>(scale * (data[i] - minVal))]++;
         }
     } else {
 #ifdef _OPENMP
-    #pragma omp parallel num_threads(numThreads)
+#pragma omp parallel num_threads(numThreads)
 #endif
         {
             // We need one histogram per thread
             std::vector<uint32_t> histothr(histoSize, 0);
 
 #ifdef _OPENMP
-            #pragma omp for nowait
+#pragma omp for nowait
 #endif
             for (size_t i = 0; i < size; ++i) {
-                // we have to subtract minVal and multiply with scale to get the data in [0;histosize] range
+                // we have to subtract minVal and multiply with scale to get the
+                // data in [0;histosize] range
                 histothr[static_cast<uint16_t>(scale * (data[i] - minVal))]++;
             }
 
 #ifdef _OPENMP
-            #pragma omp critical
+#pragma omp critical
 #endif
             {
                 // add per thread histogram to main histogram
 #ifdef _OPENMP
-                #pragma omp simd
+#pragma omp simd
 #endif
 
                 for (size_t i = 0; i < histoSize; ++i) {
@@ -312,7 +341,9 @@ void findMinMaxPercentile(const float* data, size_t size, float minPrct, float& 
     maxOut = rtengine::LIM(maxOut, minVal, maxVal);
 }
 
-void buildBlendMask(float** luminance, float **blend, int W, int H, float &contrastThreshold, float amount, bool autoContrast, float blur_radius, float luminance_factor)
+void buildBlendMask(float **luminance, float **blend, int W, int H,
+                    float &contrastThreshold, float amount, bool autoContrast,
+                    float blur_radius, float luminance_factor)
 {
     if (autoContrast) {
         const float minLuminance = 2000.f / luminance_factor;
@@ -323,24 +354,30 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
             const int skip = pass == 0 ? tilesize : tilesize / 4;
             const int numTilesW = W / skip - 3 * pass;
             const int numTilesH = H / skip - 3 * pass;
-            std::vector<std::vector<float>> variances(numTilesH, std::vector<float>(numTilesW));
+            std::vector<std::vector<float>> variances(
+                numTilesH, std::vector<float>(numTilesW));
 
 #ifdef _OPENMP
-            #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
 #endif
             for (int i = 0; i < numTilesH; ++i) {
                 const int tileY = i * skip;
                 for (int j = 0; j < numTilesW; ++j) {
                     const int tileX = j * skip;
-                    const float avg = tileAverage(luminance, tileY, tileX, tilesize);
+                    const float avg =
+                        tileAverage(luminance, tileY, tileX, tilesize);
                     if (avg < minLuminance || avg > maxLuminance) {
                         // too dark or too bright => skip the tile
                         variances[i][j] = RT_INFINITY_F;
                         continue;
                     } else {
-                        variances[i][j] = tileVariance(luminance, tileY, tileX, tilesize, avg);
-                        // exclude tiles with a variance less than minTileVariance
-                        variances[i][j] = variances[i][j] < minTileVariance ? RT_INFINITY_F : variances[i][j];
+                        variances[i][j] = tileVariance(luminance, tileY, tileX,
+                                                       tilesize, avg);
+                        // exclude tiles with a variance less than
+                        // minTileVariance
+                        variances[i][j] = variances[i][j] < minTileVariance
+                                              ? RT_INFINITY_F
+                                              : variances[i][j];
                     }
                 }
             }
@@ -361,14 +398,18 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
                 const int minY = skip * minI;
                 const int minX = skip * minJ;
                 if (pass == 0) {
-                    // a variance <= 1 means we already found a flat region and can skip second pass
-                    contrastThreshold = calcContrastThreshold(luminance, minY, minX, tilesize, luminance_factor);
+                    // a variance <= 1 means we already found a flat region and
+                    // can skip second pass
+                    contrastThreshold = calcContrastThreshold(
+                        luminance, minY, minX, tilesize, luminance_factor);
                     break;
                 } else {
                     // in second pass we allow a variance of 4
-                    // we additionally scan the tiles +-skip pixels around the best tile from pass 2
-                    // Means we scan (2 * skip + 1)^2 tiles in this step to get a better hit rate
-                    // fortunately the scan is quite fast, so we use only one core and don't parallelize
+                    // we additionally scan the tiles +-skip pixels around the
+                    // best tile from pass 2 Means we scan (2 * skip + 1)^2
+                    // tiles in this step to get a better hit rate fortunately
+                    // the scan is quite fast, so we use only one core and don't
+                    // parallelize
                     const int topLeftYStart = std::max(minY - skip, 0);
                     const int topLeftXStart = std::max(minX - skip, 0);
                     const int topLeftYEnd = std::min(minY + skip, H - tilesize);
@@ -376,21 +417,28 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
                     const int numTilesH = topLeftYEnd - topLeftYStart + 1;
                     const int numTilesW = topLeftXEnd - topLeftXStart + 1;
 
-                    std::vector<std::vector<float>> variances(numTilesH, std::vector<float>(numTilesW));
+                    std::vector<std::vector<float>> variances(
+                        numTilesH, std::vector<float>(numTilesW));
                     for (int i = 0; i < numTilesH; ++i) {
                         const int tileY = topLeftYStart + i;
                         for (int j = 0; j < numTilesW; ++j) {
                             const int tileX = topLeftXStart + j;
-                            const float avg = tileAverage(luminance, tileY, tileX, tilesize);
+                            const float avg =
+                                tileAverage(luminance, tileY, tileX, tilesize);
 
                             if (avg < minLuminance || avg > maxLuminance) {
                                 // too dark or too bright => skip the tile
                                 variances[i][j] = RT_INFINITY_F;
                                 continue;
                             } else {
-                                variances[i][j] = tileVariance(luminance, tileY, tileX, tilesize, avg);
-                            // exclude tiles with a variance less than minTileVariance
-                            variances[i][j] = variances[i][j] < minTileVariance ? RT_INFINITY_F : variances[i][j];
+                                variances[i][j] = tileVariance(
+                                    luminance, tileY, tileX, tilesize, avg);
+                                // exclude tiles with a variance less than
+                                // minTileVariance
+                                variances[i][j] =
+                                    variances[i][j] < minTileVariance
+                                        ? RT_INFINITY_F
+                                        : variances[i][j];
                             }
                         }
                     }
@@ -407,22 +455,28 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
                         }
                     }
 
-                    contrastThreshold = minvar <= 8.f ? calcContrastThreshold(luminance, topLeftYStart + minI, topLeftXStart + minJ, tilesize, luminance_factor) : 0.f;
+                    contrastThreshold =
+                        minvar <= 8.f
+                            ? calcContrastThreshold(luminance,
+                                                    topLeftYStart + minI,
+                                                    topLeftXStart + minJ,
+                                                    tilesize, luminance_factor)
+                            : 0.f;
                 }
             }
         }
     }
 
-    if(contrastThreshold == 0.f) {
-        for(int j = 0; j < H; ++j) {
-            for(int i = 0; i < W; ++i) {
+    if (contrastThreshold == 0.f) {
+        for (int j = 0; j < H; ++j) {
+            for (int i = 0; i < W; ++i) {
                 blend[j][i] = amount;
             }
         }
     } else {
         const float scale = 0.0625f / 327.68f * luminance_factor;
 #ifdef _OPENMP
-        #pragma omp parallel
+#pragma omp parallel
 #endif
         {
 #ifdef __SSE2__
@@ -431,45 +485,62 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
             const vfloat amountv = F2V(amount);
 #endif
 #ifdef _OPENMP
-            #pragma omp for schedule(dynamic,16)
+#pragma omp for schedule(dynamic, 16)
 #endif
 
-            for(int j = 2; j < H - 2; ++j) {
+            for (int j = 2; j < H - 2; ++j) {
                 int i = 2;
 #ifdef __SSE2__
-                for(; i < W - 5; i += 4) {
-                    vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i+1]) - LVFU(luminance[j][i-1])) + SQRV(LVFU(luminance[j+1][i]) - LVFU(luminance[j-1][i])) +
-                                              SQRV(LVFU(luminance[j][i+2]) - LVFU(luminance[j][i-2])) + SQRV(LVFU(luminance[j+2][i]) - LVFU(luminance[j-2][i]))) * scalev;
+                for (; i < W - 5; i += 4) {
+                    vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i + 1]) -
+                                                   LVFU(luminance[j][i - 1])) +
+                                              SQRV(LVFU(luminance[j + 1][i]) -
+                                                   LVFU(luminance[j - 1][i])) +
+                                              SQRV(LVFU(luminance[j][i + 2]) -
+                                                   LVFU(luminance[j][i - 2])) +
+                                              SQRV(LVFU(luminance[j + 2][i]) -
+                                                   LVFU(luminance[j - 2][i]))) *
+                                       scalev;
 
-                    STVFU(blend[j][i], amountv * calcBlendFactor(contrastv, contrastThresholdv));
+                    STVFU(blend[j][i],
+                          amountv *
+                              calcBlendFactor(contrastv, contrastThresholdv));
                 }
 #endif
-                for(; i < W - 2; ++i) {
+                for (; i < W - 2; ++i) {
 
-                    float contrast = sqrtf(rtengine::SQR(luminance[j][i+1] - luminance[j][i-1]) + rtengine::SQR(luminance[j+1][i] - luminance[j-1][i]) + 
-                                           rtengine::SQR(luminance[j][i+2] - luminance[j][i-2]) + rtengine::SQR(luminance[j+2][i] - luminance[j-2][i])) * scale;
+                    float contrast = sqrtf(rtengine::SQR(luminance[j][i + 1] -
+                                                         luminance[j][i - 1]) +
+                                           rtengine::SQR(luminance[j + 1][i] -
+                                                         luminance[j - 1][i]) +
+                                           rtengine::SQR(luminance[j][i + 2] -
+                                                         luminance[j][i - 2]) +
+                                           rtengine::SQR(luminance[j + 2][i] -
+                                                         luminance[j - 2][i])) *
+                                     scale;
 
-                    blend[j][i] = amount * calcBlendFactor(contrast, contrastThreshold);
+                    blend[j][i] =
+                        amount * calcBlendFactor(contrast, contrastThreshold);
                 }
             }
 
 #ifdef _OPENMP
-            #pragma omp single
+#pragma omp single
 #endif
             {
                 // upper border
-                for(int j = 0; j < 2; ++j) {
-                    for(int i = 2; i < W - 2; ++i) {
+                for (int j = 0; j < 2; ++j) {
+                    for (int i = 2; i < W - 2; ++i) {
                         blend[j][i] = blend[2][i];
                     }
                 }
                 // lower border
-                for(int j = H - 2; j < H; ++j) {
-                    for(int i = 2; i < W - 2; ++i) {
-                        blend[j][i] = blend[H-3][i];
+                for (int j = H - 2; j < H; ++j) {
+                    for (int i = 2; i < W - 2; ++i) {
+                        blend[j][i] = blend[H - 3][i];
                     }
                 }
-                for(int j = 0; j < H; ++j) {
+                for (int j = 0; j < H; ++j) {
                     // left border
                     blend[j][0] = blend[j][1] = blend[j][2];
                     // right border
@@ -478,13 +549,14 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
             }
 
 #ifdef __SSE2__
-            // flush denormals to zero for gaussian blur to avoid performance penalty if there are a lot of zero values in the mask
+            // flush denormals to zero for gaussian blur to avoid performance
+            // penalty if there are a lot of zero values in the mask
             const auto oldMode = _MM_GET_FLUSH_ZERO_MODE();
             _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 #endif
 
             // blur blend mask to smooth transitions
-            gaussianBlur(blend, blend, W, H, blur_radius); //2.0);
+            gaussianBlur(blend, blend, W, H, blur_radius); // 2.0);
 
 #ifdef __SSE2__
             _MM_SET_FLUSH_ZERO_MODE(oldMode);
@@ -493,50 +565,54 @@ void buildBlendMask(float** luminance, float **blend, int W, int H, float &contr
     }
 }
 
-
-void markImpulse(int width, int height, float **const src, char **impulse, float thresh)
+void markImpulse(int width, int height, float **const src, char **impulse,
+                 float thresh)
 {
     // buffer for the lowpass image
-    float * lpf[height] ALIGNED16;
-    lpf[0] = new float [width * height];
+    float *lpf[height] ALIGNED16;
+    lpf[0] = new float[width * height];
 
     for (int i = 1; i < height; i++) {
         lpf[i] = lpf[i - 1] + width;
     }
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
-        gaussianBlur(const_cast<float **>(src), lpf, width, height, max(2.f, thresh - 1.f));
+        gaussianBlur(const_cast<float **>(src), lpf, width, height,
+                     max(2.f, thresh - 1.f));
     }
 
     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     float impthr = max(1.f, 5.5f - thresh);
-    float impthrDiv24 = impthr / 24.0f;         //Issue 1671: moved the Division outside the loop, impthr can be optimized out too, but I let in the code at the moment
-
+    float impthrDiv24 =
+        impthr /
+        24.0f; // Issue 1671: moved the Division outside the loop, impthr can be
+               // optimized out too, but I let in the code at the moment
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
         int i1, j1, j;
         float hpfabs, hfnbrave;
 #ifdef __SSE2__
         vfloat hfnbravev, hpfabsv;
-        vfloat impthrDiv24v = F2V( impthrDiv24 );
+        vfloat impthrDiv24v = F2V(impthrDiv24);
 #endif
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
         for (int i = 0; i < height; i++) {
             for (j = 0; j < 2; j++) {
                 hpfabs = fabs(src[i][j] - lpf[i][j]);
 
-                //block average of high pass data
-                for (i1 = max(0, i - 2), hfnbrave = 0; i1 <= min(i + 2, height - 1); i1++ )
+                // block average of high pass data
+                for (i1 = max(0, i - 2), hfnbrave = 0;
+                     i1 <= min(i + 2, height - 1); i1++)
                     for (j1 = 0; j1 <= j + 2; j1++) {
                         hfnbrave += fabs(src[i1][j1] - lpf[i1][j1]);
                     }
@@ -550,14 +626,16 @@ void markImpulse(int width, int height, float **const src, char **impulse, float
                 hfnbravev = ZEROV;
                 hpfabsv = vabsf(LVFU(src[i][j]) - LVFU(lpf[i][j]));
 
-                //block average of high pass data
-                for (i1 = max(0, i - 2); i1 <= min(i + 2, height - 1); i1++ ) {
+                // block average of high pass data
+                for (i1 = max(0, i - 2); i1 <= min(i + 2, height - 1); i1++) {
                     for (j1 = j - 2; j1 <= j + 2; j1++) {
-                        hfnbravev += vabsf(LVFU(src[i1][j1]) - LVFU(lpf[i1][j1]));
+                        hfnbravev +=
+                            vabsf(LVFU(src[i1][j1]) - LVFU(lpf[i1][j1]));
                     }
                 }
 
-                int mask = _mm_movemask_ps((hfnbravev - hpfabsv) * impthrDiv24v - hpfabsv);
+                int mask = _mm_movemask_ps(
+                    (hfnbravev - hpfabsv) * impthrDiv24v - hpfabsv);
                 impulse[i][j] = (mask & 1);
                 impulse[i][j + 1] = ((mask & 2) >> 1);
                 impulse[i][j + 2] = ((mask & 4) >> 2);
@@ -569,8 +647,9 @@ void markImpulse(int width, int height, float **const src, char **impulse, float
             for (; j < width - 2; j++) {
                 hpfabs = fabs(src[i][j] - lpf[i][j]);
 
-                //block average of high pass data
-                for (i1 = max(0, i - 2), hfnbrave = 0; i1 <= min(i + 2, height - 1); i1++ )
+                // block average of high pass data
+                for (i1 = max(0, i - 2), hfnbrave = 0;
+                     i1 <= min(i + 2, height - 1); i1++)
                     for (j1 = j - 2; j1 <= j + 2; j1++) {
                         hfnbrave += fabs(src[i1][j1] - lpf[i1][j1]);
                     }
@@ -581,8 +660,9 @@ void markImpulse(int width, int height, float **const src, char **impulse, float
             for (; j < width; j++) {
                 hpfabs = fabs(src[i][j] - lpf[i][j]);
 
-                //block average of high pass data
-                for (i1 = max(0, i - 2), hfnbrave = 0; i1 <= min(i + 2, height - 1); i1++ )
+                // block average of high pass data
+                for (i1 = max(0, i - 2), hfnbrave = 0;
+                     i1 <= min(i + 2, height - 1); i1++)
                     for (j1 = j - 2; j1 < width; j1++) {
                         hfnbrave += fabs(src[i1][j1] - lpf[i1][j1]);
                     }
@@ -592,12 +672,13 @@ void markImpulse(int width, int height, float **const src, char **impulse, float
         }
     }
 
-    delete [] lpf[0];
+    delete[] lpf[0];
 }
 
 // Code adapted from Blender's project
 // https://developer.blender.org/diffusion/B/browse/master/source/blender/blenlib/intern/math_geom.c;3b4a8f1cfa7339f3db9ddd4a7974b8cc30d7ff0b$2411
-float polyFill(float **buffer, int width, int height, const std::vector<CoordD> &poly, const float color)
+float polyFill(float **buffer, int width, int height,
+               const std::vector<CoordD> &poly, const float color)
 {
 
     // First point of the polygon in image space
@@ -630,7 +711,7 @@ float polyFill(float **buffer, int width, int height, const std::vector<CoordD> 
     xEnd = rtengine::LIM<int>(xEnd, xStart, width - 1);
     yStart = rtengine::LIM<int>(yStart, 0., height - 1);
     yEnd = rtengine::LIM<int>(yEnd, yStart, height - 1);
-    
+
     std::vector<int> nodeX;
 
     //  Loop through the rows of the image.
@@ -640,12 +721,14 @@ float polyFill(float **buffer, int width, int height, const std::vector<CoordD> 
         //  Build a list of nodes.
         size_t j = poly.size() - 1;
         for (size_t i = 0; i < poly.size(); ++i) {
-            if ((poly[i].y < double(y) && poly[j].y >= double(y))
-            ||  (poly[j].y < double(y) && poly[i].y >= double(y)))
-            {
-                //TODO: Check rounding here ?
-                // Possibility to add antialiasing here by calculating the distance of the value from the middle of the pixel (0.5)
-                nodeX.push_back(int(poly[i].x + (double(y) - poly[i].y) / (poly[j].y - poly[i].y) * (poly[j].x - poly[i].x)));
+            if ((poly[i].y < double(y) && poly[j].y >= double(y)) ||
+                (poly[j].y < double(y) && poly[i].y >= double(y))) {
+                // TODO: Check rounding here ?
+                //  Possibility to add antialiasing here by calculating the
+                //  distance of the value from the middle of the pixel (0.5)
+                nodeX.push_back(int(poly[i].x + (double(y) - poly[i].y) /
+                                                    (poly[j].y - poly[i].y) *
+                                                    (poly[j].x - poly[i].x)));
             }
             j = i;
         }
@@ -655,9 +738,10 @@ float polyFill(float **buffer, int width, int height, const std::vector<CoordD> 
 
         //  Fill the pixels between node pairs.
         for (size_t i = 0; i < nodeX.size(); i += 2) {
-            if (nodeX.at(i) > xEnd) break;
-            if (nodeX.at(i + 1) > xStart ) {
-                if (nodeX.at(i) < xStart ) {
+            if (nodeX.at(i) > xEnd)
+                break;
+            if (nodeX.at(i + 1) > xStart) {
+                if (nodeX.at(i) < xStart) {
                     nodeX.at(i) = xStart;
                 }
                 if (nodeX.at(i + 1) > xEnd) {
@@ -670,16 +754,15 @@ float polyFill(float **buffer, int width, int height, const std::vector<CoordD> 
         }
     }
 
-    return ret;//float(rtengine::min<int>(xEnd - xStart, yEnd - yStart));
+    return ret; // float(rtengine::min<int>(xEnd - xStart, yEnd - yStart));
 }
-
 
 namespace {
 
 inline int round_up_pow2(int dim)
 {
     // from https://graphics.stanford.edu/~seander/bithacks.html
-    assert (dim > 0);
+    assert(dim > 0);
     unsigned int v = dim;
     v--;
     v |= v >> 1;
@@ -703,21 +786,11 @@ inline int find_fast_dim(int dim)
     // the above form. This is not exhaustive, but should be ok for pictures
     // up to 100MPix at least
 
-    int d1 = round_up_pow2 (dim);
-    std::vector<int> d = {
-        d1 / 128 * 65,
-        d1 / 64 * 33,
-        d1 / 512 * 273,
-        d1 / 16 * 9,
-        d1 / 8 * 5,
-        d1 / 16 * 11,
-        d1 / 128 * 91,
-        d1 / 4 * 3,
-        d1 / 64 * 49,
-        d1 / 16 * 13,
-        d1 / 8 * 7,
-        d1
-    };
+    int d1 = round_up_pow2(dim);
+    std::vector<int> d = {d1 / 128 * 65, d1 / 64 * 33, d1 / 512 * 273,
+                          d1 / 16 * 9,   d1 / 8 * 5,   d1 / 16 * 11,
+                          d1 / 128 * 91, d1 / 4 * 3,   d1 / 64 * 49,
+                          d1 / 16 * 13,  d1 / 8 * 7,   d1};
 
     for (size_t i = 0; i < d.size(); ++i) {
         if (d[i] >= dim) {
@@ -729,16 +802,18 @@ inline int find_fast_dim(int dim)
     return dim;
 }
 
-
-void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan, fftwf_complex *kernel_fft, int kernel_radius, int pH, int pW, float *buf, fftwf_complex *buf_fft, int W, int H, float **const src, float **dst, bool multithread)
+void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan,
+                    fftwf_complex *kernel_fft, int kernel_radius, int pH,
+                    int pW, float *buf, fftwf_complex *buf_fft, int W, int H,
+                    float **const src, float **dst, bool multithread)
 {
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < pH; ++y) {
-        int yy = LIM(y - kernel_radius, 0, H-1);
+        int yy = LIM(y - kernel_radius, 0, H - 1);
         for (int x = 0; x < pW; ++x) {
-            int xx = LIM(x - kernel_radius, 0, W-1);
+            int xx = LIM(x - kernel_radius, 0, W - 1);
             buf[y * pW + x] = src[yy][xx];
         }
     }
@@ -746,7 +821,7 @@ void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan, fftwf_complex *ker
     fftwf_execute(fwd_plan);
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < pH; ++y) {
         for (int x = 0, end = pW / 2 + 1; x < end; ++x) {
@@ -763,7 +838,7 @@ void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan, fftwf_complex *ker
     const int K = 2 * kernel_radius;
     const float norm = pH * pW;
 #ifdef _OPENMP
-#           pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -774,14 +849,14 @@ void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan, fftwf_complex *ker
     }
 }
 
-
-fftwf_complex *prepare_kernel(const array2D<float> &kernel, float *buf, int pW, int pH, bool multithread)
+fftwf_complex *prepare_kernel(const array2D<float> &kernel, float *buf, int pW,
+                              int pH, bool multithread)
 {
     fftwf_complex *kernel_fft = fftwf_alloc_complex(pH * (pW / 2 + 1));
     const int K = kernel.width();
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < pH; ++y) {
         for (int x = 0; x < pW; ++x) {
@@ -800,7 +875,6 @@ fftwf_complex *prepare_kernel(const array2D<float> &kernel, float *buf, int pW, 
     return kernel_fft;
 }
 
-
 struct ConvolutionData {
     int K;
     int W;
@@ -814,14 +888,10 @@ struct ConvolutionData {
     fftwf_plan inv_plan;
     bool multithread;
 
-    ConvolutionData(const array2D<float> &kernel, int W, int H, bool multithread):
-        K(0),
-        kernel_fft(nullptr),
-        buf(nullptr),
-        buf_fft(nullptr),
-        fwd_plan(nullptr),
-        inv_plan(nullptr),
-        multithread(multithread)
+    ConvolutionData(const array2D<float> &kernel, int W, int H,
+                    bool multithread)
+        : K(0), kernel_fft(nullptr), buf(nullptr), buf_fft(nullptr),
+          fwd_plan(nullptr), inv_plan(nullptr), multithread(multithread)
     {
         K = kernel.width();
         if (K == kernel.height()) {
@@ -833,7 +903,7 @@ struct ConvolutionData {
                 fftwf_plan_with_nthreads(omp_get_num_procs());
             }
 #endif
-            
+
             this->W = W;
             this->H = H;
             pW = find_fast_dim(W + K);
@@ -843,8 +913,10 @@ struct ConvolutionData {
             buf_fft = fftwf_alloc_complex(pH * (pW / 2 + 1));
             kernel_fft = prepare_kernel(kernel, buf, pW, pH, false);
 
-            fwd_plan = fftwf_plan_dft_r2c_2d(pH, pW, buf, buf_fft, FFTW_ESTIMATE);
-            inv_plan = fftwf_plan_dft_c2r_2d(pH, pW, buf_fft, buf, FFTW_ESTIMATE);
+            fwd_plan =
+                fftwf_plan_dft_r2c_2d(pH, pW, buf, buf_fft, FFTW_ESTIMATE);
+            inv_plan =
+                fftwf_plan_dft_c2r_2d(pH, pW, buf_fft, buf, FFTW_ESTIMATE);
         }
     }
 
@@ -870,50 +942,46 @@ struct ConvolutionData {
 
 } // namespace
 
-
-Convolution::Convolution(const array2D<float> &kernel, int W, int H, bool multithread):
-    data_(nullptr)
+Convolution::Convolution(const array2D<float> &kernel, int W, int H,
+                         bool multithread)
+    : data_(nullptr)
 {
     data_ = new ConvolutionData(kernel, W, H, multithread);
 }
 
-
-Convolution::~Convolution()
-{
-    delete static_cast<ConvolutionData *>(data_);
-}
-
+Convolution::~Convolution() { delete static_cast<ConvolutionData *>(data_); }
 
 void Convolution::operator()(float **src, float **dst)
 {
     ConvolutionData *d = static_cast<ConvolutionData *>(data_);
     MyMutex::MyLock lock(*fftwMutex);
 
-    do_convolution(d->fwd_plan, d->inv_plan, d->kernel_fft, d->K/2, d->pH, d->pW, d->buf, d->buf_fft, d->W, d->H, src, dst, d->multithread);
+    do_convolution(d->fwd_plan, d->inv_plan, d->kernel_fft, d->K / 2, d->pH,
+                   d->pW, d->buf, d->buf_fft, d->W, d->H, src, dst,
+                   d->multithread);
 }
-
 
 void Convolution::operator()(const array2D<float> &src, array2D<float> &dst)
 {
-    operator()(static_cast<float **>(const_cast<array2D<float> &>(src)), static_cast<float **>(dst));
+    operator()(static_cast<float **>(const_cast<array2D<float> &>(src)),
+               static_cast<float **>(dst));
 }
-
 
 void build_gaussian_kernel(float sigma, array2D<float> &res)
 {
     static constexpr float threshold = 0.005f;
-    int sz = (int(std::floor(1 + 2 * std::sqrt(-2.f * SQR(sigma) * std::log(threshold)))) + 1) | 1;
+    int sz = (int(std::floor(
+                  1 + 2 * std::sqrt(-2.f * SQR(sigma) * std::log(threshold)))) +
+              1) |
+             1;
     const float two_sigma2 = 2.f * SQR(sigma);
-    const auto gauss =
-        [two_sigma2](float x) -> float
-        {
-            return std::exp(-SQR(x)/two_sigma2);
-        };
-    const auto gauss_integral =
-        [&](float a, float b) -> float
-        {
-            return ((b - a) / 6.f) * (gauss(a) + 4.f * gauss((a + b) / 2.f) + gauss(b));
-        };
+    const auto gauss = [two_sigma2](float x) -> float {
+        return std::exp(-SQR(x) / two_sigma2);
+    };
+    const auto gauss_integral = [&](float a, float b) -> float {
+        return ((b - a) / 6.f) *
+               (gauss(a) + 4.f * gauss((a + b) / 2.f) + gauss(b));
+    };
     std::vector<float> row(sz);
     const float halfsz = float(sz / 2);
     for (int i = 0; i < sz; ++i) {
@@ -938,30 +1006,32 @@ void build_gaussian_kernel(float sigma, array2D<float> &res)
     }
 }
 
-
-void get_luminance(const Imagefloat *src, array2D<float> &out, const float ws[3][3], bool multithread)
+void get_luminance(const Imagefloat *src, array2D<float> &out,
+                   const float ws[3][3], bool multithread)
 {
     const int W = src->getWidth();
     const int H = src->getHeight();
     out(W, H);
-    
+
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
-            out[y][x] = Color::rgbLuminance(src->r(y, x), src->g(y, x), src->b(y, x), ws);
+            out[y][x] = Color::rgbLuminance(src->r(y, x), src->g(y, x),
+                                            src->b(y, x), ws);
         }
     }
 }
 
-void multiply(Imagefloat *img, const array2D<float> &num, const array2D<float> &den, bool multithread)
+void multiply(Imagefloat *img, const array2D<float> &num,
+              const array2D<float> &den, bool multithread)
 {
     const int W = img->getWidth();
     const int H = img->getHeight();
-    
+
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -974,7 +1044,6 @@ void multiply(Imagefloat *img, const array2D<float> &num, const array2D<float> &
         }
     }
 }
-
 
 //-----------------------------------------------------------------------------
 // Implementation of
@@ -989,18 +1058,16 @@ namespace {
 
 class Inpainting {
 private:
-    enum {
-        KNOWN = 0,
-        BAND = 1,
-        UNKNOWN = 2
-    };
+    enum { KNOWN = 0, BAND = 1, UNKNOWN = 2 };
 
     struct BandElement {
         float val;
         int y;
         int x;
 
-        BandElement(float v=0.f, int yy=0, int xx=0): val(v), y(yy), x(xx) {}
+        BandElement(float v = 0.f, int yy = 0, int xx = 0): val(v), y(yy), x(xx)
+        {
+        }
 
         bool operator<(const BandElement &other) const
         {
@@ -1019,19 +1086,18 @@ private:
 
     static constexpr float INF = 1e6;
     static constexpr float EPS = 1e-6;
-    
+
 public:
     Inpainting(Imagefloat *img, const array2D<float> &mask, float threshold,
-               int radius, int border, int limit, bool multithread):
-        img_(img), W_(img->getWidth()), H_(img->getHeight()),
-        mask_(mask), threshold_(threshold),
-        radius_(radius), border_(border), limit_(limit),
-        multithread_(multithread)
+               int radius, int border, int limit, bool multithread)
+        : img_(img), W_(img->getWidth()), H_(img->getHeight()), mask_(mask),
+          threshold_(threshold), radius_(radius), border_(border),
+          limit_(limit), multithread_(multithread)
     {
         invert_mask_ = (threshold_ < 0.f);
         threshold_ = std::abs(threshold_);
     }
-    
+
     void operator()()
     {
         auto band = init();
@@ -1049,18 +1115,18 @@ private:
             if (limit_ > 0 && last_dist >= limit_) {
                 break;
             }
-            
+
             std::pop_heap(band.begin(), band.end());
             auto e = band.back();
             band.pop_back();
             int y = e.y;
             int x = e.x;
-            
+
             flags_[y][x] = KNOWN;
 
             // process his immediate neighbors (top/bottom/left/right)
-            int ny[4] = { y-1, y, y+1, y };
-            int nx[4] = { x, x-1, x, x+1 };
+            int ny[4] = {y - 1, y, y + 1, y};
+            int nx[4] = {x, x - 1, x, x + 1};
             for (int i = 0; i < 4; ++i) {
                 int nb_y = ny[i];
                 int nb_x = nx[i];
@@ -1069,16 +1135,21 @@ private:
                     continue;
                 }
 
-                // neighbor outside of initial mask or already processed, nothing to do
+                // neighbor outside of initial mask or already processed,
+                // nothing to do
                 if (flags_[nb_y][nb_x] != UNKNOWN) {
                     continue;
                 }
 
                 // compute neighbor distance to inital mask contour
-                float d1 = solve_eikonal(nb_y - 1, nb_x, nb_y, nb_x - 1, flags_);
-                float d2 = solve_eikonal(nb_y + 1, nb_x, nb_y, nb_x + 1, flags_);
-                float d3 = solve_eikonal(nb_y - 1, nb_x, nb_y, nb_x + 1, flags_);
-                float d4 = solve_eikonal(nb_y + 1, nb_x, nb_y, nb_x - 1, flags_);
+                float d1 =
+                    solve_eikonal(nb_y - 1, nb_x, nb_y, nb_x - 1, flags_);
+                float d2 =
+                    solve_eikonal(nb_y + 1, nb_x, nb_y, nb_x + 1, flags_);
+                float d3 =
+                    solve_eikonal(nb_y - 1, nb_x, nb_y, nb_x + 1, flags_);
+                float d4 =
+                    solve_eikonal(nb_y + 1, nb_x, nb_y, nb_x - 1, flags_);
                 float ld = min(d1, d2, d3, d4);
                 last_dist = max(last_dist, ld);
                 dists_[nb_y][nb_x] = ld;
@@ -1095,7 +1166,8 @@ private:
         }
     }
 
-    float solve_eikonal(int y1, int x1, int y2, int x2, const array2D<char> &flags)
+    float solve_eikonal(int y1, int x1, int y2, int x2,
+                        const array2D<char> &flags)
     {
         if (y1 < 0 || y1 >= H_ || x1 < 0 || x1 >= W_) {
             return INF;
@@ -1188,7 +1260,7 @@ private:
     {
         array2D<char> flags(flags_.width(), flags_.height());
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread_)
+#pragma omp parallel for if (multithread_)
 #endif
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
@@ -1211,7 +1283,8 @@ private:
                 break;
             }
 
-            // pop BAND pixel closest to initial mask contour and flag it as KNOWN
+            // pop BAND pixel closest to initial mask contour and flag it as
+            // KNOWN
             std::pop_heap(band.begin(), band.end());
             auto e = band.back();
             band.pop_back();
@@ -1219,8 +1292,8 @@ private:
             int x = e.x;
             flags[y][x] = KNOWN;
 
-            int ny[4] = { y-1, y, y+1, y };
-            int nx[4] = { x, x-1, x, x+1 };
+            int ny[4] = {y - 1, y, y + 1, y};
+            int nx[4] = {x, x - 1, x, x + 1};
             // process immediate neighbors (top/bottom/left/right)
             for (int i = 0; i < 4; ++i) {
                 int nb_y = ny[i];
@@ -1229,7 +1302,7 @@ private:
                 if (nb_y < 0 || nb_y >= H_ || nb_x < 0 || nb_x >= W_) {
                     continue;
                 }
-                    
+
                 // neighbor already processed, nothing to do
                 if (flags[nb_y][nb_x] != UNKNOWN) {
                     continue;
@@ -1253,7 +1326,7 @@ private:
 
         // distances are opposite to actual FFM propagation direction, fix it
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread_)
+#pragma omp parallel for if (multithread_)
 #endif
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
@@ -1265,7 +1338,7 @@ private:
     std::vector<BandElement> init()
     {
         init_mask();
-        
+
         dists_(W_, H_);
         dists_.fill(INF);
 
@@ -1273,17 +1346,17 @@ private:
         flags_.fill(UNKNOWN);
 
         std::vector<BandElement> band;
-        
+
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
                 if (!bmask_[y][x]) {
                     flags_[y][x] = KNOWN;
                     continue;
                 }
-                
-                int ny[4] = { y-1, y, y+1, y };
-                int nx[4] = { x, x-1, x, x+1 };
-                
+
+                int ny[4] = {y - 1, y, y + 1, y};
+                int nx[4] = {x, x - 1, x, x + 1};
+
                 for (int i = 0; i < 4; ++i) {
                     int nb_y = ny[i];
                     int nb_x = nx[i];
@@ -1321,7 +1394,7 @@ private:
 
         // init the mask
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread_)
+#pragma omp parallel for if (multithread_)
 #endif
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
@@ -1329,11 +1402,11 @@ private:
                 dmask[y][x] = (m > threshold_ ? 1 : 0);
             }
         }
-        
+
         // traverse from top left to bottom right
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
-                if (dmask[y][x] == 1){
+                if (dmask[y][x] == 1) {
                     // first pass and pixel was on, it gets a zero
                     dmask[y][x] = 0;
                 } else {
@@ -1343,26 +1416,28 @@ private:
                     dmask[y][x] = W_ + H_;
                     // or one more than the pixel to the north
                     if (y > 0) {
-                        dmask[y][x] = std::min(dmask[y][x], dmask[y-1][x]+1);
+                        dmask[y][x] =
+                            std::min(dmask[y][x], dmask[y - 1][x] + 1);
                     }
                     // or one more than the pixel to the west
                     if (x > 0) {
-                        dmask[y][x] = std::min(dmask[y][x], dmask[y][x-1]+1);
+                        dmask[y][x] =
+                            std::min(dmask[y][x], dmask[y][x - 1] + 1);
                     }
                 }
             }
         }
         // traverse from bottom right to top left
-        for (int y = H_-1; y >= 0; --y) {
+        for (int y = H_ - 1; y >= 0; --y) {
             for (int x = W_ - 1; x >= 0; --x) {
                 // either what we had on the first pass
                 // or one more than the pixel to the south
-                if (y+1 < H_) {
-                    dmask[y][x] = std::min(dmask[y][x], dmask[y+1][x]+1);
+                if (y + 1 < H_) {
+                    dmask[y][x] = std::min(dmask[y][x], dmask[y + 1][x] + 1);
                 }
                 // or one more than the pixel to the east
-                if (x + 1< W_) {
-                    dmask[y][x] = std::min(dmask[y][x], dmask[y][x+1]+1);
+                if (x + 1 < W_) {
+                    dmask[y][x] = std::min(dmask[y][x], dmask[y][x + 1] + 1);
                 }
             }
         }
@@ -1375,7 +1450,7 @@ private:
         bmask_(W_, H_);
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread_)
+#pragma omp parallel for if (multithread_)
 #endif
         for (int y = 0; y < H_; ++y) {
             for (int x = 0; x < W_; ++x) {
@@ -1394,7 +1469,8 @@ private:
         float weight_sum = 0.f;
 
 #ifdef _OPENMP
-#       pragma omp parallel for reduction(+:pixel_r,pixel_g,pixel_b,weight_sum) if (multithread_)
+#pragma omp parallel for reduction(+ : pixel_r, pixel_g, pixel_b,              \
+                                       weight_sum) if (multithread_)
 #endif
         // iterate on each pixel in neighborhood (nb stands for neighbor)
         for (int nb_y = y - radius_; nb_y <= y + radius_; ++nb_y) {
@@ -1426,7 +1502,8 @@ private:
 
                 // compute weight
                 // neighbor has same direction gradient => contributes more
-                float dir_factor = std::abs(dir_y * dist_grad_y + dir_x * dist_grad_x);
+                float dir_factor =
+                    std::abs(dir_y * dist_grad_y + dir_x * dist_grad_x);
                 if (dir_factor == 0.f) {
                     dir_factor = EPS;
                 }
@@ -1438,7 +1515,8 @@ private:
                 // neighbor is distant => contributes less
                 float dist_factor = 1.f / (dir_length * dir_length_square);
 
-                float weight = std::abs(dir_factor * dist_factor * level_factor);
+                float weight =
+                    std::abs(dir_factor * dist_factor * level_factor);
 
                 pixel_r += weight * img_->r(nb_y, nb_x);
                 pixel_g += weight * img_->g(nb_y, nb_x);
@@ -1453,7 +1531,7 @@ private:
             img_->b(y, x) = pixel_b / weight_sum;
         }
     }
-    
+
     Imagefloat *img_;
     const int W_;
     const int H_;
@@ -1471,7 +1549,8 @@ private:
 
 } // namespace
 
-void inpaint(Imagefloat *img, const array2D<float> &mask, float threshold, int radius, int border, int limit, bool multithread, int skip)
+void inpaint(Imagefloat *img, const array2D<float> &mask, float threshold,
+             int radius, int border, int limit, bool multithread, int skip)
 {
     BENCHFUN
 
@@ -1484,13 +1563,22 @@ void inpaint(Imagefloat *img, const array2D<float> &mask, float threshold, int r
         array2D<float> tmpm(dW, dH);
         rescaleBilinear(mask, tmpm, multithread);
         for (int i = 0; i < 3; ++i) {
-            array2D<float> asrc(W, H, i == 0 ? img->r.ptrs : i == 1 ? img->g.ptrs : img->b.ptrs, ARRAY2D_BYREFERENCE);
-            array2D<float> adst(dW, dH, i == 0 ? tmp.r.ptrs : i == 1 ? tmp.g.ptrs : tmp.b.ptrs, ARRAY2D_BYREFERENCE);
+            array2D<float> asrc(W, H,
+                                i == 0   ? img->r.ptrs
+                                : i == 1 ? img->g.ptrs
+                                         : img->b.ptrs,
+                                ARRAY2D_BYREFERENCE);
+            array2D<float> adst(dW, dH,
+                                i == 0   ? tmp.r.ptrs
+                                : i == 1 ? tmp.g.ptrs
+                                         : tmp.b.ptrs,
+                                ARRAY2D_BYREFERENCE);
             rescaleBilinear(asrc, adst, multithread);
         }
 
         int radius_scaled = radius > 0 ? std::max(radius / skip, 1) : 0;
-        Inpainting op(&tmp, tmpm, threshold, radius_scaled, border / skip, limit / skip, multithread);
+        Inpainting op(&tmp, tmpm, threshold, radius_scaled, border / skip,
+                      limit / skip, multithread);
         op();
 
         array2D<float> r(dW, dH, tmp.r.ptrs, ARRAY2D_BYREFERENCE);

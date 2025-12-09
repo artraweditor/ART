@@ -19,8 +19,11 @@
 #ifndef _GAUSS_H_
 #define _GAUSS_H_
 
-enum eGaussType {GAUSS_STANDARD, GAUSS_MULT, GAUSS_DIV};
+enum eGaussType { GAUSS_STANDARD, GAUSS_MULT, GAUSS_DIV };
 
-void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr);
+void gaussianBlur(float **src, float **dst, const int W, const int H,
+                  const double sigma, float *buffer = nullptr,
+                  eGaussType gausstype = GAUSS_STANDARD,
+                  float **buffer2 = nullptr);
 
 #endif

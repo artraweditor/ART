@@ -18,27 +18,31 @@
  */
 #include "saturation.h"
 #include "adjuster.h"
-#include <sigc++/slot.h>
-#include <iomanip>
-#include "ppversion.h"
 #include "edit.h"
 #include "eventmapper.h"
+#include "ppversion.h"
+#include <iomanip>
+#include <sigc++/slot.h>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-Saturation::Saturation():
-    FoldableToolPanel(this, "saturation", M("TP_SATURATION_LABEL"), false, true, true)
+Saturation::Saturation()
+    : FoldableToolPanel(this, "saturation", M("TP_SATURATION_LABEL"), false,
+                        true, true)
 {
     auto m = ProcEventMapper::getInstance();
-    EvVibrance = m->newEvent(rtengine::LUMINANCECURVE, "HISTORY_MSG_SATURATION_VIBRANCE");
+    EvVibrance = m->newEvent(rtengine::LUMINANCECURVE,
+                             "HISTORY_MSG_SATURATION_VIBRANCE");
     EvToolEnabled.set_action(rtengine::LUMINANCECURVE);
     EvToolReset.set_action(rtengine::LUMINANCECURVE);
     // autolevels = nullptr;
-    
-    saturation = Gtk::manage (new Adjuster (M("TP_SATURATION_SATURATION"), -100, 100, 1, 0));
-    pack_start (*saturation);
-    vibrance = Gtk::manage (new Adjuster (M("TP_SATURATION_VIBRANCE"), -100, 100, 1, 0));
+
+    saturation = Gtk::manage(
+        new Adjuster(M("TP_SATURATION_SATURATION"), -100, 100, 1, 0));
+    pack_start(*saturation);
+    vibrance =
+        Gtk::manage(new Adjuster(M("TP_SATURATION_VIBRANCE"), -100, 100, 1, 0));
     pack_start(*vibrance);
 
     saturation->setLogScale(2, 0, true);
@@ -48,46 +52,39 @@ Saturation::Saturation():
     vibrance->setAdjusterListener(this);
 }
 
+Saturation::~Saturation() {}
 
-Saturation::~Saturation ()
+void Saturation::read(const ProcParams *pp)
 {
-}
-
-
-void Saturation::read(const ProcParams* pp)
-{
-    disableListener ();
+    disableListener();
 
     setEnabled(pp->saturation.enabled);
     saturation->setValue(pp->saturation.saturation);
     vibrance->setValue(pp->saturation.vibrance);
 
-    enableListener ();
+    enableListener();
 }
 
-
-void Saturation::write(ProcParams* pp)
+void Saturation::write(ProcParams *pp)
 {
     pp->saturation.enabled = getEnabled();
-    pp->saturation.saturation = (int)saturation->getValue ();
-    pp->saturation.vibrance = (int)vibrance->getValue ();
+    pp->saturation.saturation = (int)saturation->getValue();
+    pp->saturation.vibrance = (int)vibrance->getValue();
 }
 
-
-void Saturation::setDefaults (const ProcParams* defParams)
+void Saturation::setDefaults(const ProcParams *defParams)
 {
     saturation->setDefault(defParams->saturation.saturation);
     vibrance->setDefault(defParams->saturation.vibrance);
 }
 
-
-void Saturation::adjusterChanged(Adjuster* a, double newval)
+void Saturation::adjusterChanged(Adjuster *a, double newval)
 {
     if (!listener || !getEnabled()) {
         return;
     }
 
-    Glib::ustring costr = Glib::ustring::format ((int)a->getValue());
+    Glib::ustring costr = Glib::ustring::format((int)a->getValue());
 
     if (a == saturation) {
         listener->panelChanged(EvSaturation, costr);
@@ -96,19 +93,15 @@ void Saturation::adjusterChanged(Adjuster* a, double newval)
     }
 }
 
-void Saturation::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void Saturation::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-
-void Saturation::trimValues (rtengine::procparams::ProcParams* pp)
+void Saturation::trimValues(rtengine::procparams::ProcParams *pp)
 {
     saturation->trimValue(pp->saturation.saturation);
     vibrance->trimValue(pp->saturation.vibrance);
 
     initial_params = pp->saturation;
 }
-
 
 void Saturation::toolReset(bool to_initial)
 {
@@ -119,7 +112,6 @@ void Saturation::toolReset(bool to_initial)
     pp.saturation.enabled = getEnabled();
     read(&pp);
 }
-
 
 void Saturation::registerShortcuts(ToolShortcutManager *mgr)
 {

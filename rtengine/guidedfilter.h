@@ -24,10 +24,15 @@
 
 namespace rtengine {
 
-void guidedFilter(const array2D<float> &guide, const array2D<float> &src, array2D<float> &dst, int r, float epsilon, bool multithread, int subsampling=0);
+void guidedFilter(const array2D<float> &guide, const array2D<float> &src,
+                  array2D<float> &dst, int r, float epsilon, bool multithread,
+                  int subsampling = 0);
 
-void guidedFilterLog(float base, array2D<float> &chan, int r, float eps, bool multithread, int subsampling=0);
+void guidedFilterLog(float base, array2D<float> &chan, int r, float eps,
+                     bool multithread, int subsampling = 0);
 
-void guidedFilterLog(const array2D<float> &guide, float base, array2D<float> &chan, int r, float eps, bool multithread, int subsampling=0);
+void guidedFilterLog(const array2D<float> &guide, float base,
+                     array2D<float> &chan, int r, float eps, bool multithread,
+                     int subsampling = 0);
 
 } // namespace rtengine

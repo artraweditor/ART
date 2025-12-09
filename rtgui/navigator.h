@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,23 +20,23 @@
 #ifndef _NAVIGATOR_
 #define _NAVIGATOR_
 
-#include <gtkmm.h>
-#include "previewwindow.h"
-#include "pointermotionlistener.h"
-#include "options.h"
 #include "../rtengine/iccstore.h"
+#include "options.h"
+#include "pointermotionlistener.h"
+#include "previewwindow.h"
+#include <gtkmm.h>
 
-class Navigator : public Gtk::Frame, public PointerMotionListener {
+class Navigator: public Gtk::Frame, public PointerMotionListener {
 private:
     Options::NavigatorUnit currentRGBUnit;
     Options::NavigatorUnit currentLCHUnit;
-    void cycleUnitsRGB (GdkEventButton *event);
+    void cycleUnitsRGB(GdkEventButton *event);
     void cycleUnitsLCH(GdkEventButton *event);
 
 protected:
-    Gtk::Label* metaInfo;
+    Gtk::Label *metaInfo;
     Glib::ustring dimension;
-    Gtk::Label* position;
+    Gtk::Label *position;
     Gtk::Label *R, *G, *B;
     Gtk::Label *L, *C, *H;
     Gtk::Label *LAB_A, *LAB_B, *LAB_L;
@@ -45,22 +45,25 @@ protected:
     Gtk::Label *lL, *lC, *lH;
     Gtk::Label *lLAB_A, *lLAB_B, *lLAB_L;
 
-
 public:
-    PreviewWindow* previewWindow;
+    PreviewWindow *previewWindow;
 
-    Navigator ();
+    Navigator();
 
     // pointermotionlistener interface
     //  void pointerMoved (bool validPos, int x, int y, int r, int g, int b);
-    void pointerMoved (bool validPos, const Glib::ustring &profile, const Glib::ustring &profileW, int x, int y, int r, int g, int b, bool raw = false) override;
-    void setInvalid (int fullWidth = -1, int fullHeight = -1);
-    void setMetaInfo (const rtengine::FramesMetaData* idata);
+    void pointerMoved(bool validPos, const Glib::ustring &profile,
+                      const Glib::ustring &profileW, int x, int y, int r, int g,
+                      int b, bool raw = false) override;
+    void setInvalid(int fullWidth = -1, int fullHeight = -1);
+    void setMetaInfo(const rtengine::FramesMetaData *idata);
 
-    void getRGBText (int r, int g, int b, Glib::ustring &sR, Glib::ustring &sG, Glib::ustring &sB, bool isRaw = false) override;
-    void getLCHText (float l, float c, float h, Glib::ustring &sL, Glib::ustring &sC, Glib::ustring &sH) override;
-    void getLABText (float l, float a, float b, Glib::ustring &sL, Glib::ustring &sA, Glib::ustring &sB) override;
-
+    void getRGBText(int r, int g, int b, Glib::ustring &sR, Glib::ustring &sG,
+                    Glib::ustring &sB, bool isRaw = false) override;
+    void getLCHText(float l, float c, float h, Glib::ustring &sL,
+                    Glib::ustring &sC, Glib::ustring &sH) override;
+    void getLABText(float l, float a, float b, Glib::ustring &sL,
+                    Glib::ustring &sA, Glib::ustring &sB) override;
 };
 
 #endif

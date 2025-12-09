@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,10 +19,9 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "toolpanel.h"
 #include "guiutils.h"
-
+#include "toolpanel.h"
+#include <gtkmm.h>
 
 class IPTCPanel: public Gtk::VBox, public ToolPanel {
 public:
@@ -30,7 +29,8 @@ public:
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
     void setImageData(const rtengine::FramesMetaData *id);
 

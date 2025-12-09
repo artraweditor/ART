@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,19 +20,19 @@
 #ifndef _BAYERPREPROCESS_H_
 #define _BAYERPREPROCESS_H_
 
-#include <gtkmm.h>
+#include "../rtengine/rawimage.h"
 #include "adjuster.h"
 #include "toolpanel.h"
-#include "../rtengine/rawimage.h"
+#include <gtkmm.h>
 
-class BayerPreProcess : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class BayerPreProcess: public ToolParamBlock,
+                       public AdjusterListener,
+                       public FoldableToolPanel {
 
 protected:
-
-    Adjuster* lineDenoise;
+    Adjuster *lineDenoise;
     MyComboBoxText *lineDenoiseDirection;
-    Adjuster* greenEqThreshold;
+    Adjuster *greenEqThreshold;
     Gtk::CheckButton *pdafLinesFilter;
     Gtk::CheckButton *dynamicRowNoiseFilter;
 
@@ -41,20 +41,20 @@ protected:
     rtengine::ProcEvent EvDynamicRowNoiseFilter;
 
     rtengine::procparams::RAWParams::BayerSensor initial_params;
-    
+
 public:
+    BayerPreProcess();
 
-    BayerPreProcess ();
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
 
     void hotDeadPixelChanged();
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
     void lineDenoiseDirectionChanged();
     void pdafLinesFilterChanged();
     void dynamicRowNoiseFilterChanged();

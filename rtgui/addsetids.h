@@ -1,7 +1,6 @@
 #ifndef _ADDSETIDS_
 #define _ADDSETIDS_
 
-
 //          UPDATE THE DEFAULT VALUE IN OPTIONS.CC  int babehav[] TOO !!!
 
 enum {

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -22,14 +22,9 @@
 #include <glibmm.h>
 #include <vector>
 
-
 class ParamsEdited {
 public:
-    enum {
-        False = 0,
-        True,
-        Undef
-    };
+    enum { False = 0, True, Undef };
 
     bool blackwhite;
     bool cacorrection;
@@ -84,10 +79,9 @@ public:
     unsigned smoothing;
     unsigned localContrast;
     unsigned textureBoost;
-    
-    explicit ParamsEdited(bool value=false);
+
+    explicit ParamsEdited(bool value = false);
 
     void set(bool v);
     void set_append(bool v);
 };
-

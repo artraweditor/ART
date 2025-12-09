@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,27 +20,25 @@
 #ifndef _CURVEEDITOR_
 #define _CURVEEDITOR_
 
-#include "popuptogglebutton.h"
 #include "../rtengine/LUT.h"
 #include "coloredbar.h"
 #include "edit.h"
 #include "mydiagonalcurve.h"
 #include "myflatcurve.h"
+#include "popuptogglebutton.h"
 
 class CurveEditorGroup;
 class CurveEditorSubGroup;
-
 
 /*
  *********************** Curve Editor ***********************
  */
 
-
 /** @brief This class is an interface between RT and the curve editor group
- * It handles the methods related to a specific curve. It is created by CurveEditorGroup::addCurve
+ * It handles the methods related to a specific curve. It is created by
+ * CurveEditorGroup::addCurve
  */
-class CurveEditor : public EditSubscriber
-{
+class CurveEditor: public EditSubscriber {
 
     friend class CurveEditorGroup;
     friend class CurveEditorSubGroup;
@@ -50,13 +48,12 @@ class CurveEditor : public EditSubscriber
     friend class FlatCurveEditor;
 
 protected:
-
     /*
-     * The curve editor contains only one widget (the curve type button) to receive the signals
-     * but it's co-handled by the CurveEditorGroup too
-    */
+     * The curve editor contains only one widget (the curve type button) to
+     * receive the signals but it's co-handled by the CurveEditorGroup too
+     */
 
-    PopUpToggleButton* curveType;
+    PopUpToggleButton *curveType;
     LUTu histogram; // histogram values
     bool bgHistValid;
 
@@ -64,17 +61,17 @@ protected:
 
     int selected;
 
-    CurveEditorGroup* group;
-    CurveEditorSubGroup* subGroup;
-    Gtk::Widget* relatedWidget;
+    CurveEditorGroup *group;
+    CurveEditorSubGroup *subGroup;
+    Gtk::Widget *relatedWidget;
     bool expandRelatedWidget;
 
     std::vector<double> tempCurve;
     sigc::connection typeconn;
 
-    ColorProvider* bottomBarCP;
-    ColorProvider* leftBarCP;
-    ColorProvider* curveCP;
+    ColorProvider *bottomBarCP;
+    ColorProvider *leftBarCP;
+    ColorProvider *curveCP;
     int bottomBarCId;
     int leftBarCId;
     int curveCId;
@@ -87,39 +84,39 @@ protected:
     sigc::signal<void> sig_curvepoint_release;
 
 public:
-
-    CurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup);
-    ~CurveEditor () override;
-    void typeSelectionChanged (int n);
+    CurveEditor(Glib::ustring text, CurveEditorGroup *ceGroup,
+                CurveEditorSubGroup *ceSubGroup);
+    ~CurveEditor() override;
+    void typeSelectionChanged(int n);
     void curveTypeToggled();
-    bool isUnChanged ();
-    void setUnChanged (bool uc);
-    void updateBackgroundHistogram(const LUTu& hist);
+    bool isUnChanged();
+    void setUnChanged(bool uc);
+    void updateBackgroundHistogram(const LUTu &hist);
 
-    void setLeftBarColorProvider(ColorProvider* cp, int callerId);
-    void setBottomBarColorProvider(ColorProvider* cp, int callerId);
-    void setCurveColorProvider(ColorProvider* cp, int callerId);
-    void setBottomBarBgGradient (const std::vector<GradientMilestone> &milestones);
-    void setLeftBarBgGradient (const std::vector<GradientMilestone> &milestones);
-    ColorProvider* getLeftBarColorProvider();
-    ColorProvider* getBottomBarColorProvider();
-    ColorProvider* getCurveColorProvider();
+    void setLeftBarColorProvider(ColorProvider *cp, int callerId);
+    void setBottomBarColorProvider(ColorProvider *cp, int callerId);
+    void setCurveColorProvider(ColorProvider *cp, int callerId);
+    void
+    setBottomBarBgGradient(const std::vector<GradientMilestone> &milestones);
+    void setLeftBarBgGradient(const std::vector<GradientMilestone> &milestones);
+    ColorProvider *getLeftBarColorProvider();
+    ColorProvider *getBottomBarColorProvider();
+    ColorProvider *getCurveColorProvider();
     int getLeftBarCallerId();
     int getBottomBarCallerId();
     int getCurveCallerId();
-    std::vector<GradientMilestone> getBottomBarBgGradient () const;
-    std::vector<GradientMilestone> getLeftBarBgGradient () const;
+    std::vector<GradientMilestone> getBottomBarBgGradient() const;
+    std::vector<GradientMilestone> getLeftBarBgGradient() const;
 
-    void refresh (); // refresh the display of the CurveEditor (e.g. when a ColoredBar has been changed from the outside)
-    bool openIfNonlinear();  // Open up the curve if it has modifications and it's not already opened
+    void refresh(); // refresh the display of the CurveEditor (e.g. when a
+                    // ColoredBar has been changed from the outside)
+    bool openIfNonlinear(); // Open up the curve if it has modifications and
+                            // it's not already opened
 
-    void setCurve (const std::vector<double>& p);
-    virtual void setIdentityValue (const double iValue = 0.5) {};
-    virtual double getIdentityValue ()
-    {
-        return 0.5;
-    };
-    virtual std::vector<double> getCurve () = 0;
+    void setCurve(const std::vector<double> &p);
+    virtual void setIdentityValue(const double iValue = 0.5) {};
+    virtual double getIdentityValue() { return 0.5; };
+    virtual std::vector<double> getCurve() = 0;
     bool reset();
     void setTooltip(Glib::ustring ttip);
 
@@ -128,7 +125,7 @@ public:
     sigc::signal<void> signal_curvepoint_click();
     sigc::signal<void> signal_curvepoint_release();
 
-    void switchOffEditMode () override;
+    void switchOffEditMode() override;
     bool mouseOver(int modifierKey) override;
     bool button1Pressed(int modifierKey) override;
     bool button1Released() override;
@@ -139,7 +136,6 @@ public:
 
     PopUpToggleButton *getCurveTypeButton() { return curveType; }
 };
-
 
 /*
  ******************** Diagonal Curve Editor ********************
@@ -152,7 +148,8 @@ class DiagonalCurveEditor: public CurveEditor {
     friend class DiagonalCurveEditorSubGroup;
 
 protected:
-    // reflects the buttonType active selection ; used as a pre-'selectionChange' reminder value
+    // reflects the buttonType active selection ; used as a
+    // pre-'selectionChange' reminder value
     std::vector<double> customCurveEd;
     std::vector<double> customResetCurve;
     std::vector<double> paramCurveEd;
@@ -167,15 +164,20 @@ protected:
     int bp_id_;
 
 public:
-    DiagonalCurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup);
-    std::vector<double> getCurve () override;
-    void setRangeLabels(Glib::ustring r1, Glib::ustring r2, Glib::ustring r3, Glib::ustring r4);
-    void getRangeLabels(Glib::ustring &r1, Glib::ustring &r2, Glib::ustring &r3, Glib::ustring &r4);
+    DiagonalCurveEditor(Glib::ustring text, CurveEditorGroup *ceGroup,
+                        CurveEditorSubGroup *ceSubGroup);
+    std::vector<double> getCurve() override;
+    void setRangeLabels(Glib::ustring r1, Glib::ustring r2, Glib::ustring r3,
+                        Glib::ustring r4);
+    void getRangeLabels(Glib::ustring &r1, Glib::ustring &r2, Glib::ustring &r3,
+                        Glib::ustring &r4);
     void setRangeDefaultMilestones(double m1, double m2, double m3);
     void getRangeDefaultMilestones(double &m1, double &m2, double &m3);
 
-    // set the reset curve for a given curve type. This is optional; all curve type have a default reset curve
-    void setResetCurve(DiagonalCurveType cType, const std::vector<double> &resetCurve);
+    // set the reset curve for a given curve type. This is optional; all curve
+    // type have a default reset curve
+    void setResetCurve(DiagonalCurveType cType,
+                       const std::vector<double> &resetCurve);
 
     void setBackgroundProvider(CurveBackgroundProvider *bp, int caller_id)
     {
@@ -186,38 +188,36 @@ public:
     int getBackgroundCallerId() { return bp_id_; }
 };
 
-
 /*
  ********************** Flat Curve Editor **********************
  */
 
-
-class FlatCurveEditor : public CurveEditor
-{
+class FlatCurveEditor: public CurveEditor {
 
     friend class FlatCurveEditorSubGroup;
 
 protected:
-    // reflects the buttonType active selection ; used as a pre-'selectionChange' reminder value
+    // reflects the buttonType active selection ; used as a
+    // pre-'selectionChange' reminder value
     std::vector<double> controlPointsCurveEd;
     std::vector<double> controlPointsResetCurve;
     bool periodic;
     double identityValue;
 
 public:
-    FlatCurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup, bool isPeriodic = true);
-    void setIdentityValue (const double iValue = 0.5) override
+    FlatCurveEditor(Glib::ustring text, CurveEditorGroup *ceGroup,
+                    CurveEditorSubGroup *ceSubGroup, bool isPeriodic = true);
+    void setIdentityValue(const double iValue = 0.5) override
     {
         identityValue = iValue;
     }
-    double getIdentityValue () override
-    {
-        return identityValue;
-    };
-    std::vector<double> getCurve () override;
+    double getIdentityValue() override { return identityValue; };
+    std::vector<double> getCurve() override;
 
-    // set the reset curve for a given curve type. This is optional; all curve type have a default reset curve
-    void setResetCurve(FlatCurveType cType, const std::vector<double> &resetCurve);
+    // set the reset curve for a given curve type. This is optional; all curve
+    // type have a default reset curve
+    void setResetCurve(FlatCurveType cType,
+                       const std::vector<double> &resetCurve);
 };
 
 #endif

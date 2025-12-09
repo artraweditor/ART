@@ -21,17 +21,15 @@
 
 #include <gtkmm.h>
 
-class ILabel : public Gtk::DrawingArea
-{
+class ILabel: public Gtk::DrawingArea {
 
     Glib::ustring label;
 
 public:
-    explicit ILabel (const Glib::ustring &lab);
-    bool on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr) override;
+    explicit ILabel(const Glib::ustring &lab);
+    bool on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr) override;
     void on_realize() override;
-    void on_style_updated () override;
+    void on_style_updated() override;
 };
 
 #endif
-

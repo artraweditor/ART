@@ -18,8 +18,8 @@
  */
 #include <cstring>
 
-#include <glibmm.h>
 #include <glib/gstdio.h>
+#include <glibmm.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -38,29 +38,27 @@
 #include "../rtgui/threadutils.h"
 #include "lcms2_plugin.h"
 #ifdef ART_LCMS2_FAST_FLOAT
-# include <lcms2_fast_float.h>
+#include <lcms2_fast_float.h>
 #endif // ART_LCMS2_FAST_FLOAT
 
-#include "color.h"
 #include "cJSON.h"
+#include "color.h"
 #include "linalgebra.h"
 
 #define inkc_constant 0x696E6B43
 
 namespace rtengine {
 
-extern const Settings* settings;
+extern const Settings *settings;
 
 namespace {
 
 // Not recursive
-void loadProfiles(
-    const Glib::ustring& dirName,
-    std::map<Glib::ustring, cmsHPROFILE>* profiles,
-    std::map<Glib::ustring, ProfileContent>* profileContents,
-    std::map<Glib::ustring, Glib::ustring>* profileNames,
-    bool nameUpper
-)
+void loadProfiles(const Glib::ustring &dirName,
+                  std::map<Glib::ustring, cmsHPROFILE> *profiles,
+                  std::map<Glib::ustring, ProfileContent> *profileContents,
+                  std::map<Glib::ustring, Glib::ustring> *profileNames,
+                  bool nameUpper)
 {
     if (dirName.empty()) {
         return;
@@ -69,7 +67,8 @@ void loadProfiles(
     try {
         Glib::Dir dir(dirName);
 
-        for (Glib::DirIterator entry = dir.begin(); entry != dir.end(); ++entry) {
+        for (Glib::DirIterator entry = dir.begin(); entry != dir.end();
+             ++entry) {
             const Glib::ustring fileName = *entry;
 
             if (fileName.size() < 4) {
@@ -82,7 +81,8 @@ void loadProfiles(
                 continue;
             }
 
-            const Glib::ustring filePath = Glib::build_filename(dirName, fileName);
+            const Glib::ustring filePath =
+                Glib::build_filename(dirName, fileName);
 
             if (!Glib::file_test(filePath, Glib::FILE_TEST_IS_REGULAR)) {
                 continue;
@@ -111,17 +111,15 @@ void loadProfiles(
                 profileNames->emplace(name, filePath);
             }
         }
-    } catch (Glib::Exception&) {
+    } catch (Glib::Exception &) {
     }
 }
 
-// Version dedicated to single profile load when loadAll==false (cli version "-q" mode)
-bool loadProfile(
-    const Glib::ustring& profile,
-    const Glib::ustring& dirName,
-    std::map<Glib::ustring, cmsHPROFILE>* profiles,
-    std::map<Glib::ustring, ProfileContent>* profileContents
-)
+// Version dedicated to single profile load when loadAll==false (cli version
+// "-q" mode)
+bool loadProfile(const Glib::ustring &profile, const Glib::ustring &dirName,
+                 std::map<Glib::ustring, cmsHPROFILE> *profiles,
+                 std::map<Glib::ustring, ProfileContent> *profileContents)
 {
     if (dirName.empty() || profiles == nullptr) {
         return false;
@@ -130,7 +128,8 @@ bool loadProfile(
     try {
         Glib::Dir dir(dirName);
 
-        for (Glib::DirIterator entry = dir.begin(); entry != dir.end(); ++entry) {
+        for (Glib::DirIterator entry = dir.begin(); entry != dir.end();
+             ++entry) {
             const Glib::ustring fileName = *entry;
 
             if (fileName.size() < 4) {
@@ -143,7 +142,8 @@ bool loadProfile(
                 continue;
             }
 
-            const Glib::ustring filePath = Glib::build_filename(dirName, fileName);
+            const Glib::ustring filePath =
+                Glib::build_filename(dirName, fileName);
 
             if (!Glib::file_test(filePath, Glib::FILE_TEST_IS_REGULAR)) {
                 continue;
@@ -166,13 +166,14 @@ bool loadProfile(
                 }
             }
         }
-    } catch (Glib::Exception&) {
+    } catch (Glib::Exception &) {
     }
 
     return false;
 }
 
-void getSupportedIntent(cmsHPROFILE profile, cmsUInt32Number intent, cmsUInt32Number direction, uint8_t& result)
+void getSupportedIntent(cmsHPROFILE profile, cmsUInt32Number intent,
+                        cmsUInt32Number direction, uint8_t &result)
 {
     if (cmsIsIntentSupported(profile, intent, direction)) {
         result |= 1 << intent;
@@ -188,48 +189,34 @@ uint8_t getSupportedIntents(cmsHPROFILE profile, cmsUInt32Number direction)
     uint8_t result = 0;
 
     getSupportedIntent(profile, INTENT_PERCEPTUAL, direction, result);
-    getSupportedIntent(profile, INTENT_RELATIVE_COLORIMETRIC, direction, result);
+    getSupportedIntent(profile, INTENT_RELATIVE_COLORIMETRIC, direction,
+                       result);
     getSupportedIntent(profile, INTENT_SATURATION, direction, result);
-    getSupportedIntent(profile, INTENT_ABSOLUTE_COLORIMETRIC, direction, result);
+    getSupportedIntent(profile, INTENT_ABSOLUTE_COLORIMETRIC, direction,
+                       result);
 
     return result;
 }
 
 cmsHPROFILE createXYZProfile()
 {
-    float mat[3][3] = { {1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0} };
+    float mat[3][3] = {{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}};
     return ICCStore::createFromMatrix(mat, false, "XYZ");
 }
 
-const float(*wprofiles[])[3]  = {
-    xyz_sRGB,
-    xyz_adobe,
-    xyz_prophoto,
-    //xyz_widegamut, xyz_bruce, xyz_beta, xyz_best,
-    xyz_rec2020,
-    xyz_ACESp0,
-    xyz_ACESp1
-};
+const float (*wprofiles[])[3] = {
+    xyz_sRGB, xyz_adobe, xyz_prophoto,
+    // xyz_widegamut, xyz_bruce, xyz_beta, xyz_best,
+    xyz_rec2020, xyz_ACESp0, xyz_ACESp1};
 
-const float(*iwprofiles[])[3] = {
-    sRGB_xyz,
-    adobe_xyz,
-    prophoto_xyz,
-    //widegamut_xyz, bruce_xyz, beta_xyz, best_xyz,
-    rec2020_xyz,
-    ACESp0_xyz,
-    ACESp1_xyz
-};
+const float (*iwprofiles[])[3] = {
+    sRGB_xyz, adobe_xyz, prophoto_xyz,
+    // widegamut_xyz, bruce_xyz, beta_xyz, best_xyz,
+    rec2020_xyz, ACESp0_xyz, ACESp1_xyz};
 
-const char* wpnames[] = {
-    "sRGB",
-    "Adobe RGB",
-    "ProPhoto",
-    // "WideGamut", "BruceRGB", "Beta RGB", "BestRGB",
-    "Rec2020",
-    "ACESp0",
-    "ACESp1"
-};
+const char *wpnames[] = {"sRGB", "Adobe RGB", "ProPhoto",
+                         // "WideGamut", "BruceRGB", "Beta RGB", "BestRGB",
+                         "Rec2020", "ACESp0", "ACESp1"};
 
 //-----------------------------------------------------------------------------
 // helper functions to fix V2 profiles TRCs, used in
@@ -238,7 +225,8 @@ const char* wpnames[] = {
 // -----------------------------------------------------------------------------
 bool is_ART_profile(cmsHPROFILE profile)
 {
-    const cmsMLU *mlu = static_cast<const cmsMLU *>(cmsReadTag(profile, cmsSigDeviceMfgDescTag));
+    const cmsMLU *mlu = static_cast<const cmsMLU *>(
+        cmsReadTag(profile, cmsSigDeviceMfgDescTag));
     if (!mlu) {
         return false;
     }
@@ -252,19 +240,23 @@ bool is_ART_profile(cmsHPROFILE profile)
     return strcmp(&buf[0], "ART") == 0;
 }
 
-
-bool get_ART_gamma_slope(cmsHPROFILE profile, double &gammatag, double &slopetag)
+bool get_ART_gamma_slope(cmsHPROFILE profile, double &gammatag,
+                         double &slopetag)
 {
-    const cmsMLU *modelDescMLU = static_cast<const cmsMLU *>(cmsReadTag(profile, cmsSigDeviceModelDescTag));
+    const cmsMLU *modelDescMLU = static_cast<const cmsMLU *>(
+        cmsReadTag(profile, cmsSigDeviceModelDescTag));
     if (modelDescMLU) {
-        cmsUInt32Number count = cmsMLUgetWide(modelDescMLU, "en", "US", nullptr, 0);
+        cmsUInt32Number count =
+            cmsMLUgetWide(modelDescMLU, "en", "US", nullptr, 0);
         if (count) {
             std::vector<wchar_t> vbuf(count);
             wchar_t *buffer = &vbuf[0];
             count = cmsMLUgetWide(modelDescMLU, "en", "US", buffer, count);
             Glib::ustring modelDesc;
 #if __SIZEOF_WCHAR_T__ == 2
-            char *cModelDesc = g_utf16_to_utf8((unsigned short int*)buffer, -1, nullptr, nullptr, nullptr); // convert to utf-8 in a buffer allocated by glib
+            char *cModelDesc = g_utf16_to_utf8(
+                (unsigned short int *)buffer, -1, nullptr, nullptr,
+                nullptr); // convert to utf-8 in a buffer allocated by glib
             if (cModelDesc) {
                 modelDesc.assign(cModelDesc);
                 g_free(cModelDesc);
@@ -277,13 +269,17 @@ bool get_ART_gamma_slope(cmsHPROFILE profile, double &gammatag, double &slopetag
                     std::size_t pos = modelDesc.find("#us/pixls/ART#");
                     std::size_t posmid = modelDesc.find(":");
                     std::size_t posend = modelDesc.find("!");
-                    if (pos == std::string::npos || posmid == std::string::npos || posend == std::string::npos) {
+                    if (pos == std::string::npos ||
+                        posmid == std::string::npos ||
+                        posend == std::string::npos) {
                         return false;
                     }
                     pos += 13;
-                    std::string strgamma = modelDesc.substr(pos + 1, (posmid - pos));
+                    std::string strgamma =
+                        modelDesc.substr(pos + 1, (posmid - pos));
                     gammatag = std::stod(strgamma.c_str());
-                    std::string strslope = modelDesc.substr(posmid + 1, (posend - posmid));
+                    std::string strslope =
+                        modelDesc.substr(posmid + 1, (posend - posmid));
                     slopetag = std::stod(strslope.c_str());
                     return true;
                 } catch (std::invalid_argument &) {
@@ -295,15 +291,13 @@ bool get_ART_gamma_slope(cmsHPROFILE profile, double &gammatag, double &slopetag
     return false;
 }
 
-
 } // namespace
-
 
 ProfileContent::ProfileContent() = default;
 
-ProfileContent::ProfileContent(const Glib::ustring& fileName)
+ProfileContent::ProfileContent(const Glib::ustring &fileName)
 {
-    FILE* const f = g_fopen(fileName.c_str(), "rb");
+    FILE *const f = g_fopen(fileName.c_str(), "rb");
 
     if (!f) {
         return;
@@ -313,7 +307,7 @@ ProfileContent::ProfileContent(const Glib::ustring& fileName)
     long length = ftell(f);
 
     if (length > 0) {
-        char* d = new char[length + 1];
+        char *d = new char[length + 1];
         fseek(f, 0, SEEK_SET);
         length = fread(d, 1, length, f);
         d[length] = 0;
@@ -324,7 +318,6 @@ ProfileContent::ProfileContent(const Glib::ustring& fileName)
     }
 
     fclose(f);
-
 }
 
 ProfileContent::ProfileContent(cmsHPROFILE hProfile)
@@ -334,7 +327,7 @@ ProfileContent::ProfileContent(cmsHPROFILE hProfile)
         cmsSaveProfileToMem(hProfile, nullptr, &bytesNeeded);
 
         if (bytesNeeded > 0) {
-            char* d = new char[bytesNeeded + 1];
+            char *d = new char[bytesNeeded + 1];
             cmsSaveProfileToMem(hProfile, d, &bytesNeeded);
             data.assign(d, bytesNeeded);
             delete[] d;
@@ -351,13 +344,9 @@ cmsHPROFILE ProfileContent::toProfile() const
     return profile;
 }
 
-const std::string& ProfileContent::getData() const
-{
-    return data;
-}
+const std::string &ProfileContent::getData() const { return data; }
 
-class ICCStore::Implementation
-{
+class ICCStore::Implementation {
     using ProfileMap = std::map<Glib::ustring, cmsHPROFILE>;
     using MatrixMap = std::map<Glib::ustring, TMatrix>;
     using ContentMap = std::map<Glib::ustring, ProfileContent>;
@@ -366,20 +355,19 @@ class ICCStore::Implementation
     static constexpr const char *DEFAULT_WORKING_SPACE = "Rec2020";
 
 public:
-    Implementation() :
-        loadAll(true),
-        xyz(createXYZProfile()),
-        srgb(cmsCreate_sRGBProfile()),
-        thumb_monitor_xform_(nullptr),
-        monitor_profile_hash_("000000000000000000000000000000000")
+    Implementation()
+        : loadAll(true), xyz(createXYZProfile()), srgb(cmsCreate_sRGBProfile()),
+          thumb_monitor_xform_(nullptr),
+          monitor_profile_hash_("000000000000000000000000000000000")
     {
-        //cmsErrorAction(LCMS_ERROR_SHOW);
+        // cmsErrorAction(LCMS_ERROR_SHOW);
 
         constexpr int N = sizeof(wpnames) / sizeof(wpnames[0]);
 
         for (int i = 0; i < N; ++i) {
             wProfiles[wpnames[i]] = createFromMatrix(wprofiles[i]);
-            // wProfilesGamma[wpnames[i]] = createFromMatrix(wprofiles[i], true);
+            // wProfilesGamma[wpnames[i]] = createFromMatrix(wprofiles[i],
+            // true);
             wMatrices[wpnames[i]] = wprofiles[i];
             iwMatrices[wpnames[i]] = iwprofiles[i];
         }
@@ -390,7 +378,7 @@ public:
         if (thumb_monitor_xform_) {
             cmsDeleteTransform(thumb_monitor_xform_);
         }
-        
+
         for (auto &p : wProfiles) {
             if (p.second) {
                 cmsCloseProfile(p.second);
@@ -417,7 +405,8 @@ public:
         }
     }
 
-    void init(const Glib::ustring& usrICCDir, const Glib::ustring& rtICCDir, bool loadAll)
+    void init(const Glib::ustring &usrICCDir, const Glib::ustring &rtICCDir,
+              bool loadAll)
     {
         // Reads all profiles from the given profiles dir
 
@@ -425,27 +414,34 @@ public:
 
         this->loadAll = loadAll;
 
-        // RawTherapee's profiles take precedence if a user's profile of the same name exists
+        // RawTherapee's profiles take precedence if a user's profile of the
+        // same name exists
         profilesDir = Glib::build_filename(rtICCDir, "output");
         userICCDir = usrICCDir;
         fileProfiles.clear();
         fileProfileContents.clear();
 
         if (loadAll) {
-            loadProfiles(profilesDir, &fileProfiles, &fileProfileContents, nullptr, false);
-            loadProfiles(userICCDir, &fileProfiles, &fileProfileContents, nullptr, false);
+            loadProfiles(profilesDir, &fileProfiles, &fileProfileContents,
+                         nullptr, false);
+            loadProfiles(userICCDir, &fileProfiles, &fileProfileContents,
+                         nullptr, false);
         }
 
         // Input profiles
-        // Load these to different areas, since the short name(e.g. "NIKON D700" may overlap between system/user and RT dir)
+        // Load these to different areas, since the short name(e.g. "NIKON D700"
+        // may overlap between system/user and RT dir)
         stdProfilesDir = Glib::build_filename(rtICCDir, "input");
         fileCamProfiles.clear();
         fileCamProfilesFileNames.clear();
 
         if (loadAll) {
-            loadProfiles(stdProfilesDir, nullptr, nullptr, &fileCamProfilesFileNames, true);
-            Glib::ustring user_input_icc_dir = Glib::build_filename(options.user_config_dir, "iccprofiles", "input");
-            loadProfiles(user_input_icc_dir, nullptr, nullptr, &fileCamProfilesFileNames, true);
+            loadProfiles(stdProfilesDir, nullptr, nullptr,
+                         &fileCamProfilesFileNames, true);
+            Glib::ustring user_input_icc_dir = Glib::build_filename(
+                options.user_config_dir, "iccprofiles", "input");
+            loadProfiles(user_input_icc_dir, nullptr, nullptr,
+                         &fileCamProfilesFileNames, true);
         }
 
         defaultMonitorProfile = settings->monitorProfile;
@@ -453,51 +449,49 @@ public:
         loadWorkingSpaces(rtICCDir);
         loadWorkingSpaces(userICCDir);
 
-        // initialize the alarm colours for lcms gamut checking -- we use bright green
-        cmsUInt16Number cms_alarm_codes[cmsMAXCHANNELS] = { 0, 65535, 65535 };
+        // initialize the alarm colours for lcms gamut checking -- we use bright
+        // green
+        cmsUInt16Number cms_alarm_codes[cmsMAXCHANNELS] = {0, 65535, 65535};
         cmsSetAlarmCodes(cms_alarm_codes);
 
         update_thumbnail_monitor_transform();
     }
 
-    cmsHPROFILE workingSpace(const Glib::ustring& name) const
+    cmsHPROFILE workingSpace(const Glib::ustring &name) const
     {
         const ProfileMap::const_iterator r = wProfiles.find(name);
 
-        return
-            r != wProfiles.end()
-            ? r->second
-            : wProfiles.find(DEFAULT_WORKING_SPACE)->second;
+        return r != wProfiles.end()
+                   ? r->second
+                   : wProfiles.find(DEFAULT_WORKING_SPACE)->second;
     }
 
-    TMatrix workingSpaceMatrix(const Glib::ustring& name) const
+    TMatrix workingSpaceMatrix(const Glib::ustring &name) const
     {
         const MatrixMap::const_iterator r = wMatrices.find(name);
 
-        return
-            r != wMatrices.end()
-            ? r->second
-            : wMatrices.find(DEFAULT_WORKING_SPACE)->second;
+        return r != wMatrices.end()
+                   ? r->second
+                   : wMatrices.find(DEFAULT_WORKING_SPACE)->second;
     }
 
-    TMatrix workingSpaceInverseMatrix(const Glib::ustring& name) const
+    TMatrix workingSpaceInverseMatrix(const Glib::ustring &name) const
     {
 
         const MatrixMap::const_iterator r = iwMatrices.find(name);
 
-        return
-            r != iwMatrices.end()
-            ? r->second
-            : iwMatrices.find(DEFAULT_WORKING_SPACE)->second;
+        return r != iwMatrices.end()
+                   ? r->second
+                   : iwMatrices.find(DEFAULT_WORKING_SPACE)->second;
     }
 
-    bool outputProfileExist(const Glib::ustring& name) const
+    bool outputProfileExist(const Glib::ustring &name) const
     {
         MyMutex::MyLock lock(mutex);
         return fileProfiles.find(name) != fileProfiles.end();
     }
 
-    cmsHPROFILE getProfile(const Glib::ustring& name)
+    cmsHPROFILE getProfile(const Glib::ustring &name)
     {
         MyMutex::MyLock lock(mutex);
         return getProfile_unlocked(name);
@@ -505,7 +499,8 @@ public:
 
     static std::string getProfileTag(cmsHPROFILE profile, cmsTagSignature tag)
     {
-        const cmsMLU *mlu = static_cast<const cmsMLU *>(cmsReadTag(profile, tag));
+        const cmsMLU *mlu =
+            static_cast<const cmsMLU *>(cmsReadTag(profile, tag));
         if (!mlu) {
             return "";
         }
@@ -519,7 +514,7 @@ public:
         return std::string(&buf[0]);
     }
 
-    cmsHPROFILE getCameraProfile(const Glib::ustring& name)
+    cmsHPROFILE getCameraProfile(const Glib::ustring &name)
     {
         const Glib::ustring nameUpper = name.uppercase();
 
@@ -532,8 +527,10 @@ public:
             return r->second;
         } else if (!loadAll) {
             // Directory not scanned, so looking and adding now...
-            if (!loadProfile(name, profilesDir, &fileProfiles, &fileProfileContents)) {
-                loadProfile(name, userICCDir, &fileProfiles, &fileProfileContents);
+            if (!loadProfile(name, profilesDir, &fileProfiles,
+                             &fileProfileContents)) {
+                loadProfile(name, userICCDir, &fileProfiles,
+                            &fileProfileContents);
             }
 
             const ProfileMap::const_iterator r = fileProfiles.find(name);
@@ -544,7 +541,8 @@ public:
         }
 
         // Profile is not yet in store
-        const NameMap::const_iterator f = fileCamProfilesFileNames.find(nameUpper);
+        const NameMap::const_iterator f =
+            fileCamProfilesFileNames.find(nameUpper);
 
         // Profile does not exist
         if (f == fileCamProfilesFileNames.end()) {
@@ -559,56 +557,41 @@ public:
             fileCamProfiles.emplace(f->first, profile);
         }
 
-        // Profile invalid or stored now --> remove entry from fileCamProfilesFileNames
+        // Profile invalid or stored now --> remove entry from
+        // fileCamProfilesFileNames
         fileCamProfilesFileNames.erase(f);
         return profile;
     }
 
-    ProfileContent getContent(const Glib::ustring& name) const
+    ProfileContent getContent(const Glib::ustring &name) const
     {
         MyMutex::MyLock lock(mutex);
 
         const ContentMap::const_iterator r = fileProfileContents.find(name);
 
-        return
-            r != fileProfileContents.end()
-            ? r->second
-            : ProfileContent();
+        return r != fileProfileContents.end() ? r->second : ProfileContent();
     }
 
-    cmsHPROFILE getXYZProfile() const
-    {
-        return xyz;
-    }
+    cmsHPROFILE getXYZProfile() const { return xyz; }
 
-    cmsHPROFILE getsRGBProfile() const
-    {
-        return srgb;
-    }
+    cmsHPROFILE getsRGBProfile() const { return srgb; }
 
-    std::vector<Glib::ustring> doGetProfiles(const ProfileMap &profiles, ProfileType type) const
+    std::vector<Glib::ustring> doGetProfiles(const ProfileMap &profiles,
+                                             ProfileType type) const
     {
         std::vector<Glib::ustring> res;
 
         for (const auto &profile : profiles) {
-            if (
-                (
-                    type == ICCStore::ProfileType::MONITOR
-                    && cmsGetDeviceClass(profile.second) == cmsSigDisplayClass
-                    && cmsGetColorSpace(profile.second) == cmsSigRgbData
-                )
-                || (
-                    type == ICCStore::ProfileType::PRINTER
-                    && cmsGetDeviceClass(profile.second) == cmsSigOutputClass
-                )
-                || (
-                    type == ICCStore::ProfileType::OUTPUT
-                    && (cmsGetDeviceClass(profile.second) == cmsSigDisplayClass
-                        || cmsGetDeviceClass(profile.second) == cmsSigInputClass
-                        || cmsGetDeviceClass(profile.second) == cmsSigOutputClass)
-                    && cmsGetColorSpace(profile.second) == cmsSigRgbData
-                )
-            ) {
+            if ((type == ICCStore::ProfileType::MONITOR &&
+                 cmsGetDeviceClass(profile.second) == cmsSigDisplayClass &&
+                 cmsGetColorSpace(profile.second) == cmsSigRgbData) ||
+                (type == ICCStore::ProfileType::PRINTER &&
+                 cmsGetDeviceClass(profile.second) == cmsSigOutputClass) ||
+                (type == ICCStore::ProfileType::OUTPUT &&
+                 (cmsGetDeviceClass(profile.second) == cmsSigDisplayClass ||
+                  cmsGetDeviceClass(profile.second) == cmsSigInputClass ||
+                  cmsGetDeviceClass(profile.second) == cmsSigOutputClass) &&
+                 cmsGetColorSpace(profile.second) == cmsSigRgbData)) {
                 res.push_back(profile.first);
             }
         }
@@ -623,7 +606,8 @@ public:
         return doGetProfiles(fileProfiles, type);
     }
 
-    std::vector<Glib::ustring> getProfilesFromDir(const Glib::ustring& dirName, ProfileType type) const
+    std::vector<Glib::ustring> getProfilesFromDir(const Glib::ustring &dirName,
+                                                  ProfileType type) const
     {
         ProfileMap profiles;
 
@@ -692,7 +676,8 @@ public:
     {
         std::vector<Glib::ustring> res;
 
-        // for (unsigned int i = 0; i < sizeof(wpnames) / sizeof(wpnames[0]); i++) {
+        // for (unsigned int i = 0; i < sizeof(wpnames) / sizeof(wpnames[0]);
+        // i++) {
         //     res.push_back(wpnames[i]);
         // }
         for (const auto &p : wProfiles) {
@@ -738,7 +723,8 @@ public:
         return getActiveMonitorProfile_unlocked();
     }
 
-    cmsHPROFILE getStdMonitorProfile(rtengine::Settings::StdMonitorProfile name) const
+    cmsHPROFILE
+    getStdMonitorProfile(rtengine::Settings::StdMonitorProfile name) const
     {
         auto self = const_cast<Implementation *>(this);
         switch (name) {
@@ -752,19 +738,21 @@ public:
             return nullptr;
         }
     }
-    
+
 private:
     inline cmsHPROFILE getActiveMonitorProfile_unlocked() const
     {
         cmsHPROFILE monitor = nullptr;
-        if (settings->color_mgmt_mode != Settings::ColorManagementMode::APPLICATION) {
+        if (settings->color_mgmt_mode !=
+            Settings::ColorManagementMode::APPLICATION) {
             monitor = getStdMonitorProfile(settings->os_monitor_profile);
         } else {
-            monitor = const_cast<Implementation *>(this)->getProfile_unlocked(defaultMonitorProfile);
+            monitor = const_cast<Implementation *>(this)->getProfile_unlocked(
+                defaultMonitorProfile);
         }
         return monitor;
     }
-    
+
     void update_thumbnail_monitor_transform()
     {
         if (thumb_monitor_xform_) {
@@ -774,25 +762,39 @@ private:
 
         auto monitor = getActiveMonitorProfile_unlocked();
         if (monitor) {
-            monitor_profile_hash_ = Glib::Checksum::compute_checksum(Glib::Checksum::CHECKSUM_MD5, ProfileContent(monitor).getData());
+            monitor_profile_hash_ = Glib::Checksum::compute_checksum(
+                Glib::Checksum::CHECKSUM_MD5,
+                ProfileContent(monitor).getData());
             switch (settings->monitorIntent) {
-            case RI_PERCEPTUAL: monitor_profile_hash_.push_back('0'); break;
-            case RI_RELATIVE: monitor_profile_hash_.push_back('1'); break;
-            case RI_SATURATION: monitor_profile_hash_.push_back('2'); break;
-            case RI_ABSOLUTE: monitor_profile_hash_.push_back('3'); break;
-            default: monitor_profile_hash_.push_back('0'); break;
+            case RI_PERCEPTUAL:
+                monitor_profile_hash_.push_back('0');
+                break;
+            case RI_RELATIVE:
+                monitor_profile_hash_.push_back('1');
+                break;
+            case RI_SATURATION:
+                monitor_profile_hash_.push_back('2');
+                break;
+            case RI_ABSOLUTE:
+                monitor_profile_hash_.push_back('3');
+                break;
+            default:
+                monitor_profile_hash_.push_back('0');
+                break;
             }
-            
+
             cmsHPROFILE iprof = cmsCreateLab4Profile(nullptr);
             cmsUInt32Number flags = cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE;
-            thumb_monitor_xform_ = cmsCreateTransform(iprof, TYPE_Lab_FLT, monitor, TYPE_RGB_FLT, settings->monitorIntent, flags);
+            thumb_monitor_xform_ =
+                cmsCreateTransform(iprof, TYPE_Lab_FLT, monitor, TYPE_RGB_FLT,
+                                   settings->monitorIntent, flags);
             cmsCloseProfile(iprof);
         } else {
             monitor_profile_hash_ = "000000000000000000000000000000000";
         }
     }
 
-    cmsHPROFILE getProfile_unlocked(const Glib::ustring& name)
+    cmsHPROFILE getProfile_unlocked(const Glib::ustring &name)
     {
         const ProfileMap::const_iterator r = fileProfiles.find(name);
 
@@ -812,8 +814,10 @@ private:
             }
         } else if (!loadAll) {
             // Look for a standard profile
-            if (!loadProfile(name, profilesDir, &fileProfiles, &fileProfileContents)) {
-                loadProfile(name, userICCDir, &fileProfiles, &fileProfileContents);
+            if (!loadProfile(name, profilesDir, &fileProfiles,
+                             &fileProfileContents)) {
+                loadProfile(name, userICCDir, &fileProfiles,
+                            &fileProfileContents);
             }
 
             const ProfileMap::const_iterator r = fileProfiles.find(name);
@@ -824,17 +828,14 @@ private:
         }
 
         return nullptr;
-    }        
-    
+    }
+
     using CVector = Vec3<float>;
     using CMatrix = Mat33<float>;
     struct PMatrix {
         float matrix[3][3];
         PMatrix(): matrix{} {}
-        explicit PMatrix(const CMatrix &m)
-        {
-            set(m);
-        }
+        explicit PMatrix(const CMatrix &m) { set(m); }
 
         CMatrix toMatrix() const
         {
@@ -859,7 +860,8 @@ private:
         }
     };
 
-    bool computeWorkingSpaceMatrix(const Glib::ustring &path, const Glib::ustring &filename, PMatrix &out)
+    bool computeWorkingSpaceMatrix(const Glib::ustring &path,
+                                   const Glib::ustring &filename, PMatrix &out)
     {
         Glib::ustring fullpath = filename;
 
@@ -884,20 +886,21 @@ private:
             return false;
         }
 
-        cmsCIEXYZ *red = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigRedMatrixColumnTag));
-        cmsCIEXYZ *green  = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigGreenMatrixColumnTag));
-        cmsCIEXYZ *blue  = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigBlueMatrixColumnTag));
+        cmsCIEXYZ *red = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigRedMatrixColumnTag));
+        cmsCIEXYZ *green = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigGreenMatrixColumnTag));
+        cmsCIEXYZ *blue = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigBlueMatrixColumnTag));
 
         if (!red || !green || !blue) {
             cmsCloseProfile(prof);
             return false;
         }
 
-        CMatrix m(
-            float(red->X), float(green->X), float(blue->X),
-            float(red->Y), float(green->Y), float(blue->Y),
-            float(red->Z), float(green->Z), float(blue->Z)
-            );
+        CMatrix m(float(red->X), float(green->X), float(blue->X), float(red->Y),
+                  float(green->Y), float(blue->Y), float(red->Z),
+                  float(green->Z), float(blue->Z));
         m[1][0] = red->Y;
         m[1][1] = green->Y;
         m[1][2] = blue->Y;
@@ -912,11 +915,13 @@ private:
 
     bool loadWorkingSpaces(const Glib::ustring &path)
     {
-        Glib::ustring fileName = Glib::build_filename(path, "workingspaces.json");
-        FILE* const f = g_fopen(fileName.c_str(), "r");
+        Glib::ustring fileName =
+            Glib::build_filename(path, "workingspaces.json");
+        FILE *const f = g_fopen(fileName.c_str(), "r");
 
         if (settings->verbose) {
-            std::cout << "trying to load extra working spaces from " << fileName << std::flush;
+            std::cout << "trying to load extra working spaces from " << fileName
+                      << std::flush;
         }
 
         if (!f) {
@@ -1015,12 +1020,15 @@ private:
                     goto parse_error;
                 }
 
-                found_matrix = computeWorkingSpaceMatrix(path, ji->valuestring, *m);
+                found_matrix =
+                    computeWorkingSpaceMatrix(path, ji->valuestring, *m);
             }
 
             if (!found_matrix) {
                 if (settings->verbose) {
-                    std::cout << "Could not find suitable matrix for working space: " << name << std::endl;
+                    std::cout
+                        << "Could not find suitable matrix for working space: "
+                        << name << std::endl;
                 }
 
                 continue;
@@ -1033,7 +1041,8 @@ private:
 
             if (!inverse(pMatrices.back()->toMatrix(), b)) {
                 if (settings->verbose) {
-                    std::cout << "Matrix for working space: " << name << " is not invertible, skipping" << std::endl;
+                    std::cout << "Matrix for working space: " << name
+                              << " is not invertible, skipping" << std::endl;
                 }
 
                 pMatrices.pop_back();
@@ -1071,7 +1080,7 @@ private:
 
         return true;
 
-parse_error:
+    parse_error:
 
         if (settings->verbose) {
             std::cout << " ERROR in parsing " << fileName << std::endl;
@@ -1094,7 +1103,7 @@ parse_error:
     mutable ProfileMap fileProfiles;
     ContentMap fileProfileContents;
 
-    //These contain standard profiles from RT. Keys are all in uppercase.
+    // These contain standard profiles from RT. Keys are all in uppercase.
     Glib::ustring stdProfilesDir;
     NameMap fileCamProfilesFileNames;
     ProfileMap fileCamProfiles;
@@ -1112,13 +1121,14 @@ parse_error:
     std::string monitor_profile_hash_;
 };
 
-ICCStore* ICCStore::getInstance()
+ICCStore *ICCStore::getInstance()
 {
     static ICCStore instance;
     return &instance;
 }
 
-void ICCStore::init(const Glib::ustring& usrICCDir, const Glib::ustring& stdICCDir, bool loadAll)
+void ICCStore::init(const Glib::ustring &usrICCDir,
+                    const Glib::ustring &stdICCDir, bool loadAll)
 {
 #ifdef ART_LCMS2_FAST_FLOAT
     cmsPlugin(cmsFastFloatExtensions());
@@ -1126,7 +1136,7 @@ void ICCStore::init(const Glib::ustring& usrICCDir, const Glib::ustring& stdICCD
     implementation->init(usrICCDir, stdICCDir, loadAll);
 }
 
-cmsHPROFILE ICCStore::workingSpace(const Glib::ustring& name) const
+cmsHPROFILE ICCStore::workingSpace(const Glib::ustring &name) const
 {
     return implementation->workingSpace(name);
 }
@@ -1136,22 +1146,22 @@ cmsHPROFILE ICCStore::workingSpace(const Glib::ustring& name) const
 //     return implementation->workingSpaceGamma(name);
 // }
 
-TMatrix ICCStore::workingSpaceMatrix(const Glib::ustring& name) const
+TMatrix ICCStore::workingSpaceMatrix(const Glib::ustring &name) const
 {
     return implementation->workingSpaceMatrix(name);
 }
 
-TMatrix ICCStore::workingSpaceInverseMatrix(const Glib::ustring& name) const
+TMatrix ICCStore::workingSpaceInverseMatrix(const Glib::ustring &name) const
 {
     return implementation->workingSpaceInverseMatrix(name);
 }
 
-bool ICCStore::outputProfileExist(const Glib::ustring& name) const
+bool ICCStore::outputProfileExist(const Glib::ustring &name) const
 {
     return implementation->outputProfileExist(name);
 }
 
-cmsHPROFILE ICCStore::getProfile(const Glib::ustring& name) const
+cmsHPROFILE ICCStore::getProfile(const Glib::ustring &name) const
 {
     return implementation->getProfile(name);
 }
@@ -1161,22 +1171,20 @@ std::string ICCStore::getProfileTag(cmsHPROFILE profile, cmsTagSignature tag)
     return Implementation::getProfileTag(profile, tag);
 }
 
-cmsHPROFILE ICCStore::getCameraProfile(const Glib::ustring& name) const
+cmsHPROFILE ICCStore::getCameraProfile(const Glib::ustring &name) const
 {
     return implementation->getCameraProfile(name);
 }
 
-ProfileContent ICCStore::getContent(const Glib::ustring& name) const
+ProfileContent ICCStore::getContent(const Glib::ustring &name) const
 {
     return implementation->getContent(name);
 }
-
 
 Glib::ustring ICCStore::getDefaultMonitorProfileName() const
 {
     return implementation->getDefaultMonitorProfileName();
 }
-
 
 void ICCStore::setDefaultMonitorProfileName(const Glib::ustring &name)
 {
@@ -1198,7 +1206,9 @@ std::vector<Glib::ustring> ICCStore::getProfiles(ProfileType type) const
     return implementation->getProfiles(type);
 }
 
-std::vector<Glib::ustring> ICCStore::getProfilesFromDir(const Glib::ustring& dirName, ProfileType type) const
+std::vector<Glib::ustring>
+ICCStore::getProfilesFromDir(const Glib::ustring &dirName,
+                             ProfileType type) const
 {
     return implementation->getProfilesFromDir(dirName, type);
 }
@@ -1218,60 +1228,59 @@ std::uint8_t ICCStore::getProofIntents(cmsHPROFILE profile) const
     return implementation->getProofIntents(profile);
 }
 
-std::uint8_t ICCStore::getInputIntents(const Glib::ustring& name) const
+std::uint8_t ICCStore::getInputIntents(const Glib::ustring &name) const
 {
     return implementation->getInputIntents(name);
 }
 
-std::uint8_t ICCStore::getOutputIntents(const Glib::ustring& name) const
+std::uint8_t ICCStore::getOutputIntents(const Glib::ustring &name) const
 {
     return implementation->getOutputIntents(name);
 }
 
-std::uint8_t ICCStore::getProofIntents(const Glib::ustring& name) const
+std::uint8_t ICCStore::getProofIntents(const Glib::ustring &name) const
 {
     return implementation->getProofIntents(name);
 }
-
 
 cmsHTRANSFORM ICCStore::getThumbnailMonitorTransform()
 {
     return implementation->getThumbnailMonitorTransform();
 }
 
-
 const std::string &ICCStore::getThumbnailMonitorHash() const
 {
     return implementation->getThumbnailMonitorHash();
 }
-
 
 bool ICCStore::getProfileMatrix(const Glib::ustring &name, Mat33<float> &out)
 {
     return implementation->getProfileMatrix(name, out);
 }
 
-
-cmsHPROFILE ICCStore::getStdMonitorProfile(Settings::StdMonitorProfile name) const
+cmsHPROFILE
+ICCStore::getStdMonitorProfile(Settings::StdMonitorProfile name) const
 {
     return implementation->getStdMonitorProfile(name);
 }
-
 
 cmsHPROFILE ICCStore::getActiveMonitorProfile() const
 {
     return implementation->getActiveMonitorProfile();
 }
-    
 
 bool ICCStore::getProfileMatrix(cmsHPROFILE prof, Mat33<float> &out)
 {
-    if (cmsGetColorSpace(prof) == cmsSigRgbData && cmsIsMatrixShaper(prof) && !cmsIsCLUT(prof, RI_PERCEPTUAL, LCMS_USED_AS_OUTPUT)) {
+    if (cmsGetColorSpace(prof) == cmsSigRgbData && cmsIsMatrixShaper(prof) &&
+        !cmsIsCLUT(prof, RI_PERCEPTUAL, LCMS_USED_AS_OUTPUT)) {
 
-        cmsCIEXYZ *red = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigRedMatrixColumnTag));
-        cmsCIEXYZ *green  = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigGreenMatrixColumnTag));
-        cmsCIEXYZ *blue  = static_cast<cmsCIEXYZ *>(cmsReadTag(prof, cmsSigBlueMatrixColumnTag));
-            
+        cmsCIEXYZ *red = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigRedMatrixColumnTag));
+        cmsCIEXYZ *green = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigGreenMatrixColumnTag));
+        cmsCIEXYZ *blue = static_cast<cmsCIEXYZ *>(
+            cmsReadTag(prof, cmsSigBlueMatrixColumnTag));
+
         if (red && green && blue) {
             out[0][0] = red->X;
             out[0][1] = green->X;
@@ -1289,8 +1298,8 @@ bool ICCStore::getProfileMatrix(cmsHPROFILE prof, Mat33<float> &out)
     return false;
 }
 
-
-bool ICCStore::getProfileParametricTRC(cmsHPROFILE prof, float &out_gamma, float &out_slope)
+bool ICCStore::getProfileParametricTRC(cmsHPROFILE prof, float &out_gamma,
+                                       float &out_slope)
 {
     if (is_ART_profile(prof)) {
         double g = 0, s = 0;
@@ -1303,11 +1312,7 @@ bool ICCStore::getProfileParametricTRC(cmsHPROFILE prof, float &out_gamma, float
     return false;
 }
 
-
-ICCStore::ICCStore() :
-    implementation(new Implementation)
-{
-}
+ICCStore::ICCStore(): implementation(new Implementation) {}
 
 ICCStore::~ICCStore() = default;
 
@@ -1319,7 +1324,8 @@ std::vector<Glib::ustring> ICCStore::getWorkingProfiles()
 // WARNING: the caller must lock lcmsMutex
 cmsHPROFILE ICCStore::makeStdGammaProfile(cmsHPROFILE iprof)
 {
-    // forgive me for the messy code, quick hack to change gamma of an ICC profile to the RT standard gamma
+    // forgive me for the messy code, quick hack to change gamma of an ICC
+    // profile to the RT standard gamma
     if (!iprof) {
         return nullptr;
     }
@@ -1357,9 +1363,9 @@ cmsHPROFILE ICCStore::makeStdGammaProfile(cmsHPROFILE iprof)
         p += 12;
 
         if (tags[i].sig != 0x62545243 && // bTRC
-                tags[i].sig != 0x67545243 && // gTRC
-                tags[i].sig != 0x72545243 && // rTRC
-                tags[i].sig != 0x6B545243) { // kTRC
+            tags[i].sig != 0x67545243 && // gTRC
+            tags[i].sig != 0x72545243 && // rTRC
+            tags[i].sig != 0x6B545243) { // kTRC
             data_size += (tags[i].size + 3) & ~3;
         }
     }
@@ -1378,15 +1384,16 @@ cmsHPROFILE ICCStore::makeStdGammaProfile(cmsHPROFILE iprof)
         tag.sig = htonl(tags[i].sig);
 
         if (tags[i].sig == 0x62545243 || // bTRC
-                tags[i].sig == 0x67545243 || // gTRC
-                tags[i].sig == 0x72545243 || // rTRC
-                tags[i].sig == 0x6B545243) { // kTRC
+            tags[i].sig == 0x67545243 || // gTRC
+            tags[i].sig == 0x72545243 || // rTRC
+            tags[i].sig == 0x6B545243) { // kTRC
             if (gamma_offset == 0) {
                 gamma_offset = offset;
-                uint32_t pcurve[] = { htonl(0x63757276), htonl(0), htonl(/*gamma_size == 12 ? 0U : */1U) };
+                uint32_t pcurve[] = {htonl(0x63757276), htonl(0),
+                                     htonl(/*gamma_size == 12 ? 0U : */ 1U)};
                 memcpy(&nd[offset], pcurve, 12);
 
-                //if (gamma_size == 14) {
+                // if (gamma_size == 14) {
                 uint16_t gm = htons(gamma);
                 memcpy(&nd[offset + 12], &gm, 2);
                 //}
@@ -1407,55 +1414,56 @@ cmsHPROFILE ICCStore::makeStdGammaProfile(cmsHPROFILE iprof)
     }
 
     cmsHPROFILE oprof = cmsOpenProfileFromMem(nd, ntohl(sz));
-    delete [] nd;
-    delete [] data;
+    delete[] nd;
+    delete[] data;
     return oprof;
 }
 
-cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma, const Glib::ustring& name)
+cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma,
+                                       const Glib::ustring &name)
 {
 
     static const unsigned phead[] = {
-        1024, 0, 0x2100000, 0x6d6e7472, 0x52474220, 0x58595a20, 0, 0, 0,
-        0x61637370, 0, 0, 0, 0, 0, 0, 0, 0xf6d6, 0x10000, 0xd32d
-    };
-    unsigned pbody[] = {
-        10, 0x63707274, 0, 36,  /* cprt */
-        0x64657363, 0, 40,  /* desc */
-        0x77747074, 0, 20,  /* wtpt */
-        0x626b7074, 0, 20,  /* bkpt */
-        0x72545243, 0, 14,  /* rTRC */
-        0x67545243, 0, 14,  /* gTRC */
-        0x62545243, 0, 14,  /* bTRC */
-        0x7258595a, 0, 20,  /* rXYZ */
-        0x6758595a, 0, 20,  /* gXYZ */
-        0x6258595a, 0, 20
-    };    /* bXYZ */
-    static const unsigned pwhite[] = { 0xf351, 0x10000, 0x116cc };//D65
-    //static const unsigned pwhite[] = { 0xf6d6, 0x10000, 0xd340 };//D50
+        1024, 0, 0x2100000,  0x6d6e7472, 0x52474220, 0x58595a20, 0,
+        0,    0, 0x61637370, 0,          0,          0,          0,
+        0,    0, 0,          0xf6d6,     0x10000,    0xd32d};
+    unsigned pbody[] = {10,         0x63707274, 0,  36, /* cprt */
+                        0x64657363, 0,          40,     /* desc */
+                        0x77747074, 0,          20,     /* wtpt */
+                        0x626b7074, 0,          20,     /* bkpt */
+                        0x72545243, 0,          14,     /* rTRC */
+                        0x67545243, 0,          14,     /* gTRC */
+                        0x62545243, 0,          14,     /* bTRC */
+                        0x7258595a, 0,          20,     /* rXYZ */
+                        0x6758595a, 0,          20,     /* gXYZ */
+                        0x6258595a, 0,          20}; /* bXYZ */
+    static const unsigned pwhite[] = {0xf351, 0x10000, 0x116cc}; // D65
+    // static const unsigned pwhite[] = { 0xf6d6, 0x10000, 0xd340 };//D50
 
-    // 0x63757276 : curveType, 0 : reserved, 1 : entries(1=gamma, 0=identity), 0x1000000=1.0
-    unsigned pcurve[] = { 0x63757276, 0, 0, 0x1000000 };
-//    unsigned pcurve[] = { 0x63757276, 0, 1, 0x1000000 };
+    // 0x63757276 : curveType, 0 : reserved, 1 : entries(1=gamma, 0=identity),
+    // 0x1000000=1.0
+    unsigned pcurve[] = {0x63757276, 0, 0, 0x1000000};
+    //    unsigned pcurve[] = { 0x63757276, 0, 1, 0x1000000 };
 
     if (gamma) {
         pcurve[2] = 1;
         // pcurve[3] = 0x1f00000;// pcurve for gamma BT709 : g=2.22 s=4.5
         // normalize gamma in RT, default(Emil's choice = sRGB)
-        pcurve[3] = 0x2390000;//pcurve for gamma sRGB : g:2.4 s=12.92310
+        pcurve[3] = 0x2390000; // pcurve for gamma sRGB : g:2.4 s=12.92310
 
     } else {
-        // lcms2 up to 2.4 has a bug with linear gamma causing precision loss(banding)
-        // of floating point data when a normal icc encoding of linear gamma is used
+        // lcms2 up to 2.4 has a bug with linear gamma causing precision
+        // loss(banding) of floating point data when a normal icc encoding of
+        // linear gamma is used
         //(i e 0 table entries), but by encoding a gamma curve which is 1.0 the
-        // floating point path is taken within lcms2 so no precision loss occurs and
-        // gamma is still 1.0.
+        // floating point path is taken within lcms2 so no precision loss occurs
+        // and gamma is still 1.0.
         pcurve[2] = 1;
-        pcurve[3] = 0x1000000; //pcurve for gamma 1
+        pcurve[3] = 0x1000000; // pcurve for gamma 1
     }
 
     // constructing profile header
-    unsigned* oprof = new unsigned [phead[0] / sizeof(unsigned)];
+    unsigned *oprof = new unsigned[phead[0] / sizeof(unsigned)];
     memset(oprof, 0, phead[0]);
     memcpy(oprof, phead, sizeof(phead));
 
@@ -1465,7 +1473,8 @@ cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma, con
     // 0x74657874 : text
     // 0x64657363 : description tag
     for (unsigned int i = 0; i < pbody[0]; i++) {
-        oprof[oprof[0] / 4] = i ? (i > 1 ? 0x58595a20 : 0x64657363) : 0x74657874;
+        oprof[oprof[0] / 4] =
+            i ? (i > 1 ? 0x58595a20 : 0x64657363) : 0x74657874;
         pbody[i * 3 + 2] = oprof[0];
         oprof[0] += (pbody[i * 3 + 3] + 3) & -4;
     }
@@ -1481,12 +1490,12 @@ cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma, con
     }
 
     // r/g/b XYZ
-//    pseudoinverse((double(*)[3]) out_rgb[output_color-1], inverse, 3);
+    //    pseudoinverse((double(*)[3]) out_rgb[output_color-1], inverse, 3);
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++) {
             oprof[pbody[j * 3 + 23] / 4 + i + 2] = matrix[i][j] * 0x10000 + 0.5;
-//      for (num = k=0; k < 3; k++)
-//        num += xyzd50_srgb[i][k] * inverse[j][k];
+            //      for (num = k=0; k < 3; k++)
+            //        num += xyzd50_srgb[i][k] * inverse[j][k];
         }
 
     // convert to network byte order
@@ -1501,14 +1510,13 @@ cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma, con
     oprof[pbody[5] / 4 + 2] = name.size() + 1;
     strcpy((char *)oprof + pbody[5] + 12, name.c_str());
 
-
     cmsHPROFILE p = cmsOpenProfileFromMem(oprof, ntohl(oprof[0]));
-    delete [] oprof;
+    delete[] oprof;
     return p;
 }
 
-
-cmsHPROFILE ICCStore::createFromMatrix(const double matrix[3][3], bool gamma, const Glib::ustring& name)
+cmsHPROFILE ICCStore::createFromMatrix(const double matrix[3][3], bool gamma,
+                                       const Glib::ustring &name)
 {
     float fmatrix[3][3];
     to_float_matrix(matrix, fmatrix);

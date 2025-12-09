@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,31 +20,32 @@
 #ifndef _EPD_H_
 #define _EPD_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "maskspanel.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class TextureBoost: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public PParamsChangeListener
-{
+class TextureBoost: public ToolParamBlock,
+                    public AdjusterListener,
+                    public FoldableToolPanel,
+                    public PParamsChangeListener {
 public:
-
     TextureBoost();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void enabledChanged  () override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void enabledChanged() override;
     void setEditProvider(EditDataProvider *provider) override;
 
     PParamsChangeListener *getPParamsChangeListener() override { return this; }
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr) override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
     void clearParamChanges() override {}
 
     void updateGeometry(int fullWidth, int fullHeight);
@@ -53,7 +54,10 @@ public:
 
     void toolReset(bool to_initial) override;
 
-    void setExternalMaskPath(const Glib::ustring &dir) { masks_->setExternalMaskPath(dir); }
+    void setExternalMaskPath(const Glib::ustring &dir)
+    {
+        masks_->setExternalMaskPath(dir);
+    }
 
 private:
     void regionGet(int idx);
@@ -81,7 +85,7 @@ private:
     friend class EPDMasksContentProvider;
     std::unique_ptr<MasksContentProvider> masks_content_provider_;
     MasksPanel *masks_;
-    
+
     Adjuster *strength;
     Adjuster *detailThreshold;
     Adjuster *iterations;

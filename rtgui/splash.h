@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -22,35 +22,39 @@
 
 #include <gtkmm.h>
 
-class SplashImage : public Gtk::DrawingArea
-{
+class SplashImage: public Gtk::DrawingArea {
 
 private:
     Cairo::RefPtr<Cairo::ImageSurface> surface;
     Glib::RefPtr<Pango::Layout> version;
 
 public:
-    SplashImage ();
-    bool on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr) override;
-    Gtk::SizeRequestMode get_request_mode_vfunc () const override;
-    void get_preferred_height_vfunc (int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_for_height_vfunc (int height, int &minimum_width, int &natural_width) const override;
+    SplashImage();
+    bool on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr) override;
+    Gtk::SizeRequestMode get_request_mode_vfunc() const override;
+    void get_preferred_height_vfunc(int &minimum_height,
+                                    int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
+    void
+    get_preferred_width_for_height_vfunc(int height, int &minimum_width,
+                                         int &natural_width) const override;
 };
 
-//class Splash : public Gtk::Window {
-class Splash : public Gtk::Dialog
-{
+// class Splash : public Gtk::Window {
+class Splash: public Gtk::Dialog {
 
 private:
-    SplashImage* splashImage;
-    Gtk::Notebook* nb;
+    SplashImage *splashImage;
+    Gtk::Notebook *nb;
 
 public:
-    explicit Splash (Gtk::Window& parent);
+    explicit Splash(Gtk::Window &parent);
 
-    bool on_timer ();
+    bool on_timer();
     void closePressed();
 };
 

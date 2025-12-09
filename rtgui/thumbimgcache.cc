@@ -21,12 +21,13 @@
 #include "thumbimgcache.h"
 #include "../rtengine/image8.h"
 #include "options.h"
-#include <iostream>
 #include <glib/gstdio.h>
+#include <iostream>
 
 extern Options options;
 
-namespace art { namespace thumbimgcache {
+namespace art {
+namespace thumbimgcache {
 
 /******************************************************************************
  * file format:
@@ -39,12 +40,13 @@ namespace art { namespace thumbimgcache {
  * height
  * image data
  ******************************************************************************/
-rtengine::IImage8 *load(const Glib::ustring &cache_fname, const rtengine::procparams::ProcParams &pparams, int h)
+rtengine::IImage8 *load(const Glib::ustring &cache_fname,
+                        const rtengine::procparams::ProcParams &pparams, int h)
 {
     if (!options.thumb_cache_processed) {
         return nullptr;
     }
-    
+
     Glib::ustring fname = cache_fname + ".artt";
 
     if (!Glib::file_test(fname, Glib::FILE_TEST_EXISTS)) {
@@ -69,7 +71,9 @@ rtengine::IImage8 *load(const Glib::ustring &cache_fname, const rtengine::procpa
         return nullptr;
     }
     buffer[33] = '\0';
-    if (strcmp(buffer, rtengine::ICCStore::getInstance()->getThumbnailMonitorHash().c_str()) != 0) {
+    if (strcmp(buffer, rtengine::ICCStore::getInstance()
+                           ->getThumbnailMonitorHash()
+                           .c_str()) != 0) {
         fclose(f);
         return nullptr;
     }
@@ -111,7 +115,7 @@ rtengine::IImage8 *load(const Glib::ustring &cache_fname, const rtengine::procpa
         return nullptr;
     }
 
-    if (std::min(width , height) <= 0) {
+    if (std::min(width, height) <= 0) {
         fclose(f);
         return nullptr;
     }
@@ -134,19 +138,21 @@ rtengine::IImage8 *load(const Glib::ustring &cache_fname, const rtengine::procpa
     // }
 
     if (options.rtSettings.verbose > 1) {
-        std::cout << "read from cache: " << fname << " " << width << "x" << height << std::endl;
+        std::cout << "read from cache: " << fname << " " << width << "x"
+                  << height << std::endl;
     }
 
     return image;
 }
 
-
-bool store(const Glib::ustring &cache_fname, const rtengine::procparams::ProcParams &pparams, rtengine::IImage8 *img)
+bool store(const Glib::ustring &cache_fname,
+           const rtengine::procparams::ProcParams &pparams,
+           rtengine::IImage8 *img)
 {
     if (!options.thumb_cache_processed) {
         return false;
     }
-    
+
     Glib::ustring fname = cache_fname + ".artt";
     FILE *f = g_fopen(fname.c_str(), "wb");
 
@@ -155,7 +161,8 @@ bool store(const Glib::ustring &cache_fname, const rtengine::procparams::ProcPar
     }
 
     fputs("ART\n", f);
-    fputs(rtengine::ICCStore::getInstance()->getThumbnailMonitorHash().c_str(), f);
+    fputs(rtengine::ICCStore::getInstance()->getThumbnailMonitorHash().c_str(),
+          f);
     std::vector<uint8_t> profzdata = rtengine::compress(pparams.to_data(), 1);
     guint32 profsz = guint32(profzdata.size());
     fwrite(&profsz, sizeof(guint32), 1, f);
@@ -171,10 +178,12 @@ bool store(const Glib::ustring &cache_fname, const rtengine::procparams::ProcPar
     fclose(f);
 
     if (options.rtSettings.verbose > 1) {
-        std::cout << "saved in cache: " << fname << " " << w << "x" << h << std::endl;
+        std::cout << "saved in cache: " << fname << " " << w << "x" << h
+                  << std::endl;
     }
-    
+
     return true;
 }
 
-}} // namespace art::thumbimgcache
+} // namespace thumbimgcache
+} // namespace art

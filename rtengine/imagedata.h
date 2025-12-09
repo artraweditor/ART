@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,19 +20,19 @@
 #ifndef __IMAGEDATA_H__
 #define __IMAGEDATA_H__
 
-#include <cstdio>
-#include <memory>
-#include "rawimage.h"
-#include <string>
-#include <glibmm.h>
-#include "procparams.h"
-#include "rtengine.h"
-#include "metadata.h"
 #include "gainmap.h"
+#include "metadata.h"
+#include "procparams.h"
+#include "rawimage.h"
+#include "rtengine.h"
+#include <cstdio>
+#include <glibmm.h>
+#include <memory>
+#include <string>
 
 namespace rtengine {
 
-class FramesData : public FramesMetaData {
+class FramesData: public FramesMetaData {
 private:
     bool ok_;
     Glib::ustring fname_;
@@ -42,7 +42,7 @@ private:
     int iso_speed;
     double aperture;
     double focal_len, focal_len35mm;
-    float focus_dist;  // dist: 0=unknown, 10000=infinity
+    float focus_dist; // dist: 0=unknown, 10000=infinity
     double shutter;
     double expcomp;
     std::string make, model, serial;
@@ -60,9 +60,9 @@ private:
     bool dng_;
     bool raw_;
     std::string internal_make_model_;
-    
+
 public:
-    FramesData(const Glib::ustring& fname, bool only_make_model=false);
+    FramesData(const Glib::ustring &fname, bool only_make_model = false);
 
     void setDCRawFrameCount(unsigned int frameCount);
     unsigned int getFrameCount() const override;
@@ -94,10 +94,7 @@ public:
 
     void fillBasicTags(Exiv2::ExifData &exif) const;
 
-    void setGainMaps(const std::vector<GainMap> &m)
-    {
-        gain_maps_ = m;
-    }
+    void setGainMaps(const std::vector<GainMap> &m) { gain_maps_ = m; }
 
     void setDimensions(int w, int h);
     void setDNG(bool yes) { dng_ = yes; }
@@ -111,7 +108,6 @@ public:
     static int xmp_label2color(const std::string &label);
     static std::string xmp_color2label(int color);
 };
-
 
 } // namespace rtengine
 #endif

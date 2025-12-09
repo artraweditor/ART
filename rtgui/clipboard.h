@@ -1,5 +1,5 @@
 /*  -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,12 +19,12 @@
  */
 #pragma once
 
-#include <vector>
-#include "../rtengine/rtengine.h"
 #include "../rtengine/procparams.h"
-#include "paramsedited.h"
-#include "myflatcurve.h"
+#include "../rtengine/rtengine.h"
 #include "mydiagonalcurve.h"
+#include "myflatcurve.h"
+#include "paramsedited.h"
+#include <vector>
 
 class Clipboard {
 private:
@@ -43,21 +43,15 @@ private:
     rtengine::procparams::Mask mask;
 
 public:
-    void setIPTC(const rtengine::procparams::IPTCPairs& iptcc)
+    void setIPTC(const rtengine::procparams::IPTCPairs &iptcc)
     {
         iptc = iptcc;
         _hasIPTC = true;
     }
-    
-    const rtengine::procparams::IPTCPairs &getIPTC()
-    {
-        return iptc;
-    }
-    
-    bool hasIPTC()
-    {
-        return _hasIPTC;
-    }
+
+    const rtengine::procparams::IPTCPairs &getIPTC() { return iptc; }
+
+    bool hasIPTC() { return _hasIPTC; }
 
     void setProcParams(const rtengine::procparams::ProcParams &pp)
     {
@@ -67,7 +61,7 @@ public:
         *pparams = pp;
         has_pparams_ = true;
     }
-    
+
     const rtengine::procparams::ProcParams &getProcParams()
     {
         if (!pparams) {
@@ -82,20 +76,11 @@ public:
         has_pedited_ = true;
     }
 
-    const ParamsEdited &getParamsEdited()
-    {
-        return pedited;
-    }
-    
-    bool hasProcParams()
-    {
-        return has_pparams_;
-    }
-    
-    bool hasPEdited()
-    {
-        return has_pedited_;
-    }
+    const ParamsEdited &getParamsEdited() { return pedited; }
+
+    bool hasProcParams() { return has_pparams_; }
+
+    bool hasPEdited() { return has_pedited_; }
 
     void setDiagonalCurveData(std::vector<double> &p, DiagonalCurveType type)
     {
@@ -103,12 +88,9 @@ public:
         hasDiagonalCurveDataType = type;
         return;
     }
-    
-    const std::vector<double> &getDiagonalCurveData()
-    {
-        return diagonalCurve;
-    }
-    
+
+    const std::vector<double> &getDiagonalCurveData() { return diagonalCurve; }
+
     DiagonalCurveType hasDiagonalCurveData()
     {
         return hasDiagonalCurveDataType;
@@ -120,36 +102,18 @@ public:
         hasFlatCurveDataType = type;
         return;
     }
-    
-    const std::vector<double> &getFlatCurveData()
-    {
-        return flatCurve;
-    }
-    
-    FlatCurveType hasFlatCurveData()
-    {
-        return hasFlatCurveDataType;
-    }
 
-    bool hasAreaMask()
-    {
-        return !areaMask.isTrivial();
-    }
+    const std::vector<double> &getFlatCurveData() { return flatCurve; }
 
-    bool hasDrawnMask()
-    {
-        return !drawnMask.isTrivial();
-    }
-    
-    const rtengine::procparams::AreaMask &getAreaMask()
-    {
-        return areaMask;
-    }
+    FlatCurveType hasFlatCurveData() { return hasFlatCurveDataType; }
 
-    const rtengine::procparams::DrawnMask &getDrawnMask()
-    {
-        return drawnMask;
-    }
+    bool hasAreaMask() { return !areaMask.isTrivial(); }
+
+    bool hasDrawnMask() { return !drawnMask.isTrivial(); }
+
+    const rtengine::procparams::AreaMask &getAreaMask() { return areaMask; }
+
+    const rtengine::procparams::DrawnMask &getDrawnMask() { return drawnMask; }
 
     void setAreaMask(const rtengine::procparams::AreaMask &am)
     {
@@ -161,24 +125,14 @@ public:
         drawnMask = dm;
     }
 
-    bool hasMask() const
-    {
-        return mask != rtengine::procparams::Mask();
-    }
+    bool hasMask() const { return mask != rtengine::procparams::Mask(); }
 
-    const rtengine::procparams::Mask &getMask()
-    {
-        return mask;
-    }
+    const rtengine::procparams::Mask &getMask() { return mask; }
 
-    void setMask(const rtengine::procparams::Mask &m)
-    {
-        mask = m;
-    }
-    
+    void setMask(const rtengine::procparams::Mask &m) { mask = m; }
+
     Clipboard();
     ~Clipboard();
 };
 
 extern Clipboard clipboard;
-

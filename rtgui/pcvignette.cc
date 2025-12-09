@@ -7,38 +7,45 @@
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-PCVignette::PCVignette():
-    FoldableToolPanel(this, "pcvignette", M("TP_PCVIGNETTE_LABEL"), false, true, true),
-    EditSubscriber(ET_OBJECTS),
-    lastObject(-1)    
+PCVignette::PCVignette()
+    : FoldableToolPanel(this, "pcvignette", M("TP_PCVIGNETTE_LABEL"), false,
+                        true, true),
+      EditSubscriber(ET_OBJECTS), lastObject(-1)
 {
     auto m = ProcEventMapper::getInstance();
-    EvCenter = m->newEvent(rtengine::LUMINANCECURVE, "HISTORY_MSG_PCVIGNETTE_CENTER");
+    EvCenter =
+        m->newEvent(rtengine::LUMINANCECURVE, "HISTORY_MSG_PCVIGNETTE_CENTER");
     EvToolReset.set_action(rtengine::LUMINANCECURVE);
 
     Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
-    edit = Gtk::manage (new Gtk::ToggleButton());
+    edit = Gtk::manage(new Gtk::ToggleButton());
     edit->get_style_context()->add_class("independent");
-    edit->add (*Gtk::manage (new RTImage ("crosshair-adjust.svg")));
+    edit->add(*Gtk::manage(new RTImage("crosshair-adjust.svg")));
     edit->set_tooltip_text(M("EDIT_OBJECT_TOOLTIP"));
-    editConn = edit->signal_toggled().connect( sigc::mem_fun(*this, &PCVignette::editToggled) );
+    editConn = edit->signal_toggled().connect(
+        sigc::mem_fun(*this, &PCVignette::editToggled));
     hb->pack_start(*edit, Gtk::PACK_SHRINK, 0);
 
-    strength = Gtk::manage (new Adjuster (M("TP_PCVIGNETTE_STRENGTH"), -6, 6, 0.01, 0));
-    strength->set_tooltip_text (M("TP_PCVIGNETTE_STRENGTH_TOOLTIP"));
-    strength->setAdjusterListener (this);
+    strength =
+        Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_STRENGTH"), -6, 6, 0.01, 0));
+    strength->set_tooltip_text(M("TP_PCVIGNETTE_STRENGTH_TOOLTIP"));
+    strength->setAdjusterListener(this);
 
-    feather = Gtk::manage (new Adjuster (M("TP_PCVIGNETTE_FEATHER"), 0, 100, 1, 50));
-    feather->set_tooltip_text (M("TP_PCVIGNETTE_FEATHER_TOOLTIP"));
-    feather->setAdjusterListener (this);
+    feather =
+        Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_FEATHER"), 0, 100, 1, 50));
+    feather->set_tooltip_text(M("TP_PCVIGNETTE_FEATHER_TOOLTIP"));
+    feather->setAdjusterListener(this);
 
-    roundness = Gtk::manage (new Adjuster (M("TP_PCVIGNETTE_ROUNDNESS"), 0, 100, 1, 50));
-    roundness->set_tooltip_text (M("TP_PCVIGNETTE_ROUNDNESS_TOOLTIP"));
-    roundness->setAdjusterListener (this);
+    roundness =
+        Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_ROUNDNESS"), 0, 100, 1, 50));
+    roundness->set_tooltip_text(M("TP_PCVIGNETTE_ROUNDNESS_TOOLTIP"));
+    roundness->setAdjusterListener(this);
 
-    centerX = Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_CENTER_X"), -100, 100, 1, 0));
+    centerX =
+        Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_CENTER_X"), -100, 100, 1, 0));
     centerX->setAdjusterListener(this);
-    centerY = Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_CENTER_Y"), -100, 100, 1, 0));
+    centerY =
+        Gtk::manage(new Adjuster(M("TP_PCVIGNETTE_CENTER_Y"), -100, 100, 1, 0));
     centerY->setAdjusterListener(this);
 
     pack_start(*hb, Gtk::PACK_SHRINK, 0);
@@ -69,20 +76,20 @@ PCVignette::PCVignette():
     show_all();
 }
 
-
 PCVignette::~PCVignette()
 {
-    for (std::vector<Geometry*>::const_iterator i = visibleGeometry.begin(); i != visibleGeometry.end(); ++i) {
+    for (std::vector<Geometry *>::const_iterator i = visibleGeometry.begin();
+         i != visibleGeometry.end(); ++i) {
         delete *i;
     }
 
-    for (std::vector<Geometry*>::const_iterator i = mouseOverGeometry.begin(); i != mouseOverGeometry.end(); ++i) {
+    for (std::vector<Geometry *>::const_iterator i = mouseOverGeometry.begin();
+         i != mouseOverGeometry.end(); ++i) {
         delete *i;
     }
 }
 
-
-void PCVignette::read (const ProcParams* pp)
+void PCVignette::read(const ProcParams *pp)
 {
     disableListener();
     crop_ = pp->crop;
@@ -95,67 +102,70 @@ void PCVignette::read (const ProcParams* pp)
     centerY->setValue(pp->pcvignette.centerY);
 
     updateGeometry(pp->pcvignette.centerX, pp->pcvignette.centerY);
-    
-    enableListener ();
+
+    enableListener();
 }
 
-void PCVignette::write(ProcParams* pp)
+void PCVignette::write(ProcParams *pp)
 {
-    pp->pcvignette.strength = strength->getValue ();
-    pp->pcvignette.feather = feather->getIntValue ();
-    pp->pcvignette.roundness = roundness->getIntValue ();
+    pp->pcvignette.strength = strength->getValue();
+    pp->pcvignette.feather = feather->getIntValue();
+    pp->pcvignette.roundness = roundness->getIntValue();
     pp->pcvignette.enabled = getEnabled();
     pp->pcvignette.centerX = centerX->getIntValue();
     pp->pcvignette.centerY = centerY->getIntValue();
 }
 
-
-void PCVignette::setDefaults(const ProcParams* defParams)
+void PCVignette::setDefaults(const ProcParams *defParams)
 {
-    strength->setDefault (defParams->pcvignette.strength);
-    feather->setDefault (defParams->pcvignette.feather);
-    roundness->setDefault (defParams->pcvignette.roundness);
+    strength->setDefault(defParams->pcvignette.strength);
+    feather->setDefault(defParams->pcvignette.feather);
+    roundness->setDefault(defParams->pcvignette.roundness);
     centerX->setDefault(defParams->pcvignette.centerX);
     centerY->setDefault(defParams->pcvignette.centerY);
     initial_params = defParams->pcvignette;
 }
 
-void PCVignette::adjusterChanged(Adjuster* a, double newval)
+void PCVignette::adjusterChanged(Adjuster *a, double newval)
 {
     updateGeometry(int(centerX->getValue()), int(centerY->getValue()));
 
     if (listener && getEnabled()) {
         if (a == strength) {
-            listener->panelChanged (EvPCVignetteStrength, strength->getTextValue());
+            listener->panelChanged(EvPCVignetteStrength,
+                                   strength->getTextValue());
         } else if (a == feather) {
-            listener->panelChanged (EvPCVignetteFeather, feather->getTextValue());
+            listener->panelChanged(EvPCVignetteFeather,
+                                   feather->getTextValue());
         } else if (a == roundness) {
-            listener->panelChanged (EvPCVignetteRoundness, roundness->getTextValue());
+            listener->panelChanged(EvPCVignetteRoundness,
+                                   roundness->getTextValue());
         } else if (a == centerX || a == centerY) {
-            listener->panelChanged(EvCenter, Glib::ustring::compose("X=%1 Y=%2", centerX->getTextValue(), centerY->getTextValue()));
+            listener->panelChanged(
+                EvCenter,
+                Glib::ustring::compose("X=%1 Y=%2", centerX->getTextValue(),
+                                       centerY->getTextValue()));
         }
     }
 }
 
-void PCVignette::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void PCVignette::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void PCVignette::enabledChanged ()
+void PCVignette::enabledChanged()
 {
 
     if (listener) {
         if (get_inconsistent()) {
-            listener->panelChanged (EvPCVignetteEnabled, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvPCVignetteEnabled, M("GENERAL_UNCHANGED"));
         } else if (getEnabled()) {
-            listener->panelChanged (EvPCVignetteEnabled, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvPCVignetteEnabled, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvPCVignetteEnabled, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvPCVignetteEnabled, M("GENERAL_DISABLED"));
         }
     }
 }
 
-void PCVignette::trimValues (rtengine::procparams::ProcParams* pp)
+void PCVignette::trimValues(rtengine::procparams::ProcParams *pp)
 {
     strength->trimValue(pp->pcvignette.strength);
     feather->trimValue(pp->pcvignette.feather);
@@ -163,7 +173,6 @@ void PCVignette::trimValues (rtengine::procparams::ProcParams* pp)
     centerX->trimValue(pp->pcvignette.centerX);
     centerY->trimValue(pp->pcvignette.centerY);
 }
-
 
 void PCVignette::toolReset(bool to_initial)
 {
@@ -175,10 +184,9 @@ void PCVignette::toolReset(bool to_initial)
     read(&pp);
 }
 
-
 void PCVignette::updateGeometry(const int centerX, const int centerY)
 {
-    EditDataProvider* dataProvider = getEditProvider();
+    EditDataProvider *dataProvider = getEditProvider();
 
     if (!dataProvider) {
         return;
@@ -192,11 +200,11 @@ void PCVignette::updateGeometry(const int centerX, const int centerY)
         return;
     }
 
-    rtengine::Coord origin (im_x + imW / 2 + centerX * imW / 200, im_y + imH / 2 + centerY * imH / 200);
+    rtengine::Coord origin(im_x + imW / 2 + centerX * imW / 200,
+                           im_y + imH / 2 + centerY * imH / 200);
 
-    const auto updateCircle = [&](Geometry* geometry)
-    {
-        const auto circle = static_cast<Circle*>(geometry);
+    const auto updateCircle = [&](Geometry *geometry) {
+        const auto circle = static_cast<Circle *>(geometry);
         circle->center = origin;
     };
 
@@ -204,7 +212,6 @@ void PCVignette::updateGeometry(const int centerX, const int centerY)
     updateCircle(visibleGeometry[0]);
     updateCircle(mouseOverGeometry[0]);
 }
-
 
 void PCVignette::setEditProvider(EditDataProvider *provider)
 {
@@ -237,11 +244,13 @@ bool PCVignette::mouseOver(int modifierKey)
 
     if (editProvider && editProvider->object != lastObject) {
         if (lastObject > -1) {
-            EditSubscriber::visibleGeometry.at(lastObject)->state = Geometry::NORMAL;
+            EditSubscriber::visibleGeometry.at(lastObject)->state =
+                Geometry::NORMAL;
         }
 
         if (editProvider->object > -1) {
-            EditSubscriber::visibleGeometry.at(editProvider->object)->state = Geometry::PRELIGHT;
+            EditSubscriber::visibleGeometry.at(editProvider->object)->state =
+                Geometry::PRELIGHT;
         }
 
         lastObject = editProvider->object;
@@ -267,13 +276,16 @@ bool PCVignette::button1Pressed(int modifierKey)
         // provider->getImageSize(imW, imH);
         double halfSizeW = imW / 2.;
         double halfSizeH = imH / 2.;
-        draggedCenter.set(int(halfSizeW + halfSizeW * (centerX->getValue() / 100.)), int(halfSizeH + halfSizeH * (centerY->getValue() / 100.)));
+        draggedCenter.set(
+            int(halfSizeW + halfSizeW * (centerX->getValue() / 100.)),
+            int(halfSizeH + halfSizeH * (centerY->getValue() / 100.)));
 
         EditSubscriber::action = ES_ACTION_DRAGGING;
         return false;
     } else { // should theoretically always be true
         // this will let this class ignore further drag events
-        EditSubscriber::visibleGeometry.at(lastObject)->state = Geometry::NORMAL;
+        EditSubscriber::visibleGeometry.at(lastObject)->state =
+            Geometry::NORMAL;
         lastObject = -1;
         return true;
     }
@@ -281,13 +293,11 @@ bool PCVignette::button1Pressed(int modifierKey)
     return false;
 }
 
-
 bool PCVignette::button1Released()
 {
     EditSubscriber::action = ES_ACTION_NONE;
     return true;
 }
-
 
 bool PCVignette::drag1(int modifierKey)
 {
@@ -306,16 +316,22 @@ bool PCVignette::drag1(int modifierKey)
         draggedCenter += provider->deltaPrevImage;
         currPos = draggedCenter;
         currPos.clip(imW, imH);
-        int newCenterX = int((double(currPos.x) - halfSizeW) / halfSizeW * 100.);
-        int newCenterY = int((double(currPos.y) - halfSizeH) / halfSizeH * 100.);
+        int newCenterX =
+            int((double(currPos.x) - halfSizeW) / halfSizeW * 100.);
+        int newCenterY =
+            int((double(currPos.y) - halfSizeH) / halfSizeH * 100.);
 
-        if (newCenterX != centerX->getIntValue() || newCenterY != centerY->getIntValue()) {
+        if (newCenterX != centerX->getIntValue() ||
+            newCenterY != centerY->getIntValue()) {
             centerX->setValue(newCenterX);
             centerY->setValue(newCenterY);
             updateGeometry(newCenterX, newCenterY);
 
             if (listener) {
-                listener->panelChanged(EvCenter, Glib::ustring::compose("X=%1\nY=%2", centerX->getTextValue(), centerY->getTextValue()));
+                listener->panelChanged(
+                    EvCenter, Glib::ustring::compose("X=%1\nY=%2",
+                                                     centerX->getTextValue(),
+                                                     centerY->getTextValue()));
             }
 
             return true;
@@ -325,7 +341,7 @@ bool PCVignette::drag1(int modifierKey)
     return false;
 }
 
-void PCVignette::switchOffEditMode ()
+void PCVignette::switchOffEditMode()
 {
     if (edit->get_active()) {
         // switching off the toggle button
@@ -337,20 +353,17 @@ void PCVignette::switchOffEditMode ()
         }
     }
 
-    EditSubscriber::switchOffEditMode();  // disconnect
+    EditSubscriber::switchOffEditMode(); // disconnect
 }
 
-
 void PCVignette::procParamsChanged(
-    const rtengine::procparams::ProcParams* params,
-    const rtengine::ProcEvent& ev,
-    const Glib::ustring& descr,
-    const ParamsEdited* paramsEdited)
+    const rtengine::procparams::ProcParams *params,
+    const rtengine::ProcEvent &ev, const Glib::ustring &descr,
+    const ParamsEdited *paramsEdited)
 {
     crop_ = params->crop;
     updateGeometry(params->pcvignette.centerX, params->pcvignette.centerY);
 }
-
 
 void PCVignette::getDimensions(int &x, int &y, int &w, int &h)
 {
@@ -359,7 +372,7 @@ void PCVignette::getDimensions(int &x, int &y, int &w, int &h)
     if (!p) {
         return;
     }
-    
+
     if (crop_.enabled) {
         w = crop_.w;
         h = crop_.h;

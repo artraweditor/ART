@@ -19,21 +19,20 @@
 
 #include "pipettebuffer.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-PipetteBuffer::PipetteBuffer(::EditDataProvider *dataProvider) :
-    dataProvider(dataProvider), imgFloatBuffer(nullptr), LabBuffer(nullptr), singlePlaneBuffer(), ready(false) {}
-
-PipetteBuffer::~PipetteBuffer()
+PipetteBuffer::PipetteBuffer(::EditDataProvider *dataProvider)
+    : dataProvider(dataProvider), imgFloatBuffer(nullptr), LabBuffer(nullptr),
+      singlePlaneBuffer(), ready(false)
 {
-    flush();
 }
+
+PipetteBuffer::~PipetteBuffer() { flush(); }
 
 void PipetteBuffer::createBuffer(int width, int height)
 {
-    //printf("Appel de createBuffer %d x %d\n", width, height);
-    resize (width, height);
+    // printf("Appel de createBuffer %d x %d\n", width, height);
+    resize(width, height);
 }
 
 void PipetteBuffer::flush()
@@ -63,11 +62,13 @@ EditUniqueID PipetteBuffer::getEditID()
 
 void PipetteBuffer::resize(int newWidth, int newHeight)
 {
-    resize(newWidth, newHeight, dataProvider ? dataProvider->getCurrSubscriber() : nullptr);
+    resize(newWidth, newHeight,
+           dataProvider ? dataProvider->getCurrSubscriber() : nullptr);
 }
 
 // Resize buffers if they already exist
-void PipetteBuffer::resize(int newWidth, int newHeight, EditSubscriber* newSubscriber)
+void PipetteBuffer::resize(int newWidth, int newHeight,
+                           EditSubscriber *newSubscriber)
 {
     if (newSubscriber) {
         if (newSubscriber->getEditingType() == ET_PIPETTE) {
@@ -83,7 +84,8 @@ void PipetteBuffer::resize(int newWidth, int newHeight, EditSubscriber* newSubsc
             }
 
             if (newSubscriber->getPipetteBufferType() == BT_LABIMAGE) {
-                if (LabBuffer && (LabBuffer->W != newWidth && LabBuffer->H != newHeight)) {
+                if (LabBuffer &&
+                    (LabBuffer->W != newWidth && LabBuffer->H != newHeight)) {
                     delete LabBuffer;
                     LabBuffer = nullptr;
                 }
@@ -112,7 +114,7 @@ void PipetteBuffer::resize(int newWidth, int newHeight, EditSubscriber* newSubsc
 
 bool PipetteBuffer::bufferCreated()
 {
-    EditSubscriber* subscriber;
+    EditSubscriber *subscriber;
 
     if (dataProvider && (subscriber = dataProvider->getCurrSubscriber())) {
         if (subscriber->getEditingType() == ET_PIPETTE) {
@@ -132,13 +134,14 @@ bool PipetteBuffer::bufferCreated()
     return false;
 }
 
-void PipetteBuffer::getPipetteData(float* v, int x, int y, int squareSize)
+void PipetteBuffer::getPipetteData(float *v, int x, int y, int squareSize)
 {
     if (ready && dataProvider && dataProvider->getCurrSubscriber()) {
         switch (dataProvider->getCurrSubscriber()->getPipetteBufferType()) {
         case (BT_IMAGEFLOAT):
             if (imgFloatBuffer) {
-                imgFloatBuffer->getPipetteData(v[0], v[1], v[2], x, y, squareSize, 0);
+                imgFloatBuffer->getPipetteData(v[0], v[1], v[2], x, y,
+                                               squareSize, 0);
                 return;
             }
 
@@ -164,4 +167,4 @@ void PipetteBuffer::getPipetteData(float* v, int x, int y, int squareSize)
     v[0] = v[1] = v[2] = -1.f;
 }
 
-}
+} // namespace rtengine

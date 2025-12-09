@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -18,14 +18,15 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 //
-// A class representing a 16 bit rgb image with separate planes and 16 byte aligned data
+// A class representing a 16 bit rgb image with separate planes and 16 byte
+// aligned data
 //
 #ifndef _IMAGEFLOAT_
 #define _IMAGEFLOAT_
 
 #include "imageio.h"
-#include "rtengine.h"
 #include "labimage.h"
+#include "rtengine.h"
 
 namespace rtengine {
 using namespace procparams;
@@ -36,84 +37,74 @@ class Image16;
 /*
  * Image type used by most tools; expected range: [0.0 ; 65535.0]
  */
-class Imagefloat : public IImagefloat, public ImageIO {
+class Imagefloat: public IImagefloat, public ImageIO {
 public:
-
     Imagefloat();
-    Imagefloat(int width, int height, const Imagefloat *state_from=nullptr);
+    Imagefloat(int width, int height, const Imagefloat *state_from = nullptr);
     ~Imagefloat() override;
 
-    Imagefloat* copy() const;
+    Imagefloat *copy() const;
     void copyTo(Imagefloat *dst) const;
 
-    Image8* to8() const;
-    Image16* to16() const;
+    Image8 *to8() const;
+    Image16 *to16() const;
 
-    void getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, PreviewProps pp) const override;
+    void getStdImage(const ColorTemp &ctemp, int tran, Imagefloat *image,
+                     PreviewProps pp) const override;
 
-    const char* getType () const override
-    {
-        return sImagefloat;
-    }
+    const char *getType() const override { return sImagefloat; }
 
-    int getBPS () const override
-    {
-        return 8 * sizeof(float);
-    }
+    int getBPS() const override { return 8 * sizeof(float); }
 
-    void getScanline (int row, unsigned char* buffer, int bps, bool isFloat = false) const override;
-    void setScanline (int row, unsigned char* buffer, int bps, unsigned int numSamples) override;
+    void getScanline(int row, unsigned char *buffer, int bps,
+                     bool isFloat = false) const override;
+    void setScanline(int row, unsigned char *buffer, int bps,
+                     unsigned int numSamples) override;
 
     // functions inherited from IImagefloat:
-    MyMutex& getMutex () override
+    MyMutex &getMutex() override { return mutex(); }
+    cmsHPROFILE getProfile() const override { return getEmbeddedProfile(); }
+    int getBitsPerPixel() const override { return 8 * sizeof(float); }
+    int saveToFile(const Glib::ustring &fname) const override
     {
-        return mutex ();
+        return save(fname);
     }
-    cmsHPROFILE getProfile () const override
+    int saveAsPNG(const Glib::ustring &fname, int bps = -1,
+                  bool uncompressed = false) const override
     {
-        return getEmbeddedProfile ();
+        return savePNG(fname, bps, uncompressed);
     }
-    int getBitsPerPixel () const override
+    int saveAsJPEG(const Glib::ustring &fname, int quality = 100,
+                   int subSamp = 3) const override
     {
-        return 8 * sizeof(float);
+        return saveJPEG(fname, quality, subSamp);
     }
-    int saveToFile (const Glib::ustring &fname) const override
+    int saveAsTIFF(const Glib::ustring &fname, int bps = -1,
+                   bool isFloat = false,
+                   bool uncompressed = false) const override
     {
-        return save (fname);
+        return saveTIFF(fname, bps, isFloat, uncompressed);
     }
-    int saveAsPNG  (const Glib::ustring &fname, int bps = -1, bool uncompressed=false) const override
+    void setSaveProgressListener(ProgressListener *pl) override
     {
-        return savePNG (fname, bps, uncompressed);
+        setProgressListener(pl);
     }
-    int saveAsJPEG (const Glib::ustring &fname, int quality = 100, int subSamp = 3) const override
-    {
-        return saveJPEG (fname, quality, subSamp);
-    }
-    int saveAsTIFF (const Glib::ustring &fname, int bps = -1, bool isFloat = false, bool uncompressed = false) const override
-    {
-        return saveTIFF (fname, bps, isFloat, uncompressed);
-    }
-    void setSaveProgressListener (ProgressListener* pl) override
-    {
-        setProgressListener (pl);
-    }
-    void free () override
-    {
-        delete this;
-    }
+    void free() override { delete this; }
 
     void multiply(float factor, bool multithread);
-    void normalizeFloatTo1(bool multithread=true);
-    void normalizeFloatTo65535(bool multithread=true);
-    void calcCroppedHistogram(const ProcParams &params, float scale, LUTu & hist);
+    void normalizeFloatTo1(bool multithread = true);
+    void normalizeFloatTo65535(bool multithread = true);
+    void calcCroppedHistogram(const ProcParams &params, float scale,
+                              LUTu &hist);
     void ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread);
-    void ExecCMSTransform(cmsHTRANSFORM hTransform, const Imagefloat *img, bool multithread);
+    void ExecCMSTransform(cmsHTRANSFORM hTransform, const Imagefloat *img,
+                          bool multithread);
 
     enum class Mode {
         RGB = 0, // r = red, g = green, b = blue
-        XYZ, // r = X, g = Y, b = Z
-        YUV, // g = Y, b = U, r = V; NOTE: U and V are not normalized wrt Y
-        LAB  // g = L, r = A, b = B
+        XYZ,     // r = X, g = Y, b = Z
+        YUV,     // g = Y, b = U, r = V; NOTE: U and V are not normalized wrt Y
+        LAB      // g = L, r = A, b = B
     };
 
     Mode mode() const { return mode_; }
@@ -145,7 +136,7 @@ private:
     void xyz_to_lab(int y, int x, float &L, float &a, float &b);
     void yuv_to_lab(int y, int x, float &L, float &a, float &b);
     void get_ws();
-    
+
     Glib::ustring color_space_;
     Mode mode_;
     float ws_[3][3];

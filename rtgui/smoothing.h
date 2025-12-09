@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,19 +19,22 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "maskspanel.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class Smoothing: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public PParamsChangeListener {
+class Smoothing: public ToolParamBlock,
+                 public AdjusterListener,
+                 public FoldableToolPanel,
+                 public PParamsChangeListener {
 public:
-
     Smoothing();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
     void adjusterChanged(Adjuster *a, double newval) override;
     void enabledChanged() override;
@@ -40,11 +43,10 @@ public:
     void setEditProvider(EditDataProvider *provider) override;
 
     PParamsChangeListener *getPParamsChangeListener() override { return this; }
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr) override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
     void clearParamChanges() override {}
 
     void updateGeometry(int fullWidth, int fullHeight);
@@ -53,14 +55,17 @@ public:
 
     void toolReset(bool to_initial) override;
 
-    void setExternalMaskPath(const Glib::ustring &dir) { masks_->setExternalMaskPath(dir); }
-    
+    void setExternalMaskPath(const Glib::ustring &dir)
+    {
+        masks_->setExternalMaskPath(dir);
+    }
+
 private:
     void regionGet(int idx);
     void regionShow(int idx);
     void channelChanged();
     void modeChanged();
-    
+
     rtengine::ProcEvent EvEnabled;
     rtengine::ProcEvent EvChannel;
     rtengine::ProcEvent EvRadius;
@@ -136,4 +141,3 @@ private:
 
     rtengine::procparams::SmoothingParams initial_params;
 };
-

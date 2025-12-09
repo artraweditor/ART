@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,4 +20,6 @@
 
 #pragma once
 
-void addFocusMask(const unsigned char *src, unsigned char *dst, int W, int H, int src_stride, int dst_stride, int src_offset, int dst_offset);
+void addFocusMask(const unsigned char *src, unsigned char *dst, int W, int H,
+                  int src_stride, int dst_stride, int src_offset,
+                  int dst_offset);

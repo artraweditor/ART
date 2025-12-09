@@ -26,8 +26,8 @@
 #pragma once
 
 #include "iccstore.h"
-#include "noncopyable.h"
 #include "image8.h"
+#include "noncopyable.h"
 
 namespace rtengine {
 
@@ -35,11 +35,12 @@ class GamutWarning: public NonCopyable {
 public:
     GamutWarning(cmsHPROFILE gamutprof, RenderingIntent intent, bool bpc);
     ~GamutWarning();
-    void markLine(Image8 *image, int y, float *srcbuf, float *buf1, float *buf2);
-    
+    void markLine(Image8 *image, int y, float *srcbuf, float *buf1,
+                  float *buf2);
+
 private:
     void mark(Image8 *image, int i, int j);
-    
+
     cmsHTRANSFORM lab2ref;
     cmsHTRANSFORM lab2softproof;
     cmsHTRANSFORM softproof2ref;

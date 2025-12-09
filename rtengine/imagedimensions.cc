@@ -20,41 +20,23 @@
 #include "imagedimensions.h"
 #include "rtengine.h"
 
-PreviewProps::PreviewProps(int _x, int _y, int _width, int _height, int _skip) :
-    x(_x),
-    y(_y),
-    width(_width),
-    height(_height),
-    skip(_skip)
+PreviewProps::PreviewProps(int _x, int _y, int _width, int _height, int _skip)
+    : x(_x), y(_y), width(_width), height(_height), skip(_skip)
 {
 }
 
-int PreviewProps::getX() const
-{
-    return x;
-}
+int PreviewProps::getX() const { return x; }
 
-int PreviewProps::getY() const
-{
-    return y;
-}
+int PreviewProps::getY() const { return y; }
 
-int PreviewProps::getWidth() const
-{
-    return width;
-}
+int PreviewProps::getWidth() const { return width; }
 
-int PreviewProps::getHeight() const
-{
-    return height;
-}
+int PreviewProps::getHeight() const { return height; }
 
-int PreviewProps::getSkip() const
-{
-    return skip;
-}
+int PreviewProps::getSkip() const { return skip; }
 
-void PreviewProps::set (int x, int y, int w, int h, int skip) {
+void PreviewProps::set(int x, int y, int w, int h, int skip)
+{
     this->x = x;
     this->y = y;
     this->width = w;
@@ -62,13 +44,10 @@ void PreviewProps::set (int x, int y, int w, int h, int skip) {
     this->skip = skip;
 }
 
-ImageDimensions::ImageDimensions() :
-    width(-1),
-    height(-1)
-{
-}
+ImageDimensions::ImageDimensions(): width(-1), height(-1) {}
 
-void ImageDimensions::transform(const PreviewProps& pp, int tran, int& sx1, int& sy1, int& sx2, int& sy2) const
+void ImageDimensions::transform(const PreviewProps &pp, int tran, int &sx1,
+                                int &sy1, int &sx2, int &sy2) const
 {
     int sw = width;
     int sh = height;
@@ -118,4 +97,3 @@ void ImageDimensions::transform(const PreviewProps& pp, int tran, int& sx1, int&
         sy1 = 0;
     }
 }
-

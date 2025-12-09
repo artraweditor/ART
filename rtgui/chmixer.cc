@@ -17,30 +17,35 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "chmixer.h"
-#include "rtimage.h"
 #include "eventmapper.h"
+#include "rtimage.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-ChMixer::ChMixer (): FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), false, true, true)
+ChMixer::ChMixer()
+    : FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), false, true,
+                        true)
 {
     auto m = ProcEventMapper::getInstance();
     EvMode = m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_MODE");
-    EvRedPrimary = m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_RED_PRIMARY");
-    EvGreenPrimary = m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_GREEN_PRIMARY");
-    EvBluePrimary = m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_BLUE_PRIMARY");
+    EvRedPrimary =
+        m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_RED_PRIMARY");
+    EvGreenPrimary =
+        m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_GREEN_PRIMARY");
+    EvBluePrimary =
+        m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_CHMIXER_BLUE_PRIMARY");
     EvToolReset.set_action(rtengine::RGBCURVE);
 
-    imgIcon[0] = Gtk::manage (new RTImage ("circle-red-small.svg"));
-    imgIcon[1] = Gtk::manage (new RTImage ("circle-green-red-small.svg"));
-    imgIcon[2] = Gtk::manage (new RTImage ("circle-blue-red-small.svg"));
-    imgIcon[3] = Gtk::manage (new RTImage ("circle-red-green-small.svg"));
-    imgIcon[4] = Gtk::manage (new RTImage ("circle-green-small.svg"));
-    imgIcon[5] = Gtk::manage (new RTImage ("circle-blue-green-small.svg"));
-    imgIcon[6] = Gtk::manage (new RTImage ("circle-red-blue-small.svg"));
-    imgIcon[7] = Gtk::manage (new RTImage ("circle-green-blue-small.svg"));
-    imgIcon[8] = Gtk::manage (new RTImage ("circle-blue-small.svg"));
+    imgIcon[0] = Gtk::manage(new RTImage("circle-red-small.svg"));
+    imgIcon[1] = Gtk::manage(new RTImage("circle-green-red-small.svg"));
+    imgIcon[2] = Gtk::manage(new RTImage("circle-blue-red-small.svg"));
+    imgIcon[3] = Gtk::manage(new RTImage("circle-red-green-small.svg"));
+    imgIcon[4] = Gtk::manage(new RTImage("circle-green-small.svg"));
+    imgIcon[5] = Gtk::manage(new RTImage("circle-blue-green-small.svg"));
+    imgIcon[6] = Gtk::manage(new RTImage("circle-red-blue-small.svg"));
+    imgIcon[7] = Gtk::manage(new RTImage("circle-green-blue-small.svg"));
+    imgIcon[8] = Gtk::manage(new RTImage("circle-blue-small.svg"));
 
     Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
     mode = Gtk::manage(new MyComboBoxText());
@@ -48,21 +53,22 @@ ChMixer::ChMixer (): FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), f
     mode->append(M("TP_CHMIXER_MODE_PRIMARIES_CHROMA"));
     mode->set_active(0);
     mode->signal_changed().connect(sigc::mem_fun(*this, &ChMixer::modeChanged));
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_CHMIXER_MODE") + ": ")), Gtk::PACK_SHRINK);
+    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_CHMIXER_MODE") + ": ")),
+                   Gtk::PACK_SHRINK);
     hb->pack_start(*mode);
     pack_start(*hb);
 
     matrix_box = Gtk::manage(new Gtk::VBox());
 
-    Gtk::Label* rlabel = Gtk::manage (new Gtk::Label(M("TP_CHMIXER_RED")));
+    Gtk::Label *rlabel = Gtk::manage(new Gtk::Label(M("TP_CHMIXER_RED")));
     rlabel->set_alignment(Gtk::ALIGN_START);
 
     constexpr double RANGE = 500.0;
-    red[0] = Gtk::manage (new Adjuster ("",   -RANGE, RANGE, 0.1, 100, imgIcon[0]));
-    red[1] = Gtk::manage (new Adjuster ("", -RANGE, RANGE, 0.1, 0, imgIcon[1]));
-    red[2] = Gtk::manage (new Adjuster ("",  -RANGE, RANGE, 0.1, 0, imgIcon[2]));
+    red[0] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 100, imgIcon[0]));
+    red[1] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[1]));
+    red[2] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[2]));
 
-    Gtk::HSeparator* rsep = Gtk::manage (new Gtk::HSeparator ());
+    Gtk::HSeparator *rsep = Gtk::manage(new Gtk::HSeparator());
 
     matrix_box->pack_start(*rlabel);
 
@@ -72,15 +78,15 @@ ChMixer::ChMixer (): FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), f
 
     matrix_box->pack_start(*rsep, Gtk::PACK_EXPAND_WIDGET, 4);
 
-    Gtk::Label* glabel = Gtk::manage (new Gtk::Label(M("TP_CHMIXER_GREEN")));
+    Gtk::Label *glabel = Gtk::manage(new Gtk::Label(M("TP_CHMIXER_GREEN")));
     glabel->set_alignment(Gtk::ALIGN_START);
 
+    green[0] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[3]));
+    green[1] =
+        Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 100, imgIcon[4]));
+    green[2] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[5]));
 
-    green[0] = Gtk::manage (new Adjuster ("",   -RANGE, RANGE, 0.1, 0, imgIcon[3]));
-    green[1] = Gtk::manage (new Adjuster ("", -RANGE, RANGE, 0.1, 100, imgIcon[4]));
-    green[2] = Gtk::manage (new Adjuster ("",  -RANGE, RANGE, 0.1, 0, imgIcon[5]));
-
-    Gtk::HSeparator* gsep = Gtk::manage (new Gtk::HSeparator ());
+    Gtk::HSeparator *gsep = Gtk::manage(new Gtk::HSeparator());
 
     matrix_box->pack_start(*glabel);
 
@@ -90,16 +96,17 @@ ChMixer::ChMixer (): FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), f
 
     matrix_box->pack_start(*gsep, Gtk::PACK_EXPAND_WIDGET, 4);
 
-    Gtk::Label* blabel = Gtk::manage (new Gtk::Label(M("TP_CHMIXER_BLUE")));
+    Gtk::Label *blabel = Gtk::manage(new Gtk::Label(M("TP_CHMIXER_BLUE")));
     blabel->set_alignment(Gtk::ALIGN_START);
-    blue[0] = Gtk::manage (new Adjuster ("",   -RANGE, RANGE, 0.1, 0, imgIcon[6]));
-    blue[1] = Gtk::manage (new Adjuster ("", -RANGE, RANGE, 0.1, 0, imgIcon[7]));
-    blue[2] = Gtk::manage (new Adjuster ("",  -RANGE, RANGE, 0.1, 100, imgIcon[8]));
+    blue[0] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[6]));
+    blue[1] = Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 0, imgIcon[7]));
+    blue[2] =
+        Gtk::manage(new Adjuster("", -RANGE, RANGE, 0.1, 100, imgIcon[8]));
 
     for (int i = 0; i < 3; i++) {
-        red[i]->setAdjusterListener (this);
-        green[i]->setAdjusterListener (this);
-        blue[i]->setAdjusterListener (this);
+        red[i]->setAdjusterListener(this);
+        green[i]->setAdjusterListener(this);
+        blue[i]->setAdjusterListener(this);
 
         red[i]->setLogScale(25, 0, true);
         green[i]->setLogScale(25, 0, true);
@@ -119,41 +126,48 @@ ChMixer::ChMixer (): FoldableToolPanel(this, "chmixer", M("TP_CHMIXER_LABEL"), f
     std::array<std::pair<const char *, const char *>, 3> hue_imgs = {
         std::make_pair("redpurple", "orange"),
         std::make_pair("greenyellow", "greencyan"),
-        std::make_pair("bluecyan", "bluepurple")
-    };
+        std::make_pair("bluecyan", "bluepurple")};
     for (int c = 0; c < 3; ++c) {
         const char *chan = (c == 0 ? "R" : (c == 1 ? "G" : "B"));
         const char *img = (c == 0 ? "red" : (c == 1 ? "green" : "blue"));
         Gtk::Frame *f = Gtk::manage(new Gtk::Frame(""));
         Gtk::HBox *lbl = Gtk::manage(new Gtk::HBox());
-        lbl->pack_start(*Gtk::manage(new RTImage(std::string("circle-") + img + "-small.svg")), Gtk::PACK_SHRINK, 2);
-        lbl->pack_start(*Gtk::manage(new Gtk::Label(M(std::string("TP_CHMIXER_PRIMARY_") + chan))));
+        lbl->pack_start(*Gtk::manage(new RTImage(std::string("circle-") + img +
+                                                 "-small.svg")),
+                        Gtk::PACK_SHRINK, 2);
+        lbl->pack_start(*Gtk::manage(
+            new Gtk::Label(M(std::string("TP_CHMIXER_PRIMARY_") + chan))));
         f->set_label_align(0.025, 0.5);
         f->set_label_widget(*lbl);
         Gtk::VBox *vb = Gtk::manage(new Gtk::VBox());
         vb->set_spacing(2);
         vb->set_border_width(2);
-    
-        hue_tweak[c] = Gtk::manage(new Adjuster(M("TP_CHMIXER_HUE"), -100, 100, 1, 0, Gtk::manage(new RTImage(std::string("circle-") + hue_imgs[c].first + "-small.svg")), Gtk::manage(new RTImage(std::string("circle-") + hue_imgs[c].second + "-small.svg"))));
+
+        hue_tweak[c] = Gtk::manage(new Adjuster(
+            M("TP_CHMIXER_HUE"), -100, 100, 1, 0,
+            Gtk::manage(new RTImage(std::string("circle-") + hue_imgs[c].first +
+                                    "-small.svg")),
+            Gtk::manage(new RTImage(std::string("circle-") +
+                                    hue_imgs[c].second + "-small.svg"))));
         hue_tweak[c]->setAdjusterListener(this);
         vb->pack_start(*hue_tweak[c]);
-        
-        sat_tweak[c] = Gtk::manage(new Adjuster(M("TP_CHMIXER_SAT"), -100, 100, 1, 0));
+
+        sat_tweak[c] =
+            Gtk::manage(new Adjuster(M("TP_CHMIXER_SAT"), -100, 100, 1, 0));
         sat_tweak[c]->setAdjusterListener(this);
         vb->pack_start(*sat_tweak[c]);
-        
+
         f->add(*vb);
         primaries_box->pack_start(*f);
     }
     pack_start(*primaries_box);
-    
+
     show_all();
 }
 
-
-void ChMixer::read(const ProcParams* pp)
+void ChMixer::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
 
     setEnabled(pp->chmixer.enabled);
     if (pp->chmixer.mode == ChannelMixerParams::RGB_MATRIX) {
@@ -161,7 +175,7 @@ void ChMixer::read(const ProcParams* pp)
     } else {
         mode->set_active(1);
     }
-    
+
     for (int i = 0; i < 3; i++) {
         red[i]->setValue(pp->chmixer.red[i] / 10.0);
         green[i]->setValue(pp->chmixer.green[i] / 10.0);
@@ -176,8 +190,7 @@ void ChMixer::read(const ProcParams* pp)
     enableListener();
 }
 
-
-void ChMixer::write(ProcParams* pp)
+void ChMixer::write(ProcParams *pp)
 {
     for (int i = 0; i < 3; i++) {
         pp->chmixer.red[i] = red[i]->getValue() * 10;
@@ -188,12 +201,12 @@ void ChMixer::write(ProcParams* pp)
         pp->chmixer.sat_tweak[i] = sat_tweak[i]->getValue();
     }
     pp->chmixer.enabled = getEnabled();
-    pp->chmixer.mode = mode->get_active_row_number() == 0 ? ChannelMixerParams::RGB_MATRIX : ChannelMixerParams::PRIMARIES_CHROMA;
-    
+    pp->chmixer.mode = mode->get_active_row_number() == 0
+                           ? ChannelMixerParams::RGB_MATRIX
+                           : ChannelMixerParams::PRIMARIES_CHROMA;
 }
 
-
-void ChMixer::setDefaults(const ProcParams* defParams)
+void ChMixer::setDefaults(const ProcParams *defParams)
 {
     for (int i = 0; i < 3; i++) {
         red[i]->setDefault(defParams->chmixer.red[i] / 10.f);
@@ -207,8 +220,7 @@ void ChMixer::setDefaults(const ProcParams* defParams)
     initial_params = defParams->chmixer;
 }
 
-
-void ChMixer::adjusterChanged(Adjuster* a, double newval)
+void ChMixer::adjusterChanged(Adjuster *a, double newval)
 {
 
     if (listener && getEnabled()) {
@@ -220,25 +232,24 @@ void ChMixer::adjusterChanged(Adjuster* a, double newval)
                 } else if (i == 2) {
                     event = EvBluePrimary;
                 }
-                Glib::ustring descr = Glib::ustring::compose("H=%1 S=%2", hue_tweak[i]->getValue(), sat_tweak[i]->getValue());
+                Glib::ustring descr = Glib::ustring::compose(
+                    "H=%1 S=%2", hue_tweak[i]->getValue(),
+                    sat_tweak[i]->getValue());
                 listener->panelChanged(event, descr);
                 return;
             }
         }
-        
-        Glib::ustring descr = Glib::ustring::compose ("R=%1,%2,%3\nG=%4,%5,%6\nB=%7,%8,%9",
-                              red[0]->getValue(), red[1]->getValue(), red[2]->getValue(),
-                              green[0]->getValue(), green[1]->getValue(), green[2]->getValue(),
-                              blue[0]->getValue(), blue[1]->getValue(), blue[2]->getValue());
+
+        Glib::ustring descr = Glib::ustring::compose(
+            "R=%1,%2,%3\nG=%4,%5,%6\nB=%7,%8,%9", red[0]->getValue(),
+            red[1]->getValue(), red[2]->getValue(), green[0]->getValue(),
+            green[1]->getValue(), green[2]->getValue(), blue[0]->getValue(),
+            blue[1]->getValue(), blue[2]->getValue());
         listener->panelChanged(EvChMixer, descr);
     }
 }
 
-
-void ChMixer::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
-
+void ChMixer::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
 void ChMixer::enabledChanged()
 {
@@ -253,8 +264,7 @@ void ChMixer::enabledChanged()
     }
 }
 
-
-void ChMixer::trimValues (rtengine::procparams::ProcParams* pp)
+void ChMixer::trimValues(rtengine::procparams::ProcParams *pp)
 {
 
     for (int i = 0; i < 3; i++) {
@@ -273,7 +283,6 @@ void ChMixer::trimValues (rtengine::procparams::ProcParams* pp)
     }
 }
 
-
 void ChMixer::toolReset(bool to_initial)
 {
     ProcParams pp;
@@ -283,7 +292,6 @@ void ChMixer::toolReset(bool to_initial)
     pp.chmixer.enabled = getEnabled();
     read(&pp);
 }
-
 
 void ChMixer::modeChanged()
 {

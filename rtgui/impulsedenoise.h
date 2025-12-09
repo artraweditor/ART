@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,31 +20,32 @@
 #ifndef _IMPULSEDENOISE_H_
 #define _IMPULSEDENOISE_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class ImpulseDenoise : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class ImpulseDenoise: public ToolParamBlock,
+                      public AdjusterListener,
+                      public FoldableToolPanel {
 
 protected:
-    Adjuster* thresh;
-    //Adjuster* edge;
+    Adjuster *thresh;
+    // Adjuster* edge;
 
     rtengine::procparams::ImpulseDenoiseParams initial_params;
 
 public:
-
     ImpulseDenoise();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void enabledChanged  () override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void enabledChanged() override;
 
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 };

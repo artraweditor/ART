@@ -16,15 +16,15 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "icmpanel.h"
+#include "eventmapper.h"
+#include "options.h"
 #include <iomanip>
 #include <tuple>
-#include "icmpanel.h"
-#include "options.h"
-#include "eventmapper.h"
 
-#include "guiutils.h"
-#include "../rtengine/iccstore.h"
 #include "../rtengine/dcp.h"
+#include "../rtengine/iccstore.h"
+#include "guiutils.h"
 #include "rtimage.h"
 
 using namespace rtengine;
@@ -32,23 +32,21 @@ using namespace rtengine::procparams;
 
 extern Options options;
 
-ICMPanel::ICMPanel():
-    FoldableToolPanel(this, "icm", M("TP_ICM_LABEL"), false, false, true),
-    iunchanged(nullptr),
-    icmplistener(nullptr),
-    lastRefFilename(""),
-    camName(""),
-    filename("")
+ICMPanel::ICMPanel()
+    : FoldableToolPanel(this, "icm", M("TP_ICM_LABEL"), false, false, true),
+      iunchanged(nullptr), icmplistener(nullptr), lastRefFilename(""),
+      camName(""), filename("")
 {
     auto m = ProcEventMapper::getInstance();
     EvUseCAT = m->newEvent(rtengine::ALLNORAW, "HISTORY_MSG_ICM_INPUT_CAT");
     EvToolReset.set_action(rtengine::DEMOSAIC);
-    EvDCPApplyLookEarly = m->newEvent(rtengine::RGBCURVE, "HISTORY_MSG_ICM_DCP_LOOK_PIPELINE_POS");
+    EvDCPApplyLookEarly = m->newEvent(rtengine::RGBCURVE,
+                                      "HISTORY_MSG_ICM_DCP_LOOK_PIPELINE_POS");
 
-    ipDialog = Gtk::manage(new MyFileChooserButton(M("TP_ICM_INPUTDLGLABEL"), Gtk::FILE_CHOOSER_ACTION_OPEN));
+    ipDialog = Gtk::manage(new MyFileChooserButton(
+        M("TP_ICM_INPUTDLGLABEL"), Gtk::FILE_CHOOSER_ACTION_OPEN));
     ipDialog->set_tooltip_text(M("TP_ICM_INPUTCUSTOM_TOOLTIP"));
     bindCurrentFolder(*ipDialog, options.lastIccDir);
-
 
     // ------------------------------- Input profile
 
@@ -72,8 +70,9 @@ ICMPanel::ICMPanel():
     icameraICC->set_tooltip_text(M("TP_ICM_INPUTCAMERAICC_TOOLTIP"));
     iVBox->pack_start(*icameraICC, Gtk::PACK_SHRINK);
 
-    ifromfile = Gtk::manage(new Gtk::RadioButton(M("TP_ICM_INPUTCUSTOM") + ":"));
-    Gtk::HBox* ffbox = Gtk::manage(new Gtk::HBox());
+    ifromfile =
+        Gtk::manage(new Gtk::RadioButton(M("TP_ICM_INPUTCUSTOM") + ":"));
+    Gtk::HBox *ffbox = Gtk::manage(new Gtk::HBox());
     ifromfile->set_tooltip_text(M("TP_ICM_INPUTCUSTOM_TOOLTIP"));
     ffbox->pack_start(*ifromfile, Gtk::PACK_SHRINK);
     ffbox->pack_start(*ipDialog);
@@ -91,18 +90,20 @@ ICMPanel::ICMPanel():
 
     auto dcpGrid = Gtk::manage(new Gtk::VBox());
 
-    Gtk::Grid* dcpIllGrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *dcpIllGrid = Gtk::manage(new Gtk::Grid());
     dcpIllGrid->set_column_homogeneous(false);
     dcpIllGrid->set_row_homogeneous(false);
     dcpIllGrid->set_column_spacing(2);
     dcpIllGrid->set_row_spacing(2);
 
     dcpIllLabel = Gtk::manage(new Gtk::Label(M("TP_ICM_DCPILLUMINANT") + ":"));
-    setExpandAlignProperties(dcpIllLabel, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(dcpIllLabel, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
     dcpIllLabel->set_tooltip_text(M("TP_ICM_DCPILLUMINANT_TOOLTIP"));
     dcpIllLabel->show();
     dcpIll = Gtk::manage(new MyComboBoxText());
-    setExpandAlignProperties(dcpIll, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(dcpIll, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
     dcpIll->set_tooltip_text(M("TP_ICM_DCPILLUMINANT_TOOLTIP"));
     dcpIll->append(M("TP_ICM_DCPILLUMINANT_INTERPOLATED"));
     dcpIll->append(M("TP_ICM_DCPILLUMINANT") + " 1");
@@ -116,33 +117,46 @@ ICMPanel::ICMPanel():
     ckbToneCurve = Gtk::manage(new Gtk::CheckButton(M("TP_ICM_TONECURVE")));
     ckbToneCurve->set_sensitive(false);
     ckbToneCurve->set_tooltip_text(M("TP_ICM_TONECURVE_TOOLTIP"));
-    setExpandAlignProperties(ckbToneCurve, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(ckbToneCurve, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    ckbApplyLookTable = Gtk::manage(new Gtk::CheckButton(M("TP_ICM_APPLYLOOKTABLE")));
+    ckbApplyLookTable =
+        Gtk::manage(new Gtk::CheckButton(M("TP_ICM_APPLYLOOKTABLE")));
     ckbApplyLookTable->set_sensitive(false);
     ckbApplyLookTable->set_tooltip_text(M("TP_ICM_APPLYLOOKTABLE_TOOLTIP"));
-    setExpandAlignProperties(ckbApplyLookTable, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(ckbApplyLookTable, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    ckbApplyHueSatMap = Gtk::manage(new Gtk::CheckButton(M("TP_ICM_APPLYHUESATMAP")));
+    ckbApplyHueSatMap =
+        Gtk::manage(new Gtk::CheckButton(M("TP_ICM_APPLYHUESATMAP")));
     ckbApplyHueSatMap->set_sensitive(false);
     ckbApplyHueSatMap->set_tooltip_text(M("TP_ICM_APPLYHUESATMAP_TOOLTIP"));
-    setExpandAlignProperties(ckbApplyHueSatMap, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(ckbApplyHueSatMap, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    ckbApplyBaselineExposureOffset = Gtk::manage(new Gtk::CheckButton(M("TP_ICM_APPLYBASELINEEXPOSUREOFFSET")));
+    ckbApplyBaselineExposureOffset = Gtk::manage(
+        new Gtk::CheckButton(M("TP_ICM_APPLYBASELINEEXPOSUREOFFSET")));
     ckbApplyBaselineExposureOffset->set_sensitive(false);
-    ckbApplyBaselineExposureOffset->set_tooltip_text(M("TP_ICM_APPLYBASELINEEXPOSUREOFFSET_TOOLTIP"));
-    setExpandAlignProperties(ckbApplyBaselineExposureOffset, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    ckbApplyBaselineExposureOffset->set_tooltip_text(
+        M("TP_ICM_APPLYBASELINEEXPOSUREOFFSET_TOOLTIP"));
+    setExpandAlignProperties(ckbApplyBaselineExposureOffset, false, false,
+                             Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
 
     auto dcp_look_early_hbox = Gtk::manage(new Gtk::HBox());
-    auto dcp_look_early_lbl = Gtk::manage(new Gtk::Label(M("TP_ICM_DCP_LOOK_PIPELINE_POS") + ": "));
-    dcp_look_early_lbl->set_tooltip_text(M("TP_ICM_DCP_LOOK_PIPELINE_POS_TOOLTIP"));
+    auto dcp_look_early_lbl =
+        Gtk::manage(new Gtk::Label(M("TP_ICM_DCP_LOOK_PIPELINE_POS") + ": "));
+    dcp_look_early_lbl->set_tooltip_text(
+        M("TP_ICM_DCP_LOOK_PIPELINE_POS_TOOLTIP"));
     dcp_look_early_hbox->pack_start(*dcp_look_early_lbl, Gtk::PACK_SHRINK);
     dcp_look_early_ = Gtk::manage(new MyComboBoxText());
     dcp_look_early_->append(M("TP_ICM_DCP_LOOK_PIPELINE_POS_EARLY"));
     dcp_look_early_->append(M("TP_ICM_DCP_LOOK_PIPELINE_POS_LATE"));
-    dcp_look_early_hbox->pack_start(*dcp_look_early_, Gtk::PACK_EXPAND_WIDGET, 4);
-    setExpandAlignProperties(dcp_look_early_lbl, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
-    setExpandAlignProperties(dcp_look_early_, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    dcp_look_early_hbox->pack_start(*dcp_look_early_, Gtk::PACK_EXPAND_WIDGET,
+                                    4);
+    setExpandAlignProperties(dcp_look_early_lbl, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(dcp_look_early_, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
     dcpGrid->pack_start(*dcpIllGrid);
     dcpGrid->pack_start(*ckbApplyHueSatMap);
@@ -152,23 +166,20 @@ ICMPanel::ICMPanel():
     dcpGrid->pack_start(*dcp_look_early_hbox);
 
     dcpFrame->add(*dcpGrid);
-    //dcpFrame->set_sensitive(false);
+    // dcpFrame->set_sensitive(false);
     iVBox->pack_start(*dcpFrame);
 
     use_CAT_ = Gtk::manage(new Gtk::CheckButton(M("TP_ICM_INPUT_CAT")));
     iVBox->pack_start(*use_CAT_, Gtk::PACK_SHRINK);
-    use_CAT_->signal_toggled().connect(
-        sigc::slot<void>(
-            [this]() -> void
-            {
-                if (listener) {
-                    if (use_CAT_->get_active()) {
-                        listener->panelChanged(EvUseCAT, M("GENERAL_ENABLED"));
-                    } else {
-                        listener->panelChanged(EvUseCAT, M("GENERAL_DISABLED"));
-                    }
-                }
-            }));
+    use_CAT_->signal_toggled().connect(sigc::slot<void>([this]() -> void {
+        if (listener) {
+            if (use_CAT_->get_active()) {
+                listener->panelChanged(EvUseCAT, M("GENERAL_ENABLED"));
+            } else {
+                listener->panelChanged(EvUseCAT, M("GENERAL_DISABLED"));
+            }
+        }
+    }));
 
     saveRef = Gtk::manage(new Gtk::Button(M("TP_ICM_SAVEREFERENCE")));
     saveRef->set_image(*Gtk::manage(new RTImage("save-small.svg")));
@@ -176,9 +187,8 @@ ICMPanel::ICMPanel():
     saveRef->set_tooltip_markup(M("TP_ICM_SAVEREFERENCE_TOOLTIP"));
     iVBox->pack_start(*saveRef, Gtk::PACK_SHRINK);
 
-    //pack_start(*iVBox, Gtk::PACK_EXPAND_WIDGET);
+    // pack_start(*iVBox, Gtk::PACK_EXPAND_WIDGET);
     pack_start(*exp, Gtk::PACK_EXPAND_WIDGET);
-
 
     // ---------------------------- Working profile
     Gtk::VBox *wProfVBox = Gtk::manage(new Gtk::VBox());
@@ -188,7 +198,8 @@ ICMPanel::ICMPanel():
     wProfNames = Gtk::manage(new MyComboBoxText());
     wProfVBox->pack_start(*wProfNames, Gtk::PACK_SHRINK);
 
-    std::vector<Glib::ustring> wpnames = rtengine::ICCStore::getInstance()->getWorkingProfiles();
+    std::vector<Glib::ustring> wpnames =
+        rtengine::ICCStore::getInstance()->getWorkingProfiles();
 
     for (size_t i = 0; i < wpnames.size(); i++) {
         wProfNames->append(wpnames[i]);
@@ -197,7 +208,6 @@ ICMPanel::ICMPanel():
     wProfNames->set_active(0);
 
     pack_start(*exp, Gtk::PACK_EXPAND_WIDGET);
-
 
     // ---------------------------- Output profile
 
@@ -212,25 +222,22 @@ ICMPanel::ICMPanel():
     oProfNames->append(M("TP_ICM_NOPROFILE"));
     oProfNames->set_active(0);
 
-    out_profiles_ = {
-        ColorManagementParams::NoICMString,
-        ColorManagementParams::NoProfileString
+    out_profiles_ = {ColorManagementParams::NoICMString,
+                     ColorManagementParams::NoProfileString};
+
+    std::vector<Glib::ustring> opnames = ICCStore::getInstance()->getProfiles(
+        rtengine::ICCStore::ProfileType::OUTPUT);
+
+    const auto is_ART_profile = [](cmsHPROFILE p) -> bool {
+        return ICCStore::getProfileTag(p, cmsSigDeviceMfgDescTag) == "ART";
     };
-
-    std::vector<Glib::ustring> opnames = ICCStore::getInstance()->getProfiles(rtengine::ICCStore::ProfileType::OUTPUT);
-
-    const auto is_ART_profile =
-        [](cmsHPROFILE p) -> bool
-        {
-            return ICCStore::getProfileTag(p, cmsSigDeviceMfgDescTag) == "ART";
-        };
 
     std::vector<std::tuple<int, Glib::ustring, Glib::ustring>> opl;
     for (size_t i = 0; i < opnames.size(); i++) {
         auto lbl = opnames[i];
         auto p = ICCStore::getInstance()->getProfile(opnames[i]);
         int key = 1;
-        if (p) { 
+        if (p) {
             auto s = ICCStore::getProfileTag(p, cmsSigProfileDescriptionTag);
             if (is_ART_profile(p)) {
                 lbl = s;
@@ -244,18 +251,23 @@ ICMPanel::ICMPanel():
         out_profiles_.push_back(std::get<2>(t));
         oProfNames->append(std::get<1>(t));
     }
-    
+
     oProfNames->set_active(0);
 
     // Rendering intent
     Gtk::HBox *riHBox = Gtk::manage(new Gtk::HBox());
-    Gtk::Label* outputIntentLbl = Gtk::manage(new Gtk::Label(M("TP_ICM_PROFILEINTENT")));
+    Gtk::Label *outputIntentLbl =
+        Gtk::manage(new Gtk::Label(M("TP_ICM_PROFILEINTENT")));
     riHBox->pack_start(*outputIntentLbl, Gtk::PACK_SHRINK);
     oRendIntent.reset(new PopUpButton());
-    oRendIntent->addEntry("intent-perceptual.svg", M("PREFERENCES_INTENT_PERCEPTUAL"));
-    oRendIntent->addEntry("intent-relative.svg", M("PREFERENCES_INTENT_RELATIVE"));
-    oRendIntent->addEntry("intent-saturation.svg", M("PREFERENCES_INTENT_SATURATION"));
-    oRendIntent->addEntry("intent-absolute.svg", M("PREFERENCES_INTENT_ABSOLUTE"));
+    oRendIntent->addEntry("intent-perceptual.svg",
+                          M("PREFERENCES_INTENT_PERCEPTUAL"));
+    oRendIntent->addEntry("intent-relative.svg",
+                          M("PREFERENCES_INTENT_RELATIVE"));
+    oRendIntent->addEntry("intent-saturation.svg",
+                          M("PREFERENCES_INTENT_SATURATION"));
+    oRendIntent->addEntry("intent-absolute.svg",
+                          M("PREFERENCES_INTENT_ABSOLUTE"));
     oRendIntent->setSelected(1);
     oRendIntent->show();
     riHBox->pack_start(*oRendIntent->buttonGroup, Gtk::PACK_EXPAND_PADDING);
@@ -266,9 +278,9 @@ ICMPanel::ICMPanel():
     obpc->set_active(true);
     oProfVBox->pack_start(*obpc, Gtk::PACK_SHRINK);
 
-    //oFrame->add(*oProfVBox);
+    // oFrame->add(*oProfVBox);
 
-    //pack_start(*oProfVBox, Gtk::PACK_EXPAND_WIDGET);
+    // pack_start(*oProfVBox, Gtk::PACK_EXPAND_WIDGET);
     pack_start(*exp, Gtk::PACK_EXPAND_WIDGET);
 
     // ---------------------------- Output gamma list entries
@@ -310,49 +322,71 @@ ICMPanel::ICMPanel():
 #endif // ART_USE_OCIO
     ipDialog->add_filter(filter_any);
 #ifdef WIN32
-    ipDialog->set_show_hidden(true);  // ProgramData is hidden on Windows
+    ipDialog->set_show_hidden(true); // ProgramData is hidden on Windows
 #endif
 
     oldip = "";
 
-    wprofnamesconn = wProfNames->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::wpChanged));
-    oprofnamesconn = oProfNames->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::opChanged));
-    orendintentconn = oRendIntent->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::oiChanged));
-    dcpillconn = dcpIll->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::dcpIlluminantChanged));
+    wprofnamesconn = wProfNames->signal_changed().connect(
+        sigc::mem_fun(*this, &ICMPanel::wpChanged));
+    oprofnamesconn = oProfNames->signal_changed().connect(
+        sigc::mem_fun(*this, &ICMPanel::opChanged));
+    orendintentconn = oRendIntent->signal_changed().connect(
+        sigc::mem_fun(*this, &ICMPanel::oiChanged));
+    dcpillconn = dcpIll->signal_changed().connect(
+        sigc::mem_fun(*this, &ICMPanel::dcpIlluminantChanged));
 
-    obpcconn = obpc->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::oBPCChanged));
-    tcurveconn = ckbToneCurve->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::toneCurveChanged));
-    ltableconn = ckbApplyLookTable->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::applyLookTableChanged));
-    beoconn = ckbApplyBaselineExposureOffset->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::applyBaselineExposureOffsetChanged));
-    hsmconn = ckbApplyHueSatMap->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::applyHueSatMapChanged));
+    obpcconn = obpc->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::oBPCChanged));
+    tcurveconn = ckbToneCurve->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::toneCurveChanged));
+    ltableconn = ckbApplyLookTable->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::applyLookTableChanged));
+    beoconn = ckbApplyBaselineExposureOffset->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::applyBaselineExposureOffsetChanged));
+    hsmconn = ckbApplyHueSatMap->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::applyHueSatMapChanged));
     dcp_look_early_->signal_changed().connect(sigc::slot<void>([&]() {
         if (listener) {
-            listener->panelChanged(EvDCPApplyLookEarly, dcp_look_early_->get_active_text());
+            listener->panelChanged(EvDCPApplyLookEarly,
+                                   dcp_look_early_->get_active_text());
         }
     }));
 
-    icamera->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::ipChanged));
-    icameraICC->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::ipChanged));
-    iembedded->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::ipChanged));
-    ifromfile->signal_toggled().connect(sigc::mem_fun(*this, &ICMPanel::ipChanged));
+    icamera->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::ipChanged));
+    icameraICC->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::ipChanged));
+    iembedded->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::ipChanged));
+    ifromfile->signal_toggled().connect(
+        sigc::mem_fun(*this, &ICMPanel::ipChanged));
 
-    ipc = ipDialog->signal_selection_changed().connect(sigc::mem_fun(*this, &ICMPanel::ipSelectionChanged));
-    saveRef->signal_pressed().connect(sigc::mem_fun(*this, &ICMPanel::saveReferencePressed));
+    ipc = ipDialog->signal_selection_changed().connect(
+        sigc::mem_fun(*this, &ICMPanel::ipSelectionChanged));
+    saveRef->signal_pressed().connect(
+        sigc::mem_fun(*this, &ICMPanel::saveReferencePressed));
 
     show_all();
 }
 
 void ICMPanel::updateRenderingIntent(const Glib::ustring &profile)
 {
-    const uint8_t supportedIntents = rtengine::ICCStore::getInstance()->getOutputIntents(profile);
+    const uint8_t supportedIntents =
+        rtengine::ICCStore::getInstance()->getOutputIntents(profile);
     const bool supportsPerceptual = supportedIntents & 1 << INTENT_PERCEPTUAL;
-    const bool supportsRelative   = supportedIntents & 1 << INTENT_RELATIVE_COLORIMETRIC;
+    const bool supportsRelative =
+        supportedIntents & 1 << INTENT_RELATIVE_COLORIMETRIC;
     const bool supportsSaturation = supportedIntents & 1 << INTENT_SATURATION;
-    const bool supportsAbsolute   = supportedIntents & 1 << INTENT_ABSOLUTE_COLORIMETRIC;
+    const bool supportsAbsolute =
+        supportedIntents & 1 << INTENT_ABSOLUTE_COLORIMETRIC;
 
-    //printf("Intents: %d / Perceptual: %d  Relative: %d  Saturation: %d  Absolute: %d\n", supportedIntents, supportsPerceptual, supportsRelative, supportsSaturation, supportsAbsolute);
+    // printf("Intents: %d / Perceptual: %d  Relative: %d  Saturation: %d
+    // Absolute: %d\n", supportedIntents, supportsPerceptual, supportsRelative,
+    // supportsSaturation, supportsAbsolute);
 
-    if (!profile.empty() && (supportsPerceptual || supportsRelative || supportsSaturation || supportsAbsolute)) {
+    if (!profile.empty() && (supportsPerceptual || supportsRelative ||
+                             supportsSaturation || supportsAbsolute)) {
         oRendIntent->set_sensitive(true);
         oRendIntent->setItemSensitivity(0, supportsPerceptual);
         oRendIntent->setItemSensitivity(1, supportsRelative);
@@ -378,20 +412,21 @@ void ICMPanel::updateDCP(int dcpIlluminant, Glib::ustring dcp_name)
     ckbApplyHueSatMap->set_sensitive(false);
     dcpIllLabel->set_sensitive(false);
     dcpIll->set_sensitive(false);
-    //dcpFrame->set_sensitive(false);
+    // dcpFrame->set_sensitive(false);
 
-    DCPProfile* dcp = nullptr;
+    DCPProfile *dcp = nullptr;
 
     if (dcp_name == "(cameraICC)") {
         dcp = DCPStore::getInstance()->getCameraProfile(camName);
     } else if (dcp_name == "(embedded)") {
         dcp = DCPStore::getInstance()->getProfile(filename);
-    } else if (ifromfile->get_active() && DCPStore::getInstance()->isValidDCPFileName(dcp_name)) {
+    } else if (ifromfile->get_active() &&
+               DCPStore::getInstance()->isValidDCPFileName(dcp_name)) {
         dcp = DCPStore::getInstance()->getProfile(dcp_name);
     }
 
     if (dcp) {
-        //dcpFrame->set_sensitive(true);
+        // dcpFrame->set_sensitive(true);
         dcpFrame->set_visible(true);
 
         if (dcp->getHasToneCurve()) {
@@ -413,7 +448,8 @@ void ICMPanel::updateDCP(int dcpIlluminant, Glib::ustring dcp_name)
         const DCPProfile::Illuminants illuminants = dcp->getIlluminants();
 
         if (illuminants.will_interpolate) {
-            if (dcpTemperatures[0] != illuminants.temperature_1 || dcpTemperatures[1] != illuminants.temperature_2) {
+            if (dcpTemperatures[0] != illuminants.temperature_1 ||
+                dcpTemperatures[1] != illuminants.temperature_2) {
                 char tempstr1[64], tempstr2[64];
                 sprintf(tempstr1, "%.0fK", illuminants.temperature_1);
                 sprintf(tempstr2, "%.0fK", illuminants.temperature_2);
@@ -433,7 +469,8 @@ void ICMPanel::updateDCP(int dcpIlluminant, Glib::ustring dcp_name)
 
             if (dcpIll->get_active_row_number() == -1 && dcpIlluminant == -1) {
                 dcpIll->set_active(0);
-            } else if (dcpIlluminant >= 0 && dcpIlluminant != dcpIll->get_active_row_number()) {
+            } else if (dcpIlluminant >= 0 &&
+                       dcpIlluminant != dcpIll->get_active_row_number()) {
                 dcpIll->set_active(dcpIlluminant);
             }
 
@@ -463,7 +500,7 @@ void ICMPanel::updateDCP(int dcpIlluminant, Glib::ustring dcp_name)
     }
 }
 
-void ICMPanel::read(const ProcParams* pp)
+void ICMPanel::read(const ProcParams *pp)
 {
 
     disableListener();
@@ -479,34 +516,47 @@ void ICMPanel::read(const ProcParams* pp)
     ConnectionBlocker orendintentconn_(orendintentconn);
     ConnectionBlocker dcpillconn_(dcpillconn);
 
-    if (pp->icm.inputProfile.substr(0, 5) != "file:" && !ipDialog->get_filename().empty()) {
+    if (pp->icm.inputProfile.substr(0, 5) != "file:" &&
+        !ipDialog->get_filename().empty()) {
         ipDialog->set_filename(pp->icm.inputProfile);
     }
 
     if (pp->icm.inputProfile == "(none)") {
         inone->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
-    } else if (pp->icm.inputProfile == "(embedded)" || ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile == "") && icamera->get_state() == Gtk::STATE_INSENSITIVE)) {
+    } else if (pp->icm.inputProfile == "(embedded)" ||
+               ((pp->icm.inputProfile == "(camera)" ||
+                 pp->icm.inputProfile == "") &&
+                icamera->get_state() == Gtk::STATE_INSENSITIVE)) {
         iembedded->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "(embedded)");
-    } else if ((pp->icm.inputProfile == "(cameraICC)") && icameraICC->get_state() != Gtk::STATE_INSENSITIVE) {
+    } else if ((pp->icm.inputProfile == "(cameraICC)") &&
+               icameraICC->get_state() != Gtk::STATE_INSENSITIVE) {
         icameraICC->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "(cameraICC)");
-    } else if ((pp->icm.inputProfile == "(cameraICC)") && icamera->get_state() != Gtk::STATE_INSENSITIVE && icameraICC->get_state() == Gtk::STATE_INSENSITIVE) {
-        // this is the case when (cameraICC) is instructed by packaged profiles, but ICC file is not found
-        // therefore falling back UI to explicitly reflect the (camera) option
+    } else if ((pp->icm.inputProfile == "(cameraICC)") &&
+               icamera->get_state() != Gtk::STATE_INSENSITIVE &&
+               icameraICC->get_state() == Gtk::STATE_INSENSITIVE) {
+        // this is the case when (cameraICC) is instructed by packaged profiles,
+        // but ICC file is not found therefore falling back UI to explicitly
+        // reflect the (camera) option
         icamera->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
-    } else if ((pp->icm.inputProfile == "(cameraICC)") && icamera->get_state() == Gtk::STATE_INSENSITIVE && icameraICC->get_state() == Gtk::STATE_INSENSITIVE) {
-        // If neither (camera) nor (cameraICC) are available, as is the case when loading a non-raw, activate (embedded).
+    } else if ((pp->icm.inputProfile == "(cameraICC)") &&
+               icamera->get_state() == Gtk::STATE_INSENSITIVE &&
+               icameraICC->get_state() == Gtk::STATE_INSENSITIVE) {
+        // If neither (camera) nor (cameraICC) are available, as is the case
+        // when loading a non-raw, activate (embedded).
         iembedded->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "(cameraICC)");
-    } else if ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile == "") && icamera->get_state() != Gtk::STATE_INSENSITIVE) {
+    } else if ((pp->icm.inputProfile == "(camera)" ||
+                pp->icm.inputProfile == "") &&
+               icamera->get_state() != Gtk::STATE_INSENSITIVE) {
         icamera->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
     } else {
         ifromfile->set_active(true);
-        oldip = pp->icm.inputProfile.substr(5);  // cut of "file:"
+        oldip = pp->icm.inputProfile.substr(5); // cut of "file:"
         ipDialog->set_filename(pp->icm.inputProfile.substr(5));
         updateDCP(pp->icm.dcpIlluminant, pp->icm.inputProfile.substr(5));
     }
@@ -526,7 +576,8 @@ void ICMPanel::read(const ProcParams* pp)
     obpc->set_active(pp->icm.outputBPC);
     ckbToneCurve->set_active(pp->icm.toneCurve);
     ckbApplyLookTable->set_active(pp->icm.applyLookTable);
-    ckbApplyBaselineExposureOffset->set_active(pp->icm.applyBaselineExposureOffset);
+    ckbApplyBaselineExposureOffset->set_active(
+        pp->icm.applyBaselineExposureOffset);
     ckbApplyHueSatMap->set_active(pp->icm.applyHueSatMap);
 
     use_CAT_->set_active(pp->icm.inputProfileCAT);
@@ -537,7 +588,7 @@ void ICMPanel::read(const ProcParams* pp)
     enableListener();
 }
 
-void ICMPanel::write(ProcParams* pp)
+void ICMPanel::write(ProcParams *pp)
 {
 
     if (inone->get_active()) {
@@ -549,17 +600,20 @@ void ICMPanel::write(ProcParams* pp)
     } else if (icameraICC->get_active()) {
         pp->icm.inputProfile = "(cameraICC)";
     } else {
-        if (Glib::file_test(ipDialog->get_filename(), Glib::FILE_TEST_EXISTS) && !Glib::file_test(ipDialog->get_filename(), Glib::FILE_TEST_IS_DIR)) {
+        if (Glib::file_test(ipDialog->get_filename(), Glib::FILE_TEST_EXISTS) &&
+            !Glib::file_test(ipDialog->get_filename(),
+                             Glib::FILE_TEST_IS_DIR)) {
             pp->icm.inputProfile = "file:" + ipDialog->get_filename();
         } else {
-            pp->icm.inputProfile = "";    // just a directory
+            pp->icm.inputProfile = ""; // just a directory
         }
 
         Glib::ustring p = Glib::path_get_dirname(ipDialog->get_filename());
     }
 
     pp->icm.workingProfile = wProfNames->get_active_text();
-    pp->icm.dcpIlluminant = rtengine::max<int>(dcpIll->get_active_row_number(), 0);
+    pp->icm.dcpIlluminant =
+        rtengine::max<int>(dcpIll->get_active_row_number(), 0);
     // if (oProfNames->get_active_row_number() == 0) {//M("TP_ICM_NOICM")) {
     //     pp->icm.outputProfile  = ColorManagementParams::NoICMString;
     // } else if (oProfNames->get_active_row_number() == 1) {
@@ -572,14 +626,15 @@ void ICMPanel::write(ProcParams* pp)
     int ointentVal = oRendIntent->getSelected();
 
     if (ointentVal >= 0 && ointentVal < RI__COUNT) {
-        pp->icm.outputIntent  = static_cast<RenderingIntent>(ointentVal);
+        pp->icm.outputIntent = static_cast<RenderingIntent>(ointentVal);
     } else {
-        pp->icm.outputIntent  = rtengine::RI_RELATIVE;
+        pp->icm.outputIntent = rtengine::RI_RELATIVE;
     }
 
     pp->icm.toneCurve = ckbToneCurve->get_active();
     pp->icm.applyLookTable = ckbApplyLookTable->get_active();
-    pp->icm.applyBaselineExposureOffset = ckbApplyBaselineExposureOffset->get_active();
+    pp->icm.applyBaselineExposureOffset =
+        ckbApplyBaselineExposureOffset->get_active();
     pp->icm.applyHueSatMap = ckbApplyHueSatMap->get_active();
     pp->icm.outputBPC = obpc->get_active();
     pp->toneCurve.fromHistMatching = false;
@@ -589,18 +644,14 @@ void ICMPanel::write(ProcParams* pp)
     pp->icm.dcp_look_early = dcp_look_early_->get_active_row_number() == 0;
 }
 
-void ICMPanel::setDefaults(const ProcParams* defParams)
+void ICMPanel::setDefaults(const ProcParams *defParams)
 {
     initial_params = defParams->icm;
 }
 
-void ICMPanel::adjusterChanged(Adjuster* a, double newval)
-{
-}
+void ICMPanel::adjusterChanged(Adjuster *a, double newval) {}
 
-void ICMPanel::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void ICMPanel::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
 void ICMPanel::wpChanged()
 {
@@ -646,11 +697,14 @@ void ICMPanel::applyBaselineExposureOffsetChanged()
 {
     if (listener) {
         if (ckbApplyBaselineExposureOffset->get_inconsistent()) {
-            listener->panelChanged(EvDCPApplyBaselineExposureOffset, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvDCPApplyBaselineExposureOffset,
+                                   M("GENERAL_UNCHANGED"));
         } else if (ckbApplyBaselineExposureOffset->get_active()) {
-            listener->panelChanged(EvDCPApplyBaselineExposureOffset, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvDCPApplyBaselineExposureOffset,
+                                   M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged(EvDCPApplyBaselineExposureOffset, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvDCPApplyBaselineExposureOffset,
+                                   M("GENERAL_DISABLED"));
         }
     }
 }
@@ -712,26 +766,26 @@ void ICMPanel::oiChanged(int n)
         Glib::ustring str;
 
         switch (n) {
-            case 0:
-                str = M("PREFERENCES_INTENT_PERCEPTUAL");
-                break;
+        case 0:
+            str = M("PREFERENCES_INTENT_PERCEPTUAL");
+            break;
 
-            case 1:
-                str = M("PREFERENCES_INTENT_RELATIVE");
-                break;
+        case 1:
+            str = M("PREFERENCES_INTENT_RELATIVE");
+            break;
 
-            case 2:
-                str = M("PREFERENCES_INTENT_SATURATION");
-                break;
+        case 2:
+            str = M("PREFERENCES_INTENT_SATURATION");
+            break;
 
-            case 3:
-                str = M("PREFERENCES_INTENT_ABSOLUTE");
-                break;
+        case 3:
+            str = M("PREFERENCES_INTENT_ABSOLUTE");
+            break;
 
-            case 4:
-            default:
-                str = M("GENERAL_UNCHANGED");
-                break;
+        case 4:
+        default:
+            str = M("GENERAL_UNCHANGED");
+            break;
         }
 
         listener->panelChanged(EvOIntent, str);
@@ -751,7 +805,7 @@ void ICMPanel::oBPCChanged()
     }
 }
 
-void ICMPanel::setRawMeta(bool raw, const rtengine::FramesData* pMeta)
+void ICMPanel::setRawMeta(bool raw, const rtengine::FramesData *pMeta)
 {
 
     disableListener();
@@ -761,8 +815,12 @@ void ICMPanel::setRawMeta(bool raw, const rtengine::FramesData* pMeta)
     icamera->set_sensitive(raw);
     camName = pMeta->getCamera();
     filename = pMeta->getFileName();
-    icameraICC->set_sensitive(raw && (ICCStore::getInstance()->getCameraProfile(pMeta->getCamera()) != nullptr || DCPStore::getInstance()->getCameraProfile(pMeta->getCamera()) != nullptr));
-    iembedded->set_sensitive(!raw || DCPStore::getInstance()->getProfile(filename));
+    icameraICC->set_sensitive(raw && (ICCStore::getInstance()->getCameraProfile(
+                                          pMeta->getCamera()) != nullptr ||
+                                      DCPStore::getInstance()->getCameraProfile(
+                                          pMeta->getCamera()) != nullptr));
+    iembedded->set_sensitive(!raw ||
+                             DCPStore::getInstance()->getProfile(filename));
 
     enableListener();
 }
@@ -784,7 +842,9 @@ void ICMPanel::saveReferencePressed()
         return;
     }
 
-    Gtk::FileChooserDialog dialog(getToplevelWindow(this), M("TP_ICM_SAVEREFERENCE"), Gtk::FILE_CHOOSER_ACTION_SAVE);
+    Gtk::FileChooserDialog dialog(getToplevelWindow(this),
+                                  M("TP_ICM_SAVEREFERENCE"),
+                                  Gtk::FILE_CHOOSER_ACTION_SAVE);
     bindCurrentFolder(dialog, options.lastProfilingReferenceDir);
     dialog.set_current_name(lastRefFilename);
 
@@ -793,7 +853,7 @@ void ICMPanel::saveReferencePressed()
 
     Gtk::CheckButton applyWB(M("TP_ICM_SAVEREFERENCE_APPLYWB"));
     applyWB.set_tooltip_text(M("TP_ICM_SAVEREFERENCE_APPLYWB_TOOLTIP"));
-    Gtk::HBox* hbox = Gtk::manage(new Gtk::HBox());
+    Gtk::HBox *hbox = Gtk::manage(new Gtk::HBox());
     hbox->pack_end(applyWB, Gtk::PACK_SHRINK, 2);
     Gtk::Box *box = dialog.get_content_area();
     box->pack_end(*hbox, Gtk::PACK_SHRINK, 2);
@@ -810,7 +870,7 @@ void ICMPanel::saveReferencePressed()
     dialog.add_filter(filter_any);
 
     dialog.show_all_children();
-    //dialog.set_do_overwrite_confirmation (true);
+    // dialog.set_do_overwrite_confirmation (true);
 
     bool done = false;
 
@@ -828,7 +888,8 @@ void ICMPanel::saveReferencePressed()
             }
 
             if (confirmOverwrite(dialog, fname)) {
-                icmplistener->saveInputICCReference(fname, applyWB.get_active());
+                icmplistener->saveInputICCReference(fname,
+                                                    applyWB.get_active());
                 lastRefFilename = Glib::path_get_basename(fname);
                 done = true;
             }
@@ -837,7 +898,6 @@ void ICMPanel::saveReferencePressed()
 
     return;
 }
-
 
 void ICMPanel::toolReset(bool to_initial)
 {

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,14 +19,13 @@
  */
 #pragma once
 
-#include <gtkmm.h>
+#include "../rtengine/procparams.h"
 #include "adjuster.h"
-#include "saveformatpanel.h"
 #include "options.h"
 #include "profilestorecombobox.h"
-#include "../rtengine/procparams.h"
+#include "saveformatpanel.h"
+#include <gtkmm.h>
 #include <unordered_map>
-
 
 class SaveAsDialog: public Gtk::Dialog, public FormatChangeListener {
 public:
@@ -59,7 +58,7 @@ private:
     SaveFormatPanel *formatOpts;
     Glib::ustring fname;
     std::unordered_map<std::string, Glib::RefPtr<Gtk::FileFilter>> filters_;
-    Gtk::RadioButton* saveMethod[3]; /*  0 -> immediately
+    Gtk::RadioButton *saveMethod[3]; /*  0 -> immediately
                                       *  1 -> putToQueueHead
                                       *  2 -> putToQueueTail
                                       */
@@ -67,7 +66,7 @@ private:
     ProfileStoreComboBox *profiles_cb_;
     sigc::connection apply_export_profile_conn_;
     sigc::connection profiles_cb_conn_;
-    
+
     void forceFmtOptsSwitched();
     void saveImmediatlyClicked();
     void putToQueueClicked();

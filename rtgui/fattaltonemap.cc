@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,22 +19,29 @@
  */
 #include "fattaltonemap.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-FattalToneMapping::FattalToneMapping(): FoldableToolPanel(this, "fattal", M("TP_TM_FATTAL_LABEL"), false, true, true)
+FattalToneMapping::FattalToneMapping()
+    : FoldableToolPanel(this, "fattal", M("TP_TM_FATTAL_LABEL"), false, true,
+                        true)
 {
     auto m = ProcEventMapper::getInstance();
-    EvSatControl = m->newEvent(rtengine::HDR, "HISTORY_MSG_TM_FATTAL_SATCONTROL");
+    EvSatControl =
+        m->newEvent(rtengine::HDR, "HISTORY_MSG_TM_FATTAL_SATCONTROL");
     EvToolReset.set_action(rtengine::HDR);
 
-    amount = Gtk::manage(new Adjuster(M("TP_TM_FATTAL_AMOUNT"), 1., 100., 1., 20.));
-    threshold = Gtk::manage(new Adjuster(M("TP_TM_FATTAL_THRESHOLD"), -100., 300., 1., 30.0));
-    satcontrol = Gtk::manage(new Gtk::CheckButton(M("TP_TM_FATTAL_SATCONTROL")));
-    satcontrol->signal_toggled().connect(sigc::mem_fun(*this, &FattalToneMapping::satcontrolChanged), true);
+    amount =
+        Gtk::manage(new Adjuster(M("TP_TM_FATTAL_AMOUNT"), 1., 100., 1., 20.));
+    threshold = Gtk::manage(
+        new Adjuster(M("TP_TM_FATTAL_THRESHOLD"), -100., 300., 1., 30.0));
+    satcontrol =
+        Gtk::manage(new Gtk::CheckButton(M("TP_TM_FATTAL_SATCONTROL")));
+    satcontrol->signal_toggled().connect(
+        sigc::mem_fun(*this, &FattalToneMapping::satcontrolChanged), true);
 
     amount->setAdjusterListener(this);
     threshold->setAdjusterListener(this);
@@ -77,42 +84,40 @@ void FattalToneMapping::setDefaults(const ProcParams *defParams)
     initial_params = defParams->fattal;
 }
 
-void FattalToneMapping::adjusterChanged(Adjuster* a, double newval)
+void FattalToneMapping::adjusterChanged(Adjuster *a, double newval)
 {
-    if(listener && getEnabled()) {
-        if(a == threshold) {
+    if (listener && getEnabled()) {
+        if (a == threshold) {
             listener->panelChanged(EvTMFattalThreshold, a->getTextValue());
-        } else if(a == amount) {
+        } else if (a == amount) {
             listener->panelChanged(EvTMFattalAmount, a->getTextValue());
         }
     }
 }
 
-void FattalToneMapping::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void FattalToneMapping::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void FattalToneMapping::enabledChanged ()
+void FattalToneMapping::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
-            listener->panelChanged (EvTMFattalEnabled, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvTMFattalEnabled, M("GENERAL_UNCHANGED"));
         } else if (getEnabled()) {
-            listener->panelChanged (EvTMFattalEnabled, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvTMFattalEnabled, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvTMFattalEnabled, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvTMFattalEnabled, M("GENERAL_DISABLED"));
         }
     }
 }
 
-
 void FattalToneMapping::satcontrolChanged()
 {
     if (listener && getEnabled()) {
-        listener->panelChanged(EvSatControl, satcontrol->get_active() ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+        listener->panelChanged(EvSatControl, satcontrol->get_active()
+                                                 ? M("GENERAL_ENABLED")
+                                                 : M("GENERAL_DISABLED"));
     }
 }
-
 
 void FattalToneMapping::toolReset(bool to_initial)
 {

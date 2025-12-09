@@ -19,35 +19,33 @@
 #ifndef _RECENTBROWSER_
 #define _RECENTBROWSER_
 
-#include <gtkmm.h>
-#include "multilangmgr.h"
 #include "guiutils.h"
+#include "multilangmgr.h"
+#include <gtkmm.h>
 
-class RecentBrowser : public Gtk::VBox
-{
+class RecentBrowser: public Gtk::VBox {
 public:
-    typedef sigc::slot<void, const Glib::ustring&> DirSelectionSlot;
+    typedef sigc::slot<void, const Glib::ustring &> DirSelectionSlot;
 
 private:
-    Gtk::ComboBoxText*              recentDirs;
-    sigc::connection             conn;
-    DirSelectionSlot             selectDir;
+    Gtk::ComboBoxText *recentDirs;
+    sigc::connection conn;
+    DirSelectionSlot selectDir;
 
 public:
+    RecentBrowser();
 
-    RecentBrowser ();
+    void setDirSelector(const DirSelectionSlot &selectDir);
 
-    void setDirSelector (const DirSelectionSlot& selectDir);
-
-    void selectionChanged ();
-    void dirSelected (const Glib::ustring& dirname, const Glib::ustring& openfile);
+    void selectionChanged();
+    void dirSelected(const Glib::ustring &dirname,
+                     const Glib::ustring &openfile);
 };
 
-inline void RecentBrowser::setDirSelector (const RecentBrowser::DirSelectionSlot& selectDir)
+inline void
+RecentBrowser::setDirSelector(const RecentBrowser::DirSelectionSlot &selectDir)
 {
     this->selectDir = selectDir;
 }
 
 #endif
-
-

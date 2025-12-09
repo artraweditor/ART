@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
 #include <inttypes.h>
+#include <string>
+#include <vector>
 
 namespace rtengine {
 

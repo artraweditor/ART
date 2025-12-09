@@ -49,7 +49,6 @@ namespace rtengine {
 
 extern const Settings *settings;
 
-
 namespace {
 
 class SonyCorrectionData: public ExifLensCorrection::CorrectionData {
@@ -60,11 +59,14 @@ public:
     std::array<short, 16> ca_b;
     std::array<short, 16> vignetting;
 
-    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist, std::vector<float> &vig, std::array<std::vector<float>, 3> &ca, bool &is_dng) const override
+    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist,
+                    std::vector<float> &vig,
+                    std::array<std::vector<float>, 3> &ca,
+                    bool &is_dng) const override
     {
         is_dng = false;
         const float scale = 1.f;
-        
+
         knots.resize(nc);
         for (int i = 0; i < 3; ++i) {
             ca[i].resize(nc);
@@ -72,7 +74,8 @@ public:
         dist.resize(nc);
         vig.resize(nc);
 
-        constexpr float vig_scaling = 0.7f; // empirically determined on my lenses
+        constexpr float vig_scaling =
+            0.7f; // empirically determined on my lenses
 
         for (int i = 0; i < nc; i++) {
             knots[i] = float(i) / (nc - 1);
@@ -83,7 +86,10 @@ public:
             ca[0][i] *= ca_r[i] * std::pow(2.f, -21.f) + 1;
             ca[2][i] *= ca_b[i] * std::pow(2.f, -21.f) + 1;
 
-            vig[i] = std::pow(2.f, 0.5f - std::pow(2.f, vig_scaling * vignetting[i] * std::pow(2.f, -13.f) -1));
+            vig[i] = std::pow(
+                2.f, 0.5f - std::pow(2.f, vig_scaling * vignetting[i] *
+                                                  std::pow(2.f, -13.f) -
+                                              1));
         }
     }
 
@@ -91,7 +97,6 @@ public:
     bool has_vign() const override { return true; }
     bool has_ca() const override { return true; }
 };
-
 
 class FujiCorrectionData: public ExifLensCorrection::CorrectionData {
 public:
@@ -102,7 +107,10 @@ public:
     std::array<float, 9> ca_b;
     std::array<float, 9> vignetting;
 
-    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist, std::vector<float> &vig, std::array<std::vector<float>, 3> &ca, bool &is_dng) const override
+    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist,
+                    std::vector<float> &vig,
+                    std::array<std::vector<float>, 3> &ca,
+                    bool &is_dng) const override
     {
         is_dng = false;
         knots.resize(9);
@@ -111,7 +119,7 @@ public:
         for (int i = 0; i < 3; ++i) {
             ca[i].resize(9);
         }
-        
+
         for (int i = 0; i < 9; i++) {
             knots[i] = cropf * this->knots[i];
 
@@ -121,7 +129,7 @@ public:
 
             ca[0][i] *= ca_r[i] + 1;
             ca[2][i] *= ca_b[i] + 1;
-            
+
             vig[i] = 1 - (1 - vignetting[i] / 100);
         }
     }
@@ -130,7 +138,6 @@ public:
     bool has_vign() const override { return true; }
     bool has_ca() const override { return true; }
 };
-
 
 class DNGCorrectionData: public ExifLensCorrection::CorrectionData {
 public:
@@ -141,17 +148,19 @@ public:
     std::vector<float> warp_rectilinear;
     std::vector<float> vignette_radial;
 
-    DNGCorrectionData():
-        cx_d(0), cy_d(0),
-        cx_v(0), cy_v(0),
-        warp_rectilinear(),
-        vignette_radial()
-    {}
+    DNGCorrectionData()
+        : cx_d(0), cy_d(0), cx_v(0), cy_v(0), warp_rectilinear(),
+          vignette_radial()
+    {
+    }
 
-    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist, std::vector<float> &vig, std::array<std::vector<float>, 3> &ca, bool &is_dng) const override
+    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist,
+                    std::vector<float> &vig,
+                    std::array<std::vector<float>, 3> &ca,
+                    bool &is_dng) const override
     {
         is_dng = true;
-        knots = { cx_d, cy_d, cx_v, cy_v };
+        knots = {cx_d, cy_d, cx_v, cy_v};
         dist = warp_rectilinear;
         vig = vignette_radial;
     }
@@ -163,13 +172,13 @@ public:
         uint32_t num_entries = Exiv2::getULong(data, Exiv2::bigEndian);
         size_t idx = 4;
         bool ok = false;
-        
+
         for (size_t i = 0; i < num_entries && idx < buf.size(); ++i) {
-            uint32_t opid = Exiv2::getULong(data+idx, Exiv2::bigEndian);
+            uint32_t opid = Exiv2::getULong(data + idx, Exiv2::bigEndian);
             idx += 4;
             idx += 4; // version
             idx += 4; // flags
-            size_t size = Exiv2::getULong(data+idx, Exiv2::bigEndian);
+            size_t size = Exiv2::getULong(data + idx, Exiv2::bigEndian);
             idx += 4;
             if (opid == 1) { // WarpRectilinear
                 uint32_t n = Exiv2::getULong(data + idx, Exiv2::bigEndian);
@@ -184,12 +193,15 @@ public:
                 if (cstart + 8 * 2 <= buf.size()) {
                     ret.warp_rectilinear.resize(6);
                     for (int j = 0; j < 6; ++j) {
-                        ret.warp_rectilinear[j] = Exiv2::getDouble(data + wstart, Exiv2::bigEndian);
+                        ret.warp_rectilinear[j] =
+                            Exiv2::getDouble(data + wstart, Exiv2::bigEndian);
                         wstart += 8;
                     }
-                    ret.cx_d = Exiv2::getDouble(data + cstart, Exiv2::bigEndian);
+                    ret.cx_d =
+                        Exiv2::getDouble(data + cstart, Exiv2::bigEndian);
                     cstart += 8;
-                    ret.cy_d = Exiv2::getDouble(data + cstart, Exiv2::bigEndian);
+                    ret.cy_d =
+                        Exiv2::getDouble(data + cstart, Exiv2::bigEndian);
                     ok = true;
                 }
                 if (settings->verbose) {
@@ -197,7 +209,8 @@ public:
                     for (auto w : ret.warp_rectilinear) {
                         std::cout << w << " ";
                     }
-                    std::cout << "| " << ret.cx_d << " " << ret.cy_d << std::endl;
+                    std::cout << "| " << ret.cx_d << " " << ret.cy_d
+                              << std::endl;
                 }
             } else if (opid == 3) { // FixVignetteRadial
                 size_t start = idx;
@@ -205,7 +218,8 @@ public:
                 if (end <= buf.size()) {
                     ret.vignette_radial.resize(6);
                     for (int j = 0; j < 5; ++j) {
-                        ret.vignette_radial[j] = Exiv2::getDouble(data + start, Exiv2::bigEndian);
+                        ret.vignette_radial[j] =
+                            Exiv2::getDouble(data + start, Exiv2::bigEndian);
                         start += 8;
                     }
                     ret.cx_v = Exiv2::getDouble(data + start, Exiv2::bigEndian);
@@ -228,7 +242,6 @@ public:
     bool has_vign() const override { return !vignette_radial.empty(); }
     bool has_ca() const override { return false; }
 };
-
 
 // Olympus correction data adapted from src/iop/lens.cc in darktable 4.6
 // copyright of original code follows
@@ -255,7 +268,10 @@ public:
     std::array<float, 6> cacorr;
     bool ca_ok;
 
-    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist, std::vector<float> &vig, std::array<std::vector<float>, 3> &ca, bool &is_dng) const override
+    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist,
+                    std::vector<float> &vig,
+                    std::array<std::vector<float>, 3> &ca,
+                    bool &is_dng) const override
     {
         is_dng = false;
         constexpr int nc = 16;
@@ -271,7 +287,7 @@ public:
         float cab0 = cacorr[3];
         float cab2 = cacorr[4];
         float cab4 = cacorr[5];
-        
+
         knots.resize(nc);
         for (int i = 0; i < 3; ++i) {
             ca[i].resize(nc);
@@ -286,13 +302,14 @@ public:
             //
             // The distortion polynomial maps a radius Rout in the output
             // (undistorted) image, where the corner is defined as Rout=1, to a
-            // radius in the input (distorted) image, where the corner is defined
-            // as Rin=1.
-            // Rin = Rout*dk0 * (1 + dk2 * (Rout*dk0)^2 + dk4 * (Rout*dk0)^4 + dk6 * (Rout*dk0)^6)
+            // radius in the input (distorted) image, where the corner is
+            // defined as Rin=1. Rin = Rout*dk0 * (1 + dk2 * (Rout*dk0)^2 + dk4
+            // * (Rout*dk0)^4 + dk6 * (Rout*dk0)^6)
             //
             // r_cor is Rin / Rout.
             const float rs2 = powf(r * drs, 2);
-            const float r_cor = drs * (1 + rs2 * (dk2 + rs2 * (dk4 + rs2 * dk6)));
+            const float r_cor =
+                drs * (1 + rs2 * (dk2 + rs2 * (dk4 + rs2 * dk6)));
             dist[i] = r_cor;
 
             const float rd = r;
@@ -306,14 +323,16 @@ public:
         }
     }
 
-    bool has_dist() const override { return distortion[0] || distortion[1] || distortion[2]; }
+    bool has_dist() const override
+    {
+        return distortion[0] || distortion[1] || distortion[2];
+    }
     bool has_vign() const override { return false; }
     bool has_ca() const override { return ca_ok; }
 };
 
-
-
-float interpolate(const std::vector<float> &xi, const std::vector<float> &yi, float x)
+float interpolate(const std::vector<float> &xi, const std::vector<float> &yi,
+                  float x)
 {
     if (x < xi[0]) {
         return yi[0];
@@ -332,11 +351,11 @@ float interpolate(const std::vector<float> &xi, const std::vector<float> &yi, fl
 
 } // namespace
 
-
-ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width, int height, const CoarseTransformParams &coarse, int rawRotationDeg):
-    data_(),
-    is_dng_(false),
-    swap_xy_(false)
+ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width,
+                                       int height,
+                                       const CoarseTransformParams &coarse,
+                                       int rawRotationDeg)
+    : data_(), is_dng_(false), swap_xy_(false)
 {
     if (rawRotationDeg >= 0) {
         int rot = (coarse.rotate + rawRotationDeg) % 360;
@@ -352,22 +371,19 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width, in
 
     std::string make = Glib::ustring(meta->getMake()).uppercase();
     static const std::unordered_set<std::string> makers = {
-        "SONY",
-        "FUJIFILM",
-        "OLYMPUS",
-        "OM DIGITAL SOLUTIONS"
-    };
+        "SONY", "FUJIFILM", "OLYMPUS", "OM DIGITAL SOLUTIONS"};
     if (makers.find(make) == makers.end() && !meta->isDNG()) {
         return;
     }
-    
+
     try {
         auto md = Exiv2Metadata(meta->getFileName());
         if (meta->isDNG()) {
             // check if this is a DNG
             md.load();
             auto &exif = md.exifData();
-            auto it = exif.findKey(Exiv2::ExifKey("Exif.SubImage1.OpcodeList3"));
+            auto it =
+                exif.findKey(Exiv2::ExifKey("Exif.SubImage1.OpcodeList3"));
             if (it != exif.end()) {
                 std::vector<Exiv2::byte> buf;
                 buf.resize(it->value().size());
@@ -405,44 +421,40 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width, in
         } else {
             auto mn = md.getMakernotes();
 
-            const auto gettag =
-                [&](const char *name) -> std::string
-                {
-                    auto it = mn.find(name);
-                    if (it != mn.end()) {
-                        return it->second;
-                    }
-                    return "";
-                };
+            const auto gettag = [&](const char *name) -> std::string {
+                auto it = mn.find(name);
+                if (it != mn.end()) {
+                    return it->second;
+                }
+                return "";
+            };
 
-            const auto getvec =
-                [&](const char *tag) -> std::vector<float>
-                {
-                    std::istringstream src(gettag(tag));
-                    std::vector<float> ret;
-                    float val;
-                    while (src >> val) {
-                        ret.push_back(val);
-                    }
-                    return ret;
-                };
+            const auto getvec = [&](const char *tag) -> std::vector<float> {
+                std::istringstream src(gettag(tag));
+                std::vector<float> ret;
+                float val;
+                while (src >> val) {
+                    ret.push_back(val);
+                }
+                return ret;
+            };
 
-    
             if (make == "SONY") {
                 auto posd = getvec("DistortionCorrParams");
                 auto posc = getvec("ChromaticAberrationCorrParams");
                 auto posv = getvec("VignettingCorrParams");
 
                 if (!posd.empty() && !posc.empty() && !posv.empty() &&
-                    posd[0] <= 16 && posc[0] == 2 * posd[0] && posv[0] == posd[0]) {
+                    posd[0] <= 16 && posc[0] == 2 * posd[0] &&
+                    posv[0] == posd[0]) {
                     SonyCorrectionData *sony = new SonyCorrectionData();
                     data_.reset(sony);
                     sony->nc = posd[0];
                     for (int i = 0; i < sony->nc; ++i) {
-                        sony->distortion[i] = posd[i+1];
-                        sony->ca_r[i] = posc[i+1];
-                        sony->ca_b[i] = posc[sony->nc + i+1];
-                        sony->vignetting[i] = posv[i+1];
+                        sony->distortion[i] = posd[i + 1];
+                        sony->ca_r[i] = posc[i + 1];
+                        sony->ca_b[i] = posc[sony->nc + i + 1];
+                        sony->vignetting[i] = posv[i + 1];
                     }
                 }
             } else if (make == "FUJIFILM") {
@@ -450,12 +462,14 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width, in
                 auto posc = getvec("ChromaticAberrationParams");
                 auto posv = getvec("VignettingParams");
 
-                if (posd.size() == 19 && posc.size() == 29 && posv.size() == 19) {
+                if (posd.size() == 19 && posc.size() == 29 &&
+                    posv.size() == 19) {
                     FujiCorrectionData *fuji = new FujiCorrectionData();
                     data_.reset(fuji);
-                
-                    for(int i = 0; i < 9; i++) {
-                        float kd = posd[i+1], kc = posc[i + 1], kv = posv[i + 1];
+
+                    for (int i = 0; i < 9; i++) {
+                        float kd = posd[i + 1], kc = posc[i + 1],
+                              kv = posv[i + 1];
                         if (kd != kc || kd != kv) {
                             data_.reset(nullptr);
                             break;
@@ -508,12 +522,7 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width, in
     }
 }
 
-
-bool ExifLensCorrection::ok() const
-{
-    return data_.get();
-}
-
+bool ExifLensCorrection::ok() const { return data_.get(); }
 
 bool ExifLensCorrection::ok(const FramesMetaData *meta)
 {
@@ -521,15 +530,15 @@ bool ExifLensCorrection::ok(const FramesMetaData *meta)
     return corr.ok();
 }
 
-
-void ExifLensCorrection::correctDistortion(double &x, double &y, int cx, int cy, double scale) const
+void ExifLensCorrection::correctDistortion(double &x, double &y, int cx, int cy,
+                                           double scale) const
 {
     if (!data_ || !data_->has_dist()) {
         x *= scale;
         y *= scale;
         return;
     }
-    
+
     if (!is_dng_) {
         float xx = x + cx;
         float yy = y + cy;
@@ -539,7 +548,8 @@ void ExifLensCorrection::correctDistortion(double &x, double &y, int cx, int cy,
 
         float ccx = xx - w2_;
         float ccy = yy - h2_;
-        float dr = interpolate(knots_, dist_, r_ * std::sqrt(SQR(ccx) + SQR(ccy)));
+        float dr =
+            interpolate(knots_, dist_, r_ * std::sqrt(SQR(ccx) + SQR(ccy)));
 
         x = dr * ccx + w2_;
         y = dr * ccy + h2_;
@@ -567,7 +577,8 @@ void ExifLensCorrection::correctDistortion(double &x, double &y, int cx, int cy,
         const float dx2 = SQR(dx);
         const float dy2 = SQR(dy);
         const float r2 = dx2 + dy2;
-        const float f = dist_[0] + r2 * (dist_[1] + r2 * (dist_[2] + r2 * dist_[3]));
+        const float f =
+            dist_[0] + r2 * (dist_[1] + r2 * (dist_[2] + r2 * dist_[3]));
         const float dx_r = f * dx;
         const float dy_r = f * dy;
         const float dxdy2 = 2 * dx * dy;
@@ -588,14 +599,13 @@ void ExifLensCorrection::correctDistortion(double &x, double &y, int cx, int cy,
     }
 }
 
-
 bool ExifLensCorrection::isCACorrectionAvailable() const
 {
     return data_.get() && data_->has_ca();
 }
 
-
-void ExifLensCorrection::correctCA(double &x, double &y, int cx, int cy, int channel) const
+void ExifLensCorrection::correctCA(double &x, double &y, int cx, int cy,
+                                   int channel) const
 {
     if (data_ && data_->has_ca()) {
         float xx = x + cx;
@@ -606,7 +616,8 @@ void ExifLensCorrection::correctCA(double &x, double &y, int cx, int cy, int cha
 
         float ccx = xx - w2_;
         float ccy = yy - h2_;
-        float dr = interpolate(knots_, ca_[channel], r_ * std::sqrt(SQR(ccx) + SQR(ccy)));
+        float dr = interpolate(knots_, ca_[channel],
+                               r_ * std::sqrt(SQR(ccx) + SQR(ccy)));
 
         x = dr * ccx + w2_;
         y = dr * ccy + h2_;
@@ -618,19 +629,20 @@ void ExifLensCorrection::correctCA(double &x, double &y, int cx, int cy, int cha
     }
 }
 
-
-void ExifLensCorrection::processVignette(int width, int height, float** rawData) const
+void ExifLensCorrection::processVignette(int width, int height,
+                                         float **rawData) const
 {
     if (!data_ || !data_->has_vign()) {
         return;
     }
-    
+
     if (!is_dng_) {
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 float cx = x - w2_;
                 float cy = y - h2_;
-                float sf = interpolate(knots_, vig_, r_ * std::sqrt(SQR(cx) + SQR(cy)));
+                float sf = interpolate(knots_, vig_,
+                                       r_ * std::sqrt(SQR(cx) + SQR(cy)));
                 rawData[y][x] /= SQR(sf);
             }
         }
@@ -638,11 +650,16 @@ void ExifLensCorrection::processVignette(int width, int height, float** rawData)
         const float cx = knots_[2];
         const float cy = knots_[3];
         const float m2 = 1.f / SQR(knots_[5]);
-        
+
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 const float r2 = m2 * (SQR(x - cx) + SQR(y - cy));
-                const float g = 1.f + r2 * (vig_[0] + r2 * (vig_[1] + r2 * (vig_[2] + r2 * (vig_[3] + r2 * vig_[4]))));
+                const float g =
+                    1.f +
+                    r2 *
+                        (vig_[0] +
+                         r2 * (vig_[1] +
+                               r2 * (vig_[2] + r2 * (vig_[3] + r2 * vig_[4]))));
                 rawData[y][x] *= g;
             }
         }

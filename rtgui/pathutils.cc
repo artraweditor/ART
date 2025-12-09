@@ -19,59 +19,61 @@
 #include "pathutils.h"
 
 #ifndef WIN32
-# include <glibmm/fileutils.h>
-# include <glib.h>
-# include <glib/gstdio.h>
-# include <glibmm/threads.h>
-# include <unistd.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+#include <glibmm/fileutils.h>
+#include <glibmm/threads.h>
+#include <unistd.h>
 #else // WIN32
-# include <windows.h>
-# include <glibmm/thread.h>
-# include "conio.h"
+#include "conio.h"
+#include <glibmm/thread.h>
+#include <windows.h>
 #endif
 
 #ifdef __APPLE__
-# include <mach-o/dyld.h>
+#include <mach-o/dyld.h>
 #endif // __APPLE__
 
-
-Glib::ustring removeExtension (const Glib::ustring& filename)
+Glib::ustring removeExtension(const Glib::ustring &filename)
 {
 
     Glib::ustring bname = Glib::path_get_basename(filename);
-    size_t lastdot = bname.find_last_of ('.');
-    size_t lastwhitespace = bname.find_last_of (" \t\f\v\n\r");
+    size_t lastdot = bname.find_last_of('.');
+    size_t lastwhitespace = bname.find_last_of(" \t\f\v\n\r");
 
-    if (lastdot != bname.npos && (lastwhitespace == bname.npos || lastdot > lastwhitespace)) {
-        return filename.substr (0, filename.size() - (bname.size() - lastdot));
+    if (lastdot != bname.npos &&
+        (lastwhitespace == bname.npos || lastdot > lastwhitespace)) {
+        return filename.substr(0, filename.size() - (bname.size() - lastdot));
     } else {
         return filename;
     }
 }
 
-Glib::ustring getExtension (const Glib::ustring& filename)
+Glib::ustring getExtension(const Glib::ustring &filename)
 {
 
     Glib::ustring bname = Glib::path_get_basename(filename);
-    size_t lastdot = bname.find_last_of ('.');
-    size_t lastwhitespace = bname.find_last_of (" \t\f\v\n\r");
+    size_t lastdot = bname.find_last_of('.');
+    size_t lastwhitespace = bname.find_last_of(" \t\f\v\n\r");
 
-    if (lastdot != bname.npos && (lastwhitespace == bname.npos || lastdot > lastwhitespace)) {
-        return filename.substr (filename.size() - (bname.size() - lastdot) + 1, filename.npos);
+    if (lastdot != bname.npos &&
+        (lastwhitespace == bname.npos || lastdot > lastwhitespace)) {
+        return filename.substr(filename.size() - (bname.size() - lastdot) + 1,
+                               filename.npos);
     } else {
         return "";
     }
 }
 
-
-// For an unknown reason, Glib::filename_to_utf8 doesn't work on reliably Windows,
-// so we're using Glib::filename_to_utf8 for Linux/Apple and Glib::locale_to_utf8 for Windows.
+// For an unknown reason, Glib::filename_to_utf8 doesn't work on reliably
+// Windows, so we're using Glib::filename_to_utf8 for Linux/Apple and
+// Glib::locale_to_utf8 for Windows.
 Glib::ustring fname_to_utf8(const std::string &fname)
 {
 #ifdef WIN32
     try {
         return Glib::locale_to_utf8(fname);
-    } catch (Glib::Error&) {
+    } catch (Glib::Error &) {
         return Glib::convert_with_fallback(fname, "UTF-8", "ISO-8859-1", "?");
     }
 
@@ -82,19 +84,18 @@ Glib::ustring fname_to_utf8(const std::string &fname)
 #endif
 }
 
-
 Glib::ustring getExecutablePath(const char *argv0)
 {
     char exname[512] = {0};
-    
+
 #ifdef WIN32
     WCHAR exnameU[512] = {0};
-    GetModuleFileNameW (NULL, exnameU, 511);
-    WideCharToMultiByte (CP_UTF8, 0, exnameU, -1, exname, 511, 0, 0 );
-    
+    GetModuleFileNameW(NULL, exnameU, 511);
+    WideCharToMultiByte(CP_UTF8, 0, exnameU, -1, exname, 511, 0, 0);
+
 #elif defined __APPLE__
     uint32_t bufsz = 512;
-    
+
     if (_NSGetExecutablePath(exname, &bufsz) != 0) {
         g_strlcpy(exname, argv0, 512);
     }
@@ -103,7 +104,7 @@ Glib::ustring getExecutablePath(const char *argv0)
         g_strlcpy(exname, a, 512);
         g_free(a);
     }
-    
+
 #else
 
     if (readlink("/proc/self/exe", exname, 511) < 0) {
@@ -114,7 +115,7 @@ Glib::ustring getExecutablePath(const char *argv0)
     }
 
 #endif
-    
+
     Glib::ustring exePath = Glib::path_get_dirname(exname);
     return exePath;
 }

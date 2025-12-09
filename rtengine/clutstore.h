@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART
  *
  *  ART is free software: you can redistribute it and/or modify
@@ -18,29 +18,28 @@
 
 #pragma once
 
-#include <memory>
 #include <cstdint>
+#include <memory>
 
 #include <gtkmm.h>
 
-#include "cache.h"
 #include "alignedbuffer.h"
-#include "noncopyable.h"
+#include "cache.h"
+#include "clutparams.h"
 #include "iccstore.h"
 #include "imagefloat.h"
-#include "clutparams.h"
+#include "noncopyable.h"
 
 #ifdef ART_USE_OCIO
-#  include <OpenColorIO/OpenColorIO.h>
+#include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
-#  include "extclut.h"
+#include "extclut.h"
 #endif // ART_USE_OCIO
 
 #ifdef ART_USE_CTL
-#  include <CtlSimdInterpreter.h>
-#  include "LUT3D.h"
+#include "LUT3D.h"
+#include <CtlSimdInterpreter.h>
 #endif
-
 
 namespace rtengine {
 
@@ -49,21 +48,15 @@ public:
     HaldCLUT();
     ~HaldCLUT();
 
-    bool load(const Glib::ustring& filename);
+    bool load(const Glib::ustring &filename);
 
     explicit operator bool() const;
 
     Glib::ustring getFilename() const;
     Glib::ustring getProfile() const;
 
-    void getRGB(
-        float strength,
-        std::size_t line_size,
-        const float* r,
-        const float* g,
-        const float* b,
-        float* out_rgbx
-    ) const;
+    void getRGB(float strength, std::size_t line_size, const float *r,
+                const float *g, const float *b, float *out_rgbx) const;
 
 private:
     AlignedBuffer<std::uint16_t> clut_image;
@@ -74,18 +67,21 @@ private:
     Glib::ustring clut_profile;
 };
 
-
 class CLUTStore final: public NonCopyable {
 public:
-    static CLUTStore& getInstance();
+    static CLUTStore &getInstance();
 
-    std::shared_ptr<HaldCLUT> getHaldClut(const Glib::ustring& filename) const;
+    std::shared_ptr<HaldCLUT> getHaldClut(const Glib::ustring &filename) const;
 #ifdef ART_USE_OCIO
     OCIO::ConstProcessorRcPtr getOCIOLut(const Glib::ustring &filename) const;
     ExternalLUT3D getExternalLut(const Glib::ustring &filename) const;
 #endif // ART_USE_OCIO
 #ifdef ART_USE_CTL
-    std::pair<std::shared_ptr<Ctl::Interpreter>, std::vector<Ctl::FunctionCallPtr>> getCTLLut(const Glib::ustring &filename, int num_threads, int &chunk_size, CLUTParamDescriptorList &params, Glib::ustring &colorspace, int &lut_dim) const;
+    std::pair<std::shared_ptr<Ctl::Interpreter>,
+              std::vector<Ctl::FunctionCallPtr>>
+    getCTLLut(const Glib::ustring &filename, int num_threads, int &chunk_size,
+              CLUTParamDescriptorList &params, Glib::ustring &colorspace,
+              int &lut_dim) const;
     float CTL_shaper(float a, bool inv);
 #endif // ART_USE_CTL
 
@@ -94,27 +90,24 @@ public:
     struct CLUTName {
         Glib::ustring name;
         int order;
-        CLUTName(const Glib::ustring &n, int o=-1): name(n), order(o) {}
+        CLUTName(const Glib::ustring &n, int o = -1): name(n), order(o) {}
         bool operator<(const CLUTName &o) const
         {
             if (order == o.order) {
                 return name < o.name;
             } else {
-                return (order >=0) && (o.order < 0 || order <= o.order);
+                return (order >= 0) && (o.order < 0 || order <= o.order);
             }
         }
 
-        operator Glib::ustring () const { return name; }
+        operator Glib::ustring() const { return name; }
         bool ok() const { return !name.empty(); }
     };
     static CLUTName getClutDisplayName(const Glib::ustring &filename);
-    
-    static void splitClutFilename(
-        const Glib::ustring& filename,
-        Glib::ustring& name,
-        Glib::ustring& extension,
-        Glib::ustring& profile_name
-    );
+
+    static void splitClutFilename(const Glib::ustring &filename,
+                                  Glib::ustring &name, Glib::ustring &extension,
+                                  Glib::ustring &profile_name);
 
 private:
     CLUTStore();
@@ -124,7 +117,7 @@ private:
     typedef std::pair<OCIO::ConstProcessorRcPtr, std::string> OCIOCacheEntry;
     mutable Cache<Glib::ustring, OCIOCacheEntry> ocio_cache_;
 #endif // ART_USE_OCIO
-    
+
 #ifdef ART_USE_CTL
     struct CTLCacheEntry {
         std::shared_ptr<Ctl::Interpreter> intp;
@@ -137,30 +130,28 @@ private:
     LUTf ctl_shaper_lut_;
     LUTf ctl_shaper_lut_inv_;
 #endif // ART_USE_CTL
-    
+
     mutable MyMutex mutex_;
 };
 
-
 class CLUTApplication {
 public:
-    enum class Quality {
-        LOW = 20,
-        MEDIUM = 30,
-        HIGH = 50,
-        HIGHEST = 0
-    };
-    CLUTApplication(const Glib::ustring &clut_filename, const Glib::ustring &working_profile="", float strength=1.f, int num_threads=1);
+    enum class Quality { LOW = 20, MEDIUM = 30, HIGH = 50, HIGHEST = 0 };
+    CLUTApplication(const Glib::ustring &clut_filename,
+                    const Glib::ustring &working_profile = "",
+                    float strength = 1.f, int num_threads = 1);
     void operator()(Imagefloat *img);
     void apply(int thread_id, int W, float *r, float *g, float *b);
     operator bool() const { return ok_; }
 
     CLUTParamDescriptorList get_param_descriptors() const;
-    bool set_param_values(const CLUTParamValueMap &values, Quality q=Quality::HIGH);
+    bool set_param_values(const CLUTParamValueMap &values,
+                          Quality q = Quality::HIGH);
 
     bool set_num_threads(int num_threads);
 
-    static CLUTParamDescriptorList get_param_descriptors(const Glib::ustring &filename);
+    static CLUTParamDescriptorList
+    get_param_descriptors(const Glib::ustring &filename);
 
 protected:
     void init(int num_threads);
@@ -207,18 +198,19 @@ protected:
 
 #if defined ART_USE_OCIO || defined ART_USE_CTL
     void init_matrices(const Glib::ustring &lut_profile);
-    
+
     float conv_[3][3];
     float iconv_[3][3];
 #endif
 };
 
-
 #ifdef ART_USE_OCIO
 
 class OCIOInputProfile: public CLUTApplication {
 public:
-    OCIOInputProfile(const Glib::ustring &clut_filename, const Glib::ustring &working_profile="", int num_threads=1);
+    OCIOInputProfile(const Glib::ustring &clut_filename,
+                     const Glib::ustring &working_profile = "",
+                     int num_threads = 1);
 };
 
 #endif // ART_USE_OCIO

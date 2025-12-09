@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,23 +19,18 @@
  */
 #pragma once
 
-#include <sigc++/sigc++.h>
-#include <gtkmm.h>
 #include "../rtengine/rtengine.h"
-#include "guiutils.h"
 #include "../rtengine/threadpool.h"
+#include "guiutils.h"
+#include <gtkmm.h>
 #include <mutex>
+#include <sigc++/sigc++.h>
 
 #undef THREAD_PRIORITY_NORMAL
 
-class PLDBridge :
-    public rtengine::ProgressListener
-{
+class PLDBridge: public rtengine::ProgressListener {
 public:
-    explicit PLDBridge(rtengine::ProgressListener* pb) :
-        pl(pb)
-    {
-    }
+    explicit PLDBridge(rtengine::ProgressListener *pb): pl(pb) {}
 
     // ProgressListener interface
     void setProgress(double p) override
@@ -43,7 +38,7 @@ public:
         GThreadLock lock;
         pl->setProgress(p);
     }
-    void setProgressStr(const Glib::ustring& str) override
+    void setProgressStr(const Glib::ustring &str) override
     {
         GThreadLock lock;
         Glib::ustring progrstr;
@@ -57,29 +52,27 @@ public:
         pl->setProgressState(inProcessing);
     }
 
-    void error(const Glib::ustring& descr) override
+    void error(const Glib::ustring &descr) override
     {
         GThreadLock lock;
         pl->error(descr);
     }
 
 private:
-    rtengine::ProgressListener* const pl;
+    rtengine::ProgressListener *const pl;
 };
 
-
-template <class T>
-class ProgressConnector {
+template <class T> class ProgressConnector {
     sigc::signal0<T> opStart;
     sigc::signal0<bool> opEnd;
     T retval;
     bool working_;
     std::mutex mtx_;
 
-    static int emitEndSignalUI(void* data)
+    static int emitEndSignalUI(void *data)
     {
-        sigc::signal0<bool>* opEnd = (sigc::signal0<bool>*) data;
-        int r = opEnd->emit ();
+        sigc::signal0<bool> *opEnd = (sigc::signal0<bool> *)data;
+        int r = opEnd->emit();
         delete opEnd;
 
         return r;
@@ -88,32 +81,32 @@ class ProgressConnector {
     void workingThread()
     {
         std::unique_lock<std::mutex> lock(mtx_);
-        retval = opStart.emit ();
-        gdk_threads_add_idle(ProgressConnector<T>::emitEndSignalUI, new sigc::signal0<bool>(opEnd));
+        retval = opStart.emit();
+        gdk_threads_add_idle(ProgressConnector<T>::emitEndSignalUI,
+                             new sigc::signal0<bool>(opEnd));
         working_ = false;
     }
 
 public:
+    ProgressConnector(): retval(0), working_(false) {}
 
-    ProgressConnector(): retval( 0 ), working_(false) {}
-
-    void startFunc(const sigc::slot0<T>& startHandler, const sigc::slot0<bool>& endHandler)
+    void startFunc(const sigc::slot0<T> &startHandler,
+                   const sigc::slot0<bool> &endHandler)
     {
         if (!working_) {
-            opStart.connect (startHandler);
-            opEnd.connect (endHandler);
-            rtengine::ThreadPool::add_task(rtengine::ThreadPool::Priority::NORMAL, sigc::mem_fun(*this, &ProgressConnector<T>::workingThread));
+            opStart.connect(startHandler);
+            opEnd.connect(endHandler);
+            rtengine::ThreadPool::add_task(
+                rtengine::ThreadPool::Priority::NORMAL,
+                sigc::mem_fun(*this, &ProgressConnector<T>::workingThread));
         }
     }
 
-    T returnValue()
-    {
-        return retval;
-    }
+    T returnValue() { return retval; }
 
     void destroy()
     {
-        //std::unique_lock<std::mutex> lock(mtx_);
+        // std::unique_lock<std::mutex> lock(mtx_);
         delete this;
     }
 };

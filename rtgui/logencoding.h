@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,24 +19,28 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class LogEncoding: public ToolParamBlock, public AdjusterListener, public rtengine::AutoLogListener, public FoldableToolPanel
-{
+class LogEncoding: public ToolParamBlock,
+                   public AdjusterListener,
+                   public rtengine::AutoLogListener,
+                   public FoldableToolPanel {
 public:
     LogEncoding();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void enabledChanged() override;
 
-    void logEncodingChanged(const rtengine::procparams::LogEncodingParams &params) override;
+    void logEncodingChanged(
+        const rtengine::procparams::LogEncodingParams &params) override;
     void autocomputeToggled();
 
     void toolReset(bool to_initial) override;
@@ -72,4 +76,3 @@ private:
 
     rtengine::procparams::LogEncodingParams initial_params;
 };
-

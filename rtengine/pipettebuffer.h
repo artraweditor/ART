@@ -21,33 +21,34 @@
 
 #include "../rtgui/edit.h"
 #include "array2D.h"
-#include "iimage.h"
 #include "coord.h"
+#include "iimage.h"
 #include "imagefloat.h"
 #include "labimage.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-/// @brief Structure that contains information about and pointers to the Edit buffer
-class PipetteBuffer
-{
+/// @brief Structure that contains information about and pointers to the Edit
+/// buffer
+class PipetteBuffer {
 protected:
+    // To avoid duplicated information, we points to a EditDataProvider that
+    // contains the current EditSubscriber instead of pointing to the
+    // EditSubscriber directly
+    ::EditDataProvider *dataProvider;
 
-    // To avoid duplicated information, we points to a EditDataProvider that contains the current EditSubscriber
-    // instead of pointing to the EditSubscriber directly
-    ::EditDataProvider* dataProvider;
-
-    // TODO: Unfortunately, buffer can be of several type, each one representing a floating point image. Maybe we could unify everything one day!?
-    // Only one of the following pointers will be allocated at a time, if any; "one chunk" allocation
-    Imagefloat* imgFloatBuffer;
-    LabImage* LabBuffer;
+    // TODO: Unfortunately, buffer can be of several type, each one representing
+    // a floating point image. Maybe we could unify everything one day!? Only
+    // one of the following pointers will be allocated at a time, if any; "one
+    // chunk" allocation
+    Imagefloat *imgFloatBuffer;
+    LabImage *LabBuffer;
     PlanarWhateverData<float> singlePlaneBuffer;
 
-    bool ready;  // flag that indicates if the _pipette_ buffer is ready
+    bool ready; // flag that indicates if the _pipette_ buffer is ready
 
     void createBuffer(int width, int height);
-    void resize(int newWidth, int newHeight, EditSubscriber* newSubscriber);
+    void resize(int newWidth, int newHeight, EditSubscriber *newSubscriber);
     void resize(int newWidth, int newHeight);
     void flush();
 
@@ -56,32 +57,18 @@ public:
     ~PipetteBuffer();
 
     /** @brief Getter to know if the pipette buffer is correctly filled */
-    bool isReady()
-    {
-        return ready;
-    }
+    bool isReady() { return ready; }
 
     /** @brief Setter to tell that the pipette buffer is correctly filled
-     *  You have to use this method once the pipette is filled, so it can be read. */
-    void setReady()
-    {
-        ready = true;
-    }
+     *  You have to use this method once the pipette is filled, so it can be
+     * read. */
+    void setReady() { ready = true; }
 
-    ::EditDataProvider* getDataProvider()
-    {
-        return dataProvider;
-    }
+    ::EditDataProvider *getDataProvider() { return dataProvider; }
     EditUniqueID getEditID();
-    Imagefloat* getImgFloatBuffer()
-    {
-        return imgFloatBuffer;
-    }
-    LabImage* getLabBuffer()
-    {
-        return LabBuffer;
-    }
-    PlanarWhateverData<float>* getSinglePlaneBuffer()
+    Imagefloat *getImgFloatBuffer() { return imgFloatBuffer; }
+    LabImage *getLabBuffer() { return LabBuffer; }
+    PlanarWhateverData<float> *getSinglePlaneBuffer()
     {
         return &singlePlaneBuffer;
     }
@@ -90,9 +77,9 @@ public:
     bool bufferCreated();
 
     // get the pipette values
-    void getPipetteData(float* v, int x, int y, int squareSize);
+    void getPipetteData(float *v, int x, int y, int squareSize);
 };
 
-}
+} // namespace rtengine
 
 #endif

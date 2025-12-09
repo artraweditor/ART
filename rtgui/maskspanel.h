@@ -20,18 +20,17 @@
 
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "areamask.h"
-#include "colorprovider.h"
-#include "curvelistener.h"
-#include "curveeditorgroup.h"
-#include "curveeditor.h"
 #include "clipboard.h"
+#include "colorprovider.h"
+#include "curveeditor.h"
+#include "curveeditorgroup.h"
+#include "curvelistener.h"
 #include "thresholdadjuster.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 #include <unordered_set>
-
 
 class MasksContentProvider {
 public:
@@ -51,7 +50,7 @@ public:
         rtengine::ProcEvent linked_mask;
         rtengine::ProcEvent external_mask;
     };
-    
+
     virtual ~MasksContentProvider() {}
 
     virtual Gtk::Container *getContainer() = 0;
@@ -72,24 +71,20 @@ public:
     virtual Glib::ustring getColumnHeader(int col) = 0;
     virtual Glib::ustring getColumnContent(int col, int row) = 0;
 
-    virtual void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve, EditUniqueID &lcurve, EditUniqueID &deltaE) = 0;
+    virtual void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve,
+                            EditUniqueID &lcurve, EditUniqueID &deltaE) = 0;
 
     virtual Glib::ustring getToolName() = 0;
 };
 
-
 class AreaDrawUpdater {
 public:
     virtual ~AreaDrawUpdater() = default;
-    enum Phase {
-        BEGIN,
-        UPDATE,
-        END
-    };
-    virtual void updateRectangleArea(Phase phase, int x1, int y1, int x2, int y2) = 0;
+    enum Phase { BEGIN, UPDATE, END };
+    virtual void updateRectangleArea(Phase phase, int x1, int y1, int x2,
+                                     int y2) = 0;
     virtual void cancelUpdateRectangleArea() = 0;
 };
-
 
 class AreaDrawListener {
 public:
@@ -98,65 +93,84 @@ public:
     virtual void stopRectangleDrawingArea() = 0;
 };
 
-
 class AreaDrawListenerProvider {
 public:
     virtual ~AreaDrawListenerProvider() = default;
     virtual void setAreaDrawListener(AreaDrawListener *listener) = 0;
 };
 
-
 class DeltaEColorProvider {
 public:
     virtual ~DeltaEColorProvider() = default;
-    virtual bool getDeltaELCH(EditUniqueID id, rtengine::Coord pos, float &L, float &C, float &H) = 0;
+    virtual bool getDeltaELCH(EditUniqueID id, rtengine::Coord pos, float &L,
+                              float &C, float &H) = 0;
 };
 
-
-class MasksPanel:
-    public Gtk::VBox,
-    public AdjusterListener,
-    public CurveListener,
-    public ColorProvider,
-    public AreaMask,
-    public AreaDrawUpdater,
-    public ThresholdAdjusterListener {
+class MasksPanel: public Gtk::VBox,
+                  public AdjusterListener,
+                  public CurveListener,
+                  public ColorProvider,
+                  public AreaMask,
+                  public AreaDrawUpdater,
+                  public ThresholdAdjusterListener {
 public:
     MasksPanel(MasksContentProvider *cp);
     ~MasksPanel();
 
-    void setMasks(const std::vector<rtengine::procparams::Mask> &masks, int selected_idx, bool show_mask);
-    void getMasks(std::vector<rtengine::procparams::Mask> &masks, int &show_mask_idx);
+    void setMasks(const std::vector<rtengine::procparams::Mask> &masks,
+                  int selected_idx, bool show_mask);
+    void getMasks(std::vector<rtengine::procparams::Mask> &masks,
+                  int &show_mask_idx);
     int getSelected();
 
     void adjusterChanged(Adjuster *a, double newval) override;
     void adjusterAutoToggled(Adjuster *a, bool newval) override;
-    void curveChanged(CurveEditor* ce) override;
-    float blendPipetteValues(CurveEditor *ce, float chan1, float chan2, float chan3) override;
+    void curveChanged(CurveEditor *ce) override;
+    float blendPipetteValues(CurveEditor *ce, float chan1, float chan2,
+                             float chan3) override;
 
     bool button1Released() override;
     bool pick3(bool picked) override;
-    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX, double deltaY, bool &propagateEvent) override;
+    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX,
+                double deltaY, bool &propagateEvent) override;
     void switchOffEditMode() override;
     void setEditProvider(EditDataProvider *provider);
-    void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller *caller) override;
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 
     void setEdited(bool yes);
     bool getEdited();
 
     void updateSelected();
 
-    void updateRectangleArea(AreaDrawUpdater::Phase phase, int x1, int y1, int x2, int y2) override;
+    void updateRectangleArea(AreaDrawUpdater::Phase phase, int x1, int y1,
+                             int x2, int y2) override;
     void cancelUpdateRectangleArea() override;
     void setAreaDrawListener(AreaDrawListener *l);
 
     void setDeltaEColorProvider(DeltaEColorProvider *provider);
 
-    void adjusterChanged(ThresholdAdjuster *a, double newBottom, double newTop) override;
-    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft, double newTopLeft, double newBottomRight, double newTopRight) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottom, int newTop) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft, int newTopLeft, int newBottomRight, int newTopRight) override {}
-    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL, int newBottomR, int newTopR) override {}
+    void adjusterChanged(ThresholdAdjuster *a, double newBottom,
+                         double newTop) override;
+    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft,
+                         double newTopLeft, double newBottomRight,
+                         double newTopRight) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottom,
+                         int newTop) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft,
+                         int newTopLeft, int newBottomRight,
+                         int newTopRight) override
+    {
+    }
+    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL,
+                          int newBottomR, int newTopR) override
+    {
+    }
 
     void updateLinkedMaskList(const rtengine::procparams::ProcParams *params);
 
@@ -165,7 +179,7 @@ public:
 private:
     void on_map() override;
     void onMaskFold(GdkEventButton *evt);
-    
+
     ToolPanelListener *getListener();
     void populateList();
     void onSelectionChanged();
@@ -195,14 +209,17 @@ private:
     void onDeltaEMaskEnableToggled();
     void onParametricMaskEnableToggled();
     void onListEnabledToggled(const Glib::ustring &path);
-    void setListEnabled(Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &it);
-    
-    void shapeAddPressed(rtengine::procparams::AreaMask::Shape::Type type, bool list_only);
-    void setAdjustersVisibility(bool visible, rtengine::procparams::AreaMask::Shape::Type shape_type);
+    void setListEnabled(Gtk::CellRenderer *renderer,
+                        const Gtk::TreeModel::iterator &it);
+
+    void shapeAddPressed(rtengine::procparams::AreaMask::Shape::Type type,
+                         bool list_only);
+    void setAdjustersVisibility(
+        bool visible, rtengine::procparams::AreaMask::Shape::Type shape_type);
     void updateRectangleAreaMask(bool from_mask);
     void updateGradientAreaMask(bool from_mask);
     void maskGet(int idx);
-    void maskShow(int idx, bool list_only=false, bool unsub=true);
+    void maskShow(int idx, bool list_only = false, bool unsub = true);
     void populateShapeList(int idx, int sel);
     void areaShapeSelect(int idx, bool update_list);
 
@@ -274,13 +291,13 @@ private:
 
     MyExpander *mask_exp_;
     bool first_mask_exp_;
-    //Gtk::ListViewText *list;
+    // Gtk::ListViewText *list;
     Gtk::CellRendererToggle list_enabled_renderer_;
     Gtk::TreeView::Column list_enabled_column_;
     std::unique_ptr<ListColumns> list_model_columns_;
     Glib::RefPtr<Gtk::ListStore> list_model_;
     Gtk::TreeView *list;
-    
+
     Gtk::Button *reset;
     Gtk::Button *add;
     Gtk::Button *remove;
@@ -370,7 +387,11 @@ private:
         Glib::ustring toolname;
         Glib::ustring name;
         unsigned int idx;
-        LinkedMaskInfo(const Glib::ustring &t="", const Glib::ustring &n="", unsigned int i=0): toolname{t}, name{n}, idx{i} {}
+        LinkedMaskInfo(const Glib::ustring &t = "", const Glib::ustring &n = "",
+                       unsigned int i = 0)
+            : toolname{t}, name{n}, idx{i}
+        {
+        }
     };
     std::vector<LinkedMaskInfo> available_linked_masks_;
     std::unordered_set<std::string> used_linked_masks_;

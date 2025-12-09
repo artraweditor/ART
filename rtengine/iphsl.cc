@@ -18,11 +18,11 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "improcfun.h"
-#include "color.h"
 #include "array2D.h"
+#include "color.h"
 #include "curves.h"
 #include "guidedfilter.h"
+#include "improcfun.h"
 
 namespace rtengine {
 
@@ -30,10 +30,13 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
 {
     PlanarWhateverData<float> *editWhatever = nullptr;
     EditUniqueID eid = pipetteBuffer ? pipetteBuffer->getEditID() : EUID_None;
-    if ((eid == EUID_HSL_H || eid == EUID_HSL_S || eid == EUID_HSL_V) && pipetteBuffer->getDataProvider()->getCurrSubscriber()->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
+    if ((eid == EUID_HSL_H || eid == EUID_HSL_S || eid == EUID_HSL_V) &&
+        pipetteBuffer->getDataProvider()
+                ->getCurrSubscriber()
+                ->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
         editWhatever = pipetteBuffer->getSinglePlaneBuffer();
     }
-    
+
     if (!params->hsl.enabled) {
         if (editWhatever) {
             editWhatever->fill(0.f);
@@ -43,10 +46,10 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
 
     img->setMode(Imagefloat::Mode::YUV, multiThread);
     img->normalizeFloatTo1(multiThread);
-    
+
     const int W = img->getWidth();
     const int H = img->getHeight();
-    
+
     array2D<float> mask(W, H);
 
     FlatCurve hcurve(params->hsl.hCurve, true, CURVES_MIN_POLY_POINTS / scale);
@@ -56,29 +59,25 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
     array2D<float> Y(W, H, img->g.ptrs, ARRAY2D_BYREFERENCE);
     const float pi2 = 2.f * RT_PI_F;
 
-    const auto hue01 =
-        [=](float h) -> float
-        {
-            float v = h / pi2;
-            if (v < 0.f) {
-                return 1.f + v;
-            } else if (v > 1.f) {
-                return v - 1.f;
-            } else {
-                return v;
-            }
-        };
+    const auto hue01 = [=](float h) -> float {
+        float v = h / pi2;
+        if (v < 0.f) {
+            return 1.f + v;
+        } else if (v > 1.f) {
+            return v - 1.f;
+        } else {
+            return v;
+        }
+    };
 
-    const auto tolin =
-        [](float y, float base) -> float
-        {
-            float v = (y - 0.5f) * 2.f;
-            return SGN(v) * LIM01(xlog2lin(std::abs(v), base));
-        };
-    
+    const auto tolin = [](float y, float base) -> float {
+        float v = (y - 0.5f) * 2.f;
+        return SGN(v) * LIM01(xlog2lin(std::abs(v), base));
+    };
+
     if (editWhatever) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -89,10 +88,11 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
         }
     }
 
-    const float smooth = std::pow(10.f, LIM01(params->hsl.smoothing / 10.f)) - 1.f;
+    const float smooth =
+        std::pow(10.f, LIM01(params->hsl.smoothing / 10.f)) - 1.f;
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -107,7 +107,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
 
     if (!scurve.isIdentity()) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -123,29 +123,28 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
             guidedFilter(Y, mask, mask, radius, eps, multiThread);
         }
 
-        FlatCurve coeff({
-                FCT_MinMaxCPoints,
-                0.25, 0.0, 0.5, 0.18,
-                1, 1, 0, 0.35
-            });
+        FlatCurve coeff(
+            {FCT_MinMaxCPoints, 0.25, 0.0, 0.5, 0.18, 1, 1, 0, 0.35});
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
-                float f = tolin(mask[y][x], 2.f);//10.f);
+                float f = tolin(mask[y][x], 2.f); // 10.f);
                 // float s = LIM01(img->b(y, x) * 4.f);
-                // img->b(y, x) *= 1.f + (f >= 0.f ? pow_F(s, 1.8f) : pow_F(s, 1.f/1.8f)) * f;
-                float s = 1.f + (f < 0 ? coeff.getVal(img->b(y, x)) : 1.f - coeff.getVal(img->b(y, x)));
+                // img->b(y, x) *= 1.f + (f >= 0.f ? pow_F(s, 1.8f) :
+                // pow_F(s, 1.f/1.8f)) * f;
+                float s = 1.f + (f < 0 ? coeff.getVal(img->b(y, x))
+                                       : 1.f - coeff.getVal(img->b(y, x)));
                 img->b(y, x) *= 1.f + SGN(f) * pow_F(LIM01(std::abs(f)), s);
             }
         }
     }
-    
+
     if (!lcurve.isIdentity()) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -162,7 +161,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
         }
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -174,7 +173,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
 
     if (!hcurve.isIdentity()) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -191,7 +190,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
         }
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -204,7 +203,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
     }
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -216,7 +215,7 @@ void ImProcFunctions::hslEqualizer(Imagefloat *img)
             img->r(y, x) = v;
         }
     }
-    
+
     img->normalizeFloatTo65535(multiThread);
 }
 

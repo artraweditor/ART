@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *
@@ -31,61 +31,62 @@
 #include "threadutils.h"
 #include "thumbbrowserbase.h"
 
-class BatchQueueListener
-{
+class BatchQueueListener {
 
 public:
     virtual ~BatchQueueListener() = default;
-    virtual void queueSizeChanged(int qsize, bool queueRunning, bool queueError, const Glib::ustring& queueErrorMessage) = 0;
+    virtual void queueSizeChanged(int qsize, bool queueRunning, bool queueError,
+                                  const Glib::ustring &queueErrorMessage) = 0;
     virtual bool canStartNext() = 0;
 };
 
 class FileCatalog;
 
-class BatchQueue final :
-    public ThumbBrowserBase,
-    public rtengine::BatchProcessingListener,
-    public LWButtonListener
-{
+class BatchQueue final: public ThumbBrowserBase,
+                        public rtengine::BatchProcessingListener,
+                        public LWButtonListener {
 public:
-    explicit BatchQueue (FileCatalog* aFileCatalog);
-    ~BatchQueue () override;
+    explicit BatchQueue(FileCatalog *aFileCatalog);
+    ~BatchQueue() override;
 
-    void addEntries (const std::vector<BatchQueueEntry*>& entries, bool head = false, bool save = true);
-    void cancelItems(const std::vector<ThumbBrowserEntryBase*>& items) { cancelItems(items, false); }
-    void cancelItems(const std::vector<ThumbBrowserEntryBase*>& items, bool immediately);
-    void headItems (const std::vector<ThumbBrowserEntryBase *>& items);
-    void tailItems (const std::vector<ThumbBrowserEntryBase *>& items);
-    void selectAll ();
-    void openItemInEditor(ThumbBrowserEntryBase* item);
+    void addEntries(const std::vector<BatchQueueEntry *> &entries,
+                    bool head = false, bool save = true);
+    void cancelItems(const std::vector<ThumbBrowserEntryBase *> &items)
+    {
+        cancelItems(items, false);
+    }
+    void cancelItems(const std::vector<ThumbBrowserEntryBase *> &items,
+                     bool immediately);
+    void headItems(const std::vector<ThumbBrowserEntryBase *> &items);
+    void tailItems(const std::vector<ThumbBrowserEntryBase *> &items);
+    void selectAll();
+    void openItemInEditor(ThumbBrowserEntryBase *item);
     void openLastSelectedItemInEditor();
 
-    void startProcessing ();
+    void startProcessing();
 
-    bool hasJobs ()
+    bool hasJobs()
     {
         MYREADERLOCK(l, entryRW);
         return (!fd.empty());
     }
 
     void setProgress(double p) override;
-    void setProgressStr(const Glib::ustring& str) override;
+    void setProgressStr(const Glib::ustring &str) override;
     void setProgressState(bool inProcessing) override;
-    void error(const Glib::ustring& descr) override;
-    rtengine::ProcessingJob* imageReady(rtengine::IImagefloat* img) override;
+    void error(const Glib::ustring &descr) override;
+    rtengine::ProcessingJob *imageReady(rtengine::IImagefloat *img) override;
 
-    void rightClicked (ThumbBrowserEntryBase* entry) override;
-    void doubleClicked (ThumbBrowserEntryBase* entry) override;
-    bool keyPressed (GdkEventKey* event) override;
-    void buttonPressed (LWButton* button, int actionCode, void* actionData) override;
-    void redrawNeeded  (LWButton* button) override;
+    void rightClicked(ThumbBrowserEntryBase *entry) override;
+    void doubleClicked(ThumbBrowserEntryBase *entry) override;
+    bool keyPressed(GdkEventKey *event) override;
+    void buttonPressed(LWButton *button, int actionCode,
+                       void *actionData) override;
+    void redrawNeeded(LWButton *button) override;
 
-    void setBatchQueueListener (BatchQueueListener* l)
-    {
-        listener = l;
-    }
+    void setBatchQueueListener(BatchQueueListener *l) { listener = l; }
 
-    bool loadBatchQueue ();
+    bool loadBatchQueue();
     void resizeLoadedQueue();
 
     static int calcMaxThumbnailHeight();
@@ -94,35 +95,39 @@ public:
     const rtengine::procparams::PartialProfile *getBatchProfile() override;
 
 private:
-    void cancelItems_(const std::vector<ThumbBrowserEntryBase*>& items) { cancelItems(items, false); }
+    void cancelItems_(const std::vector<ThumbBrowserEntryBase *> &items)
+    {
+        cancelItems(items, false);
+    }
     int getMaxThumbnailHeight() const override;
-    void saveThumbnailHeight (int height) override;
-    int  getThumbnailHeight () override;
+    void saveThumbnailHeight(int height) override;
+    int getThumbnailHeight() override;
 
-    Glib::ustring autoCompleteFileName (const Glib::ustring& fileName, const Glib::ustring& format);
-    Glib::ustring getTempFilenameForParams( const Glib::ustring &filename );
-    bool saveBatchQueue ();
-    void notifyListener ();
+    Glib::ustring autoCompleteFileName(const Glib::ustring &fileName,
+                                       const Glib::ustring &format);
+    Glib::ustring getTempFilenameForParams(const Glib::ustring &filename);
+    bool saveBatchQueue();
+    void notifyListener();
 
     using ThumbBrowserBase::redrawEntryNeeded;
 
-    BatchQueueEntry* processing;  // holds the currently processed image
-    FileCatalog* fileCatalog;
+    BatchQueueEntry *processing; // holds the currently processed image
+    FileCatalog *fileCatalog;
     int sequence; // holds the current sequence index
 
     Glib::ustring nameTemplate;
 
-    MyImageMenuItem* cancel;
-    MyImageMenuItem* head;
-    MyImageMenuItem* tail;
-    Gtk::MenuItem* selall;
-    Gtk::MenuItem* open;
+    MyImageMenuItem *cancel;
+    MyImageMenuItem *head;
+    MyImageMenuItem *tail;
+    Gtk::MenuItem *selall;
+    Gtk::MenuItem *open;
     Glib::RefPtr<Gtk::AccelGroup> pmaccelgroup;
     Gtk::Menu pmenu;
 
-    BatchQueueListener* listener;
+    BatchQueueListener *listener;
 
-    std::set<BatchQueueEntry*> removable_batch_queue_entries;
+    std::set<BatchQueueEntry *> removable_batch_queue_entries;
     MyMutex mutex_removable_batch_queue_entries;
 
     IdleRegister idle_register;

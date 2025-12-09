@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,21 +20,21 @@
 #ifndef _PROFILEPANEL_
 #define _PROFILEPANEL_
 
-#include <gtkmm.h>
-#include <vector>
 #include "../rtengine/rtengine.h"
+#include "guiutils.h"
+#include "partialpastedlg.h"
 #include "pparamschangelistener.h"
 #include "profilechangelistener.h"
-#include "partialpastedlg.h"
-#include "guiutils.h"
 #include "profilestorecombobox.h"
 #include "rtimage.h"
+#include <gtkmm.h>
+#include <vector>
 
-class ProfilePanel : public Gtk::Grid, public PParamsChangeListener, public ProfileStoreListener
-{
+class ProfilePanel: public Gtk::Grid,
+                    public PParamsChangeListener,
+                    public ProfileStoreListener {
 
 private:
-
     rtengine::procparams::ProcParams stored_pp_;
     Glib::ustring storedValue;
     Glib::ustring lastFilename;
@@ -52,62 +52,59 @@ private:
     bool isLastSavedSelected();
     bool isDefaultSelected();
     Gtk::TreeIter getCustomRow();
-    Gtk::TreeIter getLastSavedRow ();
-    Gtk::TreeIter addCustomRow ();
-    Gtk::TreeIter addLastSavedRow ();
+    Gtk::TreeIter getLastSavedRow();
+    Gtk::TreeIter addCustomRow();
+    Gtk::TreeIter addLastSavedRow();
     Gtk::TreeIter addDefaultRow();
 
-//protected:
+    // protected:
 
-    static PartialPasteDlg* partialProfileDlg;
-    Gtk::Button* save;
-    Gtk::Button* load;
-    Gtk::Button* copy;
-    Gtk::Button* paste;
-    ProfileStoreComboBox* profiles;
+    static PartialPasteDlg *partialProfileDlg;
+    Gtk::Button *save;
+    Gtk::Button *load;
+    Gtk::Button *copy;
+    Gtk::Button *paste;
+    ProfileStoreComboBox *profiles;
     rtengine::procparams::PartialProfile *custom;
     rtengine::procparams::PartialProfile *lastsaved;
     rtengine::procparams::PartialProfile *defprofile;
-    ProfileChangeListener* tpc;
+    ProfileChangeListener *tpc;
     bool dontupdate;
     sigc::connection changeconn;
-    static Gtk::Window* parent;
-    void changeTo (const rtengine::procparams::PartialProfile* newpp, Glib::ustring profname);
+    static Gtk::Window *parent;
+    void changeTo(const rtengine::procparams::PartialProfile *newpp,
+                  Glib::ustring profname);
 
 public:
+    explicit ProfilePanel();
+    ~ProfilePanel() override;
 
-    explicit ProfilePanel ();
-    ~ProfilePanel () override;
+    void setProfileChangeListener(ProfileChangeListener *ppl) { tpc = ppl; }
 
-    void setProfileChangeListener (ProfileChangeListener* ppl)
-    {
-        tpc = ppl;
-    }
-
-    static void init (Gtk::Window* parentWindow);
-    static void cleanup ();
+    static void init(Gtk::Window *parentWindow);
+    static void cleanup();
     void storeCurrentValue() override;
-    void updateProfileList () override;
+    void updateProfileList() override;
     void restoreValue() override;
 
-    void initProfile (const Glib::ustring& profileFullPath, rtengine::procparams::ProcParams* lastSaved, const rtengine::FramesMetaData *metadata);
-    void setInitialFileName (const Glib::ustring& filename);
+    void initProfile(const Glib::ustring &profileFullPath,
+                     rtengine::procparams::ProcParams *lastSaved,
+                     const rtengine::FramesMetaData *metadata);
+    void setInitialFileName(const Glib::ustring &filename);
 
     // PParamsChangeListener interface
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr
-    ) override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
     void clearParamChanges() override;
 
     // gui callbacks
-    void save_clicked (GdkEventButton* event);
-    void load_clicked (GdkEventButton* event);
-    void copy_clicked (GdkEventButton* event);
-    void paste_clicked (GdkEventButton* event);
-    void selection_changed ();
+    void save_clicked(GdkEventButton *event);
+    void load_clicked(GdkEventButton *event);
+    void copy_clicked(GdkEventButton *event);
+    void paste_clicked(GdkEventButton *event);
+    void selection_changed();
     void writeOptions();
 };
 

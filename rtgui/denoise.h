@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,37 +19,40 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "colorprovider.h"
 #include "guiutils.h"
 #include "options.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class Denoise:
-    public ToolParamBlock,
-    public AdjusterListener,
-    public FoldableToolPanel,
-    public rtengine::AutoChromaListener
-{
+class Denoise: public ToolParamBlock,
+               public AdjusterListener,
+               public FoldableToolPanel,
+               public rtengine::AutoChromaListener {
 public:
     Denoise();
     ~Denoise() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void enabledChanged() override;
 
-    void chromaChanged(double autchroma, double autred, double autblue) override;
+    void chromaChanged(double autchroma, double autred,
+                       double autblue) override;
     bool chromaComputed(double chroma, double red, double blue);
-    
-    void noiseChanged(double nresid, double highresid) override {}
-    void noiseTilePrev(int tileX, int tileY, int prevX, int prevY, int sizeT, int sizeP) override {}
 
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void noiseChanged(double nresid, double highresid) override {}
+    void noiseTilePrev(int tileX, int tileY, int prevX, int prevY, int sizeT,
+                       int sizeP) override
+    {
+    }
+
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 
@@ -58,7 +61,7 @@ private:
     void chrominanceMethodChanged();
     void smoothingEnabledToggled();
     void colorSpaceChanged();
-    
+
     rtengine::ProcEvent EvGuidedChromaRadius;
     rtengine::ProcEvent EvChrominanceAutoFactor;
     rtengine::ProcEvent EvLuminanceDetailThreshold;
@@ -86,4 +89,3 @@ private:
 
     rtengine::procparams::DenoiseParams initial_params;
 };
-

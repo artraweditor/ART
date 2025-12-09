@@ -42,10 +42,10 @@ inline float sl(float blend, float x)
 
 } // namespace
 
-
 void ImProcFunctions::softLight(Imagefloat *rgb)
 {
-    const bool sl_enabled = params->softlight.enabled && params->softlight.strength > 0;
+    const bool sl_enabled =
+        params->softlight.enabled && params->softlight.strength > 0;
     if (!sl_enabled) {
         return;
     }
@@ -59,18 +59,16 @@ void ImProcFunctions::softLight(Imagefloat *rgb)
         f[i] = sl(blend, i);
     }
 
-    const auto apply =
-        [&](float x) -> float
-        {
-            if (x <= 65535.f) {
-                return f[x];
-            } else {
-                return x;
-            }
-        };
+    const auto apply = [&](float x) -> float {
+        if (x <= 65535.f) {
+            return f[x];
+        } else {
+            return x;
+        }
+    };
 
 #ifdef _OPENMP
-    #pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < rgb->getHeight(); ++y) {
         for (int x = 0; x < rgb->getWidth(); ++x) {

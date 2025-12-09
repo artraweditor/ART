@@ -18,10 +18,11 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rtengine.h"
 #include "procparams.h"
+#include "rtengine.h"
 
-namespace rtengine { namespace procparams {
+namespace rtengine {
+namespace procparams {
 
 // Created in own file to speed up build process during elaboration
 
@@ -29,10 +30,12 @@ namespace rtengine { namespace procparams {
 
 #if POLY_ALGO == 1
 
-std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots)
+std::vector<CoordD>
+AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots)
 {
-    //TODO: Find a way to have the appropriate number of points for each subcurve
-    constexpr int nbrPoints = 10;  // Number of points per curve ;
+    // TODO: Find a way to have the appropriate number of points for each
+    // subcurve
+    constexpr int nbrPoints = 10; // Number of points per curve ;
     constexpr double increment = 1. / double(nbrPoints - 1);
 
     std::vector<CoordD> poly;
@@ -40,11 +43,14 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
         return poly;
     }
 
-    //--------------------  Create list of Line & Bezier curves -------------------
+    //--------------------  Create list of Line & Bezier curves
+    //-------------------
 
-    // NB : A corner starts in the middle of segment(N) and end in the middle of segment(N+1)
-    //      The the first point of a corner == the last point of the previous corner,
-    //      so we skip the very first point of each corner when building 'poly'
+    // NB : A corner starts in the middle of segment(N) and end in the middle of
+    // segment(N+1)
+    //      The the first point of a corner == the last point of the previous
+    //      corner, so we skip the very first point of each corner when building
+    //      'poly'
 
     CoordD cornerKnots[3];
     CoordD middleStart;
@@ -68,7 +74,7 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
             cornerKnots[2].set(knots[i + 1].x, knots[i + 1].y);
         }
         middleStart = (cornerKnots[0] + cornerKnots[1]) * 0.5;
-        middleEnd   = (cornerKnots[1] + cornerKnots[2]) * 0.5;
+        middleEnd = (cornerKnots[1] + cornerKnots[2]) * 0.5;
 
         if (knots[i].roundness == 0.) {
             poly.push_back(cornerKnots[1]);
@@ -91,8 +97,10 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
                 double tr2t = tr * 2 * t;
 
                 // adding a point to the polyline
-                CoordD point( tr2 * currStart.x + tr2t * cornerKnots[1].x + t2 * currEnd.x,
-                              tr2 * currStart.y + tr2t * cornerKnots[1].y + t2 * currEnd.y );
+                CoordD point(tr2 * currStart.x + tr2t * cornerKnots[1].x +
+                                 t2 * currEnd.x,
+                             tr2 * currStart.y + tr2t * cornerKnots[1].y +
+                                 t2 * currEnd.y);
                 poly.push_back(point);
             }
 
@@ -109,21 +117,24 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
 
 #endif
 
-
 #if POLY_ALGO == 2
 
-std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots)
+std::vector<CoordD>
+AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots)
 {
     std::vector<CoordD> poly;
     if (knots.size() < 3) {
         return poly;
     }
 
-    //--------------------  Create list of Line & Bezier curves -------------------
+    //--------------------  Create list of Line & Bezier curves
+    //-------------------
 
-    // NB : A corner starts in the middle of segment(N) and end in the middle of segment(N+1)
-    //      The the first point of a corner == the last point of the previous corner,
-    //      so we skip the very first point of each corner when building 'poly'
+    // NB : A corner starts in the middle of segment(N) and end in the middle of
+    // segment(N+1)
+    //      The the first point of a corner == the last point of the previous
+    //      corner, so we skip the very first point of each corner when building
+    //      'poly'
 
     CoordD cornerKnots[3];
     CoordD prevEnd;
@@ -163,29 +174,31 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
             continue;
         }
 
-        prevEnd     = (cornerKnots[1] - cornerKnots[0]) * prevRoundness + cornerKnots[0];
-        nextStart   = (cornerKnots[1] - cornerKnots[2]) * nextRoundness + cornerKnots[2];
-        currStart   = (cornerKnots[0] - cornerKnots[1]) * roundness     + cornerKnots[1];
-        currEnd     = (cornerKnots[2] - cornerKnots[1]) * roundness     + cornerKnots[1];
+        prevEnd =
+            (cornerKnots[1] - cornerKnots[0]) * prevRoundness + cornerKnots[0];
+        nextStart =
+            (cornerKnots[1] - cornerKnots[2]) * nextRoundness + cornerKnots[2];
+        currStart =
+            (cornerKnots[0] - cornerKnots[1]) * roundness + cornerKnots[1];
+        currEnd =
+            (cornerKnots[2] - cornerKnots[1]) * roundness + cornerKnots[1];
 
         if ((prevRoundness + roundness) > 1.) {
             // prev knot roundness and current knot roundness are overlaping
             currStart = (prevEnd + currStart) * 0.5;
-        }
-        else {
-            // prev knot roundness and current knot roundness are not overlaping,
-            // adding the conection line
+        } else {
+            // prev knot roundness and current knot roundness are not
+            // overlaping, adding the conection line
             poly.push_back(currStart);
         }
 
         if ((nextRoundness + roundness) > 1.) {
             // next knot roundness and current knot roundness are overlaping
             currEnd = (currEnd + nextStart) * 0.5;
-        }
-        else {
-            // next knot roundness and current knot roundness are not overlaping,
-            // adding the conection line
-            //poly.push_back(nextStart);
+        } else {
+            // next knot roundness and current knot roundness are not
+            // overlaping, adding the conection line
+            // poly.push_back(nextStart);
         }
 
         // evaluating the required number of points for a smooth shape
@@ -193,7 +206,9 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
         CoordD dist1(cornerKnots[1] - currStart);
         CoordD dist2(cornerKnots[1] - currEnd);
 
-        int nbrPoints = rtengine::max<int>(int((dist1.getLength() + dist2.getLength()) / 10.), 5);  // one segment for 5 px ;
+        int nbrPoints = rtengine::max<int>(
+            int((dist1.getLength() + dist2.getLength()) / 10.),
+            5); // one segment for 5 px ;
         double increment = 1. / double(nbrPoints - 1);
 
         for (int k = 1; k < (nbrPoints - 1); k++) {
@@ -204,8 +219,9 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
             double tr2t = tr * 2 * t;
 
             // adding a point to the polyline
-            CoordD point( tr2 * currStart.x + tr2t * cornerKnots[1].x + t2 * currEnd.x,
-                          tr2 * currStart.y + tr2t * cornerKnots[1].y + t2 * currEnd.y );
+            CoordD point(
+                tr2 * currStart.x + tr2t * cornerKnots[1].x + t2 * currEnd.x,
+                tr2 * currStart.y + tr2t * cornerKnots[1].y + t2 * currEnd.y);
             poly.push_back(point);
         }
 
@@ -218,6 +234,5 @@ std::vector<CoordD> AreaMask::Polygon::get_tessellation(std::vector<Knot> &knots
 
 #endif
 
-
-}}
-
+} // namespace procparams
+} // namespace rtengine

@@ -22,13 +22,15 @@
 
 #include "rawimagesource.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-inline void RawImageSource::convert_row_to_YIQ (const float* const r, const float* const g, const float* const b, float* Y, float* I, float* Q, const int W)
+inline void RawImageSource::convert_row_to_YIQ(const float *const r,
+                                               const float *const g,
+                                               const float *const b, float *Y,
+                                               float *I, float *Q, const int W)
 {
 #ifdef _OPENMP
-    #pragma omp simd
+#pragma omp simd
 #endif
 
     for (int j = 0; j < W; j++) {
@@ -38,10 +40,14 @@ inline void RawImageSource::convert_row_to_YIQ (const float* const r, const floa
     }
 }
 
-inline void RawImageSource::convert_row_to_RGB (float* r, float* g, float* b, const float* const Y, const float* const I, const float* const Q, const int W)
+inline void RawImageSource::convert_row_to_RGB(float *r, float *g, float *b,
+                                               const float *const Y,
+                                               const float *const I,
+                                               const float *const Q,
+                                               const int W)
 {
 #ifdef _OPENMP
-    #pragma omp simd
+#pragma omp simd
 #endif
 
     for (int j = 1; j < W - 1; j++) {
@@ -51,14 +57,19 @@ inline void RawImageSource::convert_row_to_RGB (float* r, float* g, float* b, co
     }
 }
 
-inline void RawImageSource::convert_to_RGB (float &r, float &g, float &b, const float Y, const float I, const float Q)
+inline void RawImageSource::convert_to_RGB(float &r, float &g, float &b,
+                                           const float Y, const float I,
+                                           const float Q)
 {
     r = Y + 0.956f * I + 0.621f * Q;
     g = Y - 0.272f * I - 0.647f * Q;
     b = Y - 1.105f * I + 1.702f * Q;
 }
 
-inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &rawData, float* ar, float* ab, float* pg, float* cg, float* ng, int i, float r_mul, float g_mul, float b_mul, int x1, int width, int skip)
+inline void RawImageSource::interpolate_row_rb_mul_pp(
+    const array2D<float> &rawData, float *ar, float *ab, float *pg, float *cg,
+    float *ng, int i, float r_mul, float g_mul, float b_mul, int x1, int width,
+    int skip)
 {
 
     if ((ri->ISRED(i, 0) || ri->ISRED(i, 1)) && pg && ng) {
@@ -100,9 +111,13 @@ inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &raw
                 if (j == 0) {
                     r = g_mul * cg[0] + r_mul * rawData[i][1] - g_mul * cg[1];
                 } else if (j == W - 1) {
-                    r = g_mul * cg[W - 1] + r_mul * rawData[i][W - 2] - g_mul * cg[W - 2];
+                    r = g_mul * cg[W - 1] + r_mul * rawData[i][W - 2] -
+                        g_mul * cg[W - 2];
                 } else {
-                    r = g_mul * cg[j] + (r_mul * rawData[i][j - 1] - g_mul * cg[j - 1] + r_mul * rawData[i][j + 1] - g_mul * cg[j + 1]) / 2;
+                    r = g_mul * cg[j] +
+                        (r_mul * rawData[i][j - 1] - g_mul * cg[j - 1] +
+                         r_mul * rawData[i][j + 1] - g_mul * cg[j + 1]) /
+                            2;
                 }
 
                 ar[jx] = std::max(0.f, r);
@@ -112,15 +127,19 @@ inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &raw
                 if (i == 0) {
                     b = g_mul * ng[j] + b_mul * rawData[1][j] - g_mul * cg[j];
                 } else if (i == H - 1) {
-                    b = g_mul * pg[j] + b_mul * rawData[H - 2][j] - g_mul * cg[j];
+                    b = g_mul * pg[j] + b_mul * rawData[H - 2][j] -
+                        g_mul * cg[j];
                 } else {
-                    b = g_mul * cg[j] + (b_mul * rawData[i - 1][j] - g_mul * pg[j] + b_mul * rawData[i + 1][j] - g_mul * ng[j]) / 2;
+                    b = g_mul * cg[j] +
+                        (b_mul * rawData[i - 1][j] - g_mul * pg[j] +
+                         b_mul * rawData[i + 1][j] - g_mul * ng[j]) /
+                            2;
                 }
 
                 ab[jx] = std::max(0.f, b);
             }
         }
-    } else if(pg && ng) {
+    } else if (pg && ng) {
         // BGBGB or GBGBGB line
         for (int j = x1, jx = 0; jx < width; j += skip, jx++) {
             if (ri->ISBLUE(i, j)) {
@@ -160,9 +179,13 @@ inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &raw
                 if (j == 0) {
                     b = g_mul * cg[0] + b_mul * rawData[i][1] - g_mul * cg[1];
                 } else if (j == W - 1) {
-                    b = g_mul * cg[W - 1] + b_mul * rawData[i][W - 2] - g_mul * cg[W - 2];
+                    b = g_mul * cg[W - 1] + b_mul * rawData[i][W - 2] -
+                        g_mul * cg[W - 2];
                 } else {
-                    b = g_mul * cg[j] + (b_mul * rawData[i][j - 1] - g_mul * cg[j - 1] + b_mul * rawData[i][j + 1] - g_mul * cg[j + 1]) / 2;
+                    b = g_mul * cg[j] +
+                        (b_mul * rawData[i][j - 1] - g_mul * cg[j - 1] +
+                         b_mul * rawData[i][j + 1] - g_mul * cg[j + 1]) /
+                            2;
                 }
 
                 ab[jx] = std::max(0.f, b);
@@ -172,9 +195,13 @@ inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &raw
                 if (i == 0) {
                     r = g_mul * ng[j] + r_mul * rawData[1][j] - g_mul * cg[j];
                 } else if (i == H - 1) {
-                    r = g_mul * pg[j] + r_mul * rawData[H - 2][j] - g_mul * cg[j];
+                    r = g_mul * pg[j] + r_mul * rawData[H - 2][j] -
+                        g_mul * cg[j];
                 } else {
-                    r = g_mul * cg[j] + (r_mul * rawData[i - 1][j] - g_mul * pg[j] + r_mul * rawData[i + 1][j] - g_mul * ng[j]) / 2;
+                    r = g_mul * cg[j] +
+                        (r_mul * rawData[i - 1][j] - g_mul * pg[j] +
+                         r_mul * rawData[i + 1][j] - g_mul * ng[j]) /
+                            2;
                 }
 
                 ar[jx] = std::max(0.f, r);
@@ -183,6 +210,6 @@ inline void RawImageSource::interpolate_row_rb_mul_pp (const array2D<float> &raw
     }
 }
 
-}
+} // namespace rtengine
 
 #endif

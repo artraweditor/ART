@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,10 +20,10 @@
 #ifndef _COLORTEMP_
 #define _COLORTEMP_
 
+#include <array>
 #include <cmath>
 #include <map>
 #include <string>
-#include <array>
 
 namespace rtengine {
 
@@ -44,43 +44,34 @@ public:
     ColorTemp(double mulr, double mulg, double mulb, double e);
     ColorTemp(double mulr, double mulg, double mulb);
 
-    void update(const double rmul, const double gmul, const double bmul, const double equal);
-    
+    void update(const double rmul, const double gmul, const double bmul,
+                const double equal);
+
     void useDefaults(const double equal);
 
     bool clipped() const { return clipped_; }
-    
-    inline double getTemp() const
-    {
-        return temp;
-    }
-    
-    inline double getGreen() const
-    {
-        return green;
-    }
-    
-    inline double getEqual() const
-    {
-        return equal;
-    }
+
+    inline double getTemp() const { return temp; }
+
+    inline double getGreen() const { return green; }
+
+    inline double getEqual() const { return equal; }
 
     void getMultipliers(double &mulr, double &mulg, double &mulb) const;
 
-    void mul2temp(const double rmul, const double gmul, const double bmul, const double equal, double& temp, double& green) const;
+    void mul2temp(const double rmul, const double gmul, const double bmul,
+                  const double equal, double &temp, double &green) const;
 
-    bool operator==(const ColorTemp& other) const;
-    bool operator!=(const ColorTemp& other) const;
+    bool operator==(const ColorTemp &other) const;
+    bool operator!=(const ColorTemp &other) const;
 
 private:
     void clip(double &temp, double &green) const;
     void clip(double &temp, double &green, double &equal) const;
-    void temp2mul(double temp, double green, double equal, double& rmul, double& gmul, double& bmul) const;
-    
-    enum Mode {
-        TEMP_TINT,
-        MULTIPLIERS
-    };
+    void temp2mul(double temp, double green, double equal, double &rmul,
+                  double &gmul, double &bmul) const;
+
+    enum Mode { TEMP_TINT, MULTIPLIERS };
     Mode mode_;
     double temp;
     double green;

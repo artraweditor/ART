@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -18,7 +18,8 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// adapted from the "color correction" module of Darktable. Original copyright follows
+// adapted from the "color correction" module of Darktable. Original copyright
+// follows
 /*
     copyright (c) 2009--2010 johannes hanika.
 
@@ -38,15 +39,16 @@
 
 #pragma once
 
-#include <gtkmm.h>
-#include "toolpanel.h"
-#include "eventmapper.h"
 #include "edit.h"
-
+#include "eventmapper.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
 class ColorWheelArea: public Gtk::DrawingArea, public BackBuffer {
 public:
-    ColorWheelArea(bool enable_low=true);//rtengine::ProcEvent evt, const Glib::ustring &msg, bool enable_low=true);
+    ColorWheelArea(
+        bool enable_low = true); // rtengine::ProcEvent evt, const Glib::ustring
+                                 // &msg, bool enable_low=true);
 
     void getParams(double &x, double &y) const;
     void setParams(double x, double y, bool notify);
@@ -54,7 +56,7 @@ public:
     void setEdited(bool yes);
     bool getEdited() const;
     void reset(bool toInitial);
-    //void setListener(ToolPanelListener *l);
+    // void setListener(ToolPanelListener *l);
 
     void setScale(double s, bool notify);
     double getScale() const;
@@ -65,8 +67,11 @@ public:
     bool on_button_release_event(GdkEventButton *event) override;
     bool on_motion_notify_event(GdkEventMotion *event) override;
     Gtk::SizeRequestMode get_request_mode_vfunc() const override;
-    void get_preferred_width_vfunc(int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc(int width, int &minimum_height, int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
 
     sigc::signal<void> signal_changed() { return sig_changed_; }
     sigc::signal<void> signal_right_click() { return sig_right_click_; }
@@ -74,7 +79,7 @@ public:
 private:
     // rtengine::ProcEvent evt;
     // Glib::ustring evtMsg;
-    
+
     double low_a;
     double x_;
     double low_b;
@@ -99,15 +104,14 @@ private:
 
     sigc::signal<void> sig_changed_;
     sigc::signal<void> sig_right_click_;
-    
+
     bool notifyListener();
     void getLitPoint();
 };
 
-
 class ColorWheel: public Gtk::HBox, public EditSubscriber {
 public:
-    ColorWheel(bool use_scale=true);
+    ColorWheel(bool use_scale = true);
 
     void getParams(double &x, double &y, double &s) const;
     void setParams(double x, double y, double s, bool notify);
@@ -139,10 +143,9 @@ protected:
     std::array<double, 3> savedparams_;
 };
 
-
 class HueSatColorWheel: public ColorWheel {
 public:
-    HueSatColorWheel(double sat_scale=1);
+    HueSatColorWheel(double sat_scale = 1);
     ~HueSatColorWheel();
 
     void getParams(double &hue, double &sat) const;
@@ -152,6 +155,6 @@ public:
 private:
     void onResetPressed();
     void onRightClickPressed();
-    
+
     double satscale_;
 };

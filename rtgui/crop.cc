@@ -17,17 +17,16 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "crop.h"
+#include "eventmapper.h"
 #include "options.h"
 #include "rtimage.h"
-#include "eventmapper.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
 extern Options options;
 
-namespace
-{
+namespace {
 
 inline void get_custom_ratio(int w, int h, double &rw, double &rh)
 {
@@ -46,46 +45,41 @@ inline void get_custom_ratio(int w, int h, double &rw, double &rh)
 
 } // namespace
 
-Crop::Crop():
-    FoldableToolPanel(this, "crop", M("TP_CROP_LABEL"), false, true, true),
-    crop_ratios{
-        {M("GENERAL_ASIMAGE"), 0.0},
-        {M("GENERAL_CURRENT"), -1.0},
-        {"3:2", 3.0 / 2.0},                 // L1.5,        P0.666...
-        {"4:3", 4.0 / 3.0},                 // L1.333...,   P0.75
-        {"16:9", 16.0 / 9.0},               // L1.777...,   P0.5625
-        {"16:10", 16.0 / 10.0},             // L1.6,        P0.625
-        {"1:1", 1.0 / 1.0},                 // L1,          P1
-        {"2:1", 2.0 / 1.0},                 // L2,          P0.5
-        {"3:1", 3.0 / 1.0},                 // L3,          P0.333...
-        {"4:1", 4.0 / 1.0},                 // L4,          P0.25
-        {"5:1", 5.0 / 1.0},                 // L5,          P0.2
-        {"6:1", 6.0 / 1.0},                 // L6,          P0.1666...
-        {"7:1", 7.0 / 1.0},                 // L7,          P0.142...
-        {"4:5", 4.0 / 5.0},                 // L1.25,       P0.8
-        {"5:7", 5.0 / 7.0},                 // L1.4,        P0.714...
-        {"6:7", 6.0 / 7.0},                 // L1.166...,   P0.857...
-        {"6:17", 6.0 / 17.0},               // L2.833...,   P0.352...
-        {"24:65 - XPAN", 24.0 / 65.0},      // L2.708...,   P0.369...
-        {"1.414 - ISO 216 (A4 paper)", 1.414},  // L1.414,      P0.707...
-        {"3.5:5", 3.5 / 5.0},               // L1.428...,   P0.7
-        {"8.5:11 - US Letter", 8.5 / 11.0}, // L1.294...,   P0.772...
-        {"9.5:12", 9.5 / 12.0},             // L1.263...,   P0.791...
-        {"10:12", 10.0 / 12.0},             // L1.2,        P0.833...
-        {"11:14", 11.0 / 14.0},             // L1.272...,   P0.785...
-        {"11:17 - Tabloid", 11.0 / 17.0},   // L1.545...,   P0.647...
-        {"13:19", 13.0 / 19.0},             // L1.461...,   P0.684...
-        {"17:22", 17.0 / 22.0},             // L1.294...,   P0.772...
-        {"45:35 - ePassport", 45.0 / 35.0}, // L1.285,...   P0.777...
-        {"64:27", 64.0 / 27.0},             // L2.370...,   P0.421...
-    },
-    opt(0),
-    wDirty(true),
-    hDirty(true),
-    xDirty(true),
-    yDirty(true),
-    lastFixRatio(true),
-    selecting_(false)
+Crop::Crop()
+    : FoldableToolPanel(this, "crop", M("TP_CROP_LABEL"), false, true, true),
+      crop_ratios{
+          {M("GENERAL_ASIMAGE"), 0.0},
+          {M("GENERAL_CURRENT"), -1.0},
+          {"3:2", 3.0 / 2.0},                    // L1.5,        P0.666...
+          {"4:3", 4.0 / 3.0},                    // L1.333...,   P0.75
+          {"16:9", 16.0 / 9.0},                  // L1.777...,   P0.5625
+          {"16:10", 16.0 / 10.0},                // L1.6,        P0.625
+          {"1:1", 1.0 / 1.0},                    // L1,          P1
+          {"2:1", 2.0 / 1.0},                    // L2,          P0.5
+          {"3:1", 3.0 / 1.0},                    // L3,          P0.333...
+          {"4:1", 4.0 / 1.0},                    // L4,          P0.25
+          {"5:1", 5.0 / 1.0},                    // L5,          P0.2
+          {"6:1", 6.0 / 1.0},                    // L6,          P0.1666...
+          {"7:1", 7.0 / 1.0},                    // L7,          P0.142...
+          {"4:5", 4.0 / 5.0},                    // L1.25,       P0.8
+          {"5:7", 5.0 / 7.0},                    // L1.4,        P0.714...
+          {"6:7", 6.0 / 7.0},                    // L1.166...,   P0.857...
+          {"6:17", 6.0 / 17.0},                  // L2.833...,   P0.352...
+          {"24:65 - XPAN", 24.0 / 65.0},         // L2.708...,   P0.369...
+          {"1.414 - ISO 216 (A4 paper)", 1.414}, // L1.414,      P0.707...
+          {"3.5:5", 3.5 / 5.0},                  // L1.428...,   P0.7
+          {"8.5:11 - US Letter", 8.5 / 11.0},    // L1.294...,   P0.772...
+          {"9.5:12", 9.5 / 12.0},                // L1.263...,   P0.791...
+          {"10:12", 10.0 / 12.0},                // L1.2,        P0.833...
+          {"11:14", 11.0 / 14.0},                // L1.272...,   P0.785...
+          {"11:17 - Tabloid", 11.0 / 17.0},      // L1.545...,   P0.647...
+          {"13:19", 13.0 / 19.0},                // L1.461...,   P0.684...
+          {"17:22", 17.0 / 22.0},                // L1.294...,   P0.772...
+          {"45:35 - ePassport", 45.0 / 35.0},    // L1.285,...   P0.777...
+          {"64:27", 64.0 / 27.0},                // L2.370...,   P0.421...
+      },
+      opt(0), wDirty(true), hDirty(true), xDirty(true), yDirty(true),
+      lastFixRatio(true), selecting_(false)
 {
     EvToolReset.set_action(rtengine::CROP);
 
@@ -96,204 +90,237 @@ Crop::Crop():
 
     methodgrid = Gtk::manage(new Gtk::Grid());
     methodgrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(methodgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(methodgrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    Gtk::Label* xlab = Gtk::manage (new Gtk::Label (M("TP_CROP_X") + ":"));
-    setExpandAlignProperties(xlab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *xlab = Gtk::manage(new Gtk::Label(M("TP_CROP_X") + ":"));
+    setExpandAlignProperties(xlab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    x = Gtk::manage (new MySpinButton ());
+    x = Gtk::manage(new MySpinButton());
     setExpandAlignProperties(x, true, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
     x->set_width_chars(6);
 
-    Gtk::Label* ylab = Gtk::manage (new Gtk::Label (M("TP_CROP_Y") + ":"));
-    setExpandAlignProperties(ylab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *ylab = Gtk::manage(new Gtk::Label(M("TP_CROP_Y") + ":"));
+    setExpandAlignProperties(ylab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    y = Gtk::manage (new MySpinButton ());
+    y = Gtk::manage(new MySpinButton());
     setExpandAlignProperties(y, true, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
     y->set_width_chars(6);
 
-    Gtk::Label* wlab = Gtk::manage (new Gtk::Label (M("TP_CROP_W") + ":"));
-    setExpandAlignProperties(wlab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *wlab = Gtk::manage(new Gtk::Label(M("TP_CROP_W") + ":"));
+    setExpandAlignProperties(wlab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    w = Gtk::manage (new MySpinButton ());
+    w = Gtk::manage(new MySpinButton());
     setExpandAlignProperties(w, true, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
     w->set_width_chars(6);
 
-    Gtk::Label* hlab = Gtk::manage (new Gtk::Label (M("TP_CROP_H") + ":"));
-    setExpandAlignProperties(hlab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *hlab = Gtk::manage(new Gtk::Label(M("TP_CROP_H") + ":"));
+    setExpandAlignProperties(hlab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    h = Gtk::manage (new MySpinButton ());
+    h = Gtk::manage(new MySpinButton());
     setExpandAlignProperties(h, true, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
     h->set_width_chars(6);
 
     selectCrop = Gtk::manage(new Gtk::Button(M("TP_CROP_SELECTCROP")));
-    setExpandAlignProperties(selectCrop, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(selectCrop, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
     selectCrop->get_style_context()->add_class("independent");
-    selectCrop->set_image (*Gtk::manage (new RTImage ("crop-small.svg")));
+    selectCrop->set_image(*Gtk::manage(new RTImage("crop-small.svg")));
 
     resetCrop = Gtk::manage(new Gtk::Button(M("TP_CROP_RESETCROP")));
-    setExpandAlignProperties(resetCrop, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(resetCrop, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
     resetCrop->get_style_context()->add_class("independent");
 
-    methodgrid->attach (*xlab, 0, 0, 1, 1);
-    methodgrid->attach (*x, 1, 0, 1, 1);
-    methodgrid->attach (*ylab, 2, 0, 1, 1);
-    methodgrid->attach (*y, 3, 0, 1, 1);
-    methodgrid->attach (*wlab, 0, 1, 1, 1);
-    methodgrid->attach (*w, 1, 1, 1, 1);
-    methodgrid->attach (*hlab, 2, 1, 1, 1);
-    methodgrid->attach (*h, 3, 1, 1, 1);
-    methodgrid->attach (*selectCrop, 0, 2, 2, 1);
-    methodgrid->attach (*resetCrop, 2, 2, 2, 1);
-    pack_start (*methodgrid, Gtk::PACK_EXPAND_WIDGET, 0 );
+    methodgrid->attach(*xlab, 0, 0, 1, 1);
+    methodgrid->attach(*x, 1, 0, 1, 1);
+    methodgrid->attach(*ylab, 2, 0, 1, 1);
+    methodgrid->attach(*y, 3, 0, 1, 1);
+    methodgrid->attach(*wlab, 0, 1, 1, 1);
+    methodgrid->attach(*w, 1, 1, 1, 1);
+    methodgrid->attach(*hlab, 2, 1, 1, 1);
+    methodgrid->attach(*h, 3, 1, 1, 1);
+    methodgrid->attach(*selectCrop, 0, 2, 2, 1);
+    methodgrid->attach(*resetCrop, 2, 2, 2, 1);
+    pack_start(*methodgrid, Gtk::PACK_EXPAND_WIDGET, 0);
 
-    Gtk::HSeparator* methodseparator = Gtk::manage (new  Gtk::HSeparator());
+    Gtk::HSeparator *methodseparator = Gtk::manage(new Gtk::HSeparator());
     methodseparator->get_style_context()->add_class("grid-row-separator");
-    pack_start (*methodseparator, Gtk::PACK_SHRINK, 0);
+    pack_start(*methodseparator, Gtk::PACK_SHRINK, 0);
 
-    Gtk::Grid* settingsgrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *settingsgrid = Gtk::manage(new Gtk::Grid());
     settingsgrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(settingsgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(settingsgrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    fixr = Gtk::manage (new Gtk::CheckButton (M("TP_CROP_FIXRATIO")));
-    setExpandAlignProperties(fixr, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
-    fixr->set_active (1);
+    fixr = Gtk::manage(new Gtk::CheckButton(M("TP_CROP_FIXRATIO")));
+    setExpandAlignProperties(fixr, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
+    fixr->set_active(1);
 
-    Gtk::Grid* ratiogrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *ratiogrid = Gtk::manage(new Gtk::Grid());
     ratiogrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(ratiogrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(ratiogrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    ratio = Gtk::manage (new MyComboBoxText ());
-    setExpandAlignProperties(ratio, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    ratio = Gtk::manage(new MyComboBoxText());
+    setExpandAlignProperties(ratio, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    orientation = Gtk::manage (new MyComboBoxText ());
-    setExpandAlignProperties(orientation, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    orientation = Gtk::manage(new MyComboBoxText());
+    setExpandAlignProperties(orientation, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
     customRatioLabel = Gtk::manage(new Gtk::Label(""));
     customRatioLabel->hide();
-    setExpandAlignProperties(customRatioLabel, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(customRatioLabel, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_CENTER);
 
-    ratiogrid->set_column_homogeneous (true);
-    ratiogrid->attach (*ratio, 0, 0, 1, 1);
-    ratiogrid->attach (*customRatioLabel, 1, 0, 1, 1);
-    ratiogrid->attach (*orientation, 1, 0, 1, 1);
+    ratiogrid->set_column_homogeneous(true);
+    ratiogrid->attach(*ratio, 0, 0, 1, 1);
+    ratiogrid->attach(*customRatioLabel, 1, 0, 1, 1);
+    ratiogrid->attach(*orientation, 1, 0, 1, 1);
 
-    Gtk::Label* guidelab = Gtk::manage (new Gtk::Label (M("TP_CROP_GUIDETYPE")));
-    setExpandAlignProperties(guidelab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *guidelab = Gtk::manage(new Gtk::Label(M("TP_CROP_GUIDETYPE")));
+    setExpandAlignProperties(guidelab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    guide = Gtk::manage (new MyComboBoxText ());
-    setExpandAlignProperties(guide, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    guide = Gtk::manage(new MyComboBoxText());
+    setExpandAlignProperties(guide, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    settingsgrid->attach (*fixr, 0, 0, 1, 1);
-    settingsgrid->attach (*ratiogrid, 1, 0, 1, 1);
-    settingsgrid->attach (*guidelab, 0, 1, 1, 1);
-    settingsgrid->attach (*guide, 1, 1, 1, 1);
-    pack_start (*settingsgrid, Gtk::PACK_SHRINK, 0 );
-
+    settingsgrid->attach(*fixr, 0, 0, 1, 1);
+    settingsgrid->attach(*ratiogrid, 1, 0, 1, 1);
+    settingsgrid->attach(*guidelab, 0, 1, 1, 1);
+    settingsgrid->attach(*guide, 1, 1, 1, 1);
+    pack_start(*settingsgrid, Gtk::PACK_SHRINK, 0);
 
     // ppigrid START
     ppigrid = Gtk::manage(new Gtk::Grid());
     ppigrid->get_style_context()->add_class("grid-spacing");
-    ppigrid->set_column_homogeneous (true);
-    setExpandAlignProperties(ppigrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    ppigrid->set_column_homogeneous(true);
+    setExpandAlignProperties(ppigrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    Gtk::HSeparator* ppiseparator = Gtk::manage (new  Gtk::HSeparator());
+    Gtk::HSeparator *ppiseparator = Gtk::manage(new Gtk::HSeparator());
     ppiseparator->get_style_context()->add_class("grid-row-separator");
 
-    Gtk::Grid* ppisubgrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *ppisubgrid = Gtk::manage(new Gtk::Grid());
     ppisubgrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(ppisubgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(ppisubgrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    Gtk::Label* ppilab = Gtk::manage (new Gtk::Label (M("TP_CROP_PPI")));
-    setExpandAlignProperties(ppilab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *ppilab = Gtk::manage(new Gtk::Label(M("TP_CROP_PPI")));
+    setExpandAlignProperties(ppilab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    ppi = Gtk::manage (new MySpinButton ());
-    setExpandAlignProperties(ppi, true, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
+    ppi = Gtk::manage(new MySpinButton());
+    setExpandAlignProperties(ppi, true, false, Gtk::ALIGN_END,
+                             Gtk::ALIGN_CENTER);
     ppi->set_width_chars(6);
 
-    ppisubgrid->attach (*ppilab, 0, 0, 1, 1);
-    ppisubgrid->attach (*ppi, 1, 0, 1, 1);
+    ppisubgrid->attach(*ppilab, 0, 0, 1, 1);
+    ppisubgrid->attach(*ppi, 1, 0, 1, 1);
 
-    sizecm = Gtk::manage (new Gtk::Label (M("GENERAL_NA") + " cm x " + M("GENERAL_NA") + " cm"));
-    setExpandAlignProperties(sizecm, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
+    sizecm = Gtk::manage(
+        new Gtk::Label(M("GENERAL_NA") + " cm x " + M("GENERAL_NA") + " cm"));
+    setExpandAlignProperties(sizecm, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_CENTER);
 
-    sizein = Gtk::manage (new Gtk::Label (M("GENERAL_NA") + " in x " + M("GENERAL_NA") + " in"));
-    setExpandAlignProperties(sizein, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
+    sizein = Gtk::manage(
+        new Gtk::Label(M("GENERAL_NA") + " in x " + M("GENERAL_NA") + " in"));
+    setExpandAlignProperties(sizein, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_CENTER);
 
-    ppigrid->attach (*ppiseparator, 0, 0, 2, 1);
-    ppigrid->attach (*sizecm, 1, 1, 1, 1);
-    ppigrid->attach (*sizein, 1, 2, 1, 1);
-    ppigrid->attach (*ppisubgrid, 0, 1, 1, 2);
-//    pack_start (*ppigrid, Gtk::PACK_SHRINK, 0 );
+    ppigrid->attach(*ppiseparator, 0, 0, 2, 1);
+    ppigrid->attach(*sizecm, 1, 1, 1, 1);
+    ppigrid->attach(*sizein, 1, 2, 1, 1);
+    ppigrid->attach(*ppisubgrid, 0, 1, 1, 2);
+    //    pack_start (*ppigrid, Gtk::PACK_SHRINK, 0 );
 
-    ppi->set_value (300);
+    ppi->set_value(300);
     // ppigrid END
 
     // Populate the combobox
-    for (const auto& crop_ratio : crop_ratios) {
-        ratio->append (crop_ratio.label);
+    for (const auto &crop_ratio : crop_ratios) {
+        ratio->append(crop_ratio.label);
     }
 
-    ratio->set_active (0);
+    ratio->set_active(0);
 
-    orientation->append (M("GENERAL_LANDSCAPE"));
-    orientation->append (M("GENERAL_PORTRAIT"));
-    orientation->append (M("GENERAL_ASIMAGE"));
-    orientation->set_active (2);
+    orientation->append(M("GENERAL_LANDSCAPE"));
+    orientation->append(M("GENERAL_PORTRAIT"));
+    orientation->append(M("GENERAL_ASIMAGE"));
+    orientation->set_active(2);
 
-    guide->append (M("TP_CROP_GTNONE"));
-    guide->append (M("TP_CROP_GTFRAME"));
-    guide->append (M("TP_CROP_GTRULETHIRDS"));
-    guide->append (M("TP_CROP_GTDIAGONALS"));
-    guide->append (M("TP_CROP_GTHARMMEANS"));
-    guide->append (M("TP_CROP_GTGRID"));
-    guide->append (M("TP_CROP_GTTRIANGLE1"));
-    guide->append (M("TP_CROP_GTTRIANGLE2"));
-    guide->append (M("TP_CROP_GTEPASSPORT"));
-    guide->set_active (0);
+    guide->append(M("TP_CROP_GTNONE"));
+    guide->append(M("TP_CROP_GTFRAME"));
+    guide->append(M("TP_CROP_GTRULETHIRDS"));
+    guide->append(M("TP_CROP_GTDIAGONALS"));
+    guide->append(M("TP_CROP_GTHARMMEANS"));
+    guide->append(M("TP_CROP_GTGRID"));
+    guide->append(M("TP_CROP_GTTRIANGLE1"));
+    guide->append(M("TP_CROP_GTTRIANGLE2"));
+    guide->append(M("TP_CROP_GTEPASSPORT"));
+    guide->set_active(0);
 
-    w->set_range (1, maxw);
-    h->set_range (1, maxh);
-    x->set_range (0, maxw - 1);
-    y->set_range (0, maxh - 1);
+    w->set_range(1, maxw);
+    h->set_range(1, maxh);
+    x->set_range(0, maxw - 1);
+    y->set_range(0, maxh - 1);
 
-    x->set_digits (0);
-    x->set_increments (1, 100);
-    x->set_value (0);
+    x->set_digits(0);
+    x->set_increments(1, 100);
+    x->set_value(0);
 
-    y->set_digits (0);
-    y->set_increments (1, 100);
-    y->set_value (0);
+    y->set_digits(0);
+    y->set_increments(1, 100);
+    y->set_value(0);
 
-    w->set_digits (0);
-    w->set_increments (1, 100);
-    w->set_value (200);
+    w->set_digits(0);
+    w->set_increments(1, 100);
+    w->set_value(200);
 
-    h->set_digits (0);
-    h->set_increments (1, 100);
-    h->set_value (200);
+    h->set_digits(0);
+    h->set_increments(1, 100);
+    h->set_value(200);
 
-    ppi->set_digits (0);
-    ppi->set_increments (1, 100);
-    ppi->set_range (50, 12000);
-    ppi->set_value (300);
+    ppi->set_digits(0);
+    ppi->set_increments(1, 100);
+    ppi->set_range(50, 12000);
+    ppi->set_value(300);
 
-    xconn = x->signal_value_changed().connect ( sigc::mem_fun(*this, &Crop::positionChanged), true);
-    yconn = y->signal_value_changed().connect ( sigc::mem_fun(*this, &Crop::positionChanged), true);
-    wconn = w->signal_value_changed().connect ( sigc::mem_fun(*this, &Crop::widthChanged), true);
-    hconn = h->signal_value_changed().connect ( sigc::mem_fun(*this, &Crop::heightChanged), true);
-    fconn = fixr->signal_toggled().connect( sigc::mem_fun(*this, &Crop::ratioFixedChanged) );
-    rconn = ratio->signal_changed().connect( sigc::mem_fun(*this, &Crop::ratioChanged) );
-    oconn = orientation->signal_changed().connect( sigc::mem_fun(*this, &Crop::ratioChanged) );
-    gconn = guide->signal_changed().connect( sigc::mem_fun(*this, &Crop::notifyListener) );
-    selectCrop->signal_pressed().connect( sigc::mem_fun(*this, &Crop::selectPressed) );
-    resetCrop->signal_pressed().connect( sigc::bind(sigc::mem_fun(*this, &Crop::doresetCrop), true) );
-    ppi->signal_value_changed().connect( sigc::mem_fun(*this, &Crop::refreshSize) );
+    xconn = x->signal_value_changed().connect(
+        sigc::mem_fun(*this, &Crop::positionChanged), true);
+    yconn = y->signal_value_changed().connect(
+        sigc::mem_fun(*this, &Crop::positionChanged), true);
+    wconn = w->signal_value_changed().connect(
+        sigc::mem_fun(*this, &Crop::widthChanged), true);
+    hconn = h->signal_value_changed().connect(
+        sigc::mem_fun(*this, &Crop::heightChanged), true);
+    fconn = fixr->signal_toggled().connect(
+        sigc::mem_fun(*this, &Crop::ratioFixedChanged));
+    rconn = ratio->signal_changed().connect(
+        sigc::mem_fun(*this, &Crop::ratioChanged));
+    oconn = orientation->signal_changed().connect(
+        sigc::mem_fun(*this, &Crop::ratioChanged));
+    gconn = guide->signal_changed().connect(
+        sigc::mem_fun(*this, &Crop::notifyListener));
+    selectCrop->signal_pressed().connect(
+        sigc::mem_fun(*this, &Crop::selectPressed));
+    resetCrop->signal_pressed().connect(
+        sigc::bind(sigc::mem_fun(*this, &Crop::doresetCrop), true));
+    ppi->signal_value_changed().connect(
+        sigc::mem_fun(*this, &Crop::refreshSize));
 
     nx = ny = nw = nh = 0;
     lastRotationDeg = 0;
 
-//GTK318
+// GTK318
 #if GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION < 20
     methodgrid->set_row_spacing(4);
     methodgrid->set_column_spacing(4);
@@ -304,85 +331,82 @@ Crop::Crop():
     ppisubgrid->set_row_spacing(4);
     ppisubgrid->set_column_spacing(4);
 #endif
-//GTK318
+    // GTK318
 
-    show_all ();
+    show_all();
 }
 
-Crop::~Crop()
+Crop::~Crop() { idle_register.destroy(); }
+
+void Crop::writeOptions() { options.cropPPI = (int)ppi->get_value(); }
+
+void Crop::readOptions()
 {
-    idle_register.destroy();
+
+    disableListener();
+
+    ppi->set_value(options.cropPPI);
+
+    enableListener();
 }
 
-void Crop::writeOptions ()
+void Crop::read(const ProcParams *pp)
 {
 
-    options.cropPPI = (int)ppi->get_value ();
-}
+    disableListener();
 
-void Crop::readOptions ()
-{
-
-    disableListener ();
-
-    ppi->set_value (options.cropPPI);
-
-    enableListener ();
-}
-
-void Crop::read(const ProcParams* pp)
-{
-
-    disableListener ();
-
-    xconn.block (true);
-    yconn.block (true);
-    wconn.block (true);
-    hconn.block (true);
-    rconn.block (true);
-    fconn.block (true);
-    oconn.block (true);
-    gconn.block (true);
+    xconn.block(true);
+    yconn.block(true);
+    wconn.block(true);
+    hconn.block(true);
+    rconn.block(true);
+    fconn.block(true);
+    oconn.block(true);
+    gconn.block(true);
 
     setEnabled(pp->crop.enabled);
 
     // check if the new values are larger than the maximum
     double tmp, maxw, maxh;
-    w->get_range (tmp, maxw);
-    h->get_range (tmp, maxh);
+    w->get_range(tmp, maxw);
+    h->get_range(tmp, maxh);
 
-    if (pp->crop.x + pp->crop.w > (int)maxw || pp->crop.y + pp->crop.h > (int)maxh) {
-        setDimensions (pp->crop.x + pp->crop.w, pp->crop.y + pp->crop.h);
+    if (pp->crop.x + pp->crop.w > (int)maxw ||
+        pp->crop.y + pp->crop.h > (int)maxh) {
+        setDimensions(pp->crop.x + pp->crop.w, pp->crop.y + pp->crop.h);
     }
 
-    const bool flip_orientation = pp->crop.fixratio && crop_ratios[ratio->get_active_row_number()].value > 0 && crop_ratios[ratio->get_active_row_number()].value < 1.0;
+    const bool flip_orientation =
+        pp->crop.fixratio &&
+        crop_ratios[ratio->get_active_row_number()].value > 0 &&
+        crop_ratios[ratio->get_active_row_number()].value < 1.0;
 
     if (pp->crop.orientation == "Landscape") {
-        orientation->set_active (flip_orientation ? 1 : 0);
+        orientation->set_active(flip_orientation ? 1 : 0);
     } else if (pp->crop.orientation == "Portrait") {
-        orientation->set_active (flip_orientation ? 0 : 1);
+        orientation->set_active(flip_orientation ? 0 : 1);
     } else {
-        orientation->set_active (2);
+        orientation->set_active(2);
     }
 
     if (pp->crop.guide == "None") {
-        guide->set_active (0);
+        guide->set_active(0);
     } else if (pp->crop.guide == "Frame") {
-        guide->set_active (1);
+        guide->set_active(1);
     } else if (pp->crop.guide == "Rule of thirds") {
-        guide->set_active (2);
+        guide->set_active(2);
     } else if (pp->crop.guide == "Rule of diagonals") {
-        guide->set_active (3);
+        guide->set_active(3);
     } else if (!strncmp(pp->crop.guide.data(), "Harmonic means", 14)) {
-        guide->set_active (4);
+        guide->set_active(4);
     } else if (pp->crop.guide == "Grid") {
-        guide->set_active (5);
+        guide->set_active(5);
     } else if (pp->crop.guide == "Golden Triangle 1") {
-        guide->set_active (6);
+        guide->set_active(6);
     } else if (pp->crop.guide == "Golden Triangle 2") {
-        guide->set_active (7);
+        guide->set_active(7);
     } else if (pp->crop.guide == "ePassport") {
-        guide->set_active (8);
+        guide->set_active(8);
     }
 
     x->set_value(pp->crop.x);
@@ -405,9 +429,9 @@ void Crop::read(const ProcParams* pp)
         customRatioLabel->show();
         orientation->hide();
     } else {
-        ratio->set_active_text (pp->crop.ratio);
+        ratio->set_active_text(pp->crop.ratio);
     }
-    fixr->set_active (pp->crop.fixratio);
+    fixr->set_active(pp->crop.fixratio);
 
     lastRotationDeg = pp->coarse.rotate;
 
@@ -418,37 +442,42 @@ void Crop::read(const ProcParams* pp)
 
     lastFixRatio = pp->crop.fixratio;
 
-    xconn.block (false);
-    yconn.block (false);
-    wconn.block (false);
-    hconn.block (false);
-    rconn.block (false);
-    fconn.block (false);
-    oconn.block (false);
-    gconn.block (false);
+    xconn.block(false);
+    yconn.block(false);
+    wconn.block(false);
+    hconn.block(false);
+    rconn.block(false);
+    fconn.block(false);
+    oconn.block(false);
+    gconn.block(false);
 
-    enableListener ();
+    enableListener();
 }
 
-void Crop::write(ProcParams* pp)
+void Crop::write(ProcParams *pp)
 {
 
-    pp->crop.enabled = getEnabled ();
+    pp->crop.enabled = getEnabled();
     pp->crop.x = nx;
     pp->crop.y = ny;
     pp->crop.w = nw;
     pp->crop.h = nh;
-    pp->crop.fixratio = fixr->get_active ();
+    pp->crop.fixratio = fixr->get_active();
     if (ratio->get_active_row_number() == 0) {
         pp->crop.ratio = "As Image";
     } else if (ratio->get_active_row_number() == 1) {
         pp->crop.ratio = "Current";
     } else {
-        pp->crop.ratio = ratio->get_active_text ();
+        pp->crop.ratio = ratio->get_active_text();
     }
 
-    // for historical reasons we store orientation different if ratio is written as 2:3 instead of 3:2, but in GUI 'landscape' is always long side horizontal regardless of the ratio is written short or long side first.
-    const bool flip_orientation = fixr->get_active() && crop_ratios[ratio->get_active_row_number()].value > 0 && crop_ratios[ratio->get_active_row_number()].value < 1.0;
+    // for historical reasons we store orientation different if ratio is written
+    // as 2:3 instead of 3:2, but in GUI 'landscape' is always long side
+    // horizontal regardless of the ratio is written short or long side first.
+    const bool flip_orientation =
+        fixr->get_active() &&
+        crop_ratios[ratio->get_active_row_number()].value > 0 &&
+        crop_ratios[ratio->get_active_row_number()].value < 1.0;
 
     if (orientation->get_active_row_number() == 0) {
         pp->crop.orientation = flip_orientation ? "Portrait" : "Landscape";
@@ -479,7 +508,7 @@ void Crop::write(ProcParams* pp)
     }
 }
 
-void Crop::trim (ProcParams* pp, int ow, int oh)
+void Crop::trim(ProcParams *pp, int ow, int oh)
 {
 
     int xmin = pp->crop.x;
@@ -508,12 +537,12 @@ void Crop::trim (ProcParams* pp, int ow, int oh)
     }
 }
 
-bool Crop::inImageArea (int x, int y)
+bool Crop::inImageArea(int x, int y)
 {
     return x >= 0 && x < maxw && y >= 0 && y < maxh;
 }
 
-void Crop::selectPressed ()
+void Crop::selectPressed()
 {
     if (clistener) {
         if (!selecting_) {
@@ -537,22 +566,19 @@ void Crop::doresetCrop(bool notify)
     int Y = 0;
     int W = maxw;
     int H = maxh;
-    cropResized (X, Y, W, H);
+    cropResized(X, Y, W, H);
     if (notify) {
-        idle_register.add(
-            [this]() -> bool
-            {
-                notifyListener();
-                return false;
-            }
-            );
+        idle_register.add([this]() -> bool {
+            notifyListener();
+            return false;
+        });
     }
     refreshSpins();
 }
 
-void Crop::notifyListener ()
+void Crop::notifyListener()
 {
-    if (listener && getEnabled ()) {
+    if (listener && getEnabled()) {
         // if (nw == 1 && nh == 1) {
         //     setEnabled(false);
         //     nx = (int)x->get_value ();
@@ -564,57 +590,55 @@ void Crop::notifyListener ()
         //     }
         //     listener->panelChanged(EvCrop, M("GENERAL_DISABLED"));
         // } else {
-            listener->panelChanged (EvCrop, Glib::ustring::compose ("%1=%2, %3=%4\n%5=%6, %7=%8", M("TP_CROP_X"), nx, M("TP_CROP_Y"), ny, M("TP_CROP_W"), nw, M("TP_CROP_H"), nh));
+        listener->panelChanged(
+            EvCrop,
+            Glib::ustring::compose("%1=%2, %3=%4\n%5=%6, %7=%8", M("TP_CROP_X"),
+                                   nx, M("TP_CROP_Y"), ny, M("TP_CROP_W"), nw,
+                                   M("TP_CROP_H"), nh));
         // }
     }
 }
 
-void Crop::enabledChanged ()
+void Crop::enabledChanged()
 {
     if (clistener) {
         clistener->cropEnableChanged(getEnabled());
     }
     if (listener) {
         if (get_inconsistent()) {
-            listener->panelChanged (EvCrop, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvCrop, M("GENERAL_UNCHANGED"));
         } else if (getEnabled()) {
-            listener->panelChanged (EvCrop, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvCrop, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvCrop, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvCrop, M("GENERAL_DISABLED"));
         }
     }
 }
 
-void Crop::hFlipCrop ()
+void Crop::hFlipCrop()
 {
     nx = maxw - nx - nw;
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::vFlipCrop ()
+void Crop::vFlipCrop()
 {
     ny = maxh - ny - nh;
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::rotateCrop (int deg, bool hflip, bool vflip)
+void Crop::rotateCrop(int deg, bool hflip, bool vflip)
 {
 
     int rotation = (360 + deg - lastRotationDeg) % 360;
 
-    if((hflip != vflip) && ((rotation % 180) == 90)) {
+    if ((hflip != vflip) && ((rotation % 180) == 90)) {
         rotation = (rotation + 180) % 360;
     }
 
@@ -646,55 +670,46 @@ void Crop::rotateCrop (int deg, bool hflip, bool vflip)
     }
 
     lastRotationDeg = deg;
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::positionChanged ()
+void Crop::positionChanged()
 {
 
     xDirty = true;
     yDirty = true;
 
-    int X = (int)x->get_value ();
-    int Y = (int)y->get_value ();
+    int X = (int)x->get_value();
+    int Y = (int)y->get_value();
     int W = nw;
     int H = nh;
-    cropMoved (X, Y, W, H);
-    idle_register.add(
-        [this]() -> bool
-        {
-            notifyListener();
-            return false;
-        }
-    );
+    cropMoved(X, Y, W, H);
+    idle_register.add([this]() -> bool {
+        notifyListener();
+        return false;
+    });
 }
 
-void Crop::widthChanged ()
+void Crop::widthChanged()
 {
 
     wDirty = true;
 
     int X = nx;
     int Y = ny;
-    int W = (int)w->get_value ();
+    int W = (int)w->get_value();
     int H = nh;
-    cropWidth2Resized (X, Y, W, H);
-    idle_register.add(
-        [this]() -> bool
-        {
-            notifyListener();
-            return false;
-        }
-    );
+    cropWidth2Resized(X, Y, W, H);
+    idle_register.add([this]() -> bool {
+        notifyListener();
+        return false;
+    });
 }
 
-void Crop::heightChanged ()
+void Crop::heightChanged()
 {
 
     hDirty = true;
@@ -702,26 +717,23 @@ void Crop::heightChanged ()
     int X = nx;
     int Y = ny;
     int W = nw;
-    int H = (int)h->get_value ();
-    cropHeight2Resized (X, Y, W, H);
-    idle_register.add(
-        [this]() -> bool
-        {
-            notifyListener();
-            return false;
-        }
-    );
+    int H = (int)h->get_value();
+    cropHeight2Resized(X, Y, W, H);
+    idle_register.add([this]() -> bool {
+        notifyListener();
+        return false;
+    });
 }
 
 // Fixed ratio toggle button
-void Crop::ratioFixedChanged ()
+void Crop::ratioFixedChanged()
 {
-    lastFixRatio = fixr->get_active ();
+    lastFixRatio = fixr->get_active();
     adjustCropToRatio();
 }
 
 // change to orientation or ration
-void Crop::ratioChanged ()
+void Crop::ratioChanged()
 {
     if (ratio->get_active_row_number() == 1) {
         orientation->hide();
@@ -732,8 +744,8 @@ void Crop::ratioChanged ()
         customRatioLabel->hide();
     }
 
-    if (!fixr->get_active ()) {
-        fixr->set_active(true);    // will adjust ratio anyway
+    if (!fixr->get_active()) {
+        fixr->set_active(true); // will adjust ratio anyway
     } else {
         adjustCropToRatio();
     }
@@ -751,30 +763,30 @@ void Crop::adjustCropToRatio()
         float r = getRatio();
 
         H1 = round(W1 / r);
-        Y1 = ny + (nh - H1)/2.0;
+        Y1 = ny + (nh - H1) / 2.0;
         if (Y1 < 0) {
             Y1 = 0;
         }
         if (H1 > maxh) {
             H1 = maxh;
             W1 = round(H1 * r);
-            X1 = nx + (nw - W1)/2.0;
+            X1 = nx + (nw - W1) / 2.0;
         }
-        if (Y1+H1 > maxh) {
+        if (Y1 + H1 > maxh) {
             Y1 = maxh - H1;
         }
 
         W2 = round(H2 * r);
-        X2 = nx + (nw - W2)/2.0;
+        X2 = nx + (nw - W2) / 2.0;
         if (X2 < 0) {
             X2 = 0;
         }
         if (W2 > maxw) {
             W2 = maxw;
             H2 = round(W2 / r);
-            Y2 = ny + (nh - H2)/2.0;
+            Y2 = ny + (nh - H2) / 2.0;
         }
-        if (X2+W2 > maxw) {
+        if (X2 + W2 > maxw) {
             X2 = maxw - W2;
         }
 
@@ -792,37 +804,39 @@ void Crop::adjustCropToRatio()
     }
 
     // This will save the options
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(true);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(true);
+        return false;
+    });
 }
 
-void Crop::refreshSize ()
+void Crop::refreshSize()
 {
     std::ostringstream ostrin;
-    ostrin.precision (3);
-    //    ostrin << h->get_value()/ppi->get_value() << " in x " << w->get_value()/ppi->get_value() << " in";;
-    ostrin << nh / ppi->get_value() << " in x " << nw / ppi->get_value() << " in";
+    ostrin.precision(3);
+    //    ostrin << h->get_value()/ppi->get_value() << " in x " <<
+    //    w->get_value()/ppi->get_value() << " in";;
+    ostrin << nh / ppi->get_value() << " in x " << nw / ppi->get_value()
+           << " in";
 
-    sizein->set_text (ostrin.str ());
+    sizein->set_text(ostrin.str());
 
     std::ostringstream ostrcm;
-    ostrcm.precision (3);
-    //    ostrcm << h->get_value()/ppi->get_value()*2.54 << " cm x " << w->get_value()/ppi->get_value()*2.54 << " cm";;
-    ostrcm << nh / ppi->get_value() * 2.54 << " cm x " << nw / ppi->get_value() * 2.54 << " cm";;
+    ostrcm.precision(3);
+    //    ostrcm << h->get_value()/ppi->get_value()*2.54 << " cm x " <<
+    //    w->get_value()/ppi->get_value()*2.54 << " cm";;
+    ostrcm << nh / ppi->get_value() * 2.54 << " cm x "
+           << nw / ppi->get_value() * 2.54 << " cm";
+    ;
 
-    sizecm->set_text (ostrcm.str ());
+    sizecm->set_text(ostrcm.str());
 }
 
 /*
- * Set the maximum dimensions of the image. This method can be called with wrong values, then
- * called with the good ones !?
+ * Set the maximum dimensions of the image. This method can be called with wrong
+ * values, then called with the good ones !?
  */
-void Crop::setDimensions (int mw, int mh)
+void Crop::setDimensions(int mw, int mh)
 {
     if (maxw == mw && maxh == mh) {
         return;
@@ -831,30 +845,30 @@ void Crop::setDimensions (int mw, int mh)
     maxw = mw;
     maxh = mh;
 
-    bool xconnWasBlocked = xconn.block (true);
-    bool yconnWasBlocked = yconn.block (true);
-    bool wconnWasBlocked = wconn.block (true);
-    bool hconnWasBlocked = hconn.block (true);
+    bool xconnWasBlocked = xconn.block(true);
+    bool yconnWasBlocked = yconn.block(true);
+    bool wconnWasBlocked = wconn.block(true);
+    bool hconnWasBlocked = hconn.block(true);
 
-    w->set_range (1, maxw);
-    h->set_range (1, maxh);
-    x->set_range (0, maxw - 1);
-    y->set_range (0, maxh - 1);
+    w->set_range(1, maxw);
+    h->set_range(1, maxh);
+    x->set_range(0, maxw - 1);
+    y->set_range(0, maxh - 1);
 
     if (!xconnWasBlocked) {
-        xconn.block (false);
+        xconn.block(false);
     }
 
     if (!yconnWasBlocked) {
-        yconn.block (false);
+        yconn.block(false);
     }
 
     if (!wconnWasBlocked) {
-        wconn.block (false);
+        wconn.block(false);
     }
 
     if (!hconnWasBlocked) {
-        hconn.block (false);
+        hconn.block(false);
     }
 
     if (!getEnabled()) {
@@ -863,64 +877,61 @@ void Crop::setDimensions (int mw, int mh)
         nw = mw;
         nh = mh;
 
-        refreshSpins ();
+        refreshSpins();
     }
 
-    refreshSize ();
+    refreshSize();
 }
 
 void Crop::sizeChanged(int x, int y, int ow, int oh)
 {
-    idle_register.add(
-        [this, x, y]() -> bool
-        {
-            setDimensions(x, y);
-            return false;
-        }
-    );
+    idle_register.add([this, x, y]() -> bool {
+        setDimensions(x, y);
+        return false;
+    });
 }
 
-bool Crop::refreshSpins (bool notify)
+bool Crop::refreshSpins(bool notify)
 {
 
-    xconn.block (true);
-    yconn.block (true);
-    wconn.block (true);
-    hconn.block (true);
+    xconn.block(true);
+    yconn.block(true);
+    wconn.block(true);
+    hconn.block(true);
 
-    x->set_value (nx);
-    y->set_value (ny);
-    w->set_value (nw);
-    h->set_value (nh);
+    x->set_value(nx);
+    y->set_value(ny);
+    w->set_value(nw);
+    h->set_value(nh);
 
     xDirty = true;
     yDirty = true;
     wDirty = true;
     hDirty = true;
 
-    xconn.block (false);
-    yconn.block (false);
-    wconn.block (false);
-    hconn.block (false);
+    xconn.block(false);
+    yconn.block(false);
+    wconn.block(false);
+    hconn.block(false);
 
     if (ratio->get_active_row_number() == 1 && !fixr->get_active()) {
         updateCurrentRatio();
     }
 
-    refreshSize ();
+    refreshSize();
 
     if (notify) {
-        notifyListener ();
+        notifyListener();
     }
 
     return false;
 }
 
-void Crop::cropMoved (int &X, int &Y, int &W, int &H)
+void Crop::cropMoved(int &X, int &Y, int &W, int &H)
 {
 
-//  W = w->get_value ();
-//  H = h->get_value ();
+    //  W = w->get_value ();
+    //  H = h->get_value ();
     W = nw;
     H = nh;
 
@@ -945,17 +956,14 @@ void Crop::cropMoved (int &X, int &Y, int &W, int &H)
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
-//  Glib::signal_idle().connect (sigc::mem_fun(*this, &Crop::refreshSpins));
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
+    //  Glib::signal_idle().connect (sigc::mem_fun(*this, &Crop::refreshSpins));
 }
 
-void Crop::cropWidth1Resized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropWidth1Resized(int &X, int &Y, int &W, int &H, float custom_ratio)
 {
 
     int oldXR = nx + nw;
@@ -995,16 +1003,13 @@ void Crop::cropWidth1Resized (int &X, int &Y, int &W, int &H, float custom_ratio
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropWidth2Resized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropWidth2Resized(int &X, int &Y, int &W, int &H, float custom_ratio)
 {
 
     if (W < 0) {
@@ -1041,16 +1046,14 @@ void Crop::cropWidth2Resized (int &X, int &Y, int &W, int &H, float custom_ratio
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropHeight1Resized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropHeight1Resized(int &X, int &Y, int &W, int &H,
+                              float custom_ratio)
 {
 
     int oldYB = ny + nh;
@@ -1090,16 +1093,14 @@ void Crop::cropHeight1Resized (int &X, int &Y, int &W, int &H, float custom_rati
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropHeight2Resized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropHeight2Resized(int &X, int &Y, int &W, int &H,
+                              float custom_ratio)
 {
 
     if (H < 0) {
@@ -1136,16 +1137,14 @@ void Crop::cropHeight2Resized (int &X, int &Y, int &W, int &H, float custom_rati
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropTopLeftResized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropTopLeftResized(int &X, int &Y, int &W, int &H,
+                              float custom_ratio)
 {
 
     int oldXR = nx + nw; // right side
@@ -1184,16 +1183,14 @@ void Crop::cropTopLeftResized (int &X, int &Y, int &W, int &H, float custom_rati
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropTopRightResized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropTopRightResized(int &X, int &Y, int &W, int &H,
+                               float custom_ratio)
 {
 
     int oldYB = ny + nh;
@@ -1230,16 +1227,14 @@ void Crop::cropTopRightResized (int &X, int &Y, int &W, int &H, float custom_rat
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropBottomLeftResized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropBottomLeftResized(int &X, int &Y, int &W, int &H,
+                                 float custom_ratio)
 {
 
     int oldXR = nx + nw;
@@ -1276,16 +1271,14 @@ void Crop::cropBottomLeftResized (int &X, int &Y, int &W, int &H, float custom_r
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropBottomRightResized (int &X, int &Y, int &W, int &H, float custom_ratio)
+void Crop::cropBottomRightResized(int &X, int &Y, int &W, int &H,
+                                  float custom_ratio)
 {
 
     if (W < 0) {
@@ -1319,16 +1312,13 @@ void Crop::cropBottomRightResized (int &X, int &Y, int &W, int &H, float custom_
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
-void Crop::cropInit (int &x, int &y, int &w, int &h)
+void Crop::cropInit(int &x, int &y, int &w, int &h)
 {
 
     nx = x;
@@ -1342,8 +1332,7 @@ void Crop::cropInit (int &x, int &y, int &w, int &h)
     setEnabled(true);
 }
 
-
-void Crop::cropResized (int &x, int &y, int& x2, int& y2)
+void Crop::cropResized(int &x, int &y, int &x2, int &y2)
 {
 
     if (x2 < 0) {
@@ -1388,16 +1377,16 @@ void Crop::cropResized (int &x, int &y, int& x2, int& y2)
     }
 
     if (fixr->get_active()) {
-        double r = getRatio ();
+        double r = getRatio();
 
         if (y <= y2) {
-            int W2max = (int)round ((maxh - Y) * r);
+            int W2max = (int)round((maxh - Y) * r);
 
             if (W > W2max) {
                 W = W2max;
             }
         } else {
-            int W2max = (int)round (y * r);
+            int W2max = (int)round(y * r);
 
             if (W > W2max) {
                 W = W2max;
@@ -1440,13 +1429,10 @@ void Crop::cropResized (int &x, int &y, int& x2, int& y2)
     nw = W;
     nh = H;
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            refreshSpins(false);
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        refreshSpins(false);
+        return false;
+    });
 }
 
 void Crop::cropManipReady(int &x, int &y, int &w, int &h)
@@ -1461,15 +1447,11 @@ void Crop::cropManipReady(int &x, int &y, int &w, int &h)
         enableListener();
     }
 
-    idle_register.add(
-        [this]() -> bool
-        {
-            notifyListener();
-            return false;
-        }
-    );
+    idle_register.add([this]() -> bool {
+        notifyListener();
+        return false;
+    });
 }
-
 
 void Crop::setSelecting(bool yes)
 {
@@ -1477,8 +1459,7 @@ void Crop::setSelecting(bool yes)
     selectCrop->set_label(yes ? M("TP_CROP_DONE") : M("TP_CROP_SELECTCROP"));
 }
 
-
-double Crop::getRatio () const
+double Crop::getRatio() const
 {
     double r = -1.0;
 
@@ -1488,38 +1469,32 @@ double Crop::getRatio () const
 
     r = crop_ratios[ratio->get_active_row_number()].value;
     if (!r) {
-        r = maxh <= maxw ? float(maxh)/float(maxw) : float(maxw)/float(maxh);
+        r = maxh <= maxw ? float(maxh) / float(maxw)
+                         : float(maxw) / float(maxh);
     }
 
     if (r < 1.0) {
-        r = 1.0 / r;    // convert to long side first (eg 4:5 becomes 5:4)
+        r = 1.0 / r; // convert to long side first (eg 4:5 becomes 5:4)
     }
 
     if (orientation->get_active_row_number() == 0) {
         return r;
-    } else if(orientation->get_active_row_number() == 1) {
+    } else if (orientation->get_active_row_number() == 1) {
         return 1.0 / r;
     } else {
         return maxh <= maxw ? r : 1.0 / r;
     }
-
 }
-
 
 void Crop::updateCurrentRatio()
 {
     double rw, rh;
     get_custom_ratio(w->get_value(), h->get_value(), rw, rh);
     customRatioLabel->set_text(Glib::ustring::compose("%1:%2", rw, rh));
-    crop_ratios[1].value = double(w->get_value())/double(h->get_value());
+    crop_ratios[1].value = double(w->get_value()) / double(h->get_value());
 }
 
-
-void Crop::setDefaults(const ProcParams *def)
-{
-    initial_params = def->crop;
-}
-
+void Crop::setDefaults(const ProcParams *def) { initial_params = def->crop; }
 
 void Crop::toolReset(bool to_initial)
 {

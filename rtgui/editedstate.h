@@ -22,4 +22,3 @@
 enum EditedState { UnEdited = 0, Edited = 1, Irrelevant = 2 };
 
 #endif
-

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,46 +20,49 @@
 #ifndef _BAYERPROCESS_H_
 #define _BAYERPROCESS_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "checkbox.h"
 #include "guiutils.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class BayerProcess : public ToolParamBlock, public AdjusterListener, public CheckBoxListener, public FoldableToolPanel, public rtengine::FrameCountListener, public rtengine::AutoContrastListener
-{
+class BayerProcess: public ToolParamBlock,
+                    public AdjusterListener,
+                    public CheckBoxListener,
+                    public FoldableToolPanel,
+                    public rtengine::FrameCountListener,
+                    public rtengine::AutoContrastListener {
 
 protected:
-
-    MyComboBoxText* method;
-    Gtk::HBox* borderbox;
+    MyComboBoxText *method;
+    Gtk::HBox *borderbox;
     Gtk::HBox *imageNumberBox;
-    Adjuster* border;
-    MyComboBoxText* imageNumber;
-    Adjuster* ccSteps;
+    Adjuster *border;
+    MyComboBoxText *imageNumber;
+    Adjuster *ccSteps;
     Gtk::VBox *dcbOptions;
-    Adjuster* dcbIterations;
-    CheckBox* dcbEnhance;
+    Adjuster *dcbIterations;
+    CheckBox *dcbEnhance;
     Gtk::VBox *lmmseOptions;
-    Adjuster* lmmseIterations;
+    Adjuster *lmmseIterations;
     Gtk::Frame *pixelShiftFrame;
     Gtk::VBox *pixelShiftOptions;
-    MyComboBoxText* pixelShiftMotionMethod;
-    MyComboBoxText* pixelShiftDemosaicMethod;
-    CheckBox* pixelShiftShowMotion;
-    CheckBox* pixelShiftShowMotionMaskOnly;
-    CheckBox* pixelShiftNonGreenCross;
-    CheckBox* pixelShiftGreen;
-    CheckBox* pixelShiftBlur;
-    CheckBox* pixelShiftHoleFill;
-    CheckBox* pixelShiftMedian;
-    CheckBox* pixelShiftEqualBright;
-    CheckBox* pixelShiftEqualBrightChannel;
-    Adjuster* pixelShiftSmooth;
-    Adjuster* pixelShiftEperIso;
-    Adjuster* pixelShiftSigma;
+    MyComboBoxText *pixelShiftMotionMethod;
+    MyComboBoxText *pixelShiftDemosaicMethod;
+    CheckBox *pixelShiftShowMotion;
+    CheckBox *pixelShiftShowMotionMaskOnly;
+    CheckBox *pixelShiftNonGreenCross;
+    CheckBox *pixelShiftGreen;
+    CheckBox *pixelShiftBlur;
+    CheckBox *pixelShiftHoleFill;
+    CheckBox *pixelShiftMedian;
+    CheckBox *pixelShiftEqualBright;
+    CheckBox *pixelShiftEqualBrightChannel;
+    Adjuster *pixelShiftSmooth;
+    Adjuster *pixelShiftEperIso;
+    Adjuster *pixelShiftSigma;
     Gtk::VBox *dualDemosaicOptions;
-    Adjuster* dualDemosaicContrast;
+    Adjuster *dualDemosaicContrast;
     int oldMethod;
     bool lastAutoContrast;
     IdleRegister idle_register;
@@ -70,24 +73,25 @@ protected:
     rtengine::ProcEvent EvDemosaicPixelshiftDemosaicMethod;
 
     rtengine::procparams::RAWParams::BayerSensor initial_params;
+
 public:
+    BayerProcess();
+    ~BayerProcess() override;
 
-    BayerProcess ();
-    ~BayerProcess () override;
-
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
     void methodChanged();
     void imageNumberChanged();
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled (Adjuster* a, bool newval) override;
-    void checkBoxToggled(CheckBox* c, CheckValue newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void checkBoxToggled(CheckBox *c, CheckValue newval) override;
     void pixelShiftMotionMethodChanged();
     void pixelShiftDemosaicMethodChanged();
-    void autoContrastChanged (double autoContrast) override;
+    void autoContrastChanged(double autoContrast) override;
     void FrameCountChanged(int n, int frameNum) override;
 
     void toolReset(bool to_initial) override;

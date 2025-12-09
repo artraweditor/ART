@@ -26,46 +26,40 @@ freely, subject to the following restrictions:
 
 #pragma once
 
-#include <vector>
-#include <queue>
-#include <memory>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
-#include <future>
 #include <functional>
-#include <stdexcept>
+#include <future>
 #include <limits>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <stdexcept>
+#include <thread>
+#include <vector>
 
 #include "noncopyable.h"
 
 namespace rtengine {
 
 class ThreadPool: public NonCopyable {
-public: 
-    enum class Priority {
-        LOWEST,
-        LOW,
-        NORMAL,
-        HIGH,
-        HIGHEST
-    };
+public:
+    enum class Priority { LOWEST, LOW, NORMAL, HIGH, HIGHEST };
 
-    template<class F, class... Args>
-    static auto add_task(Priority p, F &&f, Args &&... args) 
+    template <class F, class... Args>
+    static auto add_task(Priority p, F &&f, Args &&...args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
 
     static void init(size_t num_workers);
     static void cleanup();
-    
+
 private:
     ThreadPool(size_t);
-    template<class F, class... Args>
-    auto enqueue(Priority p, F &&f, Args &&... args) 
+    template <class F, class... Args>
+    auto enqueue(Priority p, F &&f, Args &&...args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
 
-    template<class F, class... Args>
-    auto enqueue(F &&f, Args &&... args) 
+    template <class F, class... Args>
+    auto enqueue(F &&f, Args &&...args)
         -> std::future<typename std::result_of<F(Args...)>::type>
     {
         return enqueue(Priority::NORMAL, f, args...);
@@ -81,19 +75,22 @@ private:
     class Task: public std::function<void()> {
     public:
         template <class Fn>
-        explicit Task(Priority p, size_t i, Fn func):
-            std::function<void()>(func), p_(p), i_(i) {}
+        explicit Task(Priority p, size_t i, Fn func)
+            : std::function<void()>(func), p_(p), i_(i)
+        {
+        }
 
         bool operator<(const Task &other) const
         {
             return p_ == other.p_ ? i_ > other.i_ : p_ < other.p_;
         }
+
     private:
         Priority p_;
         size_t i_;
     };
     std::priority_queue<Task> tasks_;
-    
+
     // synchronization
     std::mutex queue_mutex_;
     std::condition_variable condition_;
@@ -103,50 +100,41 @@ private:
     static std::unique_ptr<ThreadPool> instance_;
 };
 
-
 // the constructor just launches some amount of workers
-inline ThreadPool::ThreadPool(size_t threads):
-    stop_(false),
-    idx_(0)
+inline ThreadPool::ThreadPool(size_t threads): stop_(false), idx_(0)
 {
     for (size_t i = 0; i < threads; ++i) {
-        workers_.emplace_back(
-            [this]
-            {
-                while (true) {
-                    std::function<void()> task;
-                    {
-                        std::unique_lock<std::mutex> lock(this->queue_mutex_);
-                        this->condition_.wait(
-                            lock,
-                            [this]{ return this->stop_ ||
-                                    !this->tasks_.empty(); });
-                        if (this->stop_ && this->tasks_.empty()) {
-                            return;
-                        }
-                        task = std::move(this->tasks_.top());
-                        this->tasks_.pop();
+        workers_.emplace_back([this] {
+            while (true) {
+                std::function<void()> task;
+                {
+                    std::unique_lock<std::mutex> lock(this->queue_mutex_);
+                    this->condition_.wait(lock, [this] {
+                        return this->stop_ || !this->tasks_.empty();
+                    });
+                    if (this->stop_ && this->tasks_.empty()) {
+                        return;
                     }
-
-                    task();
+                    task = std::move(this->tasks_.top());
+                    this->tasks_.pop();
                 }
+
+                task();
             }
-        );
+        });
     }
 }
 
-
 // add new work item to the pool
-template<class F, class... Args>
-auto ThreadPool::enqueue(Priority p, F&& f, Args&&... args) 
+template <class F, class... Args>
+auto ThreadPool::enqueue(Priority p, F &&f, Args &&...args)
     -> std::future<typename std::result_of<F(Args...)>::type>
 {
     using return_type = typename std::result_of<F(Args...)>::type;
 
-    auto task = std::make_shared< std::packaged_task<return_type()> >(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-        );
-        
+    auto task = std::make_shared<std::packaged_task<return_type()>>(
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
     std::future<return_type> res = task->get_future();
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);
@@ -156,12 +144,11 @@ auto ThreadPool::enqueue(Priority p, F&& f, Args&&... args)
             throw std::runtime_error("enqueue on stopped ThreadPool");
         }
 
-        tasks_.emplace(p, idx_++, [task](){ (*task)(); });
+        tasks_.emplace(p, idx_++, [task]() { (*task)(); });
     }
     condition_.notify_one();
     return res;
 }
-
 
 // the destructor joins all threads
 inline ThreadPool::~ThreadPool()
@@ -171,30 +158,23 @@ inline ThreadPool::~ThreadPool()
         stop_ = true;
     }
     condition_.notify_all();
-    for (std::thread &worker: workers_) {
+    for (std::thread &worker : workers_) {
         worker.join();
     }
 }
-
 
 inline void ThreadPool::init(size_t num_workers)
 {
     instance_.reset(new ThreadPool(num_workers));
 }
 
+inline void ThreadPool::cleanup() { instance_.reset(nullptr); }
 
-inline void ThreadPool::cleanup()
-{
-    instance_.reset(nullptr);
-}
-
-
-template<class F, class... Args>
-auto ThreadPool::add_task(Priority p, F &&f, Args &&... args) 
+template <class F, class... Args>
+auto ThreadPool::add_task(Priority p, F &&f, Args &&...args)
     -> std::future<typename std::result_of<F(Args...)>::type>
 {
     return instance_->enqueue(p, f, args...);
 }
 
 } // namespace rtengine
-

@@ -19,17 +19,17 @@
  */
 
 #include "imgiomanager.h"
+#include "../rtgui/config.h"
+#include "../rtgui/pathutils.h"
+#include "image16.h"
+#include "image8.h"
+#include "imagefloat.h"
+#include "profilestore.h"
+#include "settings.h"
 #include "subprocess.h"
 #include "utils.h"
-#include "settings.h"
-#include "imagefloat.h"
-#include "image8.h"
-#include "image16.h"
-#include "profilestore.h"
-#include "../rtgui/pathutils.h"
-#include "../rtgui/config.h"
-#include <iostream>
 #include <glib/gstdio.h>
+#include <iostream>
 #include <unistd.h>
 
 namespace rtengine {
@@ -54,11 +54,15 @@ std::ostream &operator<<(std::ostream &out, const S &s)
     }
 }
 
-
-inline void exec_sync(const Glib::ustring &usrdir, const Glib::ustring &sysdir, const Glib::ustring &workdir, const std::vector<Glib::ustring> &argv, bool search_in_path, std::string *out, std::string *err)
+inline void exec_sync(const Glib::ustring &usrdir, const Glib::ustring &sysdir,
+                      const Glib::ustring &workdir,
+                      const std::vector<Glib::ustring> &argv,
+                      bool search_in_path, std::string *out, std::string *err)
 {
     auto pth = Glib::getenv("PATH");
-    auto extrapath = Glib::build_filename(usrdir, "bin") + G_SEARCHPATH_SEPARATOR_S + Glib::build_filename(sysdir, "bin");
+    auto extrapath = Glib::build_filename(usrdir, "bin") +
+                     G_SEARCHPATH_SEPARATOR_S +
+                     Glib::build_filename(sysdir, "bin");
 #ifdef BUILD_BUNDLE
     extrapath += G_SEARCHPATH_SEPARATOR_S + options.ART_base_dir;
 #endif // BUILD_BUNDLE
@@ -73,14 +77,10 @@ inline void exec_sync(const Glib::ustring &usrdir, const Glib::ustring &sysdir, 
 
 } // namespace
 
+ImageIOManager *ImageIOManager::getInstance() { return &instance; }
 
-ImageIOManager *ImageIOManager::getInstance()
-{
-    return &instance;
-}
-
-
-void ImageIOManager::init(const Glib::ustring &base_dir, const Glib::ustring &user_dir)
+void ImageIOManager::init(const Glib::ustring &base_dir,
+                          const Glib::ustring &user_dir)
 {
     sysdir_ = Glib::build_filename(base_dir, "imageio");
     usrdir_ = Glib::build_filename(user_dir, "imageio");
@@ -88,9 +88,9 @@ void ImageIOManager::init(const Glib::ustring &base_dir, const Glib::ustring &us
     do_init(usrdir_);
     auto d = Glib::build_filename(options.cacheBaseDir, "rawimgio");
     g_mkdir_with_parents(d.c_str(), 0777);
-    raw_cache_.reset(new RAWCache(std::max(settings->imgio_raw_cache_size, 1), &raw_cache_hook_));
+    raw_cache_.reset(new RAWCache(std::max(settings->imgio_raw_cache_size, 1),
+                                  &raw_cache_hook_));
 }
-
 
 void ImageIOManager::do_init(const Glib::ustring &dirname)
 {
@@ -108,7 +108,7 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
             if (filename[0] == '.' || ext != "txt") {
                 continue;
             }
-            
+
             const Glib::ustring pth = Glib::build_filename(dirname, filename);
 
             if (!Glib::file_test(pth, Glib::FILE_TEST_IS_REGULAR)) {
@@ -130,9 +130,10 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                         continue;
                     }
                     Glib::ustring cmd = kf.get_string(raw_group, "ReadCommand");
-                    
+
                     if (kf.has_key(raw_group, "Extension")) {
-                        k.ext = kf.get_string(raw_group, "Extension").lowercase();
+                        k.ext =
+                            kf.get_string(raw_group, "Extension").lowercase();
                     } else {
                         continue;
                     }
@@ -148,14 +149,17 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                     raw_loaders_[k] = Pair(dirname, cmd);
 
                     if (settings->verbose > 1) {
-                        std::cout << "Found RAW loader for (extension, make, model) \"" << k.ext << ", " << k.make << ", " << k.model << "\": " << S(cmd) << std::endl;
+                        std::cout << "Found RAW loader for (extension, make, "
+                                     "model) \""
+                                  << k.ext << ", " << k.make << ", " << k.model
+                                  << "\": " << S(cmd) << std::endl;
                     }
-                    
+
                     continue;
                 }
-                
+
                 const Glib::ustring group = "ART ImageIO";
-                
+
                 Format fmt = FMT_TIFF_FLOAT;
 
                 std::string ext;
@@ -176,7 +180,8 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                     loaders_[ext] = Pair(dirname, cmd);
 
                     if (settings->verbose > 1) {
-                        std::cout << "Found loader for extension \"" << ext << "\": " << S(cmd) << std::endl;
+                        std::cout << "Found loader for extension \"" << ext
+                                  << "\": " << S(cmd) << std::endl;
                     }
                 }
 
@@ -191,9 +196,11 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                     }
 
                     savelbls_[savefmt] = SaveFormatInfo(ext, lbl);
-                    
+
                     if (settings->verbose > 1) {
-                        std::cout << "Found saver for format \"" << savefmt << "\" with extension \"" << ext << "\": " << S(cmd) << std::endl;
+                        std::cout << "Found saver for format \"" << savefmt
+                                  << "\" with extension \"" << ext
+                                  << "\": " << S(cmd) << std::endl;
                     }
                 }
 
@@ -225,13 +232,15 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                 }
             } catch (Glib::Exception &exc) {
                 if (settings->verbose) {
-                    std::cout << "ERROR loading " << S(pth) << ": " << S(exc.what()) << std::endl;
+                    std::cout << "ERROR loading " << S(pth) << ": "
+                              << S(exc.what()) << std::endl;
                 }
             }
         }
     } catch (Glib::Exception &exc) {
         if (settings->verbose) {
-            std::cout << "ERROR scanning " << S(dirname) << ": " << S(exc.what()) << std::endl;
+            std::cout << "ERROR scanning " << S(dirname) << ": "
+                      << S(exc.what()) << std::endl;
         }
     }
 
@@ -241,18 +250,22 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
     }
 }
 
-
 Glib::ustring ImageIOManager::get_ext(Format f)
 {
     switch (f) {
-    case FMT_JPG: return ".jpg";
-    case FMT_PNG: case FMT_PNG16: return ".png";
-    default: return ".tif";
+    case FMT_JPG:
+        return ".jpg";
+    case FMT_PNG:
+    case FMT_PNG16:
+        return ".png";
+    default:
+        return ".tif";
     }
 }
 
-
-bool ImageIOManager::load(const Glib::ustring &fileName, ProgressListener *plistener, ImageIO *&img, int maxw_hint, int maxh_hint)
+bool ImageIOManager::load(const Glib::ustring &fileName,
+                          ProgressListener *plistener, ImageIO *&img,
+                          int maxw_hint, int maxh_hint)
 {
     auto ext = std::string(getFileExtension(fileName).lowercase());
     auto it = loaders_.find(ext);
@@ -264,7 +277,10 @@ bool ImageIOManager::load(const Glib::ustring &fileName, ProgressListener *plist
         plistener->setProgress(0.0);
     }
 
-    std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-load-%1-XXXXXX", Glib::path_get_basename(fileName)));
+    std::string templ = Glib::build_filename(
+        Glib::get_tmp_dir(),
+        Glib::ustring::compose("ART-load-%1-XXXXXX",
+                               Glib::path_get_basename(fileName)));
     int fd = Glib::mkstemp(templ);
     if (fd < 0) {
         return false;
@@ -323,13 +339,15 @@ bool ImageIOManager::load(const Glib::ustring &fileName, ProgressListener *plist
         break;
     case FMT_PNG:
     case FMT_PNG16:
-        err = ImageIO::getPNGSampleFormat(outname, sFormat, sArrangement) != IMIO_SUCCESS;
+        err = ImageIO::getPNGSampleFormat(outname, sFormat, sArrangement) !=
+              IMIO_SUCCESS;
         break;
     default:
-        err = ImageIO::getTIFFSampleFormat(outname, sFormat, sArrangement) != IMIO_SUCCESS;
+        err = ImageIO::getTIFFSampleFormat(outname, sFormat, sArrangement) !=
+              IMIO_SUCCESS;
         break;
     }
-        
+
     if (err) {
         if (Glib::file_test(outname, Glib::FILE_TEST_EXISTS)) {
             g_remove(outname.c_str());
@@ -339,7 +357,7 @@ bool ImageIOManager::load(const Glib::ustring &fileName, ProgressListener *plist
 
     bool ret = true;
     ImageIO *fimg = nullptr;
-    
+
     switch (sFormat) {
     case IIOSF_UNSIGNED_CHAR:
         fimg = new Image8();
@@ -381,8 +399,9 @@ bool ImageIOManager::load(const Glib::ustring &fileName, ProgressListener *plist
     return ret;
 }
 
-
-bool ImageIOManager::save(IImagefloat *img, const std::string &ext, const Glib::ustring &fileName, ProgressListener *plistener)
+bool ImageIOManager::save(IImagefloat *img, const std::string &ext,
+                          const Glib::ustring &fileName,
+                          ProgressListener *plistener)
 {
     auto it = savers_.find(ext);
     if (it == savers_.end()) {
@@ -393,7 +412,10 @@ bool ImageIOManager::save(IImagefloat *img, const std::string &ext, const Glib::
         plistener->setProgress(0.0);
     }
 
-    std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-save-%1-XXXXXX", Glib::path_get_basename(fileName)));
+    std::string templ = Glib::build_filename(
+        Glib::get_tmp_dir(),
+        Glib::ustring::compose("ART-save-%1-XXXXXX",
+                               Glib::path_get_basename(fileName)));
     int fd = Glib::mkstemp(templ);
     if (fd < 0) {
         return false;
@@ -431,7 +453,7 @@ bool ImageIOManager::save(IImagefloat *img, const std::string &ext, const Glib::
     if (plistener) {
         plistener->setProgress(0.5);
     }
-        
+
     if (ok) {
         auto &dir = it->second.first;
         auto &cmd = it->second.second;
@@ -459,7 +481,7 @@ bool ImageIOManager::save(IImagefloat *img, const std::string &ext, const Glib::
             }
         }
     }
-    
+
     if (plistener) {
         plistener->setProgress(1.0);
     }
@@ -473,7 +495,6 @@ bool ImageIOManager::save(IImagefloat *img, const std::string &ext, const Glib::
     return ok;
 }
 
-
 ImageIOManager::Format ImageIOManager::getFormat(const Glib::ustring &fname)
 {
     auto ext = std::string(getFileExtension(fname).lowercase());
@@ -485,15 +506,16 @@ ImageIOManager::Format ImageIOManager::getFormat(const Glib::ustring &fname)
     }
 }
 
-
-std::vector<std::pair<std::string, ImageIOManager::SaveFormatInfo>> ImageIOManager::getSaveFormats() const
+std::vector<std::pair<std::string, ImageIOManager::SaveFormatInfo>>
+ImageIOManager::getSaveFormats() const
 {
-    std::vector<std::pair<std::string, ImageIOManager::SaveFormatInfo>> ret(savelbls_.begin(), savelbls_.end());
+    std::vector<std::pair<std::string, ImageIOManager::SaveFormatInfo>> ret(
+        savelbls_.begin(), savelbls_.end());
     return ret;
 }
 
-
-const procparams::PartialProfile *ImageIOManager::getSaveProfile(const std::string &ext) const
+const procparams::PartialProfile *
+ImageIOManager::getSaveProfile(const std::string &ext) const
 {
     auto it = saveprofiles_.find(ext);
     if (it != saveprofiles_.end()) {
@@ -502,8 +524,9 @@ const procparams::PartialProfile *ImageIOManager::getSaveProfile(const std::stri
     return nullptr;
 }
 
-
-bool ImageIOManager::loadRaw(const Glib::ustring &fname, const std::string &make, const std::string &model, Glib::ustring &out_dng_name)
+bool ImageIOManager::loadRaw(const Glib::ustring &fname,
+                             const std::string &make, const std::string &model,
+                             Glib::ustring &out_dng_name)
 {
     auto ext = std::string(getFileExtension(fname).lowercase());
     RawKey k(ext, make, model);
@@ -524,7 +547,6 @@ bool ImageIOManager::loadRaw(const Glib::ustring &fname, const std::string &make
     return do_loadRaw(it->second, fname, out_dng_name);
 }
 
-
 namespace {
 
 Glib::ustring get_cache_name(const Glib::ustring &fname)
@@ -537,19 +559,21 @@ Glib::ustring get_cache_name(const Glib::ustring &fname)
 
 } // namespace
 
-
-bool ImageIOManager::do_loadRaw(const Pair &p, const Glib::ustring &fname, Glib::ustring &out_dng_name)
+bool ImageIOManager::do_loadRaw(const Pair &p, const Glib::ustring &fname,
+                                Glib::ustring &out_dng_name)
 {
     Glib::ustring outname;
-    if (raw_cache_->get(fname, outname) && Glib::file_test(outname, Glib::FILE_TEST_EXISTS)) {
+    if (raw_cache_->get(fname, outname) &&
+        Glib::file_test(outname, Glib::FILE_TEST_EXISTS)) {
         out_dng_name = outname;
         return true;
     }
-    
+
     outname = get_cache_name(fname);
-    // std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-load_raw-%1-XXXXXX", Glib::path_get_basename(fname)));
-    // int fd = Glib::mkstemp(templ);
-    // if (fd < 0) {
+    // std::string templ = Glib::build_filename(Glib::get_tmp_dir(),
+    // Glib::ustring::compose("ART-load_raw-%1-XXXXXX",
+    // Glib::path_get_basename(fname))); int fd = Glib::mkstemp(templ); if (fd <
+    // 0) {
     //     return false;
     // }
     // Glib::ustring outname = fname_to_utf8(templ) + ".dng";
@@ -594,7 +618,6 @@ bool ImageIOManager::do_loadRaw(const Pair &p, const Glib::ustring &fname, Glib:
     raw_cache_->set(fname, outname);
     return true;
 }
-
 
 void ImageIOManager::Hook::rm(const Glib::ustring &pth)
 {

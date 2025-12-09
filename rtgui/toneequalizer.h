@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,17 +19,20 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class ToneEqualizer: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel {
+class ToneEqualizer: public ToolParamBlock,
+                     public AdjusterListener,
+                     public FoldableToolPanel {
 public:
     ToneEqualizer();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void adjusterChanged(Adjuster *a, double newval) override;
     void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void enabledChanged() override;
@@ -41,12 +44,12 @@ public:
 
 private:
     void colormapToggled();
-    
+
     std::array<Adjuster *, 5> bands;
     Adjuster *regularization;
     Adjuster *pivot;
     Gtk::CheckButton *show_colormap;
-    
+
     rtengine::ProcEvent EvEnabled;
     rtengine::ProcEvent EvBands;
     rtengine::ProcEvent EvRegularization;

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART.
  *
  *  Copyright (c) 2021 Alberto Griggio <alberto.griggio@gmail.com>
@@ -35,7 +35,6 @@ void operator delete[](void *p) noexcept
     }
 }
 
-
 void *operator new(std::size_t n) noexcept(false)
 {
     void *ret = malloc(n);
@@ -44,7 +43,6 @@ void *operator new(std::size_t n) noexcept(false)
     }
     return ret;
 }
-
 
 void *operator new[](std::size_t n) noexcept(false)
 {
@@ -55,15 +53,13 @@ void *operator new[](std::size_t n) noexcept(false)
     return ret;
 }
 
-
-void *operator new(std::size_t n, const std::nothrow_t& tag) noexcept
+void *operator new(std::size_t n, const std::nothrow_t &tag) noexcept
 {
     (void)(tag);
     return malloc(n);
 }
 
-
-void *operator new[](std::size_t n, const std::nothrow_t& tag) noexcept
+void *operator new[](std::size_t n, const std::nothrow_t &tag) noexcept
 {
     (void)(tag);
     return malloc(n);

@@ -19,15 +19,15 @@
 #ifndef _MYFILE_
 #define _MYFILE_
 
-#include <glib/gstdio.h>
+#include "rtengine.h"
 #include <cstdio>
 #include <cstring>
-#include "rtengine.h"
+#include <glib/gstdio.h>
 struct IMFILE {
     int fd;
     ssize_t pos;
     ssize_t size;
-    char* data;
+    char *data;
     bool eof;
     rtengine::ProgressListener *plistener;
     double progress_range;
@@ -37,29 +37,22 @@ struct IMFILE {
 
 /*
   Functions for progress bar updates
-  Note: progress bar is not intended to be exact, eg if you read same data over and over again progress
-  will potentially reach 100% before you're finished.
+  Note: progress bar is not intended to be exact, eg if you read same data over
+  and over again progress will potentially reach 100% before you're finished.
  */
-void imfile_set_plistener(IMFILE *f, rtengine::ProgressListener *plistener, double progress_range);
+void imfile_set_plistener(IMFILE *f, rtengine::ProgressListener *plistener,
+                          double progress_range);
 void imfile_update_progress(IMFILE *f);
 
-IMFILE* fopen (const char* fname);
-IMFILE* gfopen (const char* fname);
-IMFILE* fopen (unsigned* buf, ssize_t size);
-void fclose (IMFILE* f);
-inline ssize_t ftell (IMFILE* f)
-{
+IMFILE *fopen(const char *fname);
+IMFILE *gfopen(const char *fname);
+IMFILE *fopen(unsigned *buf, ssize_t size);
+void fclose(IMFILE *f);
+inline ssize_t ftell(IMFILE *f) { return f->pos; }
 
-    return f->pos;
-}
+inline int feof(IMFILE *f) { return f->eof; }
 
-inline int feof (IMFILE* f)
-{
-
-    return f->eof;
-}
-
-inline void fseek (IMFILE* f, ssize_t p, int how)
+inline void fseek(IMFILE *f, ssize_t p, int how)
 {
     ssize_t fpos = f->pos;
 
@@ -68,18 +61,18 @@ inline void fseek (IMFILE* f, ssize_t p, int how)
     } else if (how == SEEK_CUR) {
         f->pos += p;
     } else if (how == SEEK_END) {
-        if(p <= 0 && -p <= f->size) {
+        if (p <= 0 && -p <= f->size) {
             f->pos = f->size + p;
         }
         return;
     }
 
-    if (f->pos < 0  || f->pos > f->size) {
+    if (f->pos < 0 || f->pos > f->size) {
         f->pos = fpos;
     }
 }
 
-inline int fgetc (IMFILE* f)
+inline int fgetc(IMFILE *f)
 {
 
     if (LIKELY(f->pos < f->size)) {
@@ -94,20 +87,16 @@ inline int fgetc (IMFILE* f)
     return EOF;
 }
 
-inline int getc (IMFILE* f)
-{
+inline int getc(IMFILE *f) { return fgetc(f); }
 
-    return fgetc(f);
-}
-
-inline int fread (void* dst, ssize_t es, ssize_t count, IMFILE* f)
+inline int fread(void *dst, ssize_t es, ssize_t count, IMFILE *f)
 {
 
     ssize_t s = es * count;
     ssize_t avail = f->size - f->pos;
 
     if (s <= avail) {
-        memcpy (dst, f->data + f->pos, s);
+        memcpy(dst, f->data + f->pos, s);
         f->pos += s;
 
         if (f->plistener) {
@@ -120,20 +109,19 @@ inline int fread (void* dst, ssize_t es, ssize_t count, IMFILE* f)
 
         return count;
     } else {
-        memcpy (dst, f->data + f->pos, avail);
+        memcpy(dst, f->data + f->pos, avail);
         f->pos += avail;
         f->eof = true;
         return avail / es;
     }
 }
 
-inline unsigned char* fdata(ssize_t offset, IMFILE* f)
+inline unsigned char *fdata(ssize_t offset, IMFILE *f)
 {
-    return (unsigned char*)f->data + offset;
+    return (unsigned char *)f->data + offset;
 }
 
-int fscanf (IMFILE* f, const char* s ...);
-char* fgets (char* s, ssize_t n, IMFILE* f);
+int fscanf(IMFILE *f, const char *s...);
+char *fgets(char *s, ssize_t n, IMFILE *f);
 
 #endif
-

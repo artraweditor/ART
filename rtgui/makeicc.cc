@@ -18,17 +18,17 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <array>
-#include <string>
-#include <cctype>
-#include <sstream>
-#include <cmath>
-#include <vector>
-#include <lcms2.h>
 #include "../rtengine/color.h"
+#include <array>
+#include <cctype>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <lcms2.h>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -44,65 +44,61 @@ struct Options {
     Options() = default;
 };
 
-
-bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &out)
+bool getopts(std::ostream &sout, const std::vector<std::string> &args,
+             Options &out)
 {
     int argc = args.size();
     auto &argv = args;
-    
-    const auto getstr =
-        [&](int i, std::string &out) -> bool
-        {
-            if (i < argc) {
-                std::istringstream tmp(argv[i]);
-                if (!(tmp >> out)) {
-                    return false;
-                } else {
-                    for (auto &c : out) {
-                        c = std::tolower(c);
-                    }
-                    return true;
-                }
-            } else {
-                return false;
-            }
-        };
 
-    const auto getflt =
-        [&](int i, float &out) -> bool
-        {
-            if (i < argc) {
-                std::istringstream tmp(argv[i]);
-                if (!(tmp >> out)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            } else {
+    const auto getstr = [&](int i, std::string &out) -> bool {
+        if (i < argc) {
+            std::istringstream tmp(argv[i]);
+            if (!(tmp >> out)) {
                 return false;
+            } else {
+                for (auto &c : out) {
+                    c = std::tolower(c);
+                }
+                return true;
             }
-        };
-    
+        } else {
+            return false;
+        }
+    };
+
+    const auto getflt = [&](int i, float &out) -> bool {
+        if (i < argc) {
+            std::istringstream tmp(argv[i]);
+            if (!(tmp >> out)) {
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
+    };
+
     out = Options();
     out.gamma = 1;
     out.slope = 0;
     out.whitepoint = {0.3457, 0.3585}; // D50
-    
+
     std::string err;
     for (int i = 0; err.empty() && i < argc; ++i) {
         std::string a = argv[i];
         if (a == "-v2") {
             out.v2 = true;
         } else if (a == "-w") {
-            if (!getflt(i+1, out.whitepoint.first) ||
-                !getflt(i+2, out.whitepoint.second)) {
+            if (!getflt(i + 1, out.whitepoint.first) ||
+                !getflt(i + 2, out.whitepoint.second)) {
                 err = "Invalid whitepoint (-w)";
             } else {
                 i += 2;
             }
         } else if (a == "-i") {
             std::string val;
-            if (!getstr(i+1, val)) {
+            if (!getstr(i + 1, val)) {
                 err = "Invalid illuminant (-i)";
             } else {
                 ++i;
@@ -118,7 +114,7 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
             }
         } else if (a == "-t") {
             std::string val;
-            if (!getstr(i+1, val)) {
+            if (!getstr(i + 1, val)) {
                 err = "Invalid TRC (-t)";
             } else {
                 ++i;
@@ -135,7 +131,7 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
                     out.gamma = -2;
                     out.slope = 0;
                 } else {
-                    //err = "Invalid TRC (-t)";
+                    // err = "Invalid TRC (-t)";
                     out.gamma = 0;
                     out.slope = 0;
                     out.trcfile = val;
@@ -143,7 +139,7 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
             }
         } else if (a == "-c") {
             for (int j = 1; j <= 6; ++j) {
-                if (!getflt(i+j, out.primaries[j-1])) {
+                if (!getflt(i + j, out.primaries[j - 1])) {
                     err = "Invalid primaries coordinates (-c)";
                     break;
                 }
@@ -153,72 +149,49 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
             }
         } else if (a == "-p") {
             std::string val;
-            if (!getstr(i+1, val)) {
+            if (!getstr(i + 1, val)) {
                 err = "Invalid primaries preset (-p)";
             } else {
                 ++i;
                 if (val == "srgb") {
-                    out.primaries = {
-                        0.64, 0.33,
-                        0.3, 0.6,
-                        0.15, 0.06
-                    };
+                    out.primaries = {0.64, 0.33, 0.3, 0.6, 0.15, 0.06};
                 } else if (val == "adobergb") {
-                    out.primaries = {
-                        0.64, 0.33,
-                        0.21, 0.71,
-                        0.15, 0.06
-                    };
+                    out.primaries = {0.64, 0.33, 0.21, 0.71, 0.15, 0.06};
                 } else if (val == "prophoto") {
-                    out.primaries = {
-                        0.7347, 0.2653,
-                        0.1596, 0.8404,
-                        0.0366, 0.0001
-                    };
+                    out.primaries = {0.7347, 0.2653, 0.1596,
+                                     0.8404, 0.0366, 0.0001};
                 } else if (val == "rec2020") {
-                    out.primaries = {
-                        0.708, 0.292,
-                        0.17, 0.797,
-                        0.131, 0.046
-                    };
+                    out.primaries = {0.708, 0.292, 0.17, 0.797, 0.131, 0.046};
                 } else if (val == "acesp0") {
-                    out.primaries = {
-                        0.7347, 0.2653,
-                        0, 1,
-                        0.0001, -0.0770
-                    };
+                    out.primaries = {0.7347, 0.2653, 0, 1, 0.0001, -0.0770};
                 } else if (val == "acesp1") {
-                    out.primaries = {
-                        0.713, 0.293,
-                        0.165, 0.83,
-                        0.128, 0.044
-                    };
+                    out.primaries = {0.713, 0.293, 0.165, 0.83, 0.128, 0.044};
                 } else {
                     err = "Invalid primaries preset (-p)";
                 }
             }
         } else if (a == "-g") {
-            if (!getflt(i+1, out.gamma) || out.gamma <= 0) {
+            if (!getflt(i + 1, out.gamma) || out.gamma <= 0) {
                 err = "Invalid gamma (-g)";
             } else {
                 ++i;
             }
         } else if (a == "-s") {
-            if (!getflt(i+1, out.slope) || out.slope < 0) {
+            if (!getflt(i + 1, out.slope) || out.slope < 0) {
                 err = "Invalid slope (-s)";
             } else {
                 ++i;
             }
         } else if (a == "-d") {
-            if (i+1 < argc) {
-                out.desc = argv[i+1];
+            if (i + 1 < argc) {
+                out.desc = argv[i + 1];
                 ++i;
             } else {
                 err = "Invalid description (-d)";
             }
         } else if (a == "-o") {
-            if (i+1 < argc) {
-                out.output = argv[i+1];
+            if (i + 1 < argc) {
+                out.output = argv[i + 1];
                 ++i;
             } else {
                 err = "Invalid output (-o)";
@@ -244,7 +217,6 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
     }
 }
 
-
 //-----------------------------------------------------------------------------
 // adapted from darktable (src/common/colorspaces.c)
 /*
@@ -265,23 +237,26 @@ bool getopts(std::ostream &sout, const std::vector<std::string> &args, Options &
     along with darktable.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-cmsHPROFILE create_profile(bool v2, const std::pair<float, float> &whitept, const std::array<float, 6> &primaries, cmsToneCurve *trc, const std::string &desc, float gamma, float slope)
+cmsHPROFILE create_profile(bool v2, const std::pair<float, float> &whitept,
+                           const std::array<float, 6> &primaries,
+                           cmsToneCurve *trc, const std::string &desc,
+                           float gamma, float slope)
 {
     cmsMLU *mlu1 = cmsMLUalloc(NULL, 1);
     cmsMLU *mlu2 = cmsMLUalloc(NULL, 1);
     cmsMLU *mlu3 = cmsMLUalloc(NULL, 1);
     cmsMLU *mlu4 = cmsMLUalloc(NULL, 1);
 
-    cmsToneCurve *out_curves[3] = { trc, trc, trc };
-    cmsCIExyY whitepoint = { whitept.first, whitept.second, 1.0 };
+    cmsToneCurve *out_curves[3] = {trc, trc, trc};
+    cmsCIExyY whitepoint = {whitept.first, whitept.second, 1.0};
     cmsCIExyYTRIPLE prim = {
         {primaries[0], primaries[1], 1.0},
         {primaries[2], primaries[3], 1.0},
         {primaries[4], primaries[5], 1.0},
     };
-    
+
     cmsHPROFILE profile = cmsCreateRGBProfile(&whitepoint, &prim, out_curves);
-    //cmsSetDeviceClass(profile, cmsSigOutputClass);
+    // cmsSetDeviceClass(profile, cmsSigOutputClass);
 
     if (v2) {
         cmsSetProfileVersion(profile, 2.4);
@@ -294,7 +269,9 @@ cmsHPROFILE create_profile(bool v2, const std::pair<float, float> &whitept, cons
 
     {
         std::ostringstream buf;
-        buf << "#us/pixls/ART#" << std::setw(6) << std::fixed << std::setprecision(6) << gamma << ":" << std::setw(6) << std::fixed << std::setprecision(5) << slope << "!";
+        buf << "#us/pixls/ART#" << std::setw(6) << std::fixed
+            << std::setprecision(6) << gamma << ":" << std::setw(6)
+            << std::fixed << std::setprecision(5) << slope << "!";
         auto s = buf.str();
         cmsMLUsetASCII(mlu2, "en", "US", s.c_str());
         cmsWriteTag(profile, cmsSigDeviceModelDescTag, mlu2);
@@ -314,7 +291,6 @@ cmsHPROFILE create_profile(bool v2, const std::pair<float, float> &whitept, cons
     return profile;
 }
 
-
 cmsToneCurve *make_trc(size_t size, float (*trcFunc)(float, bool))
 {
     std::vector<float> values(size);
@@ -325,12 +301,12 @@ cmsToneCurve *make_trc(size_t size, float (*trcFunc)(float, bool))
         values[i] = y;
     }
 
-    cmsToneCurve *result = cmsBuildTabulatedToneCurveFloat(NULL, size, &values[0]);
+    cmsToneCurve *result =
+        cmsBuildTabulatedToneCurveFloat(NULL, size, &values[0]);
     return result;
 }
 
 //-----------------------------------------------------------------------------
-
 
 cmsToneCurve *make_trc(float gamma, float slope)
 {
@@ -342,7 +318,6 @@ cmsToneCurve *make_trc(float gamma, float slope)
         return cmsBuildParametricToneCurve(NULL, 5, &params[0]);
     }
 }
-
 
 cmsToneCurve *make_trc(const std::string &filename)
 {
@@ -363,7 +338,8 @@ cmsToneCurve *make_trc(const std::string &filename)
     if (values.empty()) {
         return nullptr;
     } else {
-        cmsToneCurve *result = cmsBuildTabulatedToneCurveFloat(NULL, values.size(), &values[0]);
+        cmsToneCurve *result =
+            cmsBuildTabulatedToneCurveFloat(NULL, values.size(), &values[0]);
         return result;
     }
 }
@@ -388,12 +364,14 @@ int ART_makeicc_main(std::ostream &out, const std::vector<std::string> &args)
         trc = make_trc(opts.gamma, opts.slope);
     }
 
-    cmsHPROFILE prof = create_profile(opts.v2, opts.whitepoint, opts.primaries, trc, opts.desc, opts.gamma, opts.gamma > 0.f ? opts.slope : 0.f);
+    cmsHPROFILE prof =
+        create_profile(opts.v2, opts.whitepoint, opts.primaries, trc, opts.desc,
+                       opts.gamma, opts.gamma > 0.f ? opts.slope : 0.f);
 
     if (trc) {
         cmsFreeToneCurve(trc);
     }
-        
+
     if (prof) {
         cmsSaveProfileToFile(prof, opts.output.c_str());
     } else {
@@ -403,7 +381,6 @@ int ART_makeicc_main(std::ostream &out, const std::vector<std::string> &args)
 
     return 0;
 }
-
 
 void ART_makeicc_help(std::ostream &out, int indent)
 {
@@ -418,9 +395,12 @@ void ART_makeicc_help(std::ostream &out, int indent)
         << pad << "          - sRGB\n"
         << pad << "          - HLG\n"
         << pad << "          - PQ\n"
-        << pad << "          - <filename> (path to a file with the 1d LUT for the TRC)\n"
+        << pad
+        << "          - <filename> (path to a file with the 1d LUT for the "
+           "TRC)\n"
         << pad << " -c Rx Ry Gx Gy Bx By : xy coordinates of primaries\n"
-        << pad << " -p VAL : primaries preset. Possible values (case insensitive):\n"
+        << pad
+        << " -p VAL : primaries preset. Possible values (case insensitive):\n"
         << pad << "          - sRGB\n"
         << pad << "          - AdobeRGB\n"
         << pad << "          - ProPhoto\n"

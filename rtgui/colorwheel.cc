@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -18,7 +18,8 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// adapted from the "color correction" module of Darktable. Original copyright follows
+// adapted from the "color correction" module of Darktable. Original copyright
+// follows
 /*
     copyright (c) 2009--2010 johannes hanika.
 
@@ -37,13 +38,12 @@
 */
 
 #include "colorwheel.h"
-#include "../rtengine/iccstore.h"
 #include "../rtengine/coord.h"
+#include "../rtengine/iccstore.h"
 #include "guiutils.h"
 #include <iostream>
 
 using rtengine::Color;
-
 
 //-----------------------------------------------------------------------------
 // ColorWheelArea
@@ -55,22 +55,15 @@ bool ColorWheelArea::notifyListener()
     return false;
 }
 
-
-ColorWheelArea::ColorWheelArea(bool enable_low):
-    Gtk::DrawingArea(),
-    x_(0.f), y_(0.f),
-    default_x_(0.f), default_y_(0.f),
-    listener(nullptr),
-    edited(false),
-    point_active_(false),
-    is_dragged_(false),
-    lock_angle_(false),
-    lock_radius_(false),
-    scale(1),
-    defaultScale(1)
+ColorWheelArea::ColorWheelArea(bool enable_low)
+    : Gtk::DrawingArea(), x_(0.f), y_(0.f), default_x_(0.f), default_y_(0.f),
+      listener(nullptr), edited(false), point_active_(false),
+      is_dragged_(false), lock_angle_(false), lock_radius_(false), scale(1),
+      defaultScale(1)
 {
     set_can_focus(false); // prevent moving the grid while you're moving a point
-    add_events(Gdk::EXPOSURE_MASK | Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK | Gdk::POINTER_MOTION_MASK);
+    add_events(Gdk::EXPOSURE_MASK | Gdk::BUTTON_PRESS_MASK |
+               Gdk::BUTTON_RELEASE_MASK | Gdk::POINTER_MOTION_MASK);
     set_name("ColorWheel");
     get_style_context()->add_class("drawingarea");
 }
@@ -80,7 +73,6 @@ void ColorWheelArea::getParams(double &x, double &y) const
     x = x_;
     y = y_;
 }
-
 
 void ColorWheelArea::setParams(double x, double y, bool notify)
 {
@@ -94,7 +86,6 @@ void ColorWheelArea::setParams(double x, double y, bool notify)
     }
 }
 
-
 void ColorWheelArea::setScale(double s, bool notify)
 {
     scale = s;
@@ -104,12 +95,7 @@ void ColorWheelArea::setScale(double s, bool notify)
     }
 }
 
-
-double ColorWheelArea::getScale() const
-{
-    return scale;
-}
-
+double ColorWheelArea::getScale() const { return scale; }
 
 void ColorWheelArea::setDefault(double x, double y, double s)
 {
@@ -117,7 +103,6 @@ void ColorWheelArea::setDefault(double x, double y, double s)
     default_y_ = y;
     defaultScale = s;
 }
-
 
 void ColorWheelArea::reset(bool toInitial)
 {
@@ -130,25 +115,15 @@ void ColorWheelArea::reset(bool toInitial)
     }
 }
 
+void ColorWheelArea::setEdited(bool yes) { edited = yes; }
 
-void ColorWheelArea::setEdited(bool yes)
-{
-    edited = yes;
-}
-
-
-bool ColorWheelArea::getEdited() const
-{
-    return edited;
-}
-
+bool ColorWheelArea::getEdited() const { return edited; }
 
 void ColorWheelArea::on_style_updated()
 {
     setDirty(true);
     queue_draw();
 }
-
 
 bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
 {
@@ -166,7 +141,7 @@ bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
     }
 
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    Gtk::Border padding = getPadding(style);  // already scaled
+    Gtk::Border padding = getPadding(style); // already scaled
     Cairo::RefPtr<Cairo::Context> cr = getContext();
 
     if (isDirty()) {
@@ -184,7 +159,8 @@ bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
         cr->set_operator(Cairo::OPERATOR_OVER);
 
         // drawing the cells
-        cr->translate(inset * s + padding.get_left(), inset * s + padding.get_top());
+        cr->translate(inset * s + padding.get_left(),
+                      inset * s + padding.get_top());
         cr->set_antialias(Cairo::ANTIALIAS_NONE);
         width -= 2 * inset * s + padding.get_right() + padding.get_left();
         height -= 2 * inset * s + padding.get_top() + padding.get_bottom();
@@ -242,14 +218,14 @@ bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
                     B /= 65535.f;
 
                     getGUIColor(R, G, B);
-                    
+
                     // R = rtengine::intp(alpha, R, bg_r);
                     // G = rtengine::intp(alpha, G, bg_g);
                     // B = rtengine::intp(alpha, B, bg_b);
-                    
+
                     cr->set_source_rgba(R, G, B, alpha);
-                    //cr->set_source_rgb(R, G, B);
-                    cr->rectangle(i+xoff, j+yoff, w, w);
+                    // cr->set_source_rgb(R, G, B);
+                    cr->rectangle(i + xoff, j + yoff, w, w);
                     cr->fill();
                 }
             }
@@ -305,7 +281,6 @@ bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
     return false;
 }
 
-
 bool ColorWheelArea::on_button_press_event(GdkEventButton *event)
 {
     if (event->button == 1) {
@@ -326,7 +301,6 @@ bool ColorWheelArea::on_button_press_event(GdkEventButton *event)
     return true;
 }
 
-
 bool ColorWheelArea::on_button_release_event(GdkEventButton *event)
 {
     if (event->button == 1) {
@@ -338,7 +312,6 @@ bool ColorWheelArea::on_button_release_event(GdkEventButton *event)
     return true;
 }
 
-
 bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
 {
     if (is_dragged_ && delayconn.connected()) {
@@ -346,20 +319,28 @@ bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
     }
 
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    Gtk::Border padding = getPadding(style);  // already scaled
+    Gtk::Border padding = getPadding(style); // already scaled
 
     bool old_active = point_active_;
 
     int s = RTScalable::getScale();
-    int width = get_allocated_width() - 2 * inset * s - padding.get_right() - padding.get_left();
-    int height = get_allocated_height() - 2 * inset * s - padding.get_top() - padding.get_bottom();
-    const float mouse_x = std::min(double(std::max(event->x - inset * s - padding.get_right(), 0.)), double(width));
-    const float mouse_y = std::min(double(std::max(get_allocated_height() - 1 - event->y - inset * s - padding.get_bottom(), 0.)), double(height));
+    int width = get_allocated_width() - 2 * inset * s - padding.get_right() -
+                padding.get_left();
+    int height = get_allocated_height() - 2 * inset * s - padding.get_top() -
+                 padding.get_bottom();
+    const float mouse_x = std::min(
+        double(std::max(event->x - inset * s - padding.get_right(), 0.)),
+        double(width));
+    const float mouse_y =
+        std::min(double(std::max(get_allocated_height() - 1 - event->y -
+                                     inset * s - padding.get_bottom(),
+                                 0.)),
+                 double(height));
     float ma = (2.0 * mouse_x - width) / float(width);
     float mb = (2.0 * mouse_y - height) / float(height);
-    
+
     rtengine::PolarCoord prev(rtengine::CoordD(x_, y_));
-    
+
     rtengine::PolarCoord p(rtengine::CoordD(ma, mb));
     p.radius = std::min(p.radius, 1.0);
 
@@ -371,11 +352,11 @@ bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
             p.radius = prev.radius;
         }
     }
-    
+
     rtengine::CoordD c(p);
     ma = c.x;
     mb = c.y;
-        
+
     if (is_dragged_) {
         x_ = ma;
         y_ = mb;
@@ -384,7 +365,9 @@ bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
         if (options.adjusterMinDelay == 0) {
             notifyListener();
         } else {
-            delayconn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &ColorWheelArea::notifyListener), options.adjusterMinDelay);
+            delayconn = Glib::signal_timeout().connect(
+                sigc::mem_fun(*this, &ColorWheelArea::notifyListener),
+                options.adjusterMinDelay);
         }
         queue_draw();
     } else {
@@ -403,49 +386,49 @@ bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
     return true;
 }
 
-
 Gtk::SizeRequestMode ColorWheelArea::get_request_mode_vfunc() const
 {
     return Gtk::SIZE_REQUEST_HEIGHT_FOR_WIDTH;
 }
 
-
-void ColorWheelArea::get_preferred_width_vfunc(int &minimum_width, int &natural_width) const
+void ColorWheelArea::get_preferred_width_vfunc(int &minimum_width,
+                                               int &natural_width) const
 {
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    Gtk::Border padding = getPadding(style);  // already scaled
+    Gtk::Border padding = getPadding(style); // already scaled
     int s = RTScalable::getScale();
     int p = padding.get_left() + padding.get_right();
 
     minimum_width = 50 * s + p;
-    natural_width = 150 * s + p;  // same as GRAPH_SIZE from mycurve.h
+    natural_width = 150 * s + p; // same as GRAPH_SIZE from mycurve.h
 }
 
-
-void ColorWheelArea::get_preferred_height_for_width_vfunc(int width, int &minimum_height, int &natural_height) const
+void ColorWheelArea::get_preferred_height_for_width_vfunc(
+    int width, int &minimum_height, int &natural_height) const
 {
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    Gtk::Border padding = getPadding(style);  // already scaled
+    Gtk::Border padding = getPadding(style); // already scaled
 
-    minimum_height = natural_height = width - padding.get_left() - padding.get_right() + padding.get_top() + padding.get_bottom();
+    minimum_height = natural_height = width - padding.get_left() -
+                                      padding.get_right() + padding.get_top() +
+                                      padding.get_bottom();
 }
-
 
 //-----------------------------------------------------------------------------
 // ColorWheel
 //-----------------------------------------------------------------------------
 
-ColorWheel::ColorWheel(bool use_scale):
-    EditSubscriber(ET_PIPETTE),
-    grid(),
-    savedparams_{}
+ColorWheel::ColorWheel(bool use_scale)
+    : EditSubscriber(ET_PIPETTE), grid(), savedparams_{}
 {
     Gtk::Button *reset = Gtk::manage(new Gtk::Button());
     reset->set_tooltip_markup(M("ADJUSTER_RESET_TO_DEFAULT"));
     reset->add(*Gtk::manage(new RTImage("undo-small.svg", "redo-small.svg")));
-    reset->signal_button_release_event().connect(sigc::mem_fun(*this, &ColorWheel::resetPressed));
+    reset->signal_button_release_event().connect(
+        sigc::mem_fun(*this, &ColorWheel::resetPressed));
 
-    setExpandAlignProperties(reset, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_START);
+    setExpandAlignProperties(reset, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_START);
     reset->set_relief(Gtk::RELIEF_NONE);
     reset->get_style_context()->add_class(GTK_STYLE_CLASS_FLAT);
     reset->set_can_focus(false);
@@ -453,7 +436,8 @@ ColorWheel::ColorWheel(bool use_scale):
 
     edit_ = Gtk::manage(new Gtk::ToggleButton());
     edit_->add(*Gtk::manage(new RTImage("color-picker-small.svg")));
-    setExpandAlignProperties(edit_, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_START);
+    setExpandAlignProperties(edit_, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_START);
     edit_->set_relief(Gtk::RELIEF_NONE);
     edit_->get_style_context()->add_class(GTK_STYLE_CLASS_FLAT);
     edit_->set_can_focus(false);
@@ -480,28 +464,28 @@ ColorWheel::ColorWheel(bool use_scale):
     pack_start(*vb, false, false);
 
     if (use_scale) {
-        scaleconn = scale->signal_value_changed().connect(sigc::mem_fun(*this, &ColorWheel::scaleChanged));
+        scaleconn = scale->signal_value_changed().connect(
+            sigc::mem_fun(*this, &ColorWheel::scaleChanged));
     }
 
-    const auto toggle_subscription =
-        [this]()
-        {
-            if (edit_->get_active()) {
-                this->subscribe();
-                if (scale) {
-                    grid.setScale(scale->get_value(), true);
-                }
-            } else {
-                this->switchOffEditMode();
+    const auto toggle_subscription = [this]() {
+        if (edit_->get_active()) {
+            this->subscribe();
+            if (scale) {
+                grid.setScale(scale->get_value(), true);
             }
-        };
-    editconn_ = edit_->signal_toggled().connect(sigc::slot<void>(toggle_subscription));
-    
+        } else {
+            this->switchOffEditMode();
+        }
+    };
+    editconn_ =
+        edit_->signal_toggled().connect(sigc::slot<void>(toggle_subscription));
+
     show_all_children();
 
-    grid.signal_right_click().connect(sigc::slot<void>([this]() { onRightClickPressed(); }));
+    grid.signal_right_click().connect(
+        sigc::slot<void>([this]() { onRightClickPressed(); }));
 }
-
 
 bool ColorWheel::resetPressed(GdkEventButton *event)
 {
@@ -519,9 +503,13 @@ void ColorWheel::scaleChanged()
     if (timerconn.connected()) {
         timerconn.disconnect();
     }
-    timerconn = Glib::signal_timeout().connect(sigc::slot<bool>([this]() -> bool { grid.setScale(scale->get_value(), true); return false; }), options.adjusterMaxDelay);
+    timerconn = Glib::signal_timeout().connect(
+        sigc::slot<bool>([this]() -> bool {
+            grid.setScale(scale->get_value(), true);
+            return false;
+        }),
+        options.adjusterMaxDelay);
 }
-
 
 void ColorWheel::getParams(double &x, double &y, double &s) const
 {
@@ -530,7 +518,6 @@ void ColorWheel::getParams(double &x, double &y, double &s) const
     x *= s;
     y *= s;
 }
-
 
 void ColorWheel::setParams(double x, double y, double s, bool notify)
 {
@@ -551,17 +538,16 @@ void ColorWheel::setParams(double x, double y, double s, bool notify)
     grid.setParams(x / s, y / s, notify);
 }
 
-
 void ColorWheel::setDefault(double x, double y, double s)
 {
     grid.setDefault(x, y, s);
 }
 
-
 void ColorWheel::onRightClickPressed()
 {
     Gtk::Popover p(grid);
-    p.set_pointing_to(Gdk::Rectangle(0, grid.get_height()/2, grid.get_width(), grid.get_height()/2));
+    p.set_pointing_to(Gdk::Rectangle(0, grid.get_height() / 2, grid.get_width(),
+                                     grid.get_height() / 2));
     Gtk::HBox hb;
     p.set_border_width(16);
     p.add(hb);
@@ -582,7 +568,7 @@ void ColorWheel::onRightClickPressed()
     hb.pack_start(spc);
     hb.pack_start(ly);
     hb.pack_start(sat);
-    
+
     // Gtk::Label lx("X: ");
     // Gtk::SpinButton x;
     // x.set_range(-2.5, 2.5);
@@ -612,47 +598,38 @@ void ColorWheel::onRightClickPressed()
     }
     double s = std::sqrt(vx * vx + vy * vy);
     double vsat = s * 100;
-    //vsat /= vs;
+    // vsat /= vs;
     hue.set_value(vhue);
     sat.set_value(vsat);
-    
+
     int result = 0;
 
-    p.signal_closed().connect(
-        sigc::slot<void>(
-            [&]()
-            {
-                result = 1;
-                double h = hue.get_value() * rtengine::RT_PI / 180.0;
-                double s = sat.get_value() / 100.0;
-                double x = s * std::cos(h);
-                double y = s * std::sin(h);
-                if (x != vx || y != vy) {
-                    setParams(x, y, vs, true);
-                }
-                // if (x.get_value() != vx || y.get_value() != vy) {
-                //     setParams(x.get_value(), y.get_value(), vs, true);
-                // }
-            })
-        );
+    p.signal_closed().connect(sigc::slot<void>([&]() {
+        result = 1;
+        double h = hue.get_value() * rtengine::RT_PI / 180.0;
+        double s = sat.get_value() / 100.0;
+        double x = s * std::cos(h);
+        double y = s * std::sin(h);
+        if (x != vx || y != vy) {
+            setParams(x, y, vs, true);
+        }
+        // if (x.get_value() != vx || y.get_value() != vy) {
+        //     setParams(x.get_value(), y.get_value(), vs, true);
+        // }
+    }));
 
     p.show_all_children();
     p.set_modal(true);
     p.show();
-    //p.popup();
+    // p.popup();
 
     while (result == 0) {
         gtk_main_iteration();
     }
 }
 
-
 // EditSubscriber interface
-CursorShape ColorWheel::getCursor(int objectID)
-{
-    return CSHandOpen;
-}
-
+CursorShape ColorWheel::getCursor(int objectID) { return CSHandOpen; }
 
 namespace {
 
@@ -667,7 +644,6 @@ double find_scale(double x, double y)
 }
 
 } // namespace
-
 
 bool ColorWheel::mouseOver(int modifierKey)
 {
@@ -688,7 +664,6 @@ bool ColorWheel::mouseOver(int modifierKey)
     }
     return true;
 }
-
 
 bool ColorWheel::button1Pressed(int modifierKey)
 {
@@ -712,13 +687,11 @@ bool ColorWheel::button1Pressed(int modifierKey)
     return true;
 }
 
-
 void ColorWheel::subscribe()
 {
     getParams(savedparams_[0], savedparams_[1], savedparams_[2]);
     EditSubscriber::subscribe();
 }
-
 
 void ColorWheel::unsubscribe()
 {
@@ -728,24 +701,17 @@ void ColorWheel::unsubscribe()
     setParams(savedparams_[0], savedparams_[1], savedparams_[2], true);
 }
 
-
 //-----------------------------------------------------------------------------
 // HueSatColorWheel
 //-----------------------------------------------------------------------------
 
-HueSatColorWheel::HueSatColorWheel(double sat_scale):
-    ColorWheel(false),
-    satscale_(sat_scale)
+HueSatColorWheel::HueSatColorWheel(double sat_scale)
+    : ColorWheel(false), satscale_(sat_scale)
 {
     removeIfThere(scalebox_, edit_);
 }
 
-
-HueSatColorWheel::~HueSatColorWheel()
-{
-    edit_->unreference();
-}
-
+HueSatColorWheel::~HueSatColorWheel() { edit_->unreference(); }
 
 void HueSatColorWheel::getParams(double &hue, double &sat) const
 {
@@ -764,7 +730,6 @@ void HueSatColorWheel::getParams(double &hue, double &sat) const
     }
 }
 
-
 void HueSatColorWheel::setParams(double hue, double sat, bool notify)
 {
     double h = hue * rtengine::RT_PI / 180.0;
@@ -778,7 +743,6 @@ void HueSatColorWheel::setParams(double hue, double sat, bool notify)
     grid.setParams(x, y, notify);
 }
 
-
 void HueSatColorWheel::setDefault(double hue, double sat)
 {
     double h = hue * rtengine::RT_PI / 180.0;
@@ -791,17 +755,13 @@ void HueSatColorWheel::setDefault(double hue, double sat)
     ColorWheel::setDefault(x, y, 1.5);
 }
 
-
-void HueSatColorWheel::onResetPressed()
-{
-    grid.setScale(1.5, false);
-}
-
+void HueSatColorWheel::onResetPressed() { grid.setScale(1.5, false); }
 
 void HueSatColorWheel::onRightClickPressed()
 {
     Gtk::Popover p(grid);
-    p.set_pointing_to(Gdk::Rectangle(0, grid.get_height()/2, grid.get_width(), grid.get_height()/2));
+    p.set_pointing_to(Gdk::Rectangle(0, grid.get_height() / 2, grid.get_width(),
+                                     grid.get_height() / 2));
     Gtk::HBox hb;
     p.set_border_width(16);
     p.add(hb);
@@ -826,24 +786,20 @@ void HueSatColorWheel::onRightClickPressed()
     getParams(vhue, vsat);
     hue.set_value(vhue);
     sat.set_value(vsat);
-    
+
     int result = 0;
 
-    p.signal_closed().connect(
-        sigc::slot<void>(
-            [&]()
-            {
-                result = 1;
-                if (hue.get_value() != vhue || sat.get_value() != vsat) {
-                    setParams(hue.get_value(), sat.get_value(), true);
-                }
-            })
-        );
+    p.signal_closed().connect(sigc::slot<void>([&]() {
+        result = 1;
+        if (hue.get_value() != vhue || sat.get_value() != vsat) {
+            setParams(hue.get_value(), sat.get_value(), true);
+        }
+    }));
 
     p.show_all_children();
     p.set_modal(true);
     p.show();
-    //p.popup();
+    // p.popup();
 
     while (result == 0) {
         gtk_main_iteration();

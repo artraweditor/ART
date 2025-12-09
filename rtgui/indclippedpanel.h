@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *
@@ -26,54 +26,40 @@ class ImageArea;
 class IndicateClippedPanel: public Gtk::HBox {
 
 protected:
-    Gtk::Image* iFon, *iFoff, *iSon, *iSoff;
-    Gtk::ToggleButton* previewSharpMask;
-    Gtk::ToggleButton* previewFocusMask;
-    Gtk::ToggleButton* indClippedH;
-    Gtk::ToggleButton* indClippedS;
+    Gtk::Image *iFon, *iFoff, *iSon, *iSoff;
+    Gtk::ToggleButton *previewSharpMask;
+    Gtk::ToggleButton *previewFocusMask;
+    Gtk::ToggleButton *indClippedH;
+    Gtk::ToggleButton *indClippedS;
     Gtk::ToggleButton *falseColors;
     Gtk::Image *falseColorsOn, *falseColorsOff;
     Gtk::ToggleButton *grid;
-    ImageArea* imageArea;
+    ImageArea *imageArea;
 
     sigc::connection connFocusMask, connSharpMask, connClippedS, connClippedH;
     sigc::connection connFalseColors;
     sigc::connection connGrid;
 
 public:
-    explicit IndicateClippedPanel(ImageArea* ia);
+    explicit IndicateClippedPanel(ImageArea *ia);
     ~IndicateClippedPanel() override;
 
-    void buttonToggled(Gtk::ToggleButton* tb);
-    void toggleClipped(bool highlights);  // inverts a toggle programmatically
+    void buttonToggled(Gtk::ToggleButton *tb);
+    void toggleClipped(bool highlights); // inverts a toggle programmatically
     void toggleFocusMask();
-    void silentlyDisableSharpMask();  // toggle the button off without throwing a toggle event
+    void silentlyDisableSharpMask(); // toggle the button off without throwing a
+                                     // toggle event
     void toggleSharpMask();
     void toggleFalseColors();
     void toggleGrid();
 
-    bool showFocusMask ()
-    {
-        return previewFocusMask->get_active ();
-    }
-    bool showClippedShadows()
-    {
-        return indClippedS->get_active();
-    }
-    bool showClippedHighlights()
-    {
-        return indClippedH->get_active();
-    }
+    bool showFocusMask() { return previewFocusMask->get_active(); }
+    bool showClippedShadows() { return indClippedS->get_active(); }
+    bool showClippedHighlights() { return indClippedH->get_active(); }
 
-    bool showFalseColors()
-    {
-        return falseColors->get_active();
-    }
+    bool showFalseColors() { return falseColors->get_active(); }
 
-    bool showGrid()
-    {
-        return grid->get_active();
-    }
+    bool showGrid() { return grid->get_active(); }
 };
 
 #endif

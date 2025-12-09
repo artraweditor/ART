@@ -22,90 +22,99 @@
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-Vignetting::Vignetting () : FoldableToolPanel(this, "vignetting", M("TP_VIGNETTING_LABEL"), false, true, true)
+Vignetting::Vignetting()
+    : FoldableToolPanel(this, "vignetting", M("TP_VIGNETTING_LABEL"), false,
+                        true, true)
 {
     EvToolEnabled.set_action(rtengine::TRANSFORM);
     EvToolReset.set_action(rtengine::TRANSFORM);
 
-    amount = Gtk::manage (new Adjuster (M("TP_VIGNETTING_AMOUNT"), -100, 100, 1, 0));
-    amount->setAdjusterListener (this);
+    amount =
+        Gtk::manage(new Adjuster(M("TP_VIGNETTING_AMOUNT"), -100, 100, 1, 0));
+    amount->setAdjusterListener(this);
 
-    radius = Gtk::manage (new Adjuster (M("TP_VIGNETTING_RADIUS"), 0, 100, 1, 50));
-    radius->setAdjusterListener (this);
+    radius =
+        Gtk::manage(new Adjuster(M("TP_VIGNETTING_RADIUS"), 0, 100, 1, 50));
+    radius->setAdjusterListener(this);
 
-    strength = Gtk::manage (new Adjuster (M("TP_VIGNETTING_STRENGTH"), 1, 100, 1, 1));
-    strength->setAdjusterListener (this);
+    strength =
+        Gtk::manage(new Adjuster(M("TP_VIGNETTING_STRENGTH"), 1, 100, 1, 1));
+    strength->setAdjusterListener(this);
 
-    centerX = Gtk::manage (new Adjuster (M("TP_VIGNETTING_CENTER_X"), -100, 100, 1, 0));
-    centerX->setAdjusterListener (this);
+    centerX =
+        Gtk::manage(new Adjuster(M("TP_VIGNETTING_CENTER_X"), -100, 100, 1, 0));
+    centerX->setAdjusterListener(this);
 
-    centerY = Gtk::manage (new Adjuster (M("TP_VIGNETTING_CENTER_Y"), -100, 100, 1, 0));
-    centerY->setAdjusterListener (this);
+    centerY =
+        Gtk::manage(new Adjuster(M("TP_VIGNETTING_CENTER_Y"), -100, 100, 1, 0));
+    centerY->setAdjusterListener(this);
 
-    pack_start (*amount);
-    pack_start (*radius);
-    pack_start (*strength);
-    pack_start (*centerX);
-    pack_start (*centerY);
+    pack_start(*amount);
+    pack_start(*radius);
+    pack_start(*strength);
+    pack_start(*centerX);
+    pack_start(*centerY);
 
     show_all();
 }
 
-void Vignetting::read(const ProcParams* pp)
+void Vignetting::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
 
     setEnabled(pp->vignetting.enabled);
-    amount->setValue (pp->vignetting.amount);
-    radius->setValue (pp->vignetting.radius);
-    strength->setValue (pp->vignetting.strength);
-    centerX->setValue (pp->vignetting.centerX);
-    centerY->setValue (pp->vignetting.centerY);
+    amount->setValue(pp->vignetting.amount);
+    radius->setValue(pp->vignetting.radius);
+    strength->setValue(pp->vignetting.strength);
+    centerX->setValue(pp->vignetting.centerX);
+    centerY->setValue(pp->vignetting.centerY);
 
-    enableListener ();
+    enableListener();
 }
 
-void Vignetting::write(ProcParams* pp)
+void Vignetting::write(ProcParams *pp)
 {
     pp->vignetting.enabled = getEnabled();
-    pp->vignetting.amount = amount->getIntValue ();
-    pp->vignetting.radius = radius->getIntValue ();
-    pp->vignetting.strength = strength->getIntValue ();
-    pp->vignetting.centerX = centerX->getIntValue ();
-    pp->vignetting.centerY = centerY->getIntValue ();
+    pp->vignetting.amount = amount->getIntValue();
+    pp->vignetting.radius = radius->getIntValue();
+    pp->vignetting.strength = strength->getIntValue();
+    pp->vignetting.centerX = centerX->getIntValue();
+    pp->vignetting.centerY = centerY->getIntValue();
 }
 
-void Vignetting::setDefaults(const ProcParams* defParams)
+void Vignetting::setDefaults(const ProcParams *defParams)
 {
-    amount->setDefault (defParams->vignetting.amount);
-    radius->setDefault (defParams->vignetting.radius);
-    strength->setDefault (defParams->vignetting.strength);
-    centerX->setDefault (defParams->vignetting.centerX);
-    centerY->setDefault (defParams->vignetting.centerY);
+    amount->setDefault(defParams->vignetting.amount);
+    radius->setDefault(defParams->vignetting.radius);
+    strength->setDefault(defParams->vignetting.strength);
+    centerX->setDefault(defParams->vignetting.centerX);
+    centerY->setDefault(defParams->vignetting.centerY);
 
     initial_params = defParams->vignetting;
 }
 
-void Vignetting::adjusterChanged(Adjuster* a, double newval)
+void Vignetting::adjusterChanged(Adjuster *a, double newval)
 {
-    if (listener && getEnabled())  {
+    if (listener && getEnabled()) {
         if (a == amount) {
-            listener->panelChanged (EvVignettingAmount, amount->getTextValue());
+            listener->panelChanged(EvVignettingAmount, amount->getTextValue());
         } else if (a == radius) {
-            listener->panelChanged (EvVignettingRadius, radius->getTextValue());
+            listener->panelChanged(EvVignettingRadius, radius->getTextValue());
         } else if (a == strength) {
-            listener->panelChanged (EvVignettingStrenght, strength->getTextValue());
+            listener->panelChanged(EvVignettingStrenght,
+                                   strength->getTextValue());
         } else if (a == centerX || a == centerY) {
-            listener->panelChanged (EvVignettingCenter, Glib::ustring::compose ("X=%1\nY=%2", centerX->getTextValue(), centerY->getTextValue()));
+            listener->panelChanged(
+                EvVignettingCenter,
+                Glib::ustring::compose("X=%1\nY=%2", centerX->getTextValue(),
+                                       centerY->getTextValue()));
         }
     }
 }
 
-void Vignetting::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void Vignetting::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void Vignetting::trimValues (rtengine::procparams::ProcParams* pp)
+void Vignetting::trimValues(rtengine::procparams::ProcParams *pp)
 {
 
     amount->trimValue(pp->vignetting.amount);
@@ -114,7 +123,6 @@ void Vignetting::trimValues (rtengine::procparams::ProcParams* pp)
     centerX->trimValue(pp->vignetting.centerX);
     centerY->trimValue(pp->vignetting.centerY);
 }
-
 
 void Vignetting::toolReset(bool to_initial)
 {

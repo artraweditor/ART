@@ -49,5 +49,4 @@ struct GainMap {
     static std::vector<GainMap> read(const std::vector<uint8_t> &buf);
 };
 
-
 } // namespace rtengine

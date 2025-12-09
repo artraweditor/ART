@@ -16,7 +16,6 @@
   along with darktable.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 /* For line detection we are using the LSD code as published below.
  * Changes versus the original code:
  *      do not include "lsd.h" (not needed)
@@ -32,8 +31,8 @@
  * results. In case of errors it will terminate the program. On the one side
  * this is not optimal for a module within darktable - it should better
  * report errors upstream where they should be handled properly. On the other
- * hand the kind of error which could be triggered in LSD would make it very unlikely
- * that the darktable process could survive anyhow.
+ * hand the kind of error which could be triggered in LSD would make it very
+ * unlikely that the darktable process could survive anyhow.
  */
 
 // clang-format off
@@ -1079,14 +1078,15 @@ static double *inv = NULL; /* table to keep computed inverse values */
 
 __attribute__((constructor)) static void invConstructor()
 {
-  if(inv) return;
-  inv = (double *)malloc(sizeof(double) * TABSIZE);
+    if (inv)
+        return;
+    inv = (double *)malloc(sizeof(double) * TABSIZE);
 }
 
 __attribute__((destructor)) static void invDestructor()
 {
-  free(inv);
-  inv = NULL;
+    free(inv);
+    inv = NULL;
 }
 
 // clang-format off
@@ -2330,6 +2330,7 @@ double * lsd(int * n_out, double * img, int X, int Y)
 #undef RELATIVE_ERROR_FACTOR
 #undef TABSIZE
 
-// modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
-// vim: shiftwidth=2 expandtab tabstop=2 cindent
-// kate: tab-indents: off; indent-width 2; replace-tabs on; indent-mode cstyle; remove-trailing-spaces modified;
+// modelines: These editor modelines have been set for all relevant files by
+// tools/update_modelines.sh vim: shiftwidth=2 expandtab tabstop=2 cindent kate:
+// tab-indents: off; indent-width 2; replace-tabs on; indent-mode cstyle;
+// remove-trailing-spaces modified;

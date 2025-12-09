@@ -1,46 +1,43 @@
 /*
-*  This file is part of RawTherapee.
-*
-*  Copyright (c) 2012 Oliver Duis <www.oliverduis.de>
-*
-*  RawTherapee is free software: you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation, either version 3 of the License, or
-*  (at your option) any later version.
-*
-*  RawTherapee is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ *  This file is part of RawTherapee.
+ *
+ *  Copyright (c) 2012 Oliver Duis <www.oliverduis.de>
+ *
+ *  RawTherapee is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  RawTherapee is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #pragma once
 
-#include <map>
-#include <vector>
 #include <array>
+#include <map>
 #include <memory>
+#include <vector>
 
 #include <glibmm.h>
 
 #include "../rtgui/threadutils.h"
 
-#include "imagefloat.h"
-#include "curves.h"
 #include "colortemp.h"
+#include "curves.h"
+#include "imagefloat.h"
 #include "noncopyable.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-class DCPProfile final
-{
+class DCPProfile final {
 public:
-    class ApplyState final
-    {
+    class ApplyState final {
     public:
         ApplyState();
         ~ApplyState();
@@ -64,7 +61,7 @@ public:
     using Triple = std::array<double, 3>;
     using Matrix = std::array<Triple, 3>;
 
-    explicit DCPProfile(const Glib::ustring& filename);
+    explicit DCPProfile(const Glib::ustring &filename);
     ~DCPProfile();
 
     explicit operator bool() const;
@@ -77,19 +74,16 @@ public:
     Illuminants getIlluminants() const;
     bool isValid();
 
-    void apply(
-        Imagefloat* img,
-        int preferred_illuminant,
-        const Glib::ustring& working_space,
-        const ColorTemp& white_balance,
-        const Triple& pre_mul,
-        const Matrix& cam_wb_matrix,
-        bool apply_hue_sat_map,
-        bool apply_look_table,
-        bool multithread
-    ) const;
-    void setStep2ApplyState(const Glib::ustring& working_space, bool use_tone_curve, bool apply_look_table, bool apply_baseline_exposure, ApplyState& as_out);
-    void step2ApplyTile(float* r, float* g, float* b, int width, int height, int tile_width, const ApplyState& as_in) const;
+    void apply(Imagefloat *img, int preferred_illuminant,
+               const Glib::ustring &working_space,
+               const ColorTemp &white_balance, const Triple &pre_mul,
+               const Matrix &cam_wb_matrix, bool apply_hue_sat_map,
+               bool apply_look_table, bool multithread) const;
+    void setStep2ApplyState(const Glib::ustring &working_space,
+                            bool use_tone_curve, bool apply_look_table,
+                            bool apply_baseline_exposure, ApplyState &as_out);
+    void step2ApplyTile(float *r, float *g, float *b, int width, int height,
+                        int tile_width, const ApplyState &as_in) const;
 
 private:
     struct HsbModify {
@@ -118,11 +112,19 @@ private:
         } pc;
     };
 
-    Matrix findXyztoCamera(const std::array<double, 2>& white_xy, int preferred_illuminant, double wbtemp) const;
-    std::array<double, 2> neutralToXy(const Triple& neutral, int preferred_illuminant, double wbtemp) const;
-    Matrix makeXyzCam(const ColorTemp& white_balance, const Triple& pre_mul, const Matrix& cam_wb_matrix, int preferred_illuminant, bool use_fwd_matrix) const;
-    std::vector<HsbModify> makeHueSatMap(const ColorTemp& white_balance, int preferred_illuminant) const;
-    void hsdApply(const HsdTableInfo& table_info, const std::vector<HsbModify>& table_base, float& h, float& s, float& v) const;
+    Matrix findXyztoCamera(const std::array<double, 2> &white_xy,
+                           int preferred_illuminant, double wbtemp) const;
+    std::array<double, 2> neutralToXy(const Triple &neutral,
+                                      int preferred_illuminant,
+                                      double wbtemp) const;
+    Matrix makeXyzCam(const ColorTemp &white_balance, const Triple &pre_mul,
+                      const Matrix &cam_wb_matrix, int preferred_illuminant,
+                      bool use_fwd_matrix) const;
+    std::vector<HsbModify> makeHueSatMap(const ColorTemp &white_balance,
+                                         int preferred_illuminant) const;
+    void hsdApply(const HsdTableInfo &table_info,
+                  const std::vector<HsbModify> &table_base, float &h, float &s,
+                  float &v) const;
 
     Matrix color_matrix_1;
     Matrix color_matrix_2;
@@ -150,19 +152,17 @@ private:
     AdobeToneCurve tone_curve;
 };
 
-class DCPStore final :
-    public NonCopyable
-{
+class DCPStore final: public NonCopyable {
 public:
     ~DCPStore();
-    static DCPStore* getInstance();
+    static DCPStore *getInstance();
 
-    void init(const Glib::ustring& rt_profile_dir, bool loadAll = true);
+    void init(const Glib::ustring &rt_profile_dir, bool loadAll = true);
 
-    bool isValidDCPFileName(const Glib::ustring& filename) const;
+    bool isValidDCPFileName(const Glib::ustring &filename) const;
 
-    DCPProfile* getProfile(const Glib::ustring& filename) const;
-    DCPProfile* getCameraProfile(const Glib::ustring& camShortName) const;
+    DCPProfile *getProfile(const Glib::ustring &filename) const;
+    DCPProfile *getCameraProfile(const Glib::ustring &camShortName) const;
 
 private:
     DCPStore() = default;
@@ -170,11 +170,12 @@ private:
     mutable MyMutex mutex;
     std::vector<Glib::ustring> profileDir;
 
-    // these contain standard profiles from RT. keys are all in uppercase, file path is value
+    // these contain standard profiles from RT. keys are all in uppercase, file
+    // path is value
     std::map<Glib::ustring, Glib::ustring> file_std_profiles;
 
     // Maps file name to profile as cache
-    mutable std::map<Glib::ustring, DCPProfile*> profile_cache;
+    mutable std::map<Glib::ustring, DCPProfile *> profile_cache;
 };
 
-}
+} // namespace rtengine

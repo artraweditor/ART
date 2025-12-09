@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,32 +20,33 @@
 #ifndef _VIGNETTING_H_
 #define _VIGNETTING_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class Vignetting : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class Vignetting: public ToolParamBlock,
+                  public AdjusterListener,
+                  public FoldableToolPanel {
 
 protected:
-    Adjuster* amount;
-    Adjuster* radius;
-    Adjuster* strength;
-    Adjuster* centerX;
-    Adjuster* centerY;
+    Adjuster *amount;
+    Adjuster *radius;
+    Adjuster *strength;
+    Adjuster *centerX;
+    Adjuster *centerY;
 
     rtengine::procparams::VignettingParams initial_params;
 
 public:
-
     Vignetting();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 };

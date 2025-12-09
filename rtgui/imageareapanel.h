@@ -22,24 +22,22 @@
 #include "imagearea.h"
 
 class ImageArea;
-class ImageAreaPanel : public Gtk::VBox
-{
+class ImageAreaPanel: public Gtk::VBox {
 
 protected:
-
     ImageAreaPanel *before, *after;
 
-    void synchronize ();
+    void synchronize();
 
 public:
-    ImageArea*   imageArea;
+    ImageArea *imageArea;
 
-    ImageAreaPanel  ();
-    ~ImageAreaPanel () override;
+    ImageAreaPanel();
+    ~ImageAreaPanel() override;
 
-    void zoomChanged        ();
+    void zoomChanged();
 
-    void setBeforeAfterViews (ImageAreaPanel* bef, ImageAreaPanel* aft);
+    void setBeforeAfterViews(ImageAreaPanel *bef, ImageAreaPanel *aft);
     void syncBeforeAfterViews();
 };
 

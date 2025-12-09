@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,10 +19,10 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "lensgeomlistener.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
 class ControlLineManager;
 
@@ -32,20 +32,22 @@ public:
     virtual void controlLineEditModeChanged(bool active) = 0;
 };
 
-
-class PerspCorrection: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel {
+class PerspCorrection: public ToolParamBlock,
+                       public AdjusterListener,
+                       public FoldableToolPanel {
 public:
     PerspCorrection();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
-    void setLensGeomListener (LensGeomListener* l) { lgl = l; }
-    void setPerspCorrectionPanelListener(PerspCorrectionPanelListener* l)
+    void setLensGeomListener(LensGeomListener *l) { lgl = l; }
+    void setPerspCorrectionPanelListener(PerspCorrectionPanelListener *l)
     {
         panel_listener = l;
     }
@@ -61,14 +63,14 @@ public:
 
     void setControlLineEditMode(bool active);
     void requestApplyControlLines();
-    
+
 private:
     void do_set_metadata(const rtengine::FramesMetaData *meta);
     void applyControlLines();
     void linesApplyButtonPressed();
     void linesEditButtonPressed();
     void linesEraseButtonPressed();
-    
+
     Adjuster *horiz;
     Adjuster *vert;
     Adjuster *angle;
@@ -86,7 +88,7 @@ private:
     Gtk::Button *lines_button_apply;
     Gtk::ToggleButton *lines_button_edit;
     Gtk::Button *lines_button_erase;
-    
+
     rtengine::ProcEvent EvPerspCorrLens;
     rtengine::ProcEvent EvPerspRender;
     rtengine::ProcEvent EvPerspControlLines;

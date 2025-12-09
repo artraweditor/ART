@@ -19,23 +19,18 @@
 #ifndef _SENSORXTRANS_H_
 #define _SENSORXTRANS_H_
 
-#include <gtkmm.h>
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class SensorXTrans : public ToolParamBlock, public FoldableToolPanel
-{
+class SensorXTrans: public ToolParamBlock, public FoldableToolPanel {
 
 protected:
-    ToolParamBlock*     packBox;
+    ToolParamBlock *packBox;
 
 public:
+    SensorXTrans();
 
-    SensorXTrans ();
-
-    Gtk::Box* getPackBox ()
-    {
-        return packBox;
-    }
+    Gtk::Box *getPackBox() { return packBox; }
 };
 
 #endif

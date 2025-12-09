@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -21,30 +21,30 @@
 
 #include <vector>
 
-#include <gtkmm.h>
-#include <glibmm.h>
 #include <cairomm/cairomm.h>
+#include <glibmm.h>
+#include <gtkmm.h>
 
+#include "../rtengine/LUT.h"
+#include "../rtengine/array2D.h"
+#include "../rtengine/iccstore.h"
+#include "../rtengine/noncopyable.h"
 #include "guiutils.h"
 #include "options.h"
 #include "pointermotionlistener.h"
-#include "../rtengine/array2D.h"
-#include "../rtengine/LUT.h"
-#include "../rtengine/noncopyable.h"
-#include "../rtengine/iccstore.h"
 
 using rtengine::array2D;
 class HistogramArea;
 
 struct HistogramAreaIdleHelper {
-    HistogramArea* harea;
+    HistogramArea *harea;
     bool destroyed;
     int pending;
 };
 
 class HistogramRGBArea;
 struct HistogramRGBAreaIdleHelper {
-    HistogramRGBArea* harea;
+    HistogramRGBArea *harea;
     bool destroyed;
     int pending;
 };
@@ -53,11 +53,13 @@ class HistogramScaling {
 public:
     double factor;
     HistogramScaling();
-    double log (double vsize, double val);
+    double log(double vsize, double val);
 };
 
-
-class HistogramRGBArea : public Gtk::DrawingArea, public BackBuffer, protected HistogramScaling, public rtengine::NonCopyable { 
+class HistogramRGBArea: public Gtk::DrawingArea,
+                        public BackBuffer,
+                        protected HistogramScaling,
+                        public rtengine::NonCopyable {
 private:
     IdleRegister idle_register;
 
@@ -77,88 +79,104 @@ protected:
     bool showMode;
     bool barDisplayed;
 
-    Gtk::Grid* parent;
-    
-    //double padding = 0.0;//5.0;
+    Gtk::Grid *parent;
 
-    HistogramRGBAreaIdleHelper* harih;
+    // double padding = 0.0;//5.0;
+
+    HistogramRGBAreaIdleHelper *harih;
 
     /** Draw an indicator bar for the value. */
-    virtual void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value, double max_value, int winw, int winh, double scale) = 0;
+    virtual void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value,
+                         double max_value, int winw, int winh,
+                         double scale) = 0;
 
-    void getPreferredThickness(int& min_thickness, int& natural_length) const;
-    void getPreferredLength(int& min_length, int& natural_length) const;
-    void getPreferredThicknessForLength(int length, int& min_thickness, int& natural_length) const;
-    void getPreferredLengthForThickness(int thickness, int& min_length, int& natural_length) const;
+    void getPreferredThickness(int &min_thickness, int &natural_length) const;
+    void getPreferredLength(int &min_length, int &natural_length) const;
+    void getPreferredThicknessForLength(int length, int &min_thickness,
+                                        int &natural_length) const;
+    void getPreferredLengthForThickness(int thickness, int &min_length,
+                                        int &natural_length) const;
 
 public:
     HistogramRGBArea();
     ~HistogramRGBArea() override;
 
-    void updateBackBuffer (int r, int g, int b, const Glib::ustring &profile = "", const Glib::ustring &profileW = "");
-    bool getShow ();
+    void updateBackBuffer(int r, int g, int b,
+                          const Glib::ustring &profile = "",
+                          const Glib::ustring &profileW = "");
+    bool getShow();
     void setShow(bool show);
-    void setParent (Gtk::Grid* p)
-    {
-        parent = p;
-    };
+    void setParent(Gtk::Grid *p) { parent = p; };
 
-    void update (int val, int rh, int gh, int bh);
-    void updateOptions (bool r, bool g, bool b, bool l, bool c, bool show);
+    void update(int val, int rh, int gh, int bh);
+    void updateOptions(bool r, bool g, bool b, bool l, bool c, bool show);
 
     void on_realize() override;
-    bool on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr) override;
-    bool on_button_press_event (GdkEventButton* event) override;
-    void factorChanged (double newFactor);
-
+    bool on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr) override;
+    bool on_button_press_event(GdkEventButton *event) override;
+    void factorChanged(double newFactor);
 };
 
-class HistogramRGBAreaHori final : public HistogramRGBArea
-{
+class HistogramRGBAreaHori final: public HistogramRGBArea {
 private:
-    void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value, double max_value, int winw, int winh, double scale) override;
+    void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value,
+                 double max_value, int winw, int winh, double scale) override;
 
-    Gtk::SizeRequestMode get_request_mode_vfunc () const override;
-    void get_preferred_height_vfunc (int& minimum_height, int& natural_height) const override;
-    void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_for_height_vfunc (int h, int &minimum_width, int &natural_width) const override;
+    Gtk::SizeRequestMode get_request_mode_vfunc() const override;
+    void get_preferred_height_vfunc(int &minimum_height,
+                                    int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
+    void
+    get_preferred_width_for_height_vfunc(int h, int &minimum_width,
+                                         int &natural_width) const override;
 };
 
-class HistogramRGBAreaVert final : public HistogramRGBArea
-{
+class HistogramRGBAreaVert final: public HistogramRGBArea {
 private:
-    void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value, double max_value, int winw, int winh, double scale) override;
+    void drawBar(Cairo::RefPtr<Cairo::Context> cc, double value,
+                 double max_value, int winw, int winh, double scale) override;
 
-    Gtk::SizeRequestMode get_request_mode_vfunc () const override;
-    void get_preferred_height_vfunc (int& minimum_height, int& natural_height) const override;
-    void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_for_height_vfunc (int h, int &minimum_width, int &natural_width) const override;
+    Gtk::SizeRequestMode get_request_mode_vfunc() const override;
+    void get_preferred_height_vfunc(int &minimum_height,
+                                    int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
+    void
+    get_preferred_width_for_height_vfunc(int h, int &minimum_width,
+                                         int &natural_width) const override;
 };
 
-class DrawModeListener
-{
+class DrawModeListener {
 public:
     virtual ~DrawModeListener() = default;
     virtual void toggleButtonMode() = 0;
 };
 
-class HistogramArea final : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
-{
+class HistogramArea final: public Gtk::DrawingArea,
+                           public BackBuffer,
+                           private HistogramScaling,
+                           public rtengine::NonCopyable {
 public:
     typedef sigc::signal<void, double> type_signal_factor_changed;
     typedef sigc::signal<void, float> SignalBrightnessChanged;
 
     static constexpr float MIN_BRIGHT = 0.1;
     static constexpr float MAX_BRIGHT = 3;
+
 private:
     IdleRegister idle_register;
     type_signal_factor_changed sigFactorChanged;
 
 protected:
     LUTu rhist, ghist, bhist, lhist, chist;
-    LUTu rhistRaw, ghistRaw, bhistRaw, lhistRaw; //lhistRaw is unused?
+    LUTu rhistRaw, ghistRaw, bhistRaw, lhistRaw; // lhistRaw is unused?
     int vectorscope_scale;
     array2D<int> vect_hc, vect_hs;
     std::vector<unsigned char> vect_hc_buffer, vect_hs_buffer;
@@ -185,10 +203,10 @@ protected:
     bool isPressed;
     double movingPosition;
     bool needPointer;
-    
+
     double padding = 0.0;
 
-    HistogramAreaIdleHelper* haih;
+    HistogramAreaIdleHelper *haih;
 
     int pointer_red, pointer_green, pointer_blue;
     float pointer_a, pointer_b;
@@ -196,39 +214,32 @@ protected:
     SignalBrightnessChanged signal_brightness_changed;
 
     bool is_main_;
-    
+
 public:
-    explicit HistogramArea(DrawModeListener *fml=nullptr, bool is_main=true);
+    explicit HistogramArea(DrawModeListener *fml = nullptr,
+                           bool is_main = true);
     ~HistogramArea() override;
 
-    void updateBackBuffer(int custom_w=-1, int custom_h=-1);
+    void updateBackBuffer(int custom_w = -1, int custom_h = -1);
     /// Update pointer values. Returns true if widget needs redrawing.
-    bool updatePointer(int r, int g, int b, const Glib::ustring &profile = "", const Glib::ustring &profileW = "");
-    void update(
-        const LUTu& histRed,
-        const LUTu& histGreen,
-        const LUTu& histBlue,
-        const LUTu& histLuma,
-        const LUTu& histChroma,
-        const LUTu& histRedRaw,
-        const LUTu& histGreenRaw,
-        const LUTu& histBlueRaw,
-        int vectorscopeScale,
-        const array2D<int>& vectorscopeHC,
-        const array2D<int>& vectorscopeHS,
-        int waveformScale,
-        const array2D<int>& waveformRed,
-        const array2D<int>& waveformGreen,
-        const array2D<int>& waveformBlue,
-        const array2D<int>& waveformLuma
-    );
-    void updateOptions (bool r, bool g, bool b, bool l, bool c, int mode, Options::ScopeType type, bool pointer);
+    bool updatePointer(int r, int g, int b, const Glib::ustring &profile = "",
+                       const Glib::ustring &profileW = "");
+    void
+    update(const LUTu &histRed, const LUTu &histGreen, const LUTu &histBlue,
+           const LUTu &histLuma, const LUTu &histChroma, const LUTu &histRedRaw,
+           const LUTu &histGreenRaw, const LUTu &histBlueRaw,
+           int vectorscopeScale, const array2D<int> &vectorscopeHC,
+           const array2D<int> &vectorscopeHS, int waveformScale,
+           const array2D<int> &waveformRed, const array2D<int> &waveformGreen,
+           const array2D<int> &waveformBlue, const array2D<int> &waveformLuma);
+    void updateOptions(bool r, bool g, bool b, bool l, bool c, int mode,
+                       Options::ScopeType type, bool pointer);
     bool updatePending();
     void on_realize() override;
-    bool on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr) override;
-    bool on_button_press_event (GdkEventButton* event) override;
-    bool on_button_release_event (GdkEventButton* event) override;
-    bool on_motion_notify_event (GdkEventMotion* event) override;
+    bool on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr) override;
+    bool on_button_press_event(GdkEventButton *event) override;
+    bool on_button_release_event(GdkEventButton *event) override;
+    bool on_motion_notify_event(GdkEventMotion *event) override;
     float getBrightness(void);
     /** Set the trace brightness, with 1 being normal. */
     void setBrightness(float brightness);
@@ -236,56 +247,66 @@ public:
     type_signal_factor_changed signal_factor_changed();
 
 private:
-    void drawCurve(Cairo::RefPtr<Cairo::Context> &cr, const LUTu & data, double scale, int hsize, int vsize);
-    void drawMarks(Cairo::RefPtr<Cairo::Context> &cr, const LUTu & data, double scale, int hsize, int & ui, int & oi);
+    void drawCurve(Cairo::RefPtr<Cairo::Context> &cr, const LUTu &data,
+                   double scale, int hsize, int vsize);
+    void drawMarks(Cairo::RefPtr<Cairo::Context> &cr, const LUTu &data,
+                   double scale, int hsize, int &ui, int &oi);
     void drawParade(Cairo::RefPtr<Cairo::Context> &cr, int hsize, int vsize);
-    void drawVectorscope(Cairo::RefPtr<Cairo::Context> &cr, int hsize, int vsize);
+    void drawVectorscope(Cairo::RefPtr<Cairo::Context> &cr, int hsize,
+                         int vsize);
     void drawWaveform(Cairo::RefPtr<Cairo::Context> &cr, int hsize, int vsize);
-    Gtk::SizeRequestMode get_request_mode_vfunc () const override;
-    void get_preferred_height_vfunc (int& minimum_height, int& natural_height) const override;
-    void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_for_height_vfunc (int height, int &minimum_width, int &natural_width) const override;
+    Gtk::SizeRequestMode get_request_mode_vfunc() const override;
+    void get_preferred_height_vfunc(int &minimum_height,
+                                    int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
+    void
+    get_preferred_width_for_height_vfunc(int height, int &minimum_width,
+                                         int &natural_width) const override;
 
     void updateRaw(Cairo::RefPtr<Cairo::Context> cr);
     void updateNonRaw(Cairo::RefPtr<Cairo::Context> cr);
-    void drawRawCurve(Cairo::RefPtr<Cairo::Context> &cr, LUTu &data, unsigned int ub, double scale, int hsize, int vsize);
+    void drawRawCurve(Cairo::RefPtr<Cairo::Context> &cr, LUTu &data,
+                      unsigned int ub, double scale, int hsize, int vsize);
 };
 
-class HistogramPanelListener
-{
+class HistogramPanelListener {
 public:
     virtual void scopeTypeChanged(Options::ScopeType new_type) = 0;
 };
 
-class HistogramPanel final : public Gtk::Grid, public PointerMotionListener, public DrawModeListener, public rtengine::NonCopyable
-{
+class HistogramPanel final: public Gtk::Grid,
+                            public PointerMotionListener,
+                            public DrawModeListener,
+                            public rtengine::NonCopyable {
 protected:
-
-    Gtk::Grid* gfxGrid;
-    Gtk::Grid* buttonGrid;
-    Gtk::Box* persistentButtons;
-    Gtk::Box* optionButtons;
-    HistogramArea* histogramArea;
-    HistogramRGBArea* histogramRGBArea;
+    Gtk::Grid *gfxGrid;
+    Gtk::Grid *buttonGrid;
+    Gtk::Box *persistentButtons;
+    Gtk::Box *optionButtons;
+    HistogramArea *histogramArea;
+    HistogramRGBArea *histogramRGBArea;
     std::unique_ptr<HistogramRGBAreaHori> histogramRGBAreaHori;
     std::unique_ptr<HistogramRGBAreaVert> histogramRGBAreaVert;
-    Gtk::ToggleButton* showRed;
-    Gtk::ToggleButton* showGreen;
-    Gtk::ToggleButton* showBlue;
-    Gtk::ToggleButton* showValue;
-    Gtk::ToggleButton* showBAR;
-    Gtk::ToggleButton* showChro;
-    Gtk::Button* showMode;
-    Gtk::ToggleButton* scopeOptions;
-    Gtk::Scale* brightnessWidget;
+    Gtk::ToggleButton *showRed;
+    Gtk::ToggleButton *showGreen;
+    Gtk::ToggleButton *showBlue;
+    Gtk::ToggleButton *showValue;
+    Gtk::ToggleButton *showBAR;
+    Gtk::ToggleButton *showChro;
+    Gtk::Button *showMode;
+    Gtk::ToggleButton *scopeOptions;
+    Gtk::Scale *brightnessWidget;
 
-    Gtk::RadioButton* scopeHistBtn;
-    Gtk::RadioButton* scopeHistRawBtn;
-    Gtk::RadioButton* scopeParadeBtn;
-    Gtk::RadioButton* scopeWaveBtn;
-    Gtk::RadioButton* scopeVectHcBtn;
-    Gtk::RadioButton* scopeVectHsBtn;
+    Gtk::RadioButton *scopeHistBtn;
+    Gtk::RadioButton *scopeHistRawBtn;
+    Gtk::RadioButton *scopeParadeBtn;
+    Gtk::RadioButton *scopeWaveBtn;
+    Gtk::RadioButton *scopeVectHcBtn;
+    Gtk::RadioButton *scopeVectHsBtn;
 
     Gtk::Image *redImage;
     Gtk::Image *greenImage;
@@ -304,65 +325,60 @@ protected:
     Gtk::Image *mode_images_[3];
     Glib::ustring mode_tips_[3];
 
-    HistogramPanelListener* panel_listener;
+    HistogramPanelListener *panel_listener;
 
     sigc::connection brightness_changed_connection;
     sigc::connection rconn;
-    void setHistInvalid ();
+    void setHistInvalid();
     void showRGBBar();
     void updateHistAreaOptions();
     void updateHistRGBAreaOptions();
 
 public:
-
-    HistogramPanel ();
-    ~HistogramPanel () override;
+    HistogramPanel();
+    ~HistogramPanel() override;
 
     void histogramChanged(
-        const LUTu& histRed,
-        const LUTu& histGreen,
-        const LUTu& histBlue,
-        const LUTu& histLuma,
-        const LUTu& histChroma,
-        const LUTu& histRedRaw,
-        const LUTu& histGreenRaw,
-        const LUTu& histBlueRaw,
-        int vectorscopeScale,
-        const array2D<int>& vectorscopeHC,
-        const array2D<int>& vectorscopeHS,
-        int waveformScale,
-        const array2D<int>& waveformRed,
-        const array2D<int>& waveformGreen,
-        const array2D<int>& waveformBlue,
-        const array2D<int>& waveformLuma
-    )
+        const LUTu &histRed, const LUTu &histGreen, const LUTu &histBlue,
+        const LUTu &histLuma, const LUTu &histChroma, const LUTu &histRedRaw,
+        const LUTu &histGreenRaw, const LUTu &histBlueRaw, int vectorscopeScale,
+        const array2D<int> &vectorscopeHC, const array2D<int> &vectorscopeHS,
+        int waveformScale, const array2D<int> &waveformRed,
+        const array2D<int> &waveformGreen, const array2D<int> &waveformBlue,
+        const array2D<int> &waveformLuma)
     {
-        histogramArea->update(histRed, histGreen, histBlue, histLuma, histChroma, histRedRaw, histGreenRaw, histBlueRaw, vectorscopeScale, vectorscopeHC, vectorscopeHS, waveformScale, waveformRed, waveformGreen, waveformBlue, waveformLuma);
+        histogramArea->update(histRed, histGreen, histBlue, histLuma,
+                              histChroma, histRedRaw, histGreenRaw, histBlueRaw,
+                              vectorscopeScale, vectorscopeHC, vectorscopeHS,
+                              waveformScale, waveformRed, waveformGreen,
+                              waveformBlue, waveformLuma);
     }
     // pointermotionlistener interface
-    void pointerMoved (bool validPos, const Glib::ustring &profile, const Glib::ustring &profileW, int x, int y, int r, int g, int b, bool isRaw = false) override;
+    void pointerMoved(bool validPos, const Glib::ustring &profile,
+                      const Glib::ustring &profileW, int x, int y, int r, int g,
+                      int b, bool isRaw = false) override;
 
     // TODO should be protected
-    void setHistRGBInvalid ();
+    void setHistRGBInvalid();
 
-    void reorder (Gtk::PositionType position);
-    void red_toggled ();
-    void green_toggled ();
-    void blue_toggled ();
-    void value_toggled ();
-    void chro_toggled ();
-    void bar_toggled ();
-    void mode_released ();
+    void reorder(Gtk::PositionType position);
+    void red_toggled();
+    void green_toggled();
+    void blue_toggled();
+    void value_toggled();
+    void chro_toggled();
+    void bar_toggled();
+    void mode_released();
     void brightnessWidgetValueChanged();
     void brightnessUpdated(float brightness);
     void scopeOptionsToggled();
-    void type_selected(Gtk::RadioButton* button);
-    void type_changed ();
-    void rgbv_toggled ();
-    void resized (Gtk::Allocation& req);
+    void type_selected(Gtk::RadioButton *button);
+    void type_changed();
+    void rgbv_toggled();
+    void resized(Gtk::Allocation &req);
 
     // drawModeListener interface
-    void toggleButtonMode () override;
+    void toggleButtonMode() override;
 
-    void setPanelListener(HistogramPanelListener* listener);
+    void setPanelListener(HistogramPanelListener *listener);
 };

@@ -17,14 +17,14 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "edit.h"
 #include "spot.h"
+#include "../rtengine/refreshmap.h"
+#include "../rtengine/rt_math.h"
+#include "edit.h"
+#include "eventmapper.h"
+#include "guiutils.h"
 #include "rtimage.h"
 #include <iomanip>
-#include "../rtengine/rt_math.h"
-#include "guiutils.h"
-#include "eventmapper.h"
-#include "../rtengine/refreshmap.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -39,76 +39,77 @@ constexpr int TARGET_DISC = 1;
 
 } // namespace
 
-
-Spot::Spot() :
-    FoldableToolPanel(this, "spot", M ("TP_SPOT_LABEL"), false, true, true),
-    EditSubscriber(ET_OBJECTS),
-    draggedSide(DraggedSide::NONE),
-    lastObject(-1),
-    activeSpot(-1),
-    sourceIcon("spot-normal.svg", "spot-active.svg", "spot-prelight.svg", "", "", Geometry::DP_CENTERCENTER),
-    targetIcon("spot-normal-target.svg", "spot-active-target.svg", "spot-prelight-target.svg", "", "", Geometry::DP_CENTERCENTER),
-    lightPipelineOnImage("light_pipeline_on.svg"),
-    lightPipelineOffImage("light_pipeline_off.svg"),
-    editedCheckBox(nullptr)
+Spot::Spot()
+    : FoldableToolPanel(this, "spot", M("TP_SPOT_LABEL"), false, true, true),
+      EditSubscriber(ET_OBJECTS), draggedSide(DraggedSide::NONE),
+      lastObject(-1), activeSpot(-1),
+      sourceIcon("spot-normal.svg", "spot-active.svg", "spot-prelight.svg", "",
+                 "", Geometry::DP_CENTERCENTER),
+      targetIcon("spot-normal-target.svg", "spot-active-target.svg",
+                 "spot-prelight-target.svg", "", "", Geometry::DP_CENTERCENTER),
+      lightPipelineOnImage("light_pipeline_on.svg"),
+      lightPipelineOffImage("light_pipeline_off.svg"), editedCheckBox(nullptr)
 {
-    countLabel = Gtk::manage (new Gtk::Label (Glib::ustring::compose (M ("TP_SPOT_COUNTLABEL"), 0)));
+    countLabel = Gtk::manage(
+        new Gtk::Label(Glib::ustring::compose(M("TP_SPOT_COUNTLABEL"), 0)));
 
-    edit = Gtk::manage (new Gtk::ToggleButton());
-    edit->add (*Gtk::manage (new RTImage ("edit-point.svg")));
-    editConn = edit->signal_toggled().connect ( sigc::mem_fun (*this, &Spot::editToggled) );
+    edit = Gtk::manage(new Gtk::ToggleButton());
+    edit->add(*Gtk::manage(new RTImage("edit-point.svg")));
+    editConn = edit->signal_toggled().connect(
+        sigc::mem_fun(*this, &Spot::editToggled));
     edit->set_tooltip_text(M("TP_SPOT_HINT"));
 
-    lightPipeline = Gtk::manage (new Gtk::ToggleButton());
-    lightPipeline->add (*Gtk::manage (new RTImage (lightPipelineOffImage)));
-    lightPipelineConn = lightPipeline->signal_toggled().connect ( sigc::mem_fun (*this, &Spot::lightPipelineToggled) );
+    lightPipeline = Gtk::manage(new Gtk::ToggleButton());
+    lightPipeline->add(*Gtk::manage(new RTImage(lightPipelineOffImage)));
+    lightPipelineConn = lightPipeline->signal_toggled().connect(
+        sigc::mem_fun(*this, &Spot::lightPipelineToggled));
     lightPipeline->set_tooltip_text(M("TP_SPOT_LIGHTPIPELINE_HINT"));
 
-    reset = Gtk::manage (new Gtk::Button ());
-    reset->add (*Gtk::manage (new RTImage ("undo-small.svg")));
-    reset->set_relief (Gtk::RELIEF_NONE);
-    reset->set_border_width (0);
-    reset->signal_clicked().connect ( sigc::mem_fun (*this, &Spot::resetPressed) );
+    reset = Gtk::manage(new Gtk::Button());
+    reset->add(*Gtk::manage(new RTImage("undo-small.svg")));
+    reset->set_relief(Gtk::RELIEF_NONE);
+    reset->set_border_width(0);
+    reset->signal_clicked().connect(sigc::mem_fun(*this, &Spot::resetPressed));
 
-    labelBox = Gtk::manage (new Gtk::HBox());
-    labelBox->set_spacing (2);
-    labelBox->pack_start (*countLabel, false, false, 0);
-    labelBox->pack_end (*lightPipeline, false, false, 0);
-    labelBox->pack_end (*edit, false, false, 0);
-    labelBox->pack_end (*reset, false, false, 0);
-    pack_start (*labelBox);
+    labelBox = Gtk::manage(new Gtk::HBox());
+    labelBox->set_spacing(2);
+    labelBox->pack_start(*countLabel, false, false, 0);
+    labelBox->pack_end(*lightPipeline, false, false, 0);
+    labelBox->pack_end(*edit, false, false, 0);
+    labelBox->pack_end(*reset, false, false, 0);
+    pack_start(*labelBox);
 
     sourceIcon.datum = Geometry::IMAGE;
-    sourceIcon.setActive (false);
+    sourceIcon.setActive(false);
     sourceIcon.state = Geometry::ACTIVE;
     sourceCircle.datum = Geometry::IMAGE;
-    sourceCircle.setActive (false);
+    sourceCircle.setActive(false);
     sourceCircle.radiusInImageSpace = true;
     sourceCircle.setDashed(true);
     sourceMODisc.datum = Geometry::IMAGE;
-    sourceMODisc.setActive (false);
+    sourceMODisc.setActive(false);
     sourceMODisc.radiusInImageSpace = true;
     sourceMODisc.filled = true;
     sourceMODisc.innerLineWidth = 0.;
     targetCircle.datum = Geometry::IMAGE;
-    targetCircle.setActive (false);
+    targetCircle.setActive(false);
     targetCircle.radiusInImageSpace = true;
     targetMODisc.datum = Geometry::IMAGE;
-    targetMODisc.setActive (false);
+    targetMODisc.setActive(false);
     targetMODisc.radiusInImageSpace = true;
     targetMODisc.filled = true;
     targetMODisc.innerLineWidth = 0.;
     sourceFeatherCircle.datum = Geometry::IMAGE;
-    sourceFeatherCircle.setActive (false);
+    sourceFeatherCircle.setActive(false);
     sourceFeatherCircle.radiusInImageSpace = true;
     sourceFeatherCircle.setDashed(true);
     sourceFeatherCircle.innerLineWidth = 0.7;
     targetFeatherCircle.datum = Geometry::IMAGE;
-    targetFeatherCircle.setActive (false);
+    targetFeatherCircle.setActive(false);
     targetFeatherCircle.radiusInImageSpace = true;
     targetFeatherCircle.innerLineWidth = 0.7;
     link.datum = Geometry::IMAGE;
-    link.setActive (false);
+    link.setActive(false);
 
     Rectangle *rect = new Rectangle();
     whole_area_rectangle.reset(rect);
@@ -120,35 +121,30 @@ Spot::Spot() :
     EvSpotEnabled = m->newEvent(rtengine::ALLNORAW, "TP_SPOT_LABEL");
     EvSpotEnabledOPA = m->newAnonEvent(rtengine::SPOTADJUST);
     EvSpotEntry = m->newEvent(rtengine::SPOTADJUST, "HISTORY_MSG_SPOT_ENTRY");
-    EvSpotEntryOPA = m->newEvent(rtengine::SPOTADJUST, "HISTORY_MSG_SPOT_ENTRY");
+    EvSpotEntryOPA =
+        m->newEvent(rtengine::SPOTADJUST, "HISTORY_MSG_SPOT_ENTRY");
     EvToolReset.set_action(rtengine::SPOTADJUST);
 
     spot_frame = Gtk::manage(new Gtk::Frame(M("TP_SPOT_CUR_SPOT_LABEL")));
     Gtk::VBox *vb = Gtk::manage(new Gtk::VBox());
-    const auto mkadj =
-        [](const Glib::ustring &lbl, double vmin, double vmax, double vstep, double vdefault) -> Adjuster *
-        {
-            return Gtk::manage(new Adjuster(lbl, vmin, vmax, vstep, vdefault, nullptr, nullptr, nullptr, nullptr, false, true));
-        };
+    const auto mkadj = [](const Glib::ustring &lbl, double vmin, double vmax,
+                          double vstep, double vdefault) -> Adjuster * {
+        return Gtk::manage(new Adjuster(lbl, vmin, vmax, vstep, vdefault,
+                                        nullptr, nullptr, nullptr, nullptr,
+                                        false, true));
+    };
     source_x = mkadj(M("TP_SPOT_SOURCE_X") + " ", 0, 10000, 1, 0);
     source_y = mkadj(M("TP_SPOT_SOURCE_Y") + " ", 0, 10000, 1, 0);
     target_y = mkadj(M("TP_SPOT_TARGET_Y") + " ", 0, 10000, 1, 0);
     target_x = mkadj(M("TP_SPOT_TARGET_X") + " ", 0, 10000, 1, 0);
-    radius = mkadj(M("TP_SPOT_RADIUS") + " ", SpotParams::minRadius, SpotParams::maxRadius, 1, SpotParams::minRadius);
+    radius = mkadj(M("TP_SPOT_RADIUS") + " ", SpotParams::minRadius,
+                   SpotParams::maxRadius, 1, SpotParams::minRadius);
     feather = mkadj(M("TP_SPOT_FEATHER") + " ", 0, 1, 0.01, 0);
     opacity = mkadj(M("TP_SPOT_OPACITY") + " ", 0, 1, 0.01, 0);
     detail = mkadj(M("TP_SPOT_DETAIL") + " ", 0, 5, 1, 0);
 
-    spot_adjusters = {
-        source_x,
-        source_y,
-        target_x,
-        target_y,
-        radius,
-        feather,
-        opacity,
-        detail
-    };
+    spot_adjusters = {source_x, source_y, target_x, target_y,
+                      radius,   feather,  opacity,  detail};
 
     for (auto a : spot_adjusters) {
         a->setAdjusterListener(this);
@@ -158,9 +154,10 @@ Spot::Spot() :
     spot_frame->add(*vb);
     pack_start(*spot_frame);
 
-    getExpander()->signal_button_release_event().connect_notify(sigc::mem_fun(this, &Spot::on_fold));
+    getExpander()->signal_button_release_event().connect_notify(
+        sigc::mem_fun(this, &Spot::on_fold));
     signal_unmap().connect(sigc::mem_fun(*this, &Spot::on_hide));
-    
+
     show_all();
 }
 
@@ -168,22 +165,24 @@ Spot::~Spot()
 {
     // delete all dynamically allocated geometry
     if (EditSubscriber::visibleGeometry.size()) {
-        for (size_t i = 0; i < EditSubscriber::visibleGeometry.size() - STATIC_VISIBLE_OBJ_NBR; ++i) { // static visible geometry at the end if the list
-            delete EditSubscriber::visibleGeometry.at (i);
+        for (size_t i = 0; i < EditSubscriber::visibleGeometry.size() -
+                                   STATIC_VISIBLE_OBJ_NBR;
+             ++i) { // static visible geometry at the end if the list
+            delete EditSubscriber::visibleGeometry.at(i);
         }
     }
 
-    // We do not delete the mouseOverGeometry, because the referenced objects are either
-    // shared with visibleGeometry or instantiated by the class's ctor
+    // We do not delete the mouseOverGeometry, because the referenced objects
+    // are either shared with visibleGeometry or instantiated by the class's
+    // ctor
 }
 
-
-void Spot::read (const ProcParams *pp)
+void Spot::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
 
     spots = pp->spot.entries;
-    setEnabled (pp->spot.enabled);
+    setEnabled(pp->spot.enabled);
     lastEnabled = pp->spot.enabled;
     activeSpot = -1;
     lastObject = -1;
@@ -191,16 +190,14 @@ void Spot::read (const ProcParams *pp)
     createGeometry();
     updateGeometry();
 
-    enableListener ();
+    enableListener();
 }
-
 
 void Spot::write(ProcParams *pp)
 {
     pp->spot.enabled = getEnabled();
     pp->spot.entries = spots;
 }
-
 
 void Spot::resetPressed()
 {
@@ -212,74 +209,91 @@ void Spot::resetPressed()
         updateGeometry();
 
         if (listener) {
-            listener->panelChanged (edit->get_active() ? EvSpotEntryOPA : EvSpotEntry, Glib::ustring::compose (M ("TP_SPOT_COUNTLABEL"), 0));
+            listener->panelChanged(
+                edit->get_active() ? EvSpotEntryOPA : EvSpotEntry,
+                Glib::ustring::compose(M("TP_SPOT_COUNTLABEL"), 0));
         }
     }
 }
 
-
-void Spot::editedToggled ()
+void Spot::editedToggled()
 {
     if (listener) {
-        listener->panelChanged (EvSpotEntry, !editedCheckBox->get_active() ? M ("GENERAL_UNCHANGED") : Glib::ustring::compose (M ("TP_SPOT_COUNTLABEL"), spots.size()));
+        listener->panelChanged(
+            EvSpotEntry, !editedCheckBox->get_active()
+                             ? M("GENERAL_UNCHANGED")
+                             : Glib::ustring::compose(M("TP_SPOT_COUNTLABEL"),
+                                                      spots.size()));
     }
 }
 
-void Spot::enabledChanged ()
+void Spot::enabledChanged()
 {
     if (listener) {
-        listener->panelChanged(EvSpotEnabled, getEnabled() ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+        listener->panelChanged(EvSpotEnabled, getEnabled()
+                                                  ? M("GENERAL_ENABLED")
+                                                  : M("GENERAL_DISABLED"));
         // if (get_inconsistent()) {
-        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA : EvSpotEnabled, M ("GENERAL_UNCHANGED"));
+        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA :
+        //     EvSpotEnabled, M ("GENERAL_UNCHANGED"));
         // } else if (getEnabled()) {
-        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA : EvSpotEnabled, M ("GENERAL_ENABLED"));
+        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA :
+        //     EvSpotEnabled, M ("GENERAL_ENABLED"));
         // } else {
-        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA : EvSpotEnabled, M ("GENERAL_DISABLED"));
+        //     listener->panelChanged (edit->get_active() ? EvSpotEnabledOPA :
+        //     EvSpotEnabled, M ("GENERAL_DISABLED"));
         // }
     }
 }
 
-void Spot::setEditProvider(EditDataProvider* provider)
+void Spot::setEditProvider(EditDataProvider *provider)
 {
     EditSubscriber::setEditProvider(provider);
     if (provider) {
         int imW, imH;
         provider->getImageSize(imW, imH);
 
-        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.x = imW;
-        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.y = imH;
+        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.x =
+            imW;
+        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.y =
+            imH;
     }
 }
-
 
 void Spot::editToggled()
 {
     if (listener) {
         if (edit->get_active()) {
             listener->setTweakOperator(this);
-            listener->refreshPreview(EvSpotEnabledOPA); // reprocess the preview w/o creating History entry
+            listener->refreshPreview(
+                EvSpotEnabledOPA); // reprocess the preview w/o creating History
+                                   // entry
             subscribe();
         } else {
             reset_adjusters();
             unsubscribe();
             listener->unsetTweakOperator(this);
-            listener->refreshPreview(EvSpotEnabled); // reprocess the preview w/o creating History entry
+            listener->refreshPreview(
+                EvSpotEnabled); // reprocess the preview w/o creating History
+                                // entry
         }
     }
 }
 
-
 void Spot::lightPipelineToggled()
 {
     if (listener && edit->get_active()) {
-        listener->refreshPreview(EvSpotEnabledOPA); // reprocess the preview w/o creating History entry
-        //NOTE: an option need to be created if we want to make this button state persistent across session
+        listener->refreshPreview(EvSpotEnabledOPA); // reprocess the preview w/o
+                                                    // creating History entry
+        // NOTE: an option need to be created if we want to make this button
+        // state persistent across session
     }
-    lightPipeline->set_image(lightPipeline->get_active() ? lightPipelineOnImage : lightPipelineOffImage);
+    lightPipeline->set_image(lightPipeline->get_active()
+                                 ? lightPipelineOnImage
+                                 : lightPipelineOffImage);
 }
 
-
-Geometry* Spot::getVisibleGeometryFromMO(int MOID)
+Geometry *Spot::getVisibleGeometryFromMO(int MOID)
 {
     if (MOID == -1) {
         return nullptr;
@@ -300,22 +314,27 @@ Geometry* Spot::getVisibleGeometryFromMO(int MOID)
     return EditSubscriber::mouseOverGeometry.at(MOID);
 }
 
-void Spot::createGeometry ()
+void Spot::createGeometry()
 {
     int nbrEntry = spots.size();
-    countLabel->set_text (Glib::ustring::compose (M ("TP_SPOT_COUNTLABEL"), nbrEntry));
+    countLabel->set_text(
+        Glib::ustring::compose(M("TP_SPOT_COUNTLABEL"), nbrEntry));
 
-    //printf("CreateGeometry(%d)\n", nbrEntry);
-    // delete all dynamically allocated geometry
+    // printf("CreateGeometry(%d)\n", nbrEntry);
+    //  delete all dynamically allocated geometry
     if (EditSubscriber::visibleGeometry.size() > STATIC_VISIBLE_OBJ_NBR)
-        for (size_t i = 0; i < EditSubscriber::visibleGeometry.size() - STATIC_VISIBLE_OBJ_NBR; ++i) { // static visible geometry at the end if the list
-            delete EditSubscriber::visibleGeometry.at (i);
+        for (size_t i = 0; i < EditSubscriber::visibleGeometry.size() -
+                                   STATIC_VISIBLE_OBJ_NBR;
+             ++i) { // static visible geometry at the end if the list
+            delete EditSubscriber::visibleGeometry.at(i);
         }
 
-    // mouse over geometry starts with the static geometry, then the spot's icon geometry
-    EditSubscriber::mouseOverGeometry.resize (STATIC_MO_OBJ_NBR + nbrEntry);
-    // visible geometry starts with the spot's icon geometry, then the static geometry
-    EditSubscriber::visibleGeometry.resize (nbrEntry + STATIC_VISIBLE_OBJ_NBR);
+    // mouse over geometry starts with the static geometry, then the spot's icon
+    // geometry
+    EditSubscriber::mouseOverGeometry.resize(STATIC_MO_OBJ_NBR + nbrEntry);
+    // visible geometry starts with the spot's icon geometry, then the static
+    // geometry
+    EditSubscriber::visibleGeometry.resize(nbrEntry + STATIC_VISIBLE_OBJ_NBR);
 
     size_t i = 0, j = 0;
     mouseOverGeometry[i++] = whole_area_rectangle.get();
@@ -327,16 +346,23 @@ void Spot::createGeometry ()
     mouseOverGeometry[i++] = &sourceFeatherCircle;
 
     // recreate all spots geometry
-    Cairo::RefPtr<RTSurface> normalImg   = targetIcon.getNormalImg();
+    Cairo::RefPtr<RTSurface> normalImg = targetIcon.getNormalImg();
     Cairo::RefPtr<RTSurface> prelightImg = targetIcon.getPrelightImg();
-    Cairo::RefPtr<RTSurface> activeImg   = targetIcon.getActiveImg();
+    Cairo::RefPtr<RTSurface> activeImg = targetIcon.getActiveImg();
 
-    for (; j < EditSubscriber::visibleGeometry.size() - STATIC_VISIBLE_OBJ_NBR; ++i, ++j) {
-        EditSubscriber::mouseOverGeometry.at (i) = EditSubscriber::visibleGeometry.at (j) = new OPIcon (normalImg, activeImg, prelightImg, Cairo::RefPtr<RTSurface> (nullptr), Cairo::RefPtr<RTSurface> (nullptr), Geometry::DP_CENTERCENTER);
-        EditSubscriber::visibleGeometry.at (j)->setActive (true);
-        EditSubscriber::visibleGeometry.at (j)->datum = Geometry::IMAGE;
-        EditSubscriber::visibleGeometry.at (j)->state = Geometry::NORMAL;
-        //printf("mouseOverGeometry.at(%d) = %p\n", (unsigned int)i, (void*)EditSubscriber::mouseOverGeometry.at(i));
+    for (; j < EditSubscriber::visibleGeometry.size() - STATIC_VISIBLE_OBJ_NBR;
+         ++i, ++j) {
+        EditSubscriber::mouseOverGeometry.at(i) =
+            EditSubscriber::visibleGeometry.at(j) =
+                new OPIcon(normalImg, activeImg, prelightImg,
+                           Cairo::RefPtr<RTSurface>(nullptr),
+                           Cairo::RefPtr<RTSurface>(nullptr),
+                           Geometry::DP_CENTERCENTER);
+        EditSubscriber::visibleGeometry.at(j)->setActive(true);
+        EditSubscriber::visibleGeometry.at(j)->datum = Geometry::IMAGE;
+        EditSubscriber::visibleGeometry.at(j)->state = Geometry::NORMAL;
+        // printf("mouseOverGeometry.at(%d) = %p\n", (unsigned int)i,
+        // (void*)EditSubscriber::mouseOverGeometry.at(i));
     }
 
     visibleGeometry[j++] = &sourceIcon;
@@ -349,14 +375,16 @@ void Spot::createGeometry ()
 
 void Spot::updateGeometry()
 {
-    EditDataProvider* dataProvider = getEditProvider();
+    EditDataProvider *dataProvider = getEditProvider();
 
     if (dataProvider) {
         int imW, imH;
-        dataProvider->getImageSize (imW, imH);
+        dataProvider->getImageSize(imW, imH);
 
-        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.x = imW;
-        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.y = imH;
+        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.x =
+            imW;
+        static_cast<Rectangle *>(whole_area_rectangle.get())->bottomRight.y =
+            imH;
         source_x->setLimits(0, imW, 1, 0);
         target_x->setLimits(0, imW, 1, 0);
         source_y->setLimits(0, imH, 1, 0);
@@ -364,55 +392,56 @@ void Spot::updateGeometry()
 
         if (activeSpot > -1) {
             // Target point circle
-            targetCircle.center = spots.at (activeSpot).targetPos;
-            targetCircle.radius = spots.at (activeSpot).radius;
-            targetCircle.setActive (true);
+            targetCircle.center = spots.at(activeSpot).targetPos;
+            targetCircle.radius = spots.at(activeSpot).radius;
+            targetCircle.setActive(true);
 
             // Target point Mouse Over disc
             targetMODisc.center = targetCircle.center;
             targetMODisc.radius = targetCircle.radius;
-            targetMODisc.setActive (true);
+            targetMODisc.setActive(true);
 
             // Source point Icon
-            sourceIcon.position = spots.at (activeSpot).sourcePos;
-            sourceIcon.setActive (true);
+            sourceIcon.position = spots.at(activeSpot).sourcePos;
+            sourceIcon.setActive(true);
 
             // Source point circle
-            sourceCircle.center = spots.at (activeSpot).sourcePos;
-            sourceCircle.radius = spots.at (activeSpot).radius;
-            sourceCircle.setActive (true);
+            sourceCircle.center = spots.at(activeSpot).sourcePos;
+            sourceCircle.radius = spots.at(activeSpot).radius;
+            sourceCircle.setActive(true);
 
             // Source point Mouse Over disc
             sourceMODisc.center = sourceCircle.center;
             sourceMODisc.radius = sourceCircle.radius;
-            sourceMODisc.setActive (true);
+            sourceMODisc.setActive(true);
 
             // Target point feather circle
-            targetFeatherCircle.center = spots.at (activeSpot).targetPos;
-            targetFeatherCircle.radius = float (spots.at (activeSpot).radius) * (1.f + spots.at (activeSpot).feather);
+            targetFeatherCircle.center = spots.at(activeSpot).targetPos;
+            targetFeatherCircle.radius = float(spots.at(activeSpot).radius) *
+                                         (1.f + spots.at(activeSpot).feather);
             targetFeatherCircle.radiusInImageSpace = true;
-            targetFeatherCircle.setActive (true);
+            targetFeatherCircle.setActive(true);
 
             // Source point feather circle
-            sourceFeatherCircle.center = spots.at (activeSpot).sourcePos;
+            sourceFeatherCircle.center = spots.at(activeSpot).sourcePos;
             sourceFeatherCircle.radius = targetFeatherCircle.radius;
-            sourceFeatherCircle.setActive (true);
+            sourceFeatherCircle.setActive(true);
 
             // Link line
             PolarCoord p;
             p = targetCircle.center - sourceCircle.center;
 
             if (p.radius > sourceCircle.radius + targetCircle.radius) {
-                PolarCoord p2 (sourceCircle.radius, p.angle);
+                PolarCoord p2(sourceCircle.radius, p.angle);
                 Coord p3;
                 p3 = p2;
                 link.begin = sourceCircle.center + p3;
-                p2.set (targetCircle.radius, p.angle + 180);
+                p2.set(targetCircle.radius, p.angle + 180);
                 p3 = p2;
                 link.end = targetCircle.center + p3;
-                link.setActive (true);
+                link.setActive(true);
             } else {
-                link.setActive (false);
+                link.setActive(false);
             }
 
             sourceCircle.setVisible(draggedSide != DraggedSide::SOURCE);
@@ -432,26 +461,27 @@ void Spot::updateGeometry()
                 detail->setValue(s.detail);
             }
         } else {
-            targetCircle.setActive (false);
-            targetMODisc.setActive (false);
-            sourceIcon.setActive (false);
-            sourceCircle.setActive (false);
-            sourceMODisc.setActive (false);
-            targetFeatherCircle.setActive (false);
-            sourceFeatherCircle.setActive (false);
-            link.setActive (false);
+            targetCircle.setActive(false);
+            targetMODisc.setActive(false);
+            sourceIcon.setActive(false);
+            sourceCircle.setActive(false);
+            sourceMODisc.setActive(false);
+            targetFeatherCircle.setActive(false);
+            sourceFeatherCircle.setActive(false);
+            link.setActive(false);
 
             reset_adjusters();
         }
 
         for (size_t i = 0; i < spots.size(); ++i) {
             // Target point icon
-            OPIcon* geom = static_cast<OPIcon*> (EditSubscriber::visibleGeometry.at (i));
-            geom->position = spots.at (i).targetPos;
-            geom->setActive (true);
+            OPIcon *geom =
+                static_cast<OPIcon *>(EditSubscriber::visibleGeometry.at(i));
+            geom->position = spots.at(i).targetPos;
+            geom->setActive(true);
 
-            if (int (i) == activeSpot) {
-                geom->setHoverable (false);
+            if (int(i) == activeSpot) {
+                geom->setHoverable(false);
             }
         }
     } else {
@@ -459,11 +489,11 @@ void Spot::updateGeometry()
     }
 }
 
-
 OPIcon *Spot::getActiveSpotIcon()
 {
     if (activeSpot > -1) {
-        return static_cast<OPIcon*> (EditSubscriber::visibleGeometry.at (activeSpot));
+        return static_cast<OPIcon *>(
+            EditSubscriber::visibleGeometry.at(activeSpot));
     }
 
     return nullptr;
@@ -471,25 +501,26 @@ OPIcon *Spot::getActiveSpotIcon()
 
 void Spot::addNewEntry()
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
     // we create a new entry
     SpotEntry se;
     se.targetPos = editProvider->posImage;
     se.sourcePos = se.targetPos;
-    spots.push_back (se); // this make a copy of se ...
+    spots.push_back(se); // this make a copy of se ...
     activeSpot = spots.size() - 1;
     lastObject = 1;
 
-    //printf("ActiveSpot = %d\n", activeSpot);
+    // printf("ActiveSpot = %d\n", activeSpot);
 
     createGeometry();
     updateGeometry();
-    EditSubscriber::visibleGeometry.at (activeSpot)->state = Geometry::ACTIVE;
+    EditSubscriber::visibleGeometry.at(activeSpot)->state = Geometry::ACTIVE;
     sourceIcon.state = Geometry::DRAGGED;
-    // TODO: find a way to disable the active spot's Mouse Over geometry but still displaying its location...
+    // TODO: find a way to disable the active spot's Mouse Over geometry but
+    // still displaying its location...
 
     if (listener) {
-        listener->panelChanged (EvSpotEntryOPA, M ("TP_SPOT_ENTRYCHANGED"));
+        listener->panelChanged(EvSpotEntryOPA, M("TP_SPOT_ENTRYCHANGED"));
     }
 }
 
@@ -497,13 +528,14 @@ void Spot::deleteSelectedEntry()
 {
     // delete the activeSpot
     if (activeSpot > -1) {
-        std::vector<rtengine::procparams::SpotEntry>::iterator i = spots.begin();
+        std::vector<rtengine::procparams::SpotEntry>::iterator i =
+            spots.begin();
 
         for (int j = 0; j < activeSpot; ++j) {
             ++i;
         }
 
-        spots.erase (i);
+        spots.erase(i);
     }
 
     lastObject = -1;
@@ -513,13 +545,13 @@ void Spot::deleteSelectedEntry()
     updateGeometry();
 
     if (listener) {
-        listener->panelChanged (EvSpotEntry, M ("TP_SPOT_ENTRYCHANGED"));
+        listener->panelChanged(EvSpotEntry, M("TP_SPOT_ENTRYCHANGED"));
     }
 }
 
 CursorShape Spot::getCursor(int objectID, int xPos, int yPos)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
     if (editProvider) {
         if (draggedSide != DraggedSide::NONE) {
             return CSEmpty;
@@ -529,7 +561,10 @@ CursorShape Spot::getCursor(int objectID, int xPos, int yPos)
             return CSMove2D;
         }
         if (objectID >= 3 && objectID <= 6 && activeSpot > -1) {
-            Coord delta(Coord(xPos, yPos) - ((objectID == 4 || objectID == 6) ? spots.at(activeSpot).sourcePos : spots.at(activeSpot).targetPos));
+            Coord delta(Coord(xPos, yPos) -
+                        ((objectID == 4 || objectID == 6)
+                             ? spots.at(activeSpot).sourcePos
+                             : spots.at(activeSpot).targetPos));
             PolarCoord polarPos(delta);
             if (polarPos.angle < 0.) {
                 polarPos.angle += 180.;
@@ -549,23 +584,25 @@ CursorShape Spot::getCursor(int objectID, int xPos, int yPos)
     return CSCrosshair;
 }
 
-bool Spot::mouseOver (int modifierKey)
+bool Spot::mouseOver(int modifierKey)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
 
     if (editProvider && editProvider->getObject() != lastObject) {
         if (lastObject > -1) {
-            if (EditSubscriber::mouseOverGeometry.at (lastObject) == &targetMODisc) {
-                getVisibleGeometryFromMO (lastObject)->state = Geometry::ACTIVE;
+            if (EditSubscriber::mouseOverGeometry.at(lastObject) ==
+                &targetMODisc) {
+                getVisibleGeometryFromMO(lastObject)->state = Geometry::ACTIVE;
             } else {
-                getVisibleGeometryFromMO (lastObject)->state = Geometry::NORMAL;
+                getVisibleGeometryFromMO(lastObject)->state = Geometry::NORMAL;
             }
 
             sourceIcon.state = Geometry::ACTIVE;
         }
 
         if (editProvider->getObject() > -1) {
-            getVisibleGeometryFromMO (editProvider->getObject())->state = Geometry::PRELIGHT;
+            getVisibleGeometryFromMO(editProvider->getObject())->state =
+                Geometry::PRELIGHT;
 
             if (editProvider->getObject() >= STATIC_MO_OBJ_NBR) {
                 // a Spot is being edited
@@ -574,13 +611,20 @@ bool Spot::mouseOver (int modifierKey)
 
                 if (activeSpot != oldActiveSpot) {
                     if (oldActiveSpot > -1) {
-                        EditSubscriber::visibleGeometry.at (oldActiveSpot)->state = Geometry::NORMAL;
-                        EditSubscriber::mouseOverGeometry.at (oldActiveSpot + STATIC_MO_OBJ_NBR)->state = Geometry::NORMAL;
+                        EditSubscriber::visibleGeometry.at(oldActiveSpot)
+                            ->state = Geometry::NORMAL;
+                        EditSubscriber::mouseOverGeometry
+                            .at(oldActiveSpot + STATIC_MO_OBJ_NBR)
+                            ->state = Geometry::NORMAL;
                     }
 
-                    EditSubscriber::visibleGeometry.at (activeSpot)->state = Geometry::PRELIGHT;
-                    EditSubscriber::mouseOverGeometry.at (activeSpot + STATIC_MO_OBJ_NBR)->state = Geometry::PRELIGHT;
-                    //printf("ActiveSpot = %d (was %d before)\n", activeSpot, oldActiveSpot);
+                    EditSubscriber::visibleGeometry.at(activeSpot)->state =
+                        Geometry::PRELIGHT;
+                    EditSubscriber::mouseOverGeometry
+                        .at(activeSpot + STATIC_MO_OBJ_NBR)
+                        ->state = Geometry::PRELIGHT;
+                    // printf("ActiveSpot = %d (was %d before)\n", activeSpot,
+                    // oldActiveSpot);
                 }
             }
         }
@@ -590,7 +634,8 @@ bool Spot::mouseOver (int modifierKey)
             lastObject = -1;
         }
 
-        if (lastObject > -1 && EditSubscriber::mouseOverGeometry.at (lastObject) == getActiveSpotIcon()) {
+        if (lastObject > -1 && EditSubscriber::mouseOverGeometry.at(
+                                   lastObject) == getActiveSpotIcon()) {
             lastObject = TARGET_DISC;
         }
 
@@ -601,10 +646,11 @@ bool Spot::mouseOver (int modifierKey)
     return false;
 }
 
-// Create a new Target and Source point or start the drag of a Target point under the cursor
-bool Spot::button1Pressed (int modifierKey)
+// Create a new Target and Source point or start the drag of a Target point
+// under the cursor
+bool Spot::button1Pressed(int modifierKey)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
 
     if (editProvider) {
         if (lastObject == -1 && (modifierKey & GDK_CONTROL_MASK)) {
@@ -613,8 +659,10 @@ bool Spot::button1Pressed (int modifierKey)
             EditSubscriber::action = ES_ACTION_DRAGGING;
             return true;
         } else if (lastObject > -1) {
-            draggedSide = lastObject == TARGET_DISC ? DraggedSide::TARGET : lastObject == SOURCE_DISC ? DraggedSide::SOURCE : DraggedSide::NONE;
-            getVisibleGeometryFromMO (lastObject)->state = Geometry::DRAGGED;
+            draggedSide = lastObject == TARGET_DISC   ? DraggedSide::TARGET
+                          : lastObject == SOURCE_DISC ? DraggedSide::SOURCE
+                                                      : DraggedSide::NONE;
+            getVisibleGeometryFromMO(lastObject)->state = Geometry::DRAGGED;
             EditSubscriber::action = ES_ACTION_DRAGGING;
             return true;
         }
@@ -626,7 +674,7 @@ bool Spot::button1Pressed (int modifierKey)
 // End the drag of a Target point
 bool Spot::button1Released()
 {
-    Geometry *loGeom = getVisibleGeometryFromMO (lastObject);
+    Geometry *loGeom = getVisibleGeometryFromMO(lastObject);
 
     if (!loGeom) {
         EditSubscriber::action = ES_ACTION_NONE;
@@ -641,37 +689,40 @@ bool Spot::button1Released()
 }
 
 // Delete a point
-bool Spot::button2Pressed (int modifierKey)
+bool Spot::button2Pressed(int modifierKey)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
 
     if (!editProvider || lastObject == -1 || activeSpot == -1) {
         return false;
     }
 
-    if (! (modifierKey & (GDK_SHIFT_MASK | GDK_SHIFT_MASK))) {
+    if (!(modifierKey & (GDK_SHIFT_MASK | GDK_SHIFT_MASK))) {
         EditSubscriber::action = ES_ACTION_PICKING;
     }
 
     return false;
 }
 
-// Create a new Target and Source point or start the drag of a Target point under the cursor
-bool Spot::button3Pressed (int modifierKey)
+// Create a new Target and Source point or start the drag of a Target point
+// under the cursor
+bool Spot::button3Pressed(int modifierKey)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
 
     if (!editProvider || lastObject == -1 || activeSpot == -1) {
         return false;
     }
 
-    if ((modifierKey & GDK_CONTROL_MASK) && (EditSubscriber::mouseOverGeometry.at (lastObject) == &targetMODisc || lastObject >= STATIC_MO_OBJ_NBR)) {
+    if ((modifierKey & GDK_CONTROL_MASK) &&
+        (EditSubscriber::mouseOverGeometry.at(lastObject) == &targetMODisc ||
+         lastObject >= STATIC_MO_OBJ_NBR)) {
         lastObject = SOURCE_DISC;
         sourceIcon.state = Geometry::DRAGGED;
         EditSubscriber::action = ES_ACTION_DRAGGING;
         draggedSide = DraggedSide::SOURCE;
         return true;
-    } else if (! (modifierKey & (GDK_SHIFT_MASK | GDK_SHIFT_MASK))) {
+    } else if (!(modifierKey & (GDK_SHIFT_MASK | GDK_SHIFT_MASK))) {
         EditSubscriber::action = ES_ACTION_PICKING;
     }
 
@@ -680,7 +731,7 @@ bool Spot::button3Pressed (int modifierKey)
 
 bool Spot::button3Released()
 {
-    Geometry *loGeom = getVisibleGeometryFromMO (lastObject);
+    Geometry *loGeom = getVisibleGeometryFromMO(lastObject);
 
     if (!loGeom) {
         EditSubscriber::action = ES_ACTION_NONE;
@@ -697,122 +748,142 @@ bool Spot::button3Released()
     return false;
 }
 
-bool Spot::drag1 (int modifierKey)
+bool Spot::drag1(int modifierKey)
 {
     EditDataProvider *editProvider = getEditProvider();
     int imW, imH;
-    editProvider->getImageSize (imW, imH);
+    editProvider->getImageSize(imW, imH);
     bool modified = false;
 
-    //printf("Drag1 / LastObject=%d\n", lastObject);
+    // printf("Drag1 / LastObject=%d\n", lastObject);
 
-    Geometry *loGeom = EditSubscriber::mouseOverGeometry.at (lastObject);
+    Geometry *loGeom = EditSubscriber::mouseOverGeometry.at(lastObject);
 
     if (loGeom == &sourceMODisc) {
-        //printf("sourceMODisc / deltaPrevImage = %d / %d\n", editProvider->deltaPrevImage.x, editProvider->deltaPrevImage.y);
-        rtengine::Coord currPos = spots.at (activeSpot).sourcePos;
-        spots.at (activeSpot).sourcePos += editProvider->deltaPrevImage;
-        spots.at (activeSpot).sourcePos.clip (imW, imH);
+        // printf("sourceMODisc / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaPrevImage.x, editProvider->deltaPrevImage.y);
+        rtengine::Coord currPos = spots.at(activeSpot).sourcePos;
+        spots.at(activeSpot).sourcePos += editProvider->deltaPrevImage;
+        spots.at(activeSpot).sourcePos.clip(imW, imH);
 
-        if (spots.at (activeSpot).sourcePos != currPos) {
+        if (spots.at(activeSpot).sourcePos != currPos) {
             modified = true;
         }
 
-        EditSubscriber::mouseOverGeometry.at (activeSpot + STATIC_MO_OBJ_NBR)->state = Geometry::DRAGGED;
+        EditSubscriber::mouseOverGeometry.at(activeSpot + STATIC_MO_OBJ_NBR)
+            ->state = Geometry::DRAGGED;
     } else if (loGeom == &targetMODisc || lastObject >= STATIC_MO_OBJ_NBR) {
-        //printf("targetMODisc / deltaPrevImage = %d / %d\n", editProvider->deltaPrevImage.x, editProvider->deltaPrevImage.y);
-        rtengine::Coord currPos = spots.at (activeSpot).targetPos;
-        spots.at (activeSpot).targetPos += editProvider->deltaPrevImage;
-        spots.at (activeSpot).targetPos.clip (imW, imH);
+        // printf("targetMODisc / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaPrevImage.x, editProvider->deltaPrevImage.y);
+        rtengine::Coord currPos = spots.at(activeSpot).targetPos;
+        spots.at(activeSpot).targetPos += editProvider->deltaPrevImage;
+        spots.at(activeSpot).targetPos.clip(imW, imH);
 
-        if (spots.at (activeSpot).targetPos != currPos) {
+        if (spots.at(activeSpot).targetPos != currPos) {
             modified = true;
         }
     } else if (loGeom == &sourceCircle) {
-        //printf("sourceCircle / deltaPrevImage = %d / %d\n", editProvider->deltaImage.x, editProvider->deltaImage.y);
-        int lastRadius = spots.at (activeSpot).radius;
-        rtengine::Coord currPos = editProvider->posImage + editProvider->deltaImage;
-        rtengine::PolarCoord currPolar (currPos - spots.at (activeSpot).sourcePos);
-        spots.at (activeSpot).radius = LIM<int> (int (currPolar.radius), SpotParams::minRadius, SpotParams::maxRadius);
+        // printf("sourceCircle / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaImage.x, editProvider->deltaImage.y);
+        int lastRadius = spots.at(activeSpot).radius;
+        rtengine::Coord currPos =
+            editProvider->posImage + editProvider->deltaImage;
+        rtengine::PolarCoord currPolar(currPos -
+                                       spots.at(activeSpot).sourcePos);
+        spots.at(activeSpot).radius =
+            LIM<int>(int(currPolar.radius), SpotParams::minRadius,
+                     SpotParams::maxRadius);
 
-        if (spots.at (activeSpot).radius != lastRadius) {
+        if (spots.at(activeSpot).radius != lastRadius) {
             modified = true;
         }
     } else if (loGeom == &targetCircle) {
-        //printf("targetCircle / deltaPrevImage = %d / %d\n", editProvider->deltaImage.x, editProvider->deltaImage.y);
-        int lastRadius = spots.at (activeSpot).radius;
-        rtengine::Coord currPos = editProvider->posImage + editProvider->deltaImage;
-        rtengine::PolarCoord currPolar (currPos - spots.at (activeSpot).targetPos);
-        spots.at (activeSpot).radius = LIM<int> (int (currPolar.radius), SpotParams::minRadius, SpotParams::maxRadius);
+        // printf("targetCircle / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaImage.x, editProvider->deltaImage.y);
+        int lastRadius = spots.at(activeSpot).radius;
+        rtengine::Coord currPos =
+            editProvider->posImage + editProvider->deltaImage;
+        rtengine::PolarCoord currPolar(currPos -
+                                       spots.at(activeSpot).targetPos);
+        spots.at(activeSpot).radius =
+            LIM<int>(int(currPolar.radius), SpotParams::minRadius,
+                     SpotParams::maxRadius);
 
-        if (spots.at (activeSpot).radius != lastRadius) {
+        if (spots.at(activeSpot).radius != lastRadius) {
             modified = true;
         }
     } else if (loGeom == &sourceFeatherCircle) {
-        //printf("sourceFeatherCircle / deltaPrevImage = %d / %d\n", editProvider->deltaImage.x, editProvider->deltaImage.y);
-        float currFeather = spots.at (activeSpot).feather;
-        rtengine::Coord currPos = editProvider->posImage + editProvider->deltaImage;
-        rtengine::PolarCoord currPolar (currPos - spots.at (activeSpot).sourcePos);
-        spots.at (activeSpot).feather = LIM01<float> ((currPolar.radius - double (spots.at (activeSpot).radius)) / double (spots.at (activeSpot).radius));
+        // printf("sourceFeatherCircle / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaImage.x, editProvider->deltaImage.y);
+        float currFeather = spots.at(activeSpot).feather;
+        rtengine::Coord currPos =
+            editProvider->posImage + editProvider->deltaImage;
+        rtengine::PolarCoord currPolar(currPos -
+                                       spots.at(activeSpot).sourcePos);
+        spots.at(activeSpot).feather = LIM01<float>(
+            (currPolar.radius - double(spots.at(activeSpot).radius)) /
+            double(spots.at(activeSpot).radius));
 
-        if (spots.at (activeSpot).feather != currFeather) {
+        if (spots.at(activeSpot).feather != currFeather) {
             modified = true;
         }
     } else if (loGeom == &targetFeatherCircle) {
-        //printf("targetFeatherCircle / deltaPrevImage = %d / %d\n", editProvider->deltaImage.x, editProvider->deltaImage.y);
-        float currFeather = spots.at (activeSpot).feather;
-        rtengine::Coord currPos = editProvider->posImage + editProvider->deltaImage;
-        rtengine::PolarCoord currPolar (currPos - spots.at (activeSpot).targetPos);
-        spots.at (activeSpot).feather = LIM01<float> ((currPolar.radius - double (spots.at (activeSpot).radius)) / double (spots.at (activeSpot).radius));
+        // printf("targetFeatherCircle / deltaPrevImage = %d / %d\n",
+        // editProvider->deltaImage.x, editProvider->deltaImage.y);
+        float currFeather = spots.at(activeSpot).feather;
+        rtengine::Coord currPos =
+            editProvider->posImage + editProvider->deltaImage;
+        rtengine::PolarCoord currPolar(currPos -
+                                       spots.at(activeSpot).targetPos);
+        spots.at(activeSpot).feather = LIM01<float>(
+            (currPolar.radius - double(spots.at(activeSpot).radius)) /
+            double(spots.at(activeSpot).radius));
 
-        if (spots.at (activeSpot).feather != currFeather) {
+        if (spots.at(activeSpot).feather != currFeather) {
             modified = true;
         }
     }
 
     if (listener && modified) {
         updateGeometry();
-        listener->panelChanged (EvSpotEntry, M ("TP_SPOT_ENTRYCHANGED"));
+        listener->panelChanged(EvSpotEntry, M("TP_SPOT_ENTRYCHANGED"));
     }
 
     return modified;
 }
 
-bool Spot::drag3 (int modifierKey)
+bool Spot::drag3(int modifierKey)
 {
     EditDataProvider *editProvider = getEditProvider();
     int imW, imH;
-    editProvider->getImageSize (imW, imH);
+    editProvider->getImageSize(imW, imH);
     bool modified = false;
 
-    Geometry *loGeom = EditSubscriber::mouseOverGeometry.at (lastObject);
+    Geometry *loGeom = EditSubscriber::mouseOverGeometry.at(lastObject);
 
     if (loGeom == &sourceMODisc) {
-        rtengine::Coord currPos = spots.at (activeSpot).sourcePos;
-        spots.at (activeSpot).sourcePos += editProvider->deltaPrevImage;
-        spots.at (activeSpot).sourcePos.clip (imW, imH);
+        rtengine::Coord currPos = spots.at(activeSpot).sourcePos;
+        spots.at(activeSpot).sourcePos += editProvider->deltaPrevImage;
+        spots.at(activeSpot).sourcePos.clip(imW, imH);
 
-        if (spots.at (activeSpot).sourcePos != currPos) {
+        if (spots.at(activeSpot).sourcePos != currPos) {
             modified = true;
         }
     }
 
     if (listener) {
         updateGeometry();
-        listener->panelChanged (EvSpotEntry, M ("TP_SPOT_ENTRYCHANGED"));
+        listener->panelChanged(EvSpotEntry, M("TP_SPOT_ENTRYCHANGED"));
     }
 
     return modified;
 }
 
-bool Spot::pick2 (bool picked)
-{
-    return pick3 (picked);
-}
+bool Spot::pick2(bool picked) { return pick3(picked); }
 
-bool Spot::pick3 (bool picked)
+bool Spot::pick3(bool picked)
 {
-    EditDataProvider* editProvider = getEditProvider();
+    EditDataProvider *editProvider = getEditProvider();
 
     if (!picked) {
         if (editProvider->getObject() != lastObject) {
@@ -827,34 +898,35 @@ bool Spot::pick3 (bool picked)
     return true;
 }
 
-
-void Spot::switchOffEditMode ()
+void Spot::switchOffEditMode()
 {
     if (edit->get_active()) {
         // switching off the toggle button
-        bool wasBlocked = editConn.block (true);
-        edit->set_active (false);
+        bool wasBlocked = editConn.block(true);
+        edit->set_active(false);
 
         if (!wasBlocked) {
-            editConn.block (false);
+            editConn.block(false);
         }
     }
 
     reset_adjusters();
 
-    EditSubscriber::switchOffEditMode();  // disconnect
+    EditSubscriber::switchOffEditMode(); // disconnect
     listener->unsetTweakOperator(this);
-    listener->refreshPreview(EvSpotEnabled); // reprocess the preview w/o creating History entry
+    listener->refreshPreview(
+        EvSpotEnabled); // reprocess the preview w/o creating History entry
 }
 
-
-void Spot::tweakParams(procparams::ProcParams& pparams)
+void Spot::tweakParams(procparams::ProcParams &pparams)
 {
-    //params->raw.bayersensor.method = RAWParams::BayerSensor::getMethodString(RAWParams::BayerSensor::Method::FAST);
-    //params->raw.xtranssensor.method = RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::FAST);
+    // params->raw.bayersensor.method =
+    // RAWParams::BayerSensor::getMethodString(RAWParams::BayerSensor::Method::FAST);
+    // params->raw.xtranssensor.method =
+    // RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::FAST);
 
     // -> disabling all transform
-    //pparams.coarse = CoarseTransformParams();
+    // pparams.coarse = CoarseTransformParams();
     pparams.lensProf = LensProfParams();
     pparams.cacorrection = CACorrParams();
     pparams.distortion = DistortionParams();
@@ -883,11 +955,10 @@ void Spot::tweakParams(procparams::ProcParams& pparams)
         pparams.gradient.enabled = false;
         pparams.pcvignette.enabled = false;
 
-        //users might want to edit on a denoised image, no problem to preview it since it doesn't seem to slow things down
-        //pparams.denoise = false;
+        // users might want to edit on a denoised image, no problem to preview
+        // it since it doesn't seem to slow things down pparams.denoise = false;
     }
 }
-
 
 void Spot::adjusterChanged(Adjuster *a, double newval)
 {
@@ -902,7 +973,7 @@ void Spot::adjusterChanged(Adjuster *a, double newval)
         s.opacity = opacity->getValue();
         s.detail = detail->getValue();
     }
-    
+
     if (listener && getEnabled()) {
         disableListener();
         updateGeometry();
@@ -911,7 +982,6 @@ void Spot::adjusterChanged(Adjuster *a, double newval)
         listener->panelChanged(EvSpotEntry, M("TP_SPOT_ENTRYCHANGED"));
     }
 }
-
 
 void Spot::reset_adjusters()
 {
@@ -923,12 +993,7 @@ void Spot::reset_adjusters()
     spot_frame->set_sensitive(false);
 }
 
-
-void Spot::setDefaults(const ProcParams *def)
-{
-    initial_params = def->spot;
-}
-
+void Spot::setDefaults(const ProcParams *def) { initial_params = def->spot; }
 
 void Spot::toolReset(bool to_initial)
 {
@@ -940,14 +1005,12 @@ void Spot::toolReset(bool to_initial)
     read(&pp);
 }
 
-
 void Spot::on_fold(GdkEventButton *evt)
 {
     if (isCurrentSubscriber()) {
         switchOffEditMode();
     }
 }
-
 
 void Spot::on_hide()
 {

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,54 +19,42 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "toolpanel.h"
 #include "lensgeomlistener.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
 class GeometryPanel: public ToolParamBlock, public FoldableToolPanel {
 protected:
-    Gtk::Button*        autoCrop;
-    LensGeomListener*   rlistener;
-    Gtk::CheckButton*   fill;
-    bool                lastFill;
-    sigc::connection    fillConn;
-    ToolParamBlock*     packBox;
+    Gtk::Button *autoCrop;
+    LensGeomListener *rlistener;
+    Gtk::CheckButton *fill;
+    bool lastFill;
+    sigc::connection fillConn;
+    ToolParamBlock *packBox;
 
 public:
+    GeometryPanel();
+    ~GeometryPanel() override;
 
-    GeometryPanel ();
-    ~GeometryPanel () override;
+    Gtk::Box *getPackBox() { return packBox; }
 
-    Gtk::Box* getPackBox ()
-    {
-        return packBox;
-    }
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-
-    void fillPressed            ();
-    void autoCropPressed        ();
-    void setLensGeomListener    (LensGeomListener* l)
-    {
-        rlistener = l;
-    }
+    void fillPressed();
+    void autoCropPressed();
+    void setLensGeomListener(LensGeomListener *l) { rlistener = l; }
 
 private:
     IdleRegister idle_register;
 };
 
-
 class LensPanel: public ToolParamBlock, public FoldableToolPanel {
 protected:
-    ToolParamBlock*     packBox;
+    ToolParamBlock *packBox;
 
 public:
-
     LensPanel();
 
-    Gtk::Box* getPackBox ()
-    {
-        return packBox;
-    }
+    Gtk::Box *getPackBox() { return packBox; }
 };

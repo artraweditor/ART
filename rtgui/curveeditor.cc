@@ -16,12 +16,12 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "curveeditor.h"
+#include "../rtengine/LUT.h"
 #include "curveeditorgroup.h"
-#include <fstream>
-#include <string>
 #include "guiutils.h"
 #include "multilangmgr.h"
-#include "../rtengine/LUT.h"
+#include <fstream>
+#include <string>
 
 #include <cstring>
 
@@ -29,14 +29,13 @@ namespace {
 
 class CurveTypePopUpButton: public PopUpToggleButton {
 public:
-    CurveTypePopUpButton(const Glib::ustring &label=""):
-        PopUpToggleButton(label) {}
-    
-    void setPosIndexMap(const std::vector<int> &pmap)
+    CurveTypePopUpButton(const Glib::ustring &label = "")
+        : PopUpToggleButton(label)
     {
-        posidxmap_ = pmap;
     }
-    
+
+    void setPosIndexMap(const std::vector<int> &pmap) { posidxmap_ = pmap; }
+
 protected:
     int posToIndex(int pos) const override
     {
@@ -65,26 +64,30 @@ private:
 
 } // namespace
 
+bool CurveEditor::reset() { return subGroup->curveReset(this); }
 
-bool CurveEditor::reset()
-{
-    return subGroup->curveReset(this);
-}
-
-DiagonalCurveEditor::DiagonalCurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup) :
-    CurveEditor::CurveEditor(text, static_cast<CurveEditorGroup*>(ceGroup), ceSubGroup),
-    bp_(nullptr),
-    bp_id_(-1)
+DiagonalCurveEditor::DiagonalCurveEditor(Glib::ustring text,
+                                         CurveEditorGroup *ceGroup,
+                                         CurveEditorSubGroup *ceSubGroup)
+    : CurveEditor::CurveEditor(text, static_cast<CurveEditorGroup *>(ceGroup),
+                               ceSubGroup),
+      bp_(nullptr), bp_id_(-1)
 {
 
-    curveType->addEntry("curve-linear-small.svg", M("CURVEEDITOR_LINEAR")); // 0 Linear
-    curveType->addEntry("curve-spline-small.svg", M("CURVEEDITOR_CUSTOM")); // 1 Spline
-    curveType->addEntry("curve-catmullrom-small.svg", M("CURVEEDITOR_CATMULLROM")); // 4 CatmullRom
-    curveType->addEntry("curve-parametric-small.svg", M("CURVEEDITOR_PARAMETRIC")); // 2 Parametric
-    curveType->addEntry("curve-nurbs-small.svg", M("CURVEEDITOR_NURBS")); // 3 NURBS
-    static_cast<CurveTypePopUpButton *>(curveType)->setPosIndexMap({ 0, 1, 4, 2, 3 });
+    curveType->addEntry("curve-linear-small.svg",
+                        M("CURVEEDITOR_LINEAR")); // 0 Linear
+    curveType->addEntry("curve-spline-small.svg",
+                        M("CURVEEDITOR_CUSTOM")); // 1 Spline
+    curveType->addEntry("curve-catmullrom-small.svg",
+                        M("CURVEEDITOR_CATMULLROM")); // 4 CatmullRom
+    curveType->addEntry("curve-parametric-small.svg",
+                        M("CURVEEDITOR_PARAMETRIC")); // 2 Parametric
+    curveType->addEntry("curve-nurbs-small.svg",
+                        M("CURVEEDITOR_NURBS")); // 3 NURBS
+    static_cast<CurveTypePopUpButton *>(curveType)->setPosIndexMap(
+        {0, 1, 4, 2, 3});
     curveType->setSelected(DCT_Linear);
-    
+
     curveType->show();
 
     rangeLabels[0] = M("CURVEEDITOR_SHADOWS");
@@ -97,7 +100,7 @@ DiagonalCurveEditor::DiagonalCurveEditor (Glib::ustring text, CurveEditorGroup* 
     rangeMilestones[2] = 0.75;
 }
 
-std::vector<double> DiagonalCurveEditor::getCurve ()
+std::vector<double> DiagonalCurveEditor::getCurve()
 {
     std::vector<double> curve;
 
@@ -121,7 +124,8 @@ std::vector<double> DiagonalCurveEditor::getCurve ()
     }
 }
 
-void DiagonalCurveEditor::setResetCurve(DiagonalCurveType cType, const std::vector<double> &resetCurve)
+void DiagonalCurveEditor::setResetCurve(DiagonalCurveType cType,
+                                        const std::vector<double> &resetCurve)
 {
     switch (cType) {
     case (DCT_NURBS):
@@ -151,13 +155,14 @@ void DiagonalCurveEditor::setResetCurve(DiagonalCurveType cType, const std::vect
         }
 
         break;
-        
+
     default:
         break;
     }
 }
 
-void DiagonalCurveEditor::setRangeLabels(Glib::ustring r1, Glib::ustring r2, Glib::ustring r3, Glib::ustring r4)
+void DiagonalCurveEditor::setRangeLabels(Glib::ustring r1, Glib::ustring r2,
+                                         Glib::ustring r3, Glib::ustring r4)
 {
     rangeLabels[0] = r1;
     rangeLabels[1] = r2;
@@ -165,7 +170,8 @@ void DiagonalCurveEditor::setRangeLabels(Glib::ustring r1, Glib::ustring r2, Gli
     rangeLabels[3] = r4;
 }
 
-void DiagonalCurveEditor::getRangeLabels(Glib::ustring &r1, Glib::ustring &r2, Glib::ustring &r3, Glib::ustring &r4)
+void DiagonalCurveEditor::getRangeLabels(Glib::ustring &r1, Glib::ustring &r2,
+                                         Glib::ustring &r3, Glib::ustring &r4)
 {
     r1 = rangeLabels[0];
     r2 = rangeLabels[1];
@@ -174,9 +180,11 @@ void DiagonalCurveEditor::getRangeLabels(Glib::ustring &r1, Glib::ustring &r2, G
 }
 
 /*
- * Admittedly that this method is called just after the instantiation of this class, we set the shcselector's default values
+ * Admittedly that this method is called just after the instantiation of this
+ * class, we set the shcselector's default values
  */
-void DiagonalCurveEditor::setRangeDefaultMilestones(double m1, double m2, double m3)
+void DiagonalCurveEditor::setRangeDefaultMilestones(double m1, double m2,
+                                                    double m3)
 {
     rangeMilestones[0] = m1;
     rangeMilestones[1] = m2;
@@ -187,33 +195,42 @@ void DiagonalCurveEditor::setRangeDefaultMilestones(double m1, double m2, double
     paramCurveEd.at(3) = m3;
 }
 
-void DiagonalCurveEditor::getRangeDefaultMilestones(double &m1, double &m2, double &m3)
+void DiagonalCurveEditor::getRangeDefaultMilestones(double &m1, double &m2,
+                                                    double &m3)
 {
     m1 = rangeMilestones[0];
     m2 = rangeMilestones[1];
     m3 = rangeMilestones[2];
 }
 
-FlatCurveEditor::FlatCurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup, bool isPeriodic) : CurveEditor::CurveEditor(text, static_cast<CurveEditorGroup*>(ceGroup), ceSubGroup)
+FlatCurveEditor::FlatCurveEditor(Glib::ustring text, CurveEditorGroup *ceGroup,
+                                 CurveEditorSubGroup *ceSubGroup,
+                                 bool isPeriodic)
+    : CurveEditor::CurveEditor(text, static_cast<CurveEditorGroup *>(ceGroup),
+                               ceSubGroup)
 {
 
     periodic = isPeriodic;
     identityValue = 0.5;
 
-    // Order set in the same order than "enum FlatCurveType". Shouldn't change, for compatibility reason
-    curveType->addEntry("curve-flat-small.svg", M("CURVEEDITOR_LINEAR")); // 0 Linear
-    curveType->addEntry("curve-controlpoints-small.svg", M("CURVEEDITOR_MINMAXCPOINTS")); // 1 Min/Max ControlPoints
+    // Order set in the same order than "enum FlatCurveType". Shouldn't change,
+    // for compatibility reason
+    curveType->addEntry("curve-flat-small.svg",
+                        M("CURVEEDITOR_LINEAR")); // 0 Linear
+    curveType->addEntry(
+        "curve-controlpoints-small.svg",
+        M("CURVEEDITOR_MINMAXCPOINTS")); // 1 Min/Max ControlPoints
     curveType->setSelected(FCT_Linear);
     curveType->show();
 }
 
-std::vector<double> FlatCurveEditor::getCurve ()
+std::vector<double> FlatCurveEditor::getCurve()
 {
     std::vector<double> curve;
 
     switch (selected) {
-    //case (Parametric):
-    //    return curve = paramCurveEd;
+    // case (Parametric):
+    //     return curve = paramCurveEd;
     case (FCT_MinMaxCPoints):
         return curve = controlPointsCurveEd;
 
@@ -224,7 +241,8 @@ std::vector<double> FlatCurveEditor::getCurve ()
     }
 }
 
-void FlatCurveEditor::setResetCurve(FlatCurveType cType, const std::vector<double> &resetCurve)
+void FlatCurveEditor::setResetCurve(FlatCurveType cType,
+                                    const std::vector<double> &resetCurve)
 {
     switch (cType) {
     case (FCT_MinMaxCPoints):
@@ -243,10 +261,13 @@ void FlatCurveEditor::setResetCurve(FlatCurveType cType, const std::vector<doubl
  * CurveEditor (CurveEditorGroup* ceGroup, Glib::ustring text)
  *
  * parameters:
- *      ceGroup = NULL or the address of the Widget that will receive the CurveTypeToggleButton
- *      text    = (optional) label of the curve, displayed in the CurveTypeToggleButton, next to the image
+ *      ceGroup = NULL or the address of the Widget that will receive the
+ * CurveTypeToggleButton text    = (optional) label of the curve, displayed in
+ * the CurveTypeToggleButton, next to the image
  */
-CurveEditor::CurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEditorSubGroup* ceSubGroup) : EditSubscriber(ET_PIPETTE)
+CurveEditor::CurveEditor(Glib::ustring text, CurveEditorGroup *ceGroup,
+                         CurveEditorSubGroup *ceSubGroup)
+    : EditSubscriber(ET_PIPETTE)
 {
 
     bgHistValid = false;
@@ -272,45 +293,38 @@ CurveEditor::CurveEditor (Glib::ustring text, CurveEditorGroup* ceGroup, CurveEd
 
     curveType->set_tooltip_text(M("CURVEEDITOR_TYPE"));
     // TODO: Does this signal have to be blocked when on curve type change ?
-    curveType->signal_toggled().connect ( sigc::mem_fun(*this, &CurveEditor::curveTypeToggled) );
-    typeconn  = curveType->signal_item_selected().connect (sigc::mem_fun(*this, &CurveEditor::typeSelectionChanged) );
+    curveType->signal_toggled().connect(
+        sigc::mem_fun(*this, &CurveEditor::curveTypeToggled));
+    typeconn = curveType->signal_item_selected().connect(
+        sigc::mem_fun(*this, &CurveEditor::typeSelectionChanged));
 }
 
-void CurveEditor::setCurve (const std::vector<double>& p)
+void CurveEditor::setCurve(const std::vector<double> &p)
 {
     tempCurve = p;
     group->setCurveExternal(this, p);
 }
 
-CurveEditor::~CurveEditor ()
-{
-    delete curveType;
-}
+CurveEditor::~CurveEditor() { delete curveType; }
 
-void CurveEditor::typeSelectionChanged (int n)
+void CurveEditor::typeSelectionChanged(int n)
 {
     group->typeSelectionChanged(this, n);
 }
 
-void CurveEditor::curveTypeToggled()
-{
-    group->curveTypeToggled(this);
-}
+void CurveEditor::curveTypeToggled() { group->curveTypeToggled(this); }
 
-bool CurveEditor::isUnChanged ()
+bool CurveEditor::isUnChanged()
 {
     return curveType->getSelected() == subGroup->getValUnchanged();
 }
 
-void CurveEditor::setUnChanged (bool uc)
-{
-    group->setUnChanged(uc, this);
-}
+void CurveEditor::setUnChanged(bool uc) { group->setUnChanged(uc, this); }
 
 /*
  * Update the backgrounds histograms
  */
-void CurveEditor::updateBackgroundHistogram(const LUTu& hist)
+void CurveEditor::updateBackgroundHistogram(const LUTu &hist)
 {
     // Copy the histogram in the curve editor cache
     if (hist) {
@@ -329,11 +343,13 @@ void CurveEditor::updateBackgroundHistogram(const LUTu& hist)
 bool CurveEditor::openIfNonlinear()
 {
 
-    bool nonLinear = tempCurve.size() && (tempCurve[0] > subGroup->getValLinear()) && (tempCurve[0] < subGroup->getValUnchanged());
+    bool nonLinear = tempCurve.size() &&
+                     (tempCurve[0] > subGroup->getValLinear()) &&
+                     (tempCurve[0] < subGroup->getValUnchanged());
 
     if (nonLinear && !curveType->get_active()) {
         // Will trigger the signal_clicked event doing the display
-        curveType->set_active( true );
+        curveType->set_active(true);
     }
 
     return nonLinear;
@@ -342,80 +358,63 @@ bool CurveEditor::openIfNonlinear()
 // Handles markup tooltips
 void CurveEditor::setTooltip(Glib::ustring ttip)
 {
-    curveType->set_tooltip_text(ttip.empty() ?
-                                Glib::ustring::compose("<b>%1</b> ", M("CURVEEDITOR_TYPE")) :
-                                Glib::ustring::compose("%1\n<b>%2</b>", ttip, M("CURVEEDITOR_TYPE")));
+    curveType->set_tooltip_text(
+        ttip.empty()
+            ? Glib::ustring::compose("<b>%1</b> ", M("CURVEEDITOR_TYPE"))
+            : Glib::ustring::compose("%1\n<b>%2</b>", ttip,
+                                     M("CURVEEDITOR_TYPE")));
 }
 
-void CurveEditor::setLeftBarColorProvider(ColorProvider* cp, int callerId)
+void CurveEditor::setLeftBarColorProvider(ColorProvider *cp, int callerId)
 {
     leftBarCP = cp;
     leftBarCId = callerId;
 }
 
-void CurveEditor::setBottomBarColorProvider(ColorProvider* cp, int callerId)
+void CurveEditor::setBottomBarColorProvider(ColorProvider *cp, int callerId)
 {
     bottomBarCP = cp;
     bottomBarCId = callerId;
 }
 
-void CurveEditor::setLeftBarBgGradient (const std::vector<GradientMilestone> &milestones)
+void CurveEditor::setLeftBarBgGradient(
+    const std::vector<GradientMilestone> &milestones)
 {
     leftBarBgGradient = milestones;
 }
 
-void CurveEditor::setBottomBarBgGradient (const std::vector<GradientMilestone> &milestones)
+void CurveEditor::setBottomBarBgGradient(
+    const std::vector<GradientMilestone> &milestones)
 {
     bottomBarBgGradient = milestones;
 }
 
-void CurveEditor::refresh ()
-{
-    subGroup->refresh(this);
-}
+void CurveEditor::refresh() { subGroup->refresh(this); }
 
-void CurveEditor::setCurveColorProvider(ColorProvider* cp, int callerId)
+void CurveEditor::setCurveColorProvider(ColorProvider *cp, int callerId)
 {
     curveCP = cp;
     curveCId = callerId;
 }
 
-ColorProvider* CurveEditor::getLeftBarColorProvider()
-{
-    return leftBarCP;
-}
+ColorProvider *CurveEditor::getLeftBarColorProvider() { return leftBarCP; }
 
-ColorProvider* CurveEditor::getBottomBarColorProvider()
-{
-    return bottomBarCP;
-}
+ColorProvider *CurveEditor::getBottomBarColorProvider() { return bottomBarCP; }
 
-ColorProvider* CurveEditor::getCurveColorProvider()
-{
-    return curveCP;
-}
+ColorProvider *CurveEditor::getCurveColorProvider() { return curveCP; }
 
-int CurveEditor::getLeftBarCallerId()
-{
-    return leftBarCId;
-}
+int CurveEditor::getLeftBarCallerId() { return leftBarCId; }
 
-int CurveEditor::getBottomBarCallerId()
-{
-    return bottomBarCId;
-}
+int CurveEditor::getBottomBarCallerId() { return bottomBarCId; }
 
-int CurveEditor::getCurveCallerId()
-{
-    return curveCId;
-}
+int CurveEditor::getCurveCallerId() { return curveCId; }
 
-std::vector<GradientMilestone> CurveEditor::getBottomBarBgGradient () const
+std::vector<GradientMilestone> CurveEditor::getBottomBarBgGradient() const
 {
     return bottomBarBgGradient;
 }
 
-std::vector<GradientMilestone> CurveEditor::getLeftBarBgGradient () const
+std::vector<GradientMilestone> CurveEditor::getLeftBarBgGradient() const
 {
     return leftBarBgGradient;
 }
@@ -440,7 +439,7 @@ sigc::signal<void> CurveEditor::signal_curvepoint_release()
     return sig_curvepoint_release;
 }
 
-void CurveEditor::switchOffEditMode ()
+void CurveEditor::switchOffEditMode()
 {
     if (EditSubscriber::getEditID() != EUID_None) {
         // switching off the toggle button
@@ -449,26 +448,23 @@ void CurveEditor::switchOffEditMode ()
         }
     }
 
-    EditSubscriber::switchOffEditMode();  // disconnect
+    EditSubscriber::switchOffEditMode(); // disconnect
 }
 
-void CurveEditor::showEditButton(bool yes)
-{
-    subGroup->showEditButton(yes);
-}
-
+void CurveEditor::showEditButton(bool yes) { subGroup->showEditButton(yes); }
 
 bool CurveEditor::mouseOver(int modifierKey)
 {
-    EditDataProvider* provider = getEditProvider();
+    EditDataProvider *provider = getEditProvider();
     subGroup->pipetteMouseOver(provider, modifierKey);
     subGroup->refresh(this);
-    return true; // return true will ask the preview to be redrawn, for the cursor
+    return true; // return true will ask the preview to be redrawn, for the
+                 // cursor
 }
 
 bool CurveEditor::button1Pressed(int modifierKey)
 {
-    EditDataProvider* provider = getEditProvider();
+    EditDataProvider *provider = getEditProvider();
 
     if (provider->object) {
         remoteDrag = subGroup->pipetteButton1Pressed(provider, modifierKey);
@@ -484,7 +480,7 @@ bool CurveEditor::button1Pressed(int modifierKey)
 
 bool CurveEditor::button1Released()
 {
-    EditDataProvider* provider = getEditProvider();
+    EditDataProvider *provider = getEditProvider();
     subGroup->pipetteButton1Released(provider);
     remoteDrag = false;
     subGroup->refresh(this);
@@ -493,7 +489,7 @@ bool CurveEditor::button1Released()
 
 bool CurveEditor::drag1(int modifierKey)
 {
-    EditDataProvider* provider = getEditProvider();
+    EditDataProvider *provider = getEditProvider();
     subGroup->pipetteDrag(provider, modifierKey);
     subGroup->refresh(this);
     return false;

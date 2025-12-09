@@ -16,28 +16,21 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cstring>
-#include <cstdio>
 #include "image8.h"
 #include "rtengine.h"
+#include <cstdio>
+#include <cstring>
 
 using namespace rtengine;
 
+Image8::Image8() {}
 
-Image8::Image8 ()
-{
-}
+Image8::Image8(int w, int h) { allocate(w, h); }
 
-Image8::Image8 (int w, int h)
-{
-    allocate (w, h);
-}
+Image8::~Image8() {}
 
-Image8::~Image8 ()
-{
-}
-
-void Image8::getScanline (int row, unsigned char* buffer, int bps, bool isFloat) const
+void Image8::getScanline(int row, unsigned char *buffer, int bps,
+                         bool isFloat) const
 {
 
     if (data == nullptr) {
@@ -45,9 +38,9 @@ void Image8::getScanline (int row, unsigned char* buffer, int bps, bool isFloat)
     }
 
     if (bps == 8) {
-        memcpy (buffer, data + row * width * 3, width * 3);
+        memcpy(buffer, data + row * width * 3, width * 3);
     } else if (bps == 16) {
-        unsigned short* sbuffer = (unsigned short*) buffer;
+        unsigned short *sbuffer = (unsigned short *)buffer;
 
         for (int i = 0, ix = row * width * 3; i < width * 3; ++i, ++ix) {
             sbuffer[i] = static_cast<unsigned short>(data[ix]) * 257;
@@ -55,7 +48,8 @@ void Image8::getScanline (int row, unsigned char* buffer, int bps, bool isFloat)
     }
 }
 
-void Image8::setScanline (int row, unsigned char* buffer, int bps, unsigned int numSamples)
+void Image8::setScanline(int row, unsigned char *buffer, int bps,
+                         unsigned int numSamples)
 {
 
     if (data == nullptr) {
@@ -64,17 +58,20 @@ void Image8::setScanline (int row, unsigned char* buffer, int bps, unsigned int 
 
     switch (sampleFormat) {
     case (IIOSF_UNSIGNED_CHAR):
-        if(numSamples == 1) {
-            for(size_t i = 0; i < static_cast<size_t>(width); ++i) {
-                data[row * width * 3 + 3 * i] = data[row * width * 3 + 3 * i + 1] = data[row * width * 3 + 3 * i + 2] = buffer[i];
+        if (numSamples == 1) {
+            for (size_t i = 0; i < static_cast<size_t>(width); ++i) {
+                data[row * width * 3 + 3 * i] =
+                    data[row * width * 3 + 3 * i + 1] =
+                        data[row * width * 3 + 3 * i + 2] = buffer[i];
             }
         } else {
-            memcpy (data + (uint64_t)row * (uint64_t)width * (uint64_t)3u, buffer, width * 3);
+            memcpy(data + (uint64_t)row * (uint64_t)width * (uint64_t)3u,
+                   buffer, width * 3);
         }
         break;
 
     case (IIOSF_UNSIGNED_SHORT): {
-        unsigned short* sbuffer = (unsigned short*) buffer;
+        unsigned short *sbuffer = (unsigned short *)buffer;
 
         for (int i = 0, ix = row * width * 3; i < width * 3; ++i, ++ix) {
             data[ix] = uint16ToUint8Rounded(sbuffer[i]);
@@ -89,21 +86,22 @@ void Image8::setScanline (int row, unsigned char* buffer, int bps, unsigned int 
     }
 }
 
-Image8* Image8::copy () const
+Image8 *Image8::copy() const
 {
 
-    Image8* cp = new Image8 (width, height);
+    Image8 *cp = new Image8(width, height);
     copyData(cp);
     return cp;
 }
 
-void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, PreviewProps pp) const
+void Image8::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat *image,
+                         PreviewProps pp) const
 {
     // compute channel multipliers
     float rm = 1.f, gm = 1.f, bm = 1.f;
     if (ctemp.getTemp() >= 0) {
         double drm, dgm, dbm;
-        ctemp.getMultipliers (drm, dgm, dbm);
+        ctemp.getMultipliers(drm, dgm, dbm);
         rm = drm;
         gm = dgm;
         bm = dbm;
@@ -119,9 +117,9 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
 
     int sx1, sy1, sx2, sy2;
 
-    transform (pp, tran, sx1, sy1, sx2, sy2);
+    transform(pp, tran, sx1, sy1, sx2, sy2);
 
-    int imwidth = image->getWidth(); // Destination image
+    int imwidth = image->getWidth();   // Destination image
     int imheight = image->getHeight(); // Destination image
 
     if (((tran & TR_ROT) == TR_R90) || ((tran & TR_ROT) == TR_R270)) {
@@ -130,12 +128,13 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
         imheight = swap;
     }
 
-    int maxx = width; // Source image
+    int maxx = width;  // Source image
     int maxy = height; // Source image
     int mtran = tran & TR_ROT;
     int skip = pp.getSkip();
 
-    //if ((sx1 + skip*imwidth)>maxx) imwidth -- ; // we have a boundary condition that can cause errors
+    // if ((sx1 + skip*imwidth)>maxx) imwidth -- ; // we have a boundary
+    // condition that can cause errors
 
     // improve speed by integrating the area division into the multipliers
     // switched to using ints for the red/green/blue channel buffer.
@@ -148,21 +147,21 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
     gm /= area;
     bm /= area;
 
-#define GCLIP( x ) Color::gamma_srgb(CLIP(x))
+#define GCLIP(x) Color::gamma_srgb(CLIP(x))
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
     {
 #endif
         AlignedBuffer<float> abR(imwidth);
         AlignedBuffer<float> abG(imwidth);
         AlignedBuffer<float> abB(imwidth);
-        float *lineR  = abR.data;
-        float *lineG  = abG.data;
-        float *lineB =  abB.data;
+        float *lineR = abR.data;
+        float *lineG = abG.data;
+        float *lineB = abB.data;
 
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
         // Iterating all the rows of the destination image
@@ -177,7 +176,8 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x++) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x++) {
                     float r_, g_, b_;
 
                     // overflow security check, not sure that it's necessary
@@ -200,7 +200,8 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     if (src_x >= maxx) {
                         continue;
                     }
@@ -211,12 +212,17 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     float rtot, gtot, btot; // RGB accumulators
                     rtot = gtot = btot = 0.;
 
-                    for (int src_sub_y = 0; src_sub_y < src_sub_height; src_sub_y++)
-                        for (int src_sub_x = 0; src_sub_x < src_sub_width; src_sub_x++) {
+                    for (int src_sub_y = 0; src_sub_y < src_sub_height;
+                         src_sub_y++)
+                        for (int src_sub_x = 0; src_sub_x < src_sub_width;
+                             src_sub_x++) {
                             float r_, g_, b_;
-                            convertTo(r(src_y + src_sub_y, src_x + src_sub_x), r_);
-                            convertTo(g(src_y + src_sub_y, src_x + src_sub_x), g_);
-                            convertTo(b(src_y + src_sub_y, src_x + src_sub_x), b_);
+                            convertTo(r(src_y + src_sub_y, src_x + src_sub_x),
+                                      r_);
+                            convertTo(g(src_y + src_sub_y, src_x + src_sub_x),
+                                      g_);
+                            convertTo(b(src_y + src_sub_y, src_x + src_sub_x),
+                                      b_);
                             rtot += r_;
                             gtot += g_;
                             btot += b_;
@@ -229,7 +235,8 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                         lineG[dst_x] = CLIP(gm * gtot);
                         lineB[dst_x] = CLIP(bm * btot);
                     } else {
-                        // computing a special factor for this incomplete sub-region
+                        // computing a special factor for this incomplete
+                        // sub-region
                         float area = src_sub_width * src_sub_height;
                         lineR[dst_x] = CLIP(rm2 * rtot / area);
                         lineG[dst_x] = CLIP(gm2 * gtot / area);
@@ -238,26 +245,32 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                 }
             }
 
-            if      (mtran == TR_NONE)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+            if (mtran == TR_NONE)
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(iy, dst_x) = lineR[dst_x];
                     image->g(iy, dst_x) = lineG[dst_x];
                     image->b(iy, dst_x) = lineB[dst_x];
                 }
             else if (mtran == TR_R180)
                 for (int dst_x = 0; dst_x < imwidth; dst_x++) {
-                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) = lineR[dst_x];
-                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) = lineG[dst_x];
-                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) = lineB[dst_x];
+                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineR[dst_x];
+                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineG[dst_x];
+                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineB[dst_x];
                 }
             else if (mtran == TR_R90)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(dst_x, imheight - 1 - iy) = lineR[dst_x];
                     image->g(dst_x, imheight - 1 - iy) = lineG[dst_x];
                     image->b(dst_x, imheight - 1 - iy) = lineB[dst_x];
                 }
             else if (mtran == TR_R270)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(imwidth - 1 - dst_x, iy) = lineR[dst_x];
                     image->g(imwidth - 1 - dst_x, iy) = lineG[dst_x];
                     image->b(imwidth - 1 - dst_x, iy) = lineB[dst_x];

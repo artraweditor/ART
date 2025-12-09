@@ -16,33 +16,30 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <tiffio.h>
 #include "imagefloat.h"
-#include "image16.h"
-#include "image8.h"
-#include <cstring>
-#include "rtengine.h"
-#include "mytime.h"
-#include "iccstore.h"
 #include "alignedbuffer.h"
-#include "rt_math.h"
 #include "color.h"
 #include "halffloat.h"
+#include "iccstore.h"
+#include "image16.h"
+#include "image8.h"
+#include "mytime.h"
+#include "rt_math.h"
+#include "rtengine.h"
 #include "sleef.h"
+#include <cstring>
+#include <tiffio.h>
 
 namespace rtengine {
 
-Imagefloat::Imagefloat():
-    color_space_("sRGB"),
-    mode_(Mode::RGB)
+Imagefloat::Imagefloat(): color_space_("sRGB"), mode_(Mode::RGB)
 {
     ws_[0][0] = RT_INFINITY_F;
     iws_[0][0] = RT_INFINITY_F;
 }
 
-Imagefloat::Imagefloat(int w, int h, const Imagefloat *state_from):
-    color_space_("sRGB"),
-    mode_(Mode::RGB)
+Imagefloat::Imagefloat(int w, int h, const Imagefloat *state_from)
+    : color_space_("sRGB"), mode_(Mode::RGB)
 {
     allocate(w, h);
     ws_[0][0] = RT_INFINITY_F;
@@ -52,39 +49,42 @@ Imagefloat::Imagefloat(int w, int h, const Imagefloat *state_from):
     }
 }
 
-Imagefloat::~Imagefloat ()
-{
-}
+Imagefloat::~Imagefloat() {}
 
 // Call this method to handle floating points input values of different size
-void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned int numSamples)
+void Imagefloat::setScanline(int row, unsigned char *buffer, int bps,
+                             unsigned int numSamples)
 {
     if (data == nullptr) {
         return;
     }
 
-    // The DNG decoder convert to 32 bits float data even if the file contains 16 or 24 bits data.
-    // DNG_HalfToFloat and DNG_FP24ToFloat from dcraw.cc can be used to manually convert
-    // from 16 and 24 bits to 32 bits float respectively
+    // The DNG decoder convert to 32 bits float data even if the file contains
+    // 16 or 24 bits data. DNG_HalfToFloat and DNG_FP24ToFloat from dcraw.cc can
+    // be used to manually convert from 16 and 24 bits to 32 bits float
+    // respectively
     constexpr float hival = std::numeric_limits<float>::max() / 100.f;
-    
+
     switch (sampleFormat) {
     case (IIOSF_FLOAT16): {
         int ix = 0;
-        uint16_t* sbuffer = (uint16_t*) buffer;
+        uint16_t *sbuffer = (uint16_t *)buffer;
 
         for (int i = 0; i < width; i++) {
-            r(row, i) = std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
-            g(row, i) = std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
-            b(row, i) = std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
+            r(row, i) =
+                std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
+            g(row, i) =
+                std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
+            b(row, i) =
+                std::min(hival, 65535.f * DNG_HalfToFloat(sbuffer[ix++]));
         }
 
         break;
     }
-    //case (IIOSF_FLOAT24):
+    // case (IIOSF_FLOAT24):
     case (IIOSF_FLOAT32): {
         int ix = 0;
-        float* sbuffer = (float*) buffer;
+        float *sbuffer = (float *)buffer;
 
         for (int i = 0; i < width; i++) {
             r(row, i) = std::min(hival, 65535.f * sbuffer[ix++]);
@@ -98,7 +98,7 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     case (IIOSF_LOGLUV24):
     case (IIOSF_LOGLUV32): {
         int ix = 0;
-        float* sbuffer = (float*) buffer;
+        float *sbuffer = (float *)buffer;
         float xyzvalues[3], rgbvalues[3];
 
         for (int i = 0; i < width; i++) {
@@ -106,7 +106,8 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
             xyzvalues[1] = sbuffer[ix++];
             xyzvalues[2] = sbuffer[ix++];
             // TODO: we may have to handle other color space than sRGB!
-            Color::xyz2srgb(xyzvalues[0], xyzvalues[1], xyzvalues[2], rgbvalues[0], rgbvalues[1], rgbvalues[2]);
+            Color::xyz2srgb(xyzvalues[0], xyzvalues[1], xyzvalues[2],
+                            rgbvalues[0], rgbvalues[1], rgbvalues[2]);
             r(row, i) = rgbvalues[0];
             g(row, i) = rgbvalues[1];
             b(row, i) = rgbvalues[2];
@@ -121,8 +122,8 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     }
 }
 
-
-void Imagefloat::getScanline (int row, unsigned char* buffer, int bps, bool isFloat) const
+void Imagefloat::getScanline(int row, unsigned char *buffer, int bps,
+                             bool isFloat) const
 {
 
     if (data == nullptr) {
@@ -132,7 +133,7 @@ void Imagefloat::getScanline (int row, unsigned char* buffer, int bps, bool isFl
     if (isFloat) {
         if (bps == 32) {
             int ix = 0;
-            float* sbuffer = (float*) buffer;
+            float *sbuffer = (float *)buffer;
             // agriggio -- assume the image is normalized to [0, 65535]
             for (int i = 0; i < width; i++) {
                 sbuffer[ix++] = r(row, i) / 65535.f;
@@ -141,7 +142,7 @@ void Imagefloat::getScanline (int row, unsigned char* buffer, int bps, bool isFl
             }
         } else if (bps == 16) {
             int ix = 0;
-            uint16_t* sbuffer = (uint16_t*) buffer;
+            uint16_t *sbuffer = (uint16_t *)buffer;
             // agriggio -- assume the image is normalized to [0, 65535]
             for (int i = 0; i < width; i++) {
                 sbuffer[ix++] = DNG_FloatToHalf(r(row, i) / 65535.f);
@@ -170,18 +171,16 @@ void Imagefloat::getScanline (int row, unsigned char* buffer, int bps, bool isFl
 
 Imagefloat *Imagefloat::copy() const
 {
-    Imagefloat* cp = new Imagefloat(width, height);
+    Imagefloat *cp = new Imagefloat(width, height);
     copyTo(cp);
     return cp;
 }
-
 
 void Imagefloat::copyTo(Imagefloat *dst) const
 {
     copyData(dst);
     copyState(dst);
 }
-
 
 void Imagefloat::copyState(Imagefloat *to) const
 {
@@ -191,16 +190,17 @@ void Imagefloat::copyState(Imagefloat *to) const
     to->iws_[0][0] = RT_INFINITY_F;
 }
 
-
-// This is called by the StdImageSource class. We assume that fp images from StdImageSource don't have to deal with gamma
-void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, PreviewProps pp) const
+// This is called by the StdImageSource class. We assume that fp images from
+// StdImageSource don't have to deal with gamma
+void Imagefloat::getStdImage(const ColorTemp &ctemp, int tran,
+                             Imagefloat *image, PreviewProps pp) const
 {
 
     // compute channel multipliers
     float rm = 1.f, gm = 1.f, bm = 1.f;
     if (ctemp.getTemp() >= 0) {
         double drm, dgm, dbm;
-        ctemp.getMultipliers (drm, dgm, dbm);
+        ctemp.getMultipliers(drm, dgm, dbm);
         rm = drm;
         gm = dgm;
         bm = dbm;
@@ -216,9 +216,9 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
 
     int sx1, sy1, sx2, sy2;
 
-    transform (pp, tran, sx1, sy1, sx2, sy2);
+    transform(pp, tran, sx1, sy1, sx2, sy2);
 
-    int imwidth = image->width; // Destination image
+    int imwidth = image->width;   // Destination image
     int imheight = image->height; // Destination image
 
     if (((tran & TR_ROT) == TR_R90) || ((tran & TR_ROT) == TR_R270)) {
@@ -227,7 +227,7 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
         imheight = swap;
     }
 
-    int maxx = width; // Source image
+    int maxx = width;  // Source image
     int maxy = height; // Source image
     int mtran = tran & TR_ROT;
     int skip = pp.getSkip();
@@ -246,18 +246,18 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
     const auto CLIP0 = [](float v) -> float { return std::max(v, 0.f); };
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
     {
 #endif
         AlignedBuffer<float> abR(imwidth);
         AlignedBuffer<float> abG(imwidth);
         AlignedBuffer<float> abB(imwidth);
-        float *lineR  = abR.data;
-        float *lineG  = abG.data;
-        float *lineB =  abB.data;
+        float *lineR = abR.data;
+        float *lineG = abG.data;
+        float *lineB = abB.data;
 
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
         for (int iy = 0; iy < imheight; iy++) {
@@ -271,7 +271,8 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x++) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x++) {
                     // overflow security check, not sure that it's necessary
                     if (src_x >= maxx) {
                         continue;
@@ -289,7 +290,8 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     if (src_x >= maxx) {
                         continue;
                     }
@@ -300,8 +302,10 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
                     float rtot, gtot, btot; // RGB accumulators
                     rtot = gtot = btot = 0.;
 
-                    for (int src_sub_y = 0; src_sub_y < src_sub_height; src_sub_y++)
-                        for (int src_sub_x = 0; src_sub_x < src_sub_width; src_sub_x++) {
+                    for (int src_sub_y = 0; src_sub_y < src_sub_height;
+                         src_sub_y++)
+                        for (int src_sub_x = 0; src_sub_x < src_sub_width;
+                             src_sub_x++) {
                             rtot += r(src_y + src_sub_y, src_x + src_sub_x);
                             gtot += g(src_y + src_sub_y, src_x + src_sub_x);
                             btot += b(src_y + src_sub_y, src_x + src_sub_x);
@@ -314,7 +318,8 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
                         lineG[dst_x] = CLIP0(gm * gtot);
                         lineB[dst_x] = CLIP0(bm * btot);
                     } else {
-                        // computing a special factor for this incomplete sub-region
+                        // computing a special factor for this incomplete
+                        // sub-region
                         float area = src_sub_width * src_sub_height;
                         lineR[dst_x] = CLIP0(rm2 * rtot / area);
                         lineG[dst_x] = CLIP0(gm2 * gtot / area);
@@ -323,26 +328,32 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
                 }
             }
 
-            if      (mtran == TR_NONE)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+            if (mtran == TR_NONE)
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(iy, dst_x) = lineR[dst_x];
                     image->g(iy, dst_x) = lineG[dst_x];
                     image->b(iy, dst_x) = lineB[dst_x];
                 }
             else if (mtran == TR_R180)
                 for (int dst_x = 0; dst_x < imwidth; dst_x++) {
-                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) = lineR[dst_x];
-                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) = lineG[dst_x];
-                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) = lineB[dst_x];
+                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineR[dst_x];
+                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineG[dst_x];
+                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineB[dst_x];
                 }
             else if (mtran == TR_R90)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(dst_x, imheight - 1 - iy) = lineR[dst_x];
                     image->g(dst_x, imheight - 1 - iy) = lineG[dst_x];
                     image->b(dst_x, imheight - 1 - iy) = lineB[dst_x];
                 }
             else if (mtran == TR_R270)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(imwidth - 1 - dst_x, iy) = lineR[dst_x];
                     image->g(imwidth - 1 - dst_x, iy) = lineG[dst_x];
                     image->b(imwidth - 1 - dst_x, iy) = lineB[dst_x];
@@ -354,12 +365,11 @@ void Imagefloat::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* imag
 #endif
 }
 
-Image8*
-Imagefloat::to8() const
+Image8 *Imagefloat::to8() const
 {
-    Image8* img8 = new Image8(width, height);
+    Image8 *img8 = new Image8(width, height);
 #ifdef _OPENMP
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
 #endif
 
     for (int h = 0; h < height; ++h) {
@@ -373,12 +383,11 @@ Imagefloat::to8() const
     return img8;
 }
 
-Image16*
-Imagefloat::to16() const
+Image16 *Imagefloat::to16() const
 {
-    Image16* img16 = new Image16(width, height);
+    Image16 *img16 = new Image16(width, height);
 #ifdef _OPENMP
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
 #endif
 
     for (int h = 0; h < height; ++h) {
@@ -392,7 +401,6 @@ Imagefloat::to16() const
     return img16;
 }
 
-
 void Imagefloat::multiply(float factor, bool multithread)
 {
     const int W = width;
@@ -402,12 +410,13 @@ void Imagefloat::multiply(float factor, bool multithread)
 #endif
 
 #ifdef _OPENMP
-#   pragma omp parallel for firstprivate(W, H) schedule(dynamic, 5) if (multithread)
+#pragma omp parallel for firstprivate(W, H)                                    \
+    schedule(dynamic, 5) if (multithread)
 #endif
     for (int y = 0; y < H; y++) {
         int x = 0;
 #ifdef __SSE2__
-        for (; x < W-3; x += 4) {
+        for (; x < W - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
             vfloat gv = LVF(g(y, x));
             vfloat bv = LVF(b(y, x));
@@ -424,49 +433,52 @@ void Imagefloat::multiply(float factor, bool multithread)
     }
 }
 
-
-// convert values's range to [0;1] ; this method assumes that the input values's range is [0;65535]
+// convert values's range to [0;1] ; this method assumes that the input values's
+// range is [0;65535]
 void Imagefloat::normalizeFloatTo1(bool multithread)
 {
-    multiply(1.f/65535.f, multithread);
+    multiply(1.f / 65535.f, multithread);
 }
 
-// convert values's range to [0;65535 ; this method assumes that the input values's range is [0;1]
+// convert values's range to [0;65535 ; this method assumes that the input
+// values's range is [0;1]
 void Imagefloat::normalizeFloatTo65535(bool multithread)
 {
     multiply(65535.f, multithread);
 }
 
-void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale, LUTu & hist)
+void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale,
+                                      LUTu &hist)
 {
 
     hist.clear();
 
     // Set up factors to calc the lightness
-    TMatrix wprof = ICCStore::getInstance()->workingSpaceMatrix (params.icm.workingProfile);
+    TMatrix wprof =
+        ICCStore::getInstance()->workingSpaceMatrix(params.icm.workingProfile);
 
-    float facRed   = wprof[1][0];
+    float facRed = wprof[1][0];
     float facGreen = wprof[1][1];
-    float facBlue  = wprof[1][2];
-
+    float facBlue = wprof[1][2];
 
     // calc pixel size
     int x1, x2, y1, y2;
     params.crop.mapToResized(width, height, scale, x1, x2, y1, y2);
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
         LUTu histThr(65536);
         histThr.clear();
 #ifdef _OPENMP
-        #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
         for (int y = y1; y < y2; y++) {
             for (int x = x1; x < x2; x++) {
-                int i = (int)(facRed * r(y, x) + facGreen * g(y, x) + facBlue * b(y, x));
+                int i = (int)(facRed * r(y, x) + facGreen * g(y, x) +
+                              facBlue * b(y, x));
 
                 if (i < 0) {
                     i = 0;
@@ -479,35 +491,34 @@ void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale, LUT
         }
 
 #ifdef _OPENMP
-        #pragma omp critical
+#pragma omp critical
 #endif
         {
-            for(int i = 0; i <= 0xffff; i++) {
+            for (int i = 0; i <= 0xffff; i++) {
                 hist[i] += histThr[i];
             }
         }
     }
-
 }
 
 // Parallelized transformation; create transform with cmsFLAGS_NOCACHE!
 void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread)
 {
 
-    // LittleCMS cannot parallelize planar setups -- Hombre: LCMS2.4 can! But it we use this new feature, memory allocation
-    // have to be modified too to build temporary buffers that allow multi processor execution
+    // LittleCMS cannot parallelize planar setups -- Hombre: LCMS2.4 can! But it
+    // we use this new feature, memory allocation have to be modified too to
+    // build temporary buffers that allow multi processor execution
 #ifdef _OPENMP
-#   pragma omp parallel if (multithread)
+#pragma omp parallel if (multithread)
 #endif
     {
         AlignedBuffer<float> pBuf(width * 3);
 
 #ifdef _OPENMP
-        #pragma omp for schedule(dynamic, 16)
+#pragma omp for schedule(dynamic, 16)
 #endif
 
-        for (int y = 0; y < height; y++)
-        {
+        for (int y = 0; y < height; y++) {
             float *p = pBuf.data, *pR = r(y), *pG = g(y), *pB = b(y);
 
             for (int x = 0; x < width; x++) {
@@ -516,7 +527,7 @@ void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread)
                 *(p++) = *(pB++);
             }
 
-            cmsDoTransform (hTransform, pBuf.data, pBuf.data, width);
+            cmsDoTransform(hTransform, pBuf.data, pBuf.data, width);
 
             p = pBuf.data;
             pR = r(y);
@@ -533,26 +544,26 @@ void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread)
 }
 
 // Parallelized transformation; create transform with cmsFLAGS_NOCACHE!
-void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, const Imagefloat *src, bool multithread)
+void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform,
+                                  const Imagefloat *src, bool multithread)
 {
     mode_ = Mode::RGB;
     constexpr int cx = 0, cy = 0;
-    
+
     // LittleCMS cannot parallelize planar Lab float images
     // so build temporary buffers to allow multi processor execution
 #ifdef _OPENMP
-#   pragma omp parallel if (multithread)
+#pragma omp parallel if (multithread)
 #endif
     {
         AlignedBuffer<float> bufferSrc(width * 3);
         AlignedBuffer<float> bufferRGB(width * 3);
 
 #ifdef _OPENMP
-        #pragma omp for schedule(static)
+#pragma omp for schedule(static)
 #endif
 
-        for (int y = cy; y < cy + height; y++)
-        {
+        for (int y = cy; y < cy + height; y++) {
             float *pRGB, *pR, *pG, *pB;
             float *pSrc, *psR, *psG, *psB;
 
@@ -583,7 +594,6 @@ void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, const Imagefloat *sr
     }
 }
 
-
 void Imagefloat::assignColorSpace(const Glib::ustring &space)
 {
     if (color_space_ != space) {
@@ -593,12 +603,12 @@ void Imagefloat::assignColorSpace(const Glib::ustring &space)
     }
 }
 
-
 inline void Imagefloat::get_ws()
 {
     if (!std::isfinite(ws_[0][0])) {
         TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(color_space_);
-        TMatrix iws = ICCStore::getInstance()->workingSpaceInverseMatrix(color_space_);
+        TMatrix iws =
+            ICCStore::getInstance()->workingSpaceInverseMatrix(color_space_);
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 ws_[i][j] = float(ws[i][j]);
@@ -615,7 +625,6 @@ inline void Imagefloat::get_ws()
 #endif
     }
 }
-
 
 void Imagefloat::setMode(Mode mode, bool multithread)
 {
@@ -660,23 +669,22 @@ void Imagefloat::setMode(Mode mode, bool multithread)
             lab_to_yuv(multithread);
         }
     }
-    
+
     mode_ = mode;
 }
-
 
 void Imagefloat::rgb_to_xyz(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
 #ifdef __SSE2__
         vfloat Xv, Yv, Zv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
             vfloat gv = LVF(g(y, x));
             vfloat bv = LVF(b(y, x));
@@ -696,19 +704,18 @@ void Imagefloat::rgb_to_xyz(bool multithread)
     }
 }
 
-
 void Imagefloat::rgb_to_yuv(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
 #ifdef __SSE2__
         vfloat Yv, uv, vv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
             vfloat gv = LVF(g(y, x));
             vfloat bv = LVF(b(y, x));
@@ -719,24 +726,24 @@ void Imagefloat::rgb_to_yuv(bool multithread)
         }
 #endif
         for (; x < width; ++x) {
-            Color::rgb2yuv(r(y, x), g(y, x), b(y, x), g(y, x), b(y, x), r(y, x), ws_);
+            Color::rgb2yuv(r(y, x), g(y, x), b(y, x), g(y, x), b(y, x), r(y, x),
+                           ws_);
         }
     }
 }
-
 
 void Imagefloat::xyz_to_rgb(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
 #ifdef __SSE2__
         vfloat Rv, Gv, Bv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             vfloat xv = LVF(r(y, x));
             vfloat yv = LVF(g(y, x));
             vfloat zv = LVF(b(y, x));
@@ -756,13 +763,12 @@ void Imagefloat::xyz_to_rgb(bool multithread)
     }
 }
 
-
 void Imagefloat::xyz_to_yuv(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) { // TODO - SSE2 optimization
         for (int x = 0; x < width; ++x) {
@@ -775,19 +781,18 @@ void Imagefloat::xyz_to_yuv(bool multithread)
     }
 }
 
-
 void Imagefloat::yuv_to_rgb(bool multithread)
 {
     get_ws();
-    
+
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
 #ifdef __SSE2__
         vfloat Rv, Gv, Bv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             vfloat Yv = LVF(g(y, x));
             vfloat uv = LVF(b(y, x));
             vfloat vv = LVF(r(y, x));
@@ -798,18 +803,18 @@ void Imagefloat::yuv_to_rgb(bool multithread)
         }
 #endif
         for (; x < width; ++x) {
-            Color::yuv2rgb(g(y, x), b(y, x), r(y, x), r(y, x), g(y, x), b(y, x), ws_);
+            Color::yuv2rgb(g(y, x), b(y, x), r(y, x), r(y, x), g(y, x), b(y, x),
+                           ws_);
         }
     }
 }
-
 
 void Imagefloat::yuv_to_xyz(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) { // TODO - SSE2 optimization
         for (int x = 0; x < width; ++x) {
@@ -820,13 +825,12 @@ void Imagefloat::yuv_to_xyz(bool multithread)
     }
 }
 
-
 void Imagefloat::toLab(LabImage &dst, bool multithread)
 {
     setMode(Mode::LAB, multithread);
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -837,20 +841,19 @@ void Imagefloat::toLab(LabImage &dst, bool multithread)
     }
 }
 
-
 void Imagefloat::rgb_to_lab(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
 #ifdef __SSE2__
         vfloat Rv, Gv, Bv;
         vfloat Lv, av, bv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             Rv = LVF(r(y, x));
             Gv = LVF(g(y, x));
             Bv = LVF(b(y, x));
@@ -866,7 +869,6 @@ void Imagefloat::rgb_to_lab(bool multithread)
     }
 }
 
-
 inline void Imagefloat::rgb_to_lab(int y, int x, float &L, float &a, float &b)
 {
     float X, Y, Z;
@@ -874,13 +876,12 @@ inline void Imagefloat::rgb_to_lab(int y, int x, float &L, float &a, float &b)
     Color::XYZ2Lab(X, Y, Z, L, a, b);
 }
 
-
 void Imagefloat::xyz_to_lab(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -889,19 +890,17 @@ void Imagefloat::xyz_to_lab(bool multithread)
     }
 }
 
-
 inline void Imagefloat::xyz_to_lab(int y, int x, float &L, float &a, float &b)
 {
     Color::XYZ2Lab(this->r(y, x), this->g(y, x), this->b(y, x), L, a, b);
 }
-
 
 void Imagefloat::yuv_to_lab(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
@@ -909,7 +908,7 @@ void Imagefloat::yuv_to_lab(bool multithread)
         vfloat Rv, Gv, Bv;
         vfloat Xv, Yv, Zv;
         vfloat Lv, av, bv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             Rv = LVF(r(y, x));
             Gv = LVF(g(y, x));
             Bv = LVF(b(y, x));
@@ -927,7 +926,6 @@ void Imagefloat::yuv_to_lab(bool multithread)
     }
 }
 
-
 inline void Imagefloat::yuv_to_lab(int y, int x, float &L, float &a, float &b)
 {
     float R, G, B;
@@ -937,13 +935,12 @@ inline void Imagefloat::yuv_to_lab(int y, int x, float &L, float &a, float &b)
     Color::XYZ2Lab(X, Y, Z, L, a, b);
 }
 
-
 void Imagefloat::lab_to_rgb(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         // float X, Y, Z;
@@ -951,7 +948,7 @@ void Imagefloat::lab_to_rgb(bool multithread)
 #ifdef __SSE2__
         vfloat Lv, av, bv;
         vfloat Rv, Gv, Bv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             Lv = LVF(g(y, x));
             av = LVF(r(y, x));
             bv = LVF(b(y, x));
@@ -962,35 +959,36 @@ void Imagefloat::lab_to_rgb(bool multithread)
         }
 #endif
         for (; x < width; ++x) {
-            Color::lab2rgb(this->g(y, x), this->r(y, x), this->b(y, x), this->r(y, x), this->g(y, x), this->b(y, x), iws_);
-            // Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x), X, Y, Z);
-            // Color::xyz2rgb(X, Y, Z, this->r(y, x), this->g(y, x), this->b(y, x), iws_);
+            Color::lab2rgb(this->g(y, x), this->r(y, x), this->b(y, x),
+                           this->r(y, x), this->g(y, x), this->b(y, x), iws_);
+            // Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x), X, Y,
+            // Z); Color::xyz2rgb(X, Y, Z, this->r(y, x), this->g(y, x),
+            // this->b(y, x), iws_);
         }
     }
 }
-
 
 void Imagefloat::lab_to_xyz(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x), this->r(y, x), this->g(y, x), this->b(y, x));
+            Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x),
+                           this->r(y, x), this->g(y, x), this->b(y, x));
         }
     }
 }
-
 
 void Imagefloat::lab_to_yuv(bool multithread)
 {
     get_ws();
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         float X, Y, Z;
@@ -1000,7 +998,7 @@ void Imagefloat::lab_to_yuv(bool multithread)
         vfloat Lv, av, bv;
         vfloat Rv, Gv, Bv;
         vfloat Xv, Yv, Zv;
-        for (; x < width-3; x += 4) {
+        for (; x < width - 3; x += 4) {
             Lv = LVF(g(y, x));
             av = LVF(r(y, x));
             bv = LVF(b(y, x));
@@ -1012,7 +1010,8 @@ void Imagefloat::lab_to_yuv(bool multithread)
         }
 #endif
         for (; x < width; ++x) {
-            Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x), X, Y, Z);
+            Color::Lab2XYZ(this->g(y, x), this->r(y, x), this->b(y, x), X, Y,
+                           Z);
             Color::xyz2rgb(X, Y, Z, R, G, B, iws_);
             this->g(y, x) = Y;
             this->b(y, x) = Y - B;
@@ -1020,7 +1019,6 @@ void Imagefloat::lab_to_yuv(bool multithread)
         }
     }
 }
-
 
 void Imagefloat::getLab(int y, int x, float &L, float &a, float &b)
 {

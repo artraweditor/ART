@@ -18,12 +18,7 @@
  */
 #include "paramsedited.h"
 
-
-ParamsEdited::ParamsEdited(bool value)
-{
-    set(value);
-}
-
+ParamsEdited::ParamsEdited(bool value) { set(value); }
 
 void ParamsEdited::set(bool v)
 {
@@ -80,7 +75,6 @@ void ParamsEdited::set(bool v)
     iptc = v;
     spot = v;
 }
-
 
 void ParamsEdited::set_append(bool v)
 {

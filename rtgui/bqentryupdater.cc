@@ -17,20 +17,20 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "bqentryupdater.h"
-#include <gtkmm.h>
-#include "guiutils.h"
 #include "../rtengine/threadpool.h"
+#include "guiutils.h"
+#include <gtkmm.h>
 
 BatchQueueEntryUpdater batchQueueEntryUpdater;
 
-BatchQueueEntryUpdater::BatchQueueEntryUpdater():
-    tostop_(false),
-    stopped_(true)
+BatchQueueEntryUpdater::BatchQueueEntryUpdater(): tostop_(false), stopped_(true)
 {
 }
 
-
-void BatchQueueEntryUpdater::process(guint8 *oimg, int ow, int oh, int newh, BQEntryUpdateListener *listener, rtengine::ProcParams *pparams, Thumbnail *thumbnail)
+void BatchQueueEntryUpdater::process(guint8 *oimg, int ow, int oh, int newh,
+                                     BQEntryUpdateListener *listener,
+                                     rtengine::ProcParams *pparams,
+                                     Thumbnail *thumbnail)
 {
     if (!oimg && (!pparams || !thumbnail)) {
         return;
@@ -53,7 +53,7 @@ void BatchQueueEntryUpdater::process(guint8 *oimg, int ow, int oh, int newh, BQE
             }
 
         // not found, create and append new job
-        if (i == jqueue_.end ()) {
+        if (i == jqueue_.end()) {
             Job j;
             j.oimg = oimg;
             j.ow = ow;
@@ -62,7 +62,7 @@ void BatchQueueEntryUpdater::process(guint8 *oimg, int ow, int oh, int newh, BQE
             j.listener = listener;
             j.pparams = pparams;
             j.thumbnail = thumbnail;
-            jqueue_.push_back (j);
+            jqueue_.push_back(j);
         }
     }
 
@@ -71,10 +71,11 @@ void BatchQueueEntryUpdater::process(guint8 *oimg, int ow, int oh, int newh, BQE
         stopped_ = false;
         tostop_ = false;
 
-        stopped_future_ = rtengine::ThreadPool::add_task(rtengine::ThreadPool::Priority::NORMAL, sigc::mem_fun(*this, &BatchQueueEntryUpdater::process_thread));
+        stopped_future_ = rtengine::ThreadPool::add_task(
+            rtengine::ThreadPool::Priority::NORMAL,
+            sigc::mem_fun(*this, &BatchQueueEntryUpdater::process_thread));
     }
 }
-
 
 bool BatchQueueEntryUpdater::process_thread()
 {
@@ -100,9 +101,11 @@ bool BatchQueueEntryUpdater::process_thread()
         bool newBuffer = false;
 
         if (current.thumbnail && current.pparams) {
-            // the thumbnail and the pparams are provided, it means that we have to build the original preview image
+            // the thumbnail and the pparams are provided, it means that we have
+            // to build the original preview image
             double tmpscale;
-            img = current.thumbnail->processThumbImage(*current.pparams, current.oh, tmpscale);
+            img = current.thumbnail->processThumbImage(*current.pparams,
+                                                       current.oh, tmpscale);
 
             if (img) {
                 int prevw = img->getWidth();
@@ -122,9 +125,12 @@ bool BatchQueueEntryUpdater::process_thread()
 
         if (current.oimg && !is_empty && current.listener) {
             int neww = current.newh * current.ow / current.oh;
-            guint8* img = new guint8[current.newh * neww * 3];
-            thumbInterp(current.oimg, current.ow, current.oh, img, neww, current.newh);
-            current.listener->updateImage(img, neww, current.newh, current.ow, current.oh, newBuffer ? current.oimg : nullptr);
+            guint8 *img = new guint8[current.newh * neww * 3];
+            thumbInterp(current.oimg, current.ow, current.oh, img, neww,
+                        current.newh);
+            current.listener->updateImage(img, neww, current.newh, current.ow,
+                                          current.oh,
+                                          newBuffer ? current.oimg : nullptr);
         }
 
         if (current.oimg) {
@@ -134,12 +140,11 @@ bool BatchQueueEntryUpdater::process_thread()
     }
 
     stopped_ = true;
-    
+
     return true;
 }
 
-
-void BatchQueueEntryUpdater::removeJobs(BQEntryUpdateListener* listener)
+void BatchQueueEntryUpdater::removeJobs(BQEntryUpdateListener *listener)
 {
     std::unique_lock<std::mutex> lock(job_queue_mutex_);
     bool ready = false;
@@ -150,13 +155,12 @@ void BatchQueueEntryUpdater::removeJobs(BQEntryUpdateListener* listener)
 
         for (i = jqueue_.begin(); i != jqueue_.end(); ++i)
             if (i->listener == listener) {
-                jqueue_.erase (i);
+                jqueue_.erase(i);
                 ready = false;
                 break;
             }
     }
 }
-
 
 void BatchQueueEntryUpdater::terminate()
 {

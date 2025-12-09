@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,63 +19,75 @@
  */
 #include "dehaze.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-
-Dehaze::Dehaze(): FoldableToolPanel(this, "dehaze", M("TP_DEHAZE_LABEL"), false, true, true)
+Dehaze::Dehaze()
+    : FoldableToolPanel(this, "dehaze", M("TP_DEHAZE_LABEL"), false, true, true)
 {
     auto m = ProcEventMapper::getInstance();
     EvDehazeEnabled = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_ENABLED");
-    EvDehazeStrength = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_STRENGTH");
-    EvDehazeShowDepthMap = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_SHOW_DEPTH_MAP");
+    EvDehazeStrength =
+        m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_STRENGTH");
+    EvDehazeShowDepthMap =
+        m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_SHOW_DEPTH_MAP");
     EvDehazeDepth = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_DEPTH");
-    EvDehazeLuminance = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_LUMINANCE");
-    EvDehazeBlackpoint = m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_BLACKPOINT");
+    EvDehazeLuminance =
+        m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_LUMINANCE");
+    EvDehazeBlackpoint =
+        m->newEvent(rtengine::HDR, "HISTORY_MSG_DEHAZE_BLACKPOINT");
     EvToolReset.set_action(rtengine::HDR);
-    
+
     std::vector<GradientMilestone> bottomMilestones;
     bottomMilestones.push_back(GradientMilestone(0., 0., 0., 0.));
     bottomMilestones.push_back(GradientMilestone(1., 1., 1., 1.));
 
-    CurveEditorGroup *strength_group = Gtk::manage(new CurveEditorGroup(options.lastToneCurvesDir, M("TP_DEHAZE_STRENGTH"), 0.7));
+    CurveEditorGroup *strength_group = Gtk::manage(new CurveEditorGroup(
+        options.lastToneCurvesDir, M("TP_DEHAZE_STRENGTH"), 0.7));
     strength_group->setCurveListener(this);
-    strength = static_cast<FlatCurveEditor *>(strength_group->addCurve(CT_Flat, "", nullptr, false, false));
+    strength = static_cast<FlatCurveEditor *>(
+        strength_group->addCurve(CT_Flat, "", nullptr, false, false));
     ProcParams pp;
-    strength->setResetCurve(FlatCurveType(pp.dehaze.strength[0]), pp.dehaze.strength);
+    strength->setResetCurve(FlatCurveType(pp.dehaze.strength[0]),
+                            pp.dehaze.strength);
     strength->setEditID(EUID_DehazeStrength, BT_SINGLEPLANE_FLOAT);
     strength->setBottomBarBgGradient(bottomMilestones);
     strength_group->curveListComplete();
     strength_group->show();
 
-    // strength = Gtk::manage(new Adjuster(M("TP_DEHAZE_STRENGTH"), -100., 100., 1., 50.));
-    // strength->setAdjusterListener(this);
-    // strength->show();
+    // strength = Gtk::manage(new Adjuster(M("TP_DEHAZE_STRENGTH"), -100.,
+    // 100., 1., 50.)); strength->setAdjusterListener(this); strength->show();
 
-    depth = Gtk::manage(new Adjuster(M("TP_DEHAZE_DEPTH"), 0., 100., 1., 25., nullptr, nullptr, nullptr, nullptr, true));
+    depth = Gtk::manage(new Adjuster(M("TP_DEHAZE_DEPTH"), 0., 100., 1., 25.,
+                                     nullptr, nullptr, nullptr, nullptr, true));
     depth->setAdjusterListener(this);
     depth->show();
 
-    Gtk::HBox *hb = Gtk::manage (new Gtk::HBox ());
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_DEHAZE_MODE") + ": ")), Gtk::PACK_SHRINK);
+    Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
+    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_DEHAZE_MODE") + ": ")),
+                   Gtk::PACK_SHRINK);
     luminance = Gtk::manage(new MyComboBoxText());
     luminance->append(M("TP_DEHAZE_RGB"));
     luminance->append(M("TP_DEHAZE_LUMINANCE"));
     hb->pack_start(*luminance);
     pack_start(*hb);
-    luminance->signal_changed().connect(sigc::mem_fun(*this, &Dehaze::luminanceChanged));
+    luminance->signal_changed().connect(
+        sigc::mem_fun(*this, &Dehaze::luminanceChanged));
     hb->show();
     luminance->show();
 
-    blackpoint = Gtk::manage(new Adjuster(M("TP_DEHAZE_BLACKPOINT"), 0, 100, 1, 0));
+    blackpoint =
+        Gtk::manage(new Adjuster(M("TP_DEHAZE_BLACKPOINT"), 0, 100, 1, 0));
     blackpoint->setAdjusterListener(this);
     blackpoint->show();
-    
-    showDepthMap = Gtk::manage(new Gtk::CheckButton(M("TP_DEHAZE_SHOW_DEPTH_MAP")));
-    showDepthMap->signal_toggled().connect(sigc::mem_fun(*this, &Dehaze::showDepthMapChanged));
+
+    showDepthMap =
+        Gtk::manage(new Gtk::CheckButton(M("TP_DEHAZE_SHOW_DEPTH_MAP")));
+    showDepthMap->signal_toggled().connect(
+        sigc::mem_fun(*this, &Dehaze::showDepthMapChanged));
     showDepthMap->show();
 
     Gtk::VBox *vb = Gtk::manage(new Gtk::VBox());
@@ -85,7 +97,6 @@ Dehaze::Dehaze(): FoldableToolPanel(this, "dehaze", M("TP_DEHAZE_LABEL"), false,
     pack_start(*blackpoint);
     pack_start(*showDepthMap);
 }
-
 
 void Dehaze::read(const ProcParams *pp)
 {
@@ -100,11 +111,11 @@ void Dehaze::read(const ProcParams *pp)
 
     ProcParams dp;
     depth->set_visible(pp->dehaze.depth != dp.dehaze.depth);
-    showDepthMap->set_visible(pp->dehaze.showDepthMap != dp.dehaze.showDepthMap);
+    showDepthMap->set_visible(pp->dehaze.showDepthMap !=
+                              dp.dehaze.showDepthMap);
 
     enableListener();
 }
-
 
 void Dehaze::write(ProcParams *pp)
 {
@@ -124,8 +135,7 @@ void Dehaze::setDefaults(const ProcParams *defParams)
     initial_params = defParams->dehaze;
 }
 
-
-void Dehaze::adjusterChanged(Adjuster* a, double newval)
+void Dehaze::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         if (a == depth) {
@@ -136,8 +146,7 @@ void Dehaze::adjusterChanged(Adjuster* a, double newval)
     }
 }
 
-
-void Dehaze::enabledChanged ()
+void Dehaze::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
@@ -150,22 +159,25 @@ void Dehaze::enabledChanged ()
     }
 }
 
-
 void Dehaze::showDepthMapChanged()
 {
     if (listener) {
-        listener->panelChanged(EvDehazeShowDepthMap, showDepthMap->get_active() ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+        listener->panelChanged(EvDehazeShowDepthMap,
+                               showDepthMap->get_active()
+                                   ? M("GENERAL_ENABLED")
+                                   : M("GENERAL_DISABLED"));
     }
 }
-
 
 void Dehaze::luminanceChanged()
 {
     if (listener) {
-        listener->panelChanged(EvDehazeLuminance, luminance->get_active_row_number() == 1 ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+        listener->panelChanged(EvDehazeLuminance,
+                               luminance->get_active_row_number() == 1
+                                   ? M("GENERAL_ENABLED")
+                                   : M("GENERAL_DISABLED"));
     }
 }
-
 
 void Dehaze::curveChanged()
 {
@@ -174,18 +186,12 @@ void Dehaze::curveChanged()
     }
 }
 
-
 void Dehaze::setEditProvider(EditDataProvider *p)
 {
     strength->setEditProvider(p);
 }
 
-
-void Dehaze::autoOpenCurve()
-{
-    strength->openIfNonlinear();
-}
-
+void Dehaze::autoOpenCurve() { strength->openIfNonlinear(); }
 
 void Dehaze::toolReset(bool to_initial)
 {

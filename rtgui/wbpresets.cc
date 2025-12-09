@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -18,15 +18,18 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "toolpanelcoord.h"
 #include "../rtengine/rawimagesource.h"
+#include "toolpanelcoord.h"
 
 std::vector<WBPreset> ToolPanelCoordinator::getWBPresets() const
 {
     std::vector<WBPreset> ret;
     if (ipc) {
-        const rtengine::FramesData *md = dynamic_cast<const rtengine::FramesData *>(ipc->getInitialImage()->getMetaData());
-        rtengine::RawImageSource *src = dynamic_cast<rtengine::RawImageSource *>(ipc->getInitialImage());
+        const rtengine::FramesData *md =
+            dynamic_cast<const rtengine::FramesData *>(
+                ipc->getInitialImage()->getMetaData());
+        rtengine::RawImageSource *src =
+            dynamic_cast<rtengine::RawImageSource *>(ipc->getInitialImage());
         if (md && src) {
             std::string key = md->getInternalMakeModel();
 
@@ -40,22 +43,22 @@ std::vector<WBPreset> ToolPanelCoordinator::getWBPresets() const
     return ret;
 }
 
-
 void ToolPanelCoordinator::convertWBCam2Mul(double &rm, double &gm, double &bm)
-{ 
+{
     if (ipc) {
-        auto src = dynamic_cast<rtengine::ImageSource *>(ipc->getInitialImage());
+        auto src =
+            dynamic_cast<rtengine::ImageSource *>(ipc->getInitialImage());
         if (src) {
             src->wbCamera2Mul(rm, gm, bm);
         }
     }
 }
 
-
 void ToolPanelCoordinator::convertWBMul2Cam(double &rm, double &gm, double &bm)
-{ 
+{
     if (ipc) {
-        auto src = dynamic_cast<rtengine::ImageSource *>(ipc->getInitialImage());
+        auto src =
+            dynamic_cast<rtengine::ImageSource *>(ipc->getInitialImage());
         if (src) {
             src->wbMul2Camera(rm, gm, bm);
         }

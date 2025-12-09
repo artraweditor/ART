@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,19 +19,18 @@
  */
 #pragma once
 
+#include "toolpanel.h"
 #include <gtkmm.h>
 #include <unordered_set>
-#include "toolpanel.h"
 
-class ExifPanel : public Gtk::VBox, public ToolPanel
-{
+class ExifPanel: public Gtk::VBox, public ToolPanel {
 
 private:
-    const rtengine::FramesMetaData* idata;
+    const rtengine::FramesMetaData *idata;
     rtengine::procparams::ExifPairs changeList;
     rtengine::procparams::ExifPairs defChangeList;
 
-    class ExifColumns : public Gtk::TreeModelColumnRecord {
+    class ExifColumns: public Gtk::TreeModelColumnRecord {
     public:
         Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> icon;
         Gtk::TreeModelColumn<std::string> key;
@@ -65,13 +64,13 @@ private:
     Glib::RefPtr<Gdk::Pixbuf> closed_icon_;
 
     ExifColumns exifColumns;
-    Gtk::TreeView* exifTree;
-    Gtk::ScrolledWindow* scrolledWindow;
+    Gtk::TreeView *exifTree;
+    Gtk::ScrolledWindow *scrolledWindow;
     Glib::RefPtr<Gtk::TreeStore> exifTreeModel;
 
-    Gtk::Button* add;
-    Gtk::Button* reset;
-    Gtk::Button* resetAll;
+    Gtk::Button *add;
+    Gtk::Button *reset;
+    Gtk::Button *resetAll;
     Gtk::Button *activate_all_;
     Gtk::Button *activate_none_;
 
@@ -85,7 +84,10 @@ private:
 
     rtengine::ProgressListener *pl_;
 
-    void addTag(const std::string &key, const std::pair<Glib::ustring, Glib::ustring> &label, const Glib::ustring &value, bool editable, bool edited, bool activatable=true);
+    void addTag(const std::string &key,
+                const std::pair<Glib::ustring, Glib::ustring> &label,
+                const Glib::ustring &value, bool editable, bool edited,
+                bool activatable = true);
     void refreshTags();
     void resetIt(Gtk::TreeModel::iterator iter);
     void resetPressed();
@@ -94,34 +96,40 @@ private:
     void activateAllPressed();
     void activateNonePressed();
 
-    void setKeyActive(Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &it);
+    void setKeyActive(Gtk::CellRenderer *renderer,
+                      const Gtk::TreeModel::iterator &it);
     void onKeyActiveToggled(const Glib::ustring &path);
 
     bool all_keys_active() const;
     std::unordered_set<std::string> get_active_keys() const;
 
     void onExifTreeClick(GdkEventButton *event);
-    void onExifRowExpanded(const Gtk::TreeModel::iterator &it, const Gtk::TreeModel::Path &path);
-    void onExifRowCollapsed(const Gtk::TreeModel::iterator &it, const Gtk::TreeModel::Path &path);
+    void onExifRowExpanded(const Gtk::TreeModel::iterator &it,
+                           const Gtk::TreeModel::Path &path);
+    void onExifRowCollapsed(const Gtk::TreeModel::iterator &it,
+                            const Gtk::TreeModel::Path &path);
 
-    void setExifTagValue(Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &it);
-    void onEditExifTagValue(const Glib::ustring &path, const Glib::ustring &value);
-    
+    void setExifTagValue(Gtk::CellRenderer *renderer,
+                         const Gtk::TreeModel::iterator &it);
+    void onEditExifTagValue(const Glib::ustring &path,
+                            const Glib::ustring &value);
+
 public:
     ExifPanel();
     ~ExifPanel() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
-    void setImageData (const rtengine::FramesMetaData* id);
+    void setImageData(const rtengine::FramesMetaData *id);
 
     void exifSelectionChanged();
-    // void row_activated (const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
+    // void row_activated (const Gtk::TreeModel::Path& path,
+    // Gtk::TreeViewColumn* column);
 
     void notifyListener();
 
     void setProgressListener(rtengine::ProgressListener *pl);
 };
-

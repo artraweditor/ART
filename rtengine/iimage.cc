@@ -19,10 +19,10 @@
 
 #include "rtengine.h"
 
-const char rtengine::sImage8[] =     "Image8";
-const char rtengine::sImage16[] =    "Image16";
+const char rtengine::sImage8[] = "Image8";
+const char rtengine::sImage16[] = "Image16";
 const char rtengine::sImagefloat[] = "Imagefloat";
-int rtengine::getCoarseBitMask( const procparams::CoarseTransformParams &coarse)
+int rtengine::getCoarseBitMask(const procparams::CoarseTransformParams &coarse)
 {
     int tr = TR_NONE;
 

@@ -2,8 +2,11 @@
 #pragma once
 
 #include <exception>
+#include <stdio.h>
 
-namespace rtengine { class ProgressListener; }
+namespace rtengine {
+class ProgressListener;
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +21,8 @@ struct rt_jpeg_error_mgr {
 };
 
 extern GLOBAL(struct jpeg_error_mgr *)
-rt_jpeg_std_error(rt_jpeg_error_mgr *err, const char *filename, rtengine::ProgressListener *pl);
+    rt_jpeg_std_error(rt_jpeg_error_mgr *err, const char *filename,
+                      rtengine::ProgressListener *pl);
 
 #ifdef __cplusplus
 }

@@ -23,79 +23,78 @@
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-GeometryPanel::GeometryPanel () : FoldableToolPanel(this, "lensgeom", M("TP_GEOM_LABEL")), rlistener(nullptr), lastFill(false)
+GeometryPanel::GeometryPanel()
+    : FoldableToolPanel(this, "lensgeom", M("TP_GEOM_LABEL")),
+      rlistener(nullptr), lastFill(false)
 {
 
-    fill = Gtk::manage (new Gtk::CheckButton (M("TP_LENSGEOM_FILL")));
-    pack_start (*fill);
+    fill = Gtk::manage(new Gtk::CheckButton(M("TP_LENSGEOM_FILL")));
+    pack_start(*fill);
 
-    autoCrop = Gtk::manage (new Gtk::Button (M("TP_LENSGEOM_AUTOCROP")));
-    autoCrop->set_image (*Gtk::manage (new RTImage ("crop-auto-small.svg")));
+    autoCrop = Gtk::manage(new Gtk::Button(M("TP_LENSGEOM_AUTOCROP")));
+    autoCrop->set_image(*Gtk::manage(new RTImage("crop-auto-small.svg")));
     autoCrop->get_style_context()->add_class("independent");
-    pack_start (*autoCrop, Gtk::PACK_SHRINK, 2);
+    pack_start(*autoCrop, Gtk::PACK_SHRINK, 2);
 
-    packBox = Gtk::manage (new ToolParamBlock ());
-    pack_start (*packBox);
+    packBox = Gtk::manage(new ToolParamBlock());
+    pack_start(*packBox);
 
-    autoCrop->signal_pressed().connect( sigc::mem_fun(*this, &GeometryPanel::autoCropPressed) );
-    fillConn = fill->signal_toggled().connect( sigc::mem_fun(*this, &GeometryPanel::fillPressed) );
+    autoCrop->signal_pressed().connect(
+        sigc::mem_fun(*this, &GeometryPanel::autoCropPressed));
+    fillConn = fill->signal_toggled().connect(
+        sigc::mem_fun(*this, &GeometryPanel::fillPressed));
 
-    fill->set_active (true);
-    show_all ();
+    fill->set_active(true);
+    show_all();
 }
 
-GeometryPanel::~GeometryPanel ()
-{
-    idle_register.destroy();
-}
+GeometryPanel::~GeometryPanel() { idle_register.destroy(); }
 
-void GeometryPanel::read(const ProcParams* pp)
+void GeometryPanel::read(const ProcParams *pp)
 {
 
-    disableListener ();
+    disableListener();
 
-    fillConn.block (true);
-    fill->set_active (pp->commonTrans.autofill);
-    fillConn.block (false);
-    autoCrop->set_sensitive (!pp->commonTrans.autofill);
+    fillConn.block(true);
+    fill->set_active(pp->commonTrans.autofill);
+    fillConn.block(false);
+    autoCrop->set_sensitive(!pp->commonTrans.autofill);
 
     lastFill = pp->commonTrans.autofill;
 
-    enableListener ();
+    enableListener();
 }
 
-void GeometryPanel::write(ProcParams* pp)
+void GeometryPanel::write(ProcParams *pp)
 {
-    pp->commonTrans.autofill   = fill->get_active ();
+    pp->commonTrans.autofill = fill->get_active();
 }
 
-void GeometryPanel::autoCropPressed ()
+void GeometryPanel::autoCropPressed()
 {
 
     if (rlistener) {
-        rlistener->autoCropRequested ();
+        rlistener->autoCropRequested();
     }
 }
 
-void GeometryPanel::fillPressed ()
+void GeometryPanel::fillPressed()
 {
-    autoCrop->set_sensitive (!fill->get_active());
+    autoCrop->set_sensitive(!fill->get_active());
 
     if (listener) {
-        if (fill->get_active ()) {
-            listener->panelChanged (EvTransAutoFill, M("GENERAL_ENABLED"));
+        if (fill->get_active()) {
+            listener->panelChanged(EvTransAutoFill, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvTransAutoFill, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvTransAutoFill, M("GENERAL_DISABLED"));
         }
     }
 }
 
-
-LensPanel::LensPanel():
-    FoldableToolPanel(this, "lensaberr", M("TP_LENS_LABEL"))
+LensPanel::LensPanel(): FoldableToolPanel(this, "lensaberr", M("TP_LENS_LABEL"))
 {
-    packBox = Gtk::manage (new ToolParamBlock ());
-    pack_start (*packBox);
+    packBox = Gtk::manage(new ToolParamBlock());
+    pack_start(*packBox);
 
-    show_all ();
+    show_all();
 }

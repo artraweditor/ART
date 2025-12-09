@@ -18,9 +18,9 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rawimage.h"
 #include "gainmap.h"
 #include "metadata.h"
+#include "rawimage.h"
 
 namespace rtengine {
 
@@ -34,7 +34,7 @@ bool RawImage::has_gain_map(std::vector<uint8_t> *out_buf) const
     if (RT_OpcodeList2_len <= 0) {
         return false;
     }
-    
+
     std::vector<uint8_t> buf(RT_OpcodeList2_len);
     fseek(ifp, RT_OpcodeList2_start, SEEK_SET);
     if (fread(&buf[0], 1, RT_OpcodeList2_len, ifp) != RT_OpcodeList2_len) {
@@ -45,7 +45,7 @@ bool RawImage::has_gain_map(std::vector<uint8_t> *out_buf) const
         out_buf->swap(buf);
     }
     return true;
-    
+
 #else // ART_USE_LIBRAW
 
     auto md = Exiv2Metadata(filename);
@@ -68,7 +68,7 @@ bool RawImage::has_gain_map(std::vector<uint8_t> *out_buf) const
         return true;
     }
     return false;
-    
+
 #endif // ART_USE_LIBRAW
 }
 

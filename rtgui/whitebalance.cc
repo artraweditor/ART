@@ -17,16 +17,15 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "whitebalance.h"
+#include "../rtengine/colortemp.h"
 #include "../rtengine/refreshmap.h"
 #include "eventmapper.h"
-#include "../rtengine/colortemp.h"
 
 #include <iomanip>
 #include <iostream>
 
-#include "rtimage.h"
 #include "options.h"
-
+#include "rtimage.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -38,15 +37,12 @@ namespace {
 constexpr double CENTERTEMP = 4750;
 
 const std::vector<std::string> labels = {
-    "TP_WBALANCE_CAMERA",
-    "TP_WBALANCE_AUTO",
-    "TP_WBALANCE_CUSTOM",
-    "TP_WBALANCE_CUSTOM_MULT"
-};
+    "TP_WBALANCE_CAMERA", "TP_WBALANCE_AUTO", "TP_WBALANCE_CUSTOM",
+    "TP_WBALANCE_CUSTOM_MULT"};
 
 } // namespace
 
-void WhiteBalance::init ()
+void WhiteBalance::init()
 {
     wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-camera-small.svg"));
     wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-auto-small.svg"));
@@ -54,13 +50,12 @@ void WhiteBalance::init ()
     wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-custom2-small.svg"));
 }
 
-void WhiteBalance::cleanup ()
+void WhiteBalance::cleanup()
 {
     for (size_t i = 0; i < wbPixbufs.size(); ++i) {
         wbPixbufs[i].reset();
     }
 }
-
 
 namespace {
 
@@ -81,7 +76,6 @@ double wbSlider2Temp(double sval)
     }
 }
 
-
 double wbTemp2Slider(double temp)
 {
     if (temp <= PIVOTTEMP) {
@@ -97,120 +91,137 @@ double wbTemp2Slider(double temp)
 
 } // namespace
 
-
-WhiteBalance::WhiteBalance () : FoldableToolPanel(this, "whitebalance", M("TP_WBALANCE_LABEL"), false, true, true), wbp(nullptr), wblistener(nullptr)
+WhiteBalance::WhiteBalance()
+    : FoldableToolPanel(this, "whitebalance", M("TP_WBALANCE_LABEL"), false,
+                        true, true),
+      wbp(nullptr), wblistener(nullptr)
 {
     auto m = ProcEventMapper::getInstance();
     EvToolReset.set_action(rtengine::WHITEBALANCE);
     EvWBMult = m->newEvent(rtengine::WHITEBALANCE, "HISTORY_MSG_WBALANCE_MULT");
 
-    Gtk::Grid* methodgrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *methodgrid = Gtk::manage(new Gtk::Grid());
     methodgrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(methodgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(methodgrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    Gtk::Label* lab = Gtk::manage (new Gtk::Label (M("TP_WBALANCE_METHOD") + ":"));
-    setExpandAlignProperties(lab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *lab =
+        Gtk::manage(new Gtk::Label(M("TP_WBALANCE_METHOD") + ":"));
+    setExpandAlignProperties(lab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
     // Create the Tree model
     refTreeModel = Gtk::TreeStore::create(methodColumns);
     // Create the Combobox
-    method = Gtk::manage (new MyComboBox ());
-    setExpandAlignProperties(method, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    method = Gtk::manage(new MyComboBox());
+    setExpandAlignProperties(method, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
     // Assign the model to the Combobox
     method->set_model(refTreeModel);
 
-//    fillMethods();
+    //    fillMethods();
 
-    //Add the model columns to the Combo (which is a kind of view),
-    //rendering them in the default way:
+    // Add the model columns to the Combo (which is a kind of view),
+    // rendering them in the default way:
     method->pack_start(methodColumns.colIcon, false);
     method->pack_start(methodColumns.colLabel, true);
 
-    std::vector<Gtk::CellRenderer*> cells = method->get_cells();
-    Gtk::CellRendererText* cellRenderer = dynamic_cast<Gtk::CellRendererText*>(cells.at(1));
+    std::vector<Gtk::CellRenderer *> cells = method->get_cells();
+    Gtk::CellRendererText *cellRenderer =
+        dynamic_cast<Gtk::CellRendererText *>(cells.at(1));
     cellRenderer->property_ellipsize() = Pango::ELLIPSIZE_MIDDLE;
 
-    method->set_active (0); // Camera
-    methodgrid->attach (*lab, 0, 0, 1, 1);
-    methodgrid->attach (*method, 1, 0, 1, 1);
-    pack_start (*methodgrid, Gtk::PACK_SHRINK, 0 );
+    method->set_active(0); // Camera
+    methodgrid->attach(*lab, 0, 0, 1, 1);
+    methodgrid->attach(*method, 1, 0, 1, 1);
+    pack_start(*methodgrid, Gtk::PACK_SHRINK, 0);
     opt = 0;
 
-    Gtk::Grid* spotgrid = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *spotgrid = Gtk::manage(new Gtk::Grid());
     spotgrid->get_style_context()->add_class("grid-spacing");
-    setExpandAlignProperties(spotgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(spotgrid, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
 
-    spotbutton = Gtk::manage (new Gtk::Button (M("TP_WBALANCE_PICKER")));
-    setExpandAlignProperties(spotbutton, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    spotbutton = Gtk::manage(new Gtk::Button(M("TP_WBALANCE_PICKER")));
+    setExpandAlignProperties(spotbutton, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
     spotbutton->get_style_context()->add_class("independent");
     spotbutton->set_tooltip_text(M("TP_WBALANCE_SPOTWB"));
-    spotbutton->set_image (*Gtk::manage (new RTImage ("color-picker-small.svg")));
+    spotbutton->set_image(*Gtk::manage(new RTImage("color-picker-small.svg")));
 
-    Gtk::Label* slab = Gtk::manage (new Gtk::Label (M("TP_WBALANCE_SIZE")));
-    setExpandAlignProperties(slab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    Gtk::Label *slab = Gtk::manage(new Gtk::Label(M("TP_WBALANCE_SIZE")));
+    setExpandAlignProperties(slab, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    Gtk::Grid* wbsizehelper = Gtk::manage(new Gtk::Grid());
+    Gtk::Grid *wbsizehelper = Gtk::manage(new Gtk::Grid());
     wbsizehelper->set_name("WB-Size-Helper");
-    setExpandAlignProperties(wbsizehelper, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(wbsizehelper, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
 
-    spotsize = Gtk::manage (new MyComboBoxText ());
-    setExpandAlignProperties(spotsize, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
-    spotsize->append ("2");
+    spotsize = Gtk::manage(new MyComboBoxText());
+    setExpandAlignProperties(spotsize, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
+    spotsize->append("2");
 
     if (options.whiteBalanceSpotSize == 2) {
         spotsize->set_active(0);
     }
 
-    spotsize->append ("4");
+    spotsize->append("4");
 
     if (options.whiteBalanceSpotSize == 4) {
         spotsize->set_active(1);
     }
 
-    spotsize->append ("8");
+    spotsize->append("8");
 
     if (options.whiteBalanceSpotSize == 8) {
         spotsize->set_active(2);
     }
 
-    spotsize->append ("16");
+    spotsize->append("16");
 
     if (options.whiteBalanceSpotSize == 16) {
         spotsize->set_active(3);
     }
 
-    spotsize->append ("32");
+    spotsize->append("32");
 
     if (options.whiteBalanceSpotSize == 32) {
         spotsize->set_active(4);
     }
 
-    wbsizehelper->attach (*spotsize, 0, 0, 1, 1);
+    wbsizehelper->attach(*spotsize, 0, 0, 1, 1);
 
-    spotgrid->attach (*spotbutton, 0, 0, 1, 1);
-    spotgrid->attach (*slab, 1, 0, 1, 1);
-    spotgrid->attach (*wbsizehelper, 2, 0, 1, 1);
-    pack_start (*spotgrid, Gtk::PACK_SHRINK, 0 );
+    spotgrid->attach(*spotbutton, 0, 0, 1, 1);
+    spotgrid->attach(*slab, 1, 0, 1, 1);
+    spotgrid->attach(*wbsizehelper, 2, 0, 1, 1);
+    pack_start(*spotgrid, Gtk::PACK_SHRINK, 0);
 
-    Gtk::HSeparator *separator = Gtk::manage (new  Gtk::HSeparator());
+    Gtk::HSeparator *separator = Gtk::manage(new Gtk::HSeparator());
     separator->get_style_context()->add_class("grid-row-separator");
     pack_start(*separator, Gtk::PACK_SHRINK, 0);
 
-    Gtk::Image* itempL =  Gtk::manage (new RTImage ("circle-blue-small.svg"));
-    Gtk::Image* itempR =  Gtk::manage (new RTImage ("circle-yellow-small.svg"));
-    Gtk::Image* igreenL = Gtk::manage (new RTImage ("circle-magenta-small.svg"));
-    Gtk::Image* igreenR = Gtk::manage (new RTImage ("circle-green-small.svg"));
-    Gtk::Image* iblueredL = Gtk::manage (new RTImage ("circle-blue-small.svg"));
-    Gtk::Image* iblueredR = Gtk::manage (new RTImage ("circle-red-small.svg"));
+    Gtk::Image *itempL = Gtk::manage(new RTImage("circle-blue-small.svg"));
+    Gtk::Image *itempR = Gtk::manage(new RTImage("circle-yellow-small.svg"));
+    Gtk::Image *igreenL = Gtk::manage(new RTImage("circle-magenta-small.svg"));
+    Gtk::Image *igreenR = Gtk::manage(new RTImage("circle-green-small.svg"));
+    Gtk::Image *iblueredL = Gtk::manage(new RTImage("circle-blue-small.svg"));
+    Gtk::Image *iblueredR = Gtk::manage(new RTImage("circle-red-small.svg"));
 
-    temp = Gtk::manage(new Adjuster(M("TP_WBALANCE_TEMPERATURE"), MINTEMP, MAXTEMP, 5, CENTERTEMP, itempL, itempR, &wbSlider2Temp, &wbTemp2Slider));
-    green = Gtk::manage (new Adjuster(M("TP_WBALANCE_GREEN"), MINGREEN, MAXGREEN, 0.001, 1.0, igreenL, igreenR));
+    temp = Gtk::manage(new Adjuster(M("TP_WBALANCE_TEMPERATURE"), MINTEMP,
+                                    MAXTEMP, 5, CENTERTEMP, itempL, itempR,
+                                    &wbSlider2Temp, &wbTemp2Slider));
+    green = Gtk::manage(new Adjuster(M("TP_WBALANCE_GREEN"), MINGREEN, MAXGREEN,
+                                     0.001, 1.0, igreenL, igreenR));
     green->setLogScale(100, 1, true);
-    equal = Gtk::manage(new Adjuster(M("TP_WBALANCE_EQBLUERED"), MINEQUAL, MAXEQUAL, 0.001, 1.0, iblueredL, iblueredR, nullptr, nullptr, true));
+    equal = Gtk::manage(new Adjuster(M("TP_WBALANCE_EQBLUERED"), MINEQUAL,
+                                     MAXEQUAL, 0.001, 1.0, iblueredL, iblueredR,
+                                     nullptr, nullptr, true));
     // cache_customTemp (0);
     // cache_customGreen (0);
     // cache_customEqual (0);
-    equal->set_tooltip_markup (M("TP_WBALANCE_EQBLUERED_TOOLTIP"));
+    equal->set_tooltip_markup(M("TP_WBALANCE_EQBLUERED_TOOLTIP"));
     temp->show();
     green->show();
     equal->show();
@@ -218,19 +229,21 @@ WhiteBalance::WhiteBalance () : FoldableToolPanel(this, "whitebalance", M("TP_WB
     temp->delay = options.adjusterMaxDelay;
     green->delay = options.adjusterMaxDelay;
     equal->delay = options.adjusterMaxDelay;
-    
+
     tempBox = Gtk::manage(new Gtk::VBox());
 
     temp_warning_ = Gtk::manage(new Gtk::HBox());
     auto warnico = Gtk::manage(new RTImage("warning.svg"));
-    auto warnlbl = Gtk::manage(new Gtk::Label(M("WARNING_INVALID_WB_TEMP_TINT")));
+    auto warnlbl =
+        Gtk::manage(new Gtk::Label(M("WARNING_INVALID_WB_TEMP_TINT")));
     warnico->show();
     warnlbl->show();
     temp_warning_->pack_start(*warnico, Gtk::PACK_SHRINK);
     temp_warning_->pack_start(*warnlbl, Gtk::PACK_EXPAND_WIDGET, 4);
-    setExpandAlignProperties(warnlbl, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(warnlbl, false, false, Gtk::ALIGN_START,
+                             Gtk::ALIGN_CENTER);
     temp_warning_->hide();
-    
+
     tempBox->pack_start(*temp_warning_);
     tempBox->pack_start(*temp);
     tempBox->pack_start(*green);
@@ -245,17 +258,15 @@ WhiteBalance::WhiteBalance () : FoldableToolPanel(this, "whitebalance", M("TP_WB
     multBox = Gtk::manage(new Gtk::VBox());
     {
         static const std::vector<std::string> label = {
-            "TP_COLORCORRECTION_CHANNEL_R",
-            "TP_COLORCORRECTION_CHANNEL_G",
-            "TP_COLORCORRECTION_CHANNEL_B"
-        };
-        static const std::vector<std::string> icon = {
-            "circle-red-small.svg",
-            "circle-green-small.svg",
-            "circle-blue-small.svg"
-        };
+            "TP_COLORCORRECTION_CHANNEL_R", "TP_COLORCORRECTION_CHANNEL_G",
+            "TP_COLORCORRECTION_CHANNEL_B"};
+        static const std::vector<std::string> icon = {"circle-red-small.svg",
+                                                      "circle-green-small.svg",
+                                                      "circle-blue-small.svg"};
         for (size_t i = 0; i < 3; ++i) {
-            mult[i] = Gtk::manage(new Adjuster(M(label[i]), 0.1, 20, 0.0001, 1, Gtk::manage(new RTImage(icon[i]))));
+            mult[i] =
+                Gtk::manage(new Adjuster(M(label[i]), 0.1, 20, 0.0001, 1,
+                                         Gtk::manage(new RTImage(icon[i]))));
             multBox->pack_start(*mult[i]);
             mult[i]->show();
             mult[i]->setAdjusterListener(this);
@@ -265,18 +276,16 @@ WhiteBalance::WhiteBalance () : FoldableToolPanel(this, "whitebalance", M("TP_WB
     }
     multBox->show();
     pack_start(*multBox);
-    
-    spotbutton->signal_pressed().connect( sigc::mem_fun(*this, &WhiteBalance::spotPressed) );
-    methconn = method->signal_changed().connect( sigc::mem_fun(*this, &WhiteBalance::methodChanged) );
-    spotsize->signal_changed().connect( sigc::mem_fun(*this, &WhiteBalance::spotSizeChanged) );
+
+    spotbutton->signal_pressed().connect(
+        sigc::mem_fun(*this, &WhiteBalance::spotPressed));
+    methconn = method->signal_changed().connect(
+        sigc::mem_fun(*this, &WhiteBalance::methodChanged));
+    spotsize->signal_changed().connect(
+        sigc::mem_fun(*this, &WhiteBalance::spotSizeChanged));
 }
 
-
-WhiteBalance::~WhiteBalance()
-{
-    idle_register.destroy();
-}
-
+WhiteBalance::~WhiteBalance() { idle_register.destroy(); }
 
 void WhiteBalance::enabledChanged()
 {
@@ -291,8 +300,7 @@ void WhiteBalance::enabledChanged()
     }
 }
 
-
-void WhiteBalance::adjusterChanged(Adjuster* a, double newval)
+void WhiteBalance::adjusterChanged(Adjuster *a, double newval)
 {
     int m = getActiveMethod();
     {
@@ -305,25 +313,32 @@ void WhiteBalance::adjusterChanged(Adjuster* a, double newval)
     }
 
     syncSliders(a == mult[0] || a == mult[1] || a == mult[2]);
-    
+
     if (listener && getEnabled()) {
         if (a == temp) {
-            listener->panelChanged(EvWBTemp, Glib::ustring::format ((int)a->getValue()));
+            listener->panelChanged(EvWBTemp,
+                                   Glib::ustring::format((int)a->getValue()));
         } else if (a == green) {
-            listener->panelChanged(EvWBGreen, Glib::ustring::format (std::setw(4), std::fixed, std::setprecision(3), a->getValue()));
+            listener->panelChanged(
+                EvWBGreen,
+                Glib::ustring::format(std::setw(4), std::fixed,
+                                      std::setprecision(3), a->getValue()));
         } else if (a == equal) {
-            listener->panelChanged(EvWBequal, Glib::ustring::format (std::setw(4), std::fixed, std::setprecision(3), a->getValue()));
+            listener->panelChanged(
+                EvWBequal,
+                Glib::ustring::format(std::setw(4), std::fixed,
+                                      std::setprecision(3), a->getValue()));
         } else if (a == mult[0] || a == mult[1] || a == mult[2]) {
-            listener->panelChanged(EvWBMult, Glib::ustring::compose("%1 %2 %3", mult[0]->getTextValue(), mult[1]->getTextValue(), mult[2]->getTextValue()));
+            listener->panelChanged(
+                EvWBMult,
+                Glib::ustring::compose("%1 %2 %3", mult[0]->getTextValue(),
+                                       mult[1]->getTextValue(),
+                                       mult[2]->getTextValue()));
         }
     }
 }
 
-
-void WhiteBalance::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
-
+void WhiteBalance::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
 void WhiteBalance::methodChanged()
 {
@@ -347,7 +362,7 @@ void WhiteBalance::methodChanged()
     }
 
     Glib::ustring label;
-    
+
     switch (m) {
     case int(WBParams::CAMERA): {
         if (wbp) {
@@ -381,7 +396,7 @@ void WhiteBalance::methodChanged()
     if (preset >= 0) {
         label = M("TP_WBALANCE_PRESET") + ": " + presets[preset].label;
     }
-    
+
     enableListener();
 
     if (listener && getEnabled()) {
@@ -389,26 +404,23 @@ void WhiteBalance::methodChanged()
     }
 }
 
-
-void WhiteBalance::spotPressed ()
+void WhiteBalance::spotPressed()
 {
     if (wblistener) {
-        wblistener->spotWBRequested (getSize());
+        wblistener->spotWBRequested(getSize());
     }
 }
 
-
-void WhiteBalance::spotSizeChanged ()
+void WhiteBalance::spotSizeChanged()
 {
     options.whiteBalanceSpotSize = getSize();
 
     if (wblistener) {
-        wblistener->spotWBRequested (getSize());
+        wblistener->spotWBRequested(getSize());
     }
 }
 
-
-void WhiteBalance::read(const ProcParams* pp)
+void WhiteBalance::read(const ProcParams *pp)
 {
     disableListener();
 
@@ -475,12 +487,11 @@ void WhiteBalance::read(const ProcParams* pp)
     enableListener();
 }
 
-
-void WhiteBalance::write(ProcParams* pp)
+void WhiteBalance::write(ProcParams *pp)
 {
     pp->wb.enabled = getEnabled();
     pp->wb.method = WBParams::Type(getActiveMethod());
-    pp->wb.temperature = temp->getIntValue ();
+    pp->wb.temperature = temp->getIntValue();
     pp->wb.green = green->getValue();
     pp->wb.equal = equal->getValue();
     for (int i = 0; i < 3; ++i) {
@@ -488,11 +499,10 @@ void WhiteBalance::write(ProcParams* pp)
     }
 }
 
-
-void WhiteBalance::setDefaults(const ProcParams* defParams)
+void WhiteBalance::setDefaults(const ProcParams *defParams)
 {
 
-    equal->setDefault (defParams->wb.equal);
+    equal->setDefault(defParams->wb.equal);
 
     if (wbp && defParams->wb.method == WBParams::CAMERA) {
         rtengine::ColorTemp ctemp;
@@ -507,7 +517,8 @@ void WhiteBalance::setDefaults(const ProcParams* defParams)
         temp->setDefault(defParams->wb.temperature);
         green->setDefault(defParams->wb.green);
     }
-    // Recomputing AutoWB if it's the current method will happen in improccoordinator.cc
+    // Recomputing AutoWB if it's the current method will happen in
+    // improccoordinator.cc
 
     for (int i = 0; i < 3; ++i) {
         mult[i]->setDefault(defParams->wb.mult[i]);
@@ -516,18 +527,16 @@ void WhiteBalance::setDefaults(const ProcParams* defParams)
     initial_params = defParams->wb;
 }
 
-
-int WhiteBalance::getSize ()
+int WhiteBalance::getSize()
 {
     return atoi(spotsize->get_active_text().c_str());
 }
-
 
 void WhiteBalance::setWB(rtengine::ColorTemp ctemp)
 {
     disableListener();
     ConnectionBlocker methblocker(methconn);
-//    int m = getActiveMethod();
+    //    int m = getActiveMethod();
     method->set_active(int(WBParams::CUSTOM_TEMP));
     setEnabled(true);
     double mm[3];
@@ -544,17 +553,23 @@ void WhiteBalance::setWB(rtengine::ColorTemp ctemp)
 
     if (listener) {
         if (tempBox->is_visible()) {
-            listener->panelChanged(EvWBTemp, Glib::ustring::compose("%1, %2", (int)temp->getValue(), green->getTextValue()));
+            listener->panelChanged(
+                EvWBTemp,
+                Glib::ustring::compose("%1, %2", (int)temp->getValue(),
+                                       green->getTextValue()));
         } else {
-            listener->panelChanged(EvWBMult, Glib::ustring::compose("%1 %2 %3", mult[0]->getTextValue(), mult[1]->getTextValue(), mult[2]->getTextValue()));
+            listener->panelChanged(
+                EvWBMult,
+                Glib::ustring::compose("%1 %2 %3", mult[0]->getTextValue(),
+                                       mult[1]->getTextValue(),
+                                       mult[2]->getTextValue()));
         }
     }
 
     // green->setLogScale(100, vgreen, true);
 }
 
-
-void WhiteBalance::trimValues (rtengine::procparams::ProcParams* pp)
+void WhiteBalance::trimValues(rtengine::procparams::ProcParams *pp)
 {
     temp->trimValue(pp->wb.temperature);
     green->trimValue(pp->wb.green);
@@ -564,34 +579,29 @@ void WhiteBalance::trimValues (rtengine::procparams::ProcParams* pp)
     }
 }
 
-
 void WhiteBalance::WBChanged(rtengine::ColorTemp ctemp)
 {
-    idle_register.add(
-        [this, ctemp]() -> bool
-        {
-            disableListener();
-            setEnabled(true);
-            temp->setDefault(ctemp.getTemp());
-            green->setDefault(ctemp.getGreen());
-            double m[3];
-            ctemp.getMultipliers(m[0], m[1], m[2]);
-            if (wbp) {
-                wbp->convertWBMul2Cam(m[0], m[1], m[2]);
-            }
-            for (int i = 0; i < 3; ++i) {
-                mult[i]->setValue(m[i] / m[1]);
-            }
-            syncSliders(true);
-            updateMethodGui(true);
-            enableListener();
-            // green->setLogScale(100, greenVal, true);
-
-            return false;
+    idle_register.add([this, ctemp]() -> bool {
+        disableListener();
+        setEnabled(true);
+        temp->setDefault(ctemp.getTemp());
+        green->setDefault(ctemp.getGreen());
+        double m[3];
+        ctemp.getMultipliers(m[0], m[1], m[2]);
+        if (wbp) {
+            wbp->convertWBMul2Cam(m[0], m[1], m[2]);
         }
-    );
-}
+        for (int i = 0; i < 3; ++i) {
+            mult[i]->setValue(m[i] / m[1]);
+        }
+        syncSliders(true);
+        updateMethodGui(true);
+        enableListener();
+        // green->setLogScale(100, greenVal, true);
 
+        return false;
+    });
+}
 
 void WhiteBalance::syncSliders(bool from_mult)
 {
@@ -600,10 +610,11 @@ void WhiteBalance::syncSliders(bool from_mult)
     }
 
     temp_warning_->hide();
-    
+
     disableListener();
     if (from_mult) {
-        double m[3] = { mult[0]->getValue(), mult[1]->getValue(), mult[2]->getValue() };
+        double m[3] = {mult[0]->getValue(), mult[1]->getValue(),
+                       mult[2]->getValue()};
         wbp->convertWBCam2Mul(m[0], m[1], m[2]);
         rtengine::ColorTemp ct(m[0], m[1], m[2]);
         temp->setValue(ct.getTemp());
@@ -613,11 +624,13 @@ void WhiteBalance::syncSliders(bool from_mult)
         rtengine::ColorTemp ct2(ct.getTemp(), ct.getGreen(), 1.0, "");
         double m2[3];
         ct2.getMultipliers(m2[0], m2[1], m2[2]);
-        if (rtengine::max(std::abs(m[0]-m2[0]), std::abs(m[1]-m2[1]), std::abs(m[2]-m2[2])) > 1e-2) {
+        if (rtengine::max(std::abs(m[0] - m2[0]), std::abs(m[1] - m2[1]),
+                          std::abs(m[2] - m2[2])) > 1e-2) {
             temp_warning_->show();
         }
     } else {
-        rtengine::ColorTemp ct(temp->getValue(), green->getValue(), equal->getValue(), "");
+        rtengine::ColorTemp ct(temp->getValue(), green->getValue(),
+                               equal->getValue(), "");
         double m[3];
         ct.getMultipliers(m[0], m[1], m[2]);
         wbp->convertWBMul2Cam(m[0], m[1], m[2]);
@@ -628,10 +641,9 @@ void WhiteBalance::syncSliders(bool from_mult)
     enableListener();
 }
 
-
 void WhiteBalance::updateMethodGui(bool check_temp)
 {
-//    temp_warning_->hide();
+    //    temp_warning_->hide();
     switch (getActiveMethod()) {
     case int(WBParams::CAMERA):
     case int(WBParams::AUTO):
@@ -639,12 +651,15 @@ void WhiteBalance::updateMethodGui(bool check_temp)
         multBox->hide();
         tempBox->show();
         if (check_temp && wbp) {
-            rtengine::ColorTemp ct1(temp->getValue(), green->getValue(), equal->getValue(), "");
+            rtengine::ColorTemp ct1(temp->getValue(), green->getValue(),
+                                    equal->getValue(), "");
             double m1[3];
             ct1.getMultipliers(m1[0], m1[1], m1[2]);
-            double m2[3] = { mult[0]->getValue(), mult[1]->getValue(), mult[2]->getValue() };
+            double m2[3] = {mult[0]->getValue(), mult[1]->getValue(),
+                            mult[2]->getValue()};
             wbp->convertWBCam2Mul(m2[0], m2[1], m2[2]);
-            if (rtengine::max(std::abs(m1[0]-m2[0]), std::abs(m1[1]-m2[1]), std::abs(m1[2]-m2[2])) > 1e-2) {
+            if (rtengine::max(std::abs(m1[0] - m2[0]), std::abs(m1[1] - m2[1]),
+                              std::abs(m1[2] - m2[2])) > 1e-2) {
                 multBox->show();
                 tempBox->hide();
                 ConnectionBlocker methblocker(methconn);
@@ -661,7 +676,6 @@ void WhiteBalance::updateMethodGui(bool check_temp)
     }
 }
 
-
 void WhiteBalance::toolReset(bool to_initial)
 {
     ProcParams pp;
@@ -672,12 +686,11 @@ void WhiteBalance::toolReset(bool to_initial)
     read(&pp);
 }
 
-
 inline int WhiteBalance::getActiveMethod()
 {
-    return std::min(method->get_active_row_number(), int(WBParams::CUSTOM_MULT));
+    return std::min(method->get_active_row_number(),
+                    int(WBParams::CUSTOM_MULT));
 }
-
 
 void WhiteBalance::fillMethods()
 {
@@ -710,7 +723,6 @@ void WhiteBalance::fillMethods()
         }
     }
 }
-
 
 void WhiteBalance::registerShortcuts(ToolShortcutManager *mgr)
 {

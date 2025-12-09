@@ -40,11 +40,14 @@ public:
 
     explicit operator bool() const;
 
-    void correctDistortion(double &x, double &y, int cx, int cy, double scale) const override;
+    void correctDistortion(double &x, double &y, int cx, int cy,
+                           double scale) const override;
     bool isCACorrectionAvailable() const override;
-    void correctCA(double &x, double &y, int cx, int cy, int channel) const override;
-    void processVignette(int width, int height, float** rawData) const override;
-    void processVignette3Channels(int width, int height, float** rawData) const override;
+    void correctCA(double &x, double &y, int cx, int cy,
+                   int channel) const override;
+    void processVignette(int width, int height, float **rawData) const override;
+    void processVignette3Channels(int width, int height,
+                                  float **rawData) const override;
 
     Glib::ustring getDisplayString() const;
 
@@ -103,15 +106,21 @@ public:
 
     std::vector<LFCamera> getCameras() const;
     std::vector<LFLens> getLenses() const;
-    LFCamera findCamera(const Glib::ustring &make, const Glib::ustring &model) const;
+    LFCamera findCamera(const Glib::ustring &make,
+                        const Glib::ustring &model) const;
     LFLens findLens(const LFCamera &camera, const Glib::ustring &name) const;
 
-    std::unique_ptr<LFModifier> findModifier(const LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const CoarseTransformParams &coarse, int rawRotationDeg) const;
+    std::unique_ptr<LFModifier>
+    findModifier(const LensProfParams &lensProf, const FramesMetaData *idata,
+                 int width, int height, const CoarseTransformParams &coarse,
+                 int rawRotationDeg) const;
 
 private:
-    std::unique_ptr<LFModifier> getModifier(const LFCamera &camera, const LFLens &lens,
-                                            float focalLen, float aperture, float focusDist,
-                                            int width, int height, bool swap_xy) const;
+    std::unique_ptr<LFModifier> getModifier(const LFCamera &camera,
+                                            const LFLens &lens, float focalLen,
+                                            float aperture, float focusDist,
+                                            int width, int height,
+                                            bool swap_xy) const;
     LFDatabase();
     bool LoadDirectory(const char *dirname);
 

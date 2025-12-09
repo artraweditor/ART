@@ -1,23 +1,23 @@
 /* -*- C++ -*-
-*  
-*  This file is part of ART.
-*
-*  Copyright (c) 2021 Alberto Griggio <alberto.griggio@gmail.com>
-*  Copyright (c) 2012 Oliver Duis <www.oliverduis.de>
-*
-*  ART is free software: you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation, either version 3 of the License, or
-*  (at your option) any later version.
-*
-*  ART is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with ART.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ *
+ *  This file is part of ART.
+ *
+ *  Copyright (c) 2021 Alberto Griggio <alberto.griggio@gmail.com>
+ *  Copyright (c) 2012 Oliver Duis <www.oliverduis.de>
+ *
+ *  ART is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  ART is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "extprog.h"
 
 #include <cstring>
@@ -26,16 +26,15 @@
 #include <thread>
 
 #ifdef WIN32
-#include <windows.h>
 #include <shlobj.h>
+#include <windows.h>
 #endif
 
-#include "config.h"
-#include "options.h"
-#include "multilangmgr.h"
-#include "../rtengine/utils.h"
 #include "../rtengine/subprocess.h"
-
+#include "../rtengine/utils.h"
+#include "config.h"
+#include "multilangmgr.h"
+#include "options.h"
 
 namespace {
 
@@ -63,10 +62,7 @@ public:
         Glib::setenv("PATH", p);
     }
 
-    ~PathSetter()
-    {
-        Glib::setenv("PATH", pth_);
-    }
+    ~PathSetter() { Glib::setenv("PATH", pth_); }
 
 private:
     std::string pth_;
@@ -74,25 +70,14 @@ private:
 
 } // namespace
 
-
-UserCommand::UserCommand():
-    command(""),
-    label(""),
-    camera("^.*$"),
-    extensions(),
-    min_args(1),
-    max_args(std::numeric_limits<size_t>::max()),
-    filetype(ANY),
-    match_camera(false),
-    match_lens(false),
-    match_shutter(false),
-    match_iso(false),
-    match_aperture(false),
-    match_focallen(false),
-    match_dimensions(false)
+UserCommand::UserCommand()
+    : command(""), label(""), camera("^.*$"), extensions(), min_args(1),
+      max_args(std::numeric_limits<size_t>::max()), filetype(ANY),
+      match_camera(false), match_lens(false), match_shutter(false),
+      match_iso(false), match_aperture(false), match_focallen(false),
+      match_dimensions(false)
 {
 }
-
 
 bool UserCommand::matches(const std::vector<Thumbnail *> &args) const
 {
@@ -117,7 +102,8 @@ bool UserCommand::matches(const std::vector<Thumbnail *> &args) const
             if (match_lens && md->getLens() != mdi->getLens()) {
                 return false;
             }
-            if (match_shutter && md->getShutterSpeed() != mdi->getShutterSpeed()) {
+            if (match_shutter &&
+                md->getShutterSpeed() != mdi->getShutterSpeed()) {
                 return false;
             }
             if (match_iso && md->getISOSpeed() != mdi->getISOSpeed()) {
@@ -138,15 +124,20 @@ bool UserCommand::matches(const std::vector<Thumbnail *> &args) const
             }
         }
 
-        if (!Glib::Regex::match_simple(camera, mdi->getMake() + " " + mdi->getModel(), Glib::REGEX_CASELESS)) {
+        if (!Glib::Regex::match_simple(camera,
+                                       mdi->getMake() + " " + mdi->getModel(),
+                                       Glib::REGEX_CASELESS)) {
             return false;
         }
-        if (filetype != ANY && (args[i]->getType() == FT_Raw) != (filetype == RAW)) {
+        if (filetype != ANY &&
+            (args[i]->getType() == FT_Raw) != (filetype == RAW)) {
             return false;
         }
         if (!extensions.empty()) {
-            auto ext = std::string(rtengine::getFileExtension(args[i]->getFileName()).lowercase());
-            if (std::find(extensions.begin(), extensions.end(), ext) == extensions.end()) {
+            auto ext = std::string(
+                rtengine::getFileExtension(args[i]->getFileName()).lowercase());
+            if (std::find(extensions.begin(), extensions.end(), ext) ==
+                extensions.end()) {
                 return false;
             }
         }
@@ -155,58 +146,59 @@ bool UserCommand::matches(const std::vector<Thumbnail *> &args) const
     return true;
 }
 
-
 void UserCommand::execute(const std::vector<Thumbnail *> &args) const
 {
     if (args.empty()) {
         return;
     }
 
-    std::vector<Glib::ustring> argv = rtengine::subprocess::split_command_line(command);
-    
+    std::vector<Glib::ustring> argv =
+        rtengine::subprocess::split_command_line(command);
+
     for (auto &t : args) {
         t->updateCache(true, false);
         argv.push_back(t->getFileName());
     }
 
-    const auto doit =
-        [=](bool verb) -> void
-        {
-            try {
-                PathSetter ps;
-                rtengine::subprocess::exec_sync(UserCommandStore::getInstance()->dir(), argv, true, nullptr, nullptr);
-            } catch (rtengine::subprocess::error &exc) {
-                if (verb) {
-                    std::cerr << "Failed to execute \"" << command << "\": " << exc.what() << std::endl;
-                }
+    const auto doit = [=](bool verb) -> void {
+        try {
+            PathSetter ps;
+            rtengine::subprocess::exec_sync(
+                UserCommandStore::getInstance()->dir(), argv, true, nullptr,
+                nullptr);
+        } catch (rtengine::subprocess::error &exc) {
+            if (verb) {
+                std::cerr << "Failed to execute \"" << command
+                          << "\": " << exc.what() << std::endl;
             }
-        };
+        }
+    };
 
     std::thread(doit, options.rtSettings.verbose).detach();
 }
-
 
 void UserCommand::executeWithDirectory(const Glib::ustring path) const
 {
-    std::vector<Glib::ustring> argv = rtengine::subprocess::split_command_line(command);
+    std::vector<Glib::ustring> argv =
+        rtengine::subprocess::split_command_line(command);
     argv.push_back(path);
 
-    const auto doit =
-        [=](bool verb) -> void
-        {
-            try {
-                PathSetter ps;
-                rtengine::subprocess::exec_sync(UserCommandStore::getInstance()->dir(), argv, true, nullptr, nullptr);
-            } catch (rtengine::subprocess::error &exc) {
-                if (verb) {
-                    std::cerr << "Failed to execute \"" << command << "\": " << exc.what() << std::endl;
-                }
+    const auto doit = [=](bool verb) -> void {
+        try {
+            PathSetter ps;
+            rtengine::subprocess::exec_sync(
+                UserCommandStore::getInstance()->dir(), argv, true, nullptr,
+                nullptr);
+        } catch (rtengine::subprocess::error &exc) {
+            if (verb) {
+                std::cerr << "Failed to execute \"" << command
+                          << "\": " << exc.what() << std::endl;
             }
-        };
+        }
+    };
 
     std::thread(doit, options.rtSettings.verbose).detach();
 }
-
 
 UserCommandStore *UserCommandStore::getInstance()
 {
@@ -214,17 +206,17 @@ UserCommandStore *UserCommandStore::getInstance()
     return &instance;
 }
 
-
 void UserCommandStore::init(const Glib::ustring &dirname)
 {
     origpath_ = Glib::getenv("PATH");
     std::string extrapath;
 #ifdef BUILD_BUNDLE
-# ifdef __APPLE__
-    extrapath = Glib::build_filename(options.ART_base_dir, "../MacOS") + G_SEARCHPATH_SEPARATOR_S + options.ART_base_dir;
-# else // __APPLE__
+#ifdef __APPLE__
+    extrapath = Glib::build_filename(options.ART_base_dir, "../MacOS") +
+                G_SEARCHPATH_SEPARATOR_S + options.ART_base_dir;
+#else  // __APPLE__
     extrapath = options.ART_base_dir;
-# endif // __APPLE__
+#endif // __APPLE__
 #endif // BUILD_BUNDLE
     auto epth = Glib::getenv("ART_EXIFTOOL_BASE_DIR");
     if (!epth.empty()) {
@@ -234,7 +226,7 @@ void UserCommandStore::init(const Glib::ustring &dirname)
         extrapath += G_SEARCHPATH_SEPARATOR_S;
     }
     ucpath_ = extrapath + origpath_;
-    
+
     commands_.clear();
 
     if (!Glib::file_test(dirname, Glib::FILE_TEST_IS_DIR)) {
@@ -252,7 +244,7 @@ void UserCommandStore::init(const Glib::ustring &dirname)
             if (ext != "txt") {
                 continue;
             }
-            
+
             const Glib::ustring pth = Glib::build_filename(dirname, filename);
 
             if (!Glib::file_test(pth, Glib::FILE_TEST_IS_REGULAR)) {
@@ -291,7 +283,8 @@ void UserCommandStore::init(const Glib::ustring &dirname)
                             cmd.extensions.emplace_back(e.lowercase());
                         }
                     } catch (Glib::KeyFileError &) {
-                        cmd.extensions.emplace_back(kf.get_string(group, "Extension").lowercase());
+                        cmd.extensions.emplace_back(
+                            kf.get_string(group, "Extension").lowercase());
                     }
                 }
 
@@ -304,7 +297,8 @@ void UserCommandStore::init(const Glib::ustring &dirname)
                 }
 
                 if (kf.has_key(group, "NumArgs")) {
-                    cmd.min_args = cmd.max_args = kf.get_integer(group, "NumArgs");
+                    cmd.min_args = cmd.max_args =
+                        kf.get_integer(group, "NumArgs");
                 }
 
                 if (kf.has_key(group, "FileType")) {
@@ -320,11 +314,9 @@ void UserCommandStore::init(const Glib::ustring &dirname)
                     }
                 }
 
-                const auto getbool =
-                    [&](const char *k) -> bool
-                    {
-                        return kf.has_key(group, k) && kf.get_boolean(group, k);
-                    };
+                const auto getbool = [&](const char *k) -> bool {
+                    return kf.has_key(group, k) && kf.get_boolean(group, k);
+                };
                 cmd.match_camera = getbool("MatchCamera");
                 cmd.match_lens = getbool("MatchLens");
                 cmd.match_shutter = getbool("MatchShutter");
@@ -332,7 +324,7 @@ void UserCommandStore::init(const Glib::ustring &dirname)
                 cmd.match_aperture = getbool("MatchAperture");
                 cmd.match_focallen = getbool("MatchFocalLen");
                 cmd.match_dimensions = getbool("MatchDimensions");
-            
+
                 commands_.push_back(cmd);
 
                 if (options.rtSettings.verbose > 1) {
@@ -345,7 +337,8 @@ void UserCommandStore::init(const Glib::ustring &dirname)
             }
         }
     } catch (Glib::Exception &exc) {
-        std::cout << "ERROR scanning " << S(dirname) << ": " << S(exc.what()) << std::endl;
+        std::cout << "ERROR scanning " << S(dirname) << ": " << S(exc.what())
+                  << std::endl;
     }
 
     if (options.rtSettings.verbose) {
@@ -354,8 +347,8 @@ void UserCommandStore::init(const Glib::ustring &dirname)
     }
 }
 
-
-std::vector<UserCommand> UserCommandStore::getCommands(const std::vector<Thumbnail *> &sel) const
+std::vector<UserCommand>
+UserCommandStore::getCommands(const std::vector<Thumbnail *> &sel) const
 {
     std::vector<UserCommand> ret;
     for (auto &c : commands_) {
@@ -366,64 +359,70 @@ std::vector<UserCommand> UserCommandStore::getCommands(const std::vector<Thumbna
     return ret;
 }
 
-
 namespace ExtProg {
 
 bool spawnCommandAsync(const Glib::ustring &cmd)
 {
     try {
-        Glib::spawn_async("", Glib::shell_parse_argv(cmd), rtengine::subprocess::get_env(), Glib::SPAWN_SEARCH_PATH_FROM_ENVP);
+        Glib::spawn_async("", Glib::shell_parse_argv(cmd),
+                          rtengine::subprocess::get_env(),
+                          Glib::SPAWN_SEARCH_PATH_FROM_ENVP);
 
         return true;
 
-    } catch (const Glib::Exception& exception) {
+    } catch (const Glib::Exception &exception) {
 
         if (options.rtSettings.verbose) {
-            std::cerr << "Failed to execute \"" << cmd << "\": " << exception.what() << std::endl;
+            std::cerr << "Failed to execute \"" << cmd
+                      << "\": " << exception.what() << std::endl;
         }
 
         return false;
-
     }
 }
-
 
 bool spawnCommandSync(const Glib::ustring &cmd)
 {
     auto exitStatus = -1;
 
     try {
-        Glib::spawn_sync("", Glib::shell_parse_argv(cmd), rtengine::subprocess::get_env(), Glib::SPAWN_SEARCH_PATH_FROM_ENVP, {}, nullptr, nullptr, &exitStatus);
-    } catch (const Glib::Exception& exception) {
+        Glib::spawn_sync("", Glib::shell_parse_argv(cmd),
+                         rtengine::subprocess::get_env(),
+                         Glib::SPAWN_SEARCH_PATH_FROM_ENVP, {}, nullptr,
+                         nullptr, &exitStatus);
+    } catch (const Glib::Exception &exception) {
 
         if (options.rtSettings.verbose) {
-            std::cerr << "Failed to execute \"" << cmd << "\": " << exception.what() << std::endl;
+            std::cerr << "Failed to execute \"" << cmd
+                      << "\": " << exception.what() << std::endl;
         }
-
     }
 
     return exitStatus == 0;
 }
 
-
 bool openInGimp(const Glib::ustring &fileName)
 {
 #if defined WIN32
 
-    auto executable = rtengine::subprocess::to_wstr(Glib::build_filename (options.gimpDir, "bin", "gimp-win-remote"));
-    auto fn = rtengine::subprocess::quote(rtengine::subprocess::to_wstr(fileName)); //'"' + fileName + '"';
+    auto executable = rtengine::subprocess::to_wstr(
+        Glib::build_filename(options.gimpDir, "bin", "gimp-win-remote"));
+    auto fn = rtengine::subprocess::quote(
+        rtengine::subprocess::to_wstr(fileName)); //'"' + fileName + '"';
     auto open = rtengine::subprocess::to_wstr("open");
-    auto success = ShellExecuteW( NULL, open.c_str(), executable.c_str(), fn.c_str(), NULL, SW_SHOWNORMAL );
+    auto success = ShellExecuteW(NULL, open.c_str(), executable.c_str(),
+                                 fn.c_str(), NULL, SW_SHOWNORMAL);
 
 #elif defined __APPLE__
 
-    auto cmdLine = Glib::ustring("open -b \'org.gimp.gimp\' \'") + fileName + Glib::ustring("\'");
-    auto success = spawnCommandAsync (cmdLine);
+    auto cmdLine = Glib::ustring("open -b \'org.gimp.gimp\' \'") + fileName +
+                   Glib::ustring("\'");
+    auto success = spawnCommandAsync(cmdLine);
 
 #else
 
     auto cmdLine = Glib::ustring("gimp \"") + fileName + Glib::ustring("\"");
-    auto success = spawnCommandAsync (cmdLine);
+    auto success = spawnCommandAsync(cmdLine);
 
 #endif
 
@@ -443,8 +442,12 @@ bool openInGimp(const Glib::ustring &fileName)
     for (auto major = 3; major >= 2; --major) {
         for (auto minor = (major == 3 ? 1 : 12); minor >= 0; --minor) {
 
-            executable = rtengine::subprocess::to_wstr(Glib::build_filename (options.gimpDir, "bin", Glib::ustring::compose (Glib::ustring("gimp-%1.%2.exe"), major, minor)));
-            auto success = ShellExecuteW( NULL, open.c_str(), executable.c_str(), fn.c_str(), NULL, SW_SHOWNORMAL );
+            executable = rtengine::subprocess::to_wstr(Glib::build_filename(
+                options.gimpDir, "bin",
+                Glib::ustring::compose(Glib::ustring("gimp-%1.%2.exe"), major,
+                                       minor)));
+            auto success = ShellExecuteW(NULL, open.c_str(), executable.c_str(),
+                                         fn.c_str(), NULL, SW_SHOWNORMAL);
 
             if ((uintptr_t)success > 32) {
                 return true;
@@ -454,7 +457,8 @@ bool openInGimp(const Glib::ustring &fileName)
 
 #elif defined __APPLE__
 
-    cmdLine = Glib::ustring("open -a GIMP-dev \'") + fileName + Glib::ustring("\'");
+    cmdLine =
+        Glib::ustring("open -a GIMP-dev \'") + fileName + Glib::ustring("\'");
     success = spawnCommandAsync(cmdLine);
 
 #else
@@ -467,50 +471,61 @@ bool openInGimp(const Glib::ustring &fileName)
     return success;
 }
 
-
-bool openInPhotoshop(const Glib::ustring& fileName)
+bool openInPhotoshop(const Glib::ustring &fileName)
 {
 #if defined WIN32
 
-    const auto executable = rtengine::subprocess::to_wstr(Glib::build_filename(options.psDir, "Photoshop.exe"));
-    const auto fn = rtengine::subprocess::quote(rtengine::subprocess::to_wstr(fileName));
+    const auto executable = rtengine::subprocess::to_wstr(
+        Glib::build_filename(options.psDir, "Photoshop.exe"));
+    const auto fn =
+        rtengine::subprocess::quote(rtengine::subprocess::to_wstr(fileName));
     auto open = rtengine::subprocess::to_wstr("open");
-    auto success = ShellExecuteW(NULL, open.c_str(), executable.c_str(), fn.c_str(), NULL, SW_SHOWNORMAL);
+    auto success = ShellExecuteW(NULL, open.c_str(), executable.c_str(),
+                                 fn.c_str(), NULL, SW_SHOWNORMAL);
     return (uintptr_t)success > 32;
 
 #elif defined __APPLE__
 
-    const auto cmdLine = Glib::ustring("open -b \'com.adobe.Photoshop\' \'") + fileName + Glib::ustring("\'");
-    return spawnCommandAsync (cmdLine);
+    const auto cmdLine = Glib::ustring("open -b \'com.adobe.Photoshop\' \'") +
+                         fileName + Glib::ustring("\'");
+    return spawnCommandAsync(cmdLine);
 
 #else
 
-    const auto cmdLine = Glib::ustring("\"") + Glib::build_filename(options.psDir, "Photoshop.exe") + Glib::ustring("\" \"") + fileName + Glib::ustring("\"");
-    return spawnCommandAsync (cmdLine);
-    
+    const auto cmdLine = Glib::ustring("\"") +
+                         Glib::build_filename(options.psDir, "Photoshop.exe") +
+                         Glib::ustring("\" \"") + fileName +
+                         Glib::ustring("\"");
+    return spawnCommandAsync(cmdLine);
+
 #endif
 }
 
-
-bool openInCustomEditor(const Glib::ustring& fileName)
+bool openInCustomEditor(const Glib::ustring &fileName)
 {
 #if defined WIN32
 
-    const auto cmdLine = rtengine::subprocess::to_wstr(options.customEditorProg);
-    auto fn = rtengine::subprocess::quote(rtengine::subprocess::to_wstr(fileName));
+    const auto cmdLine =
+        rtengine::subprocess::to_wstr(options.customEditorProg);
+    auto fn =
+        rtengine::subprocess::quote(rtengine::subprocess::to_wstr(fileName));
     auto open = rtengine::subprocess::to_wstr("open");
-    auto success = ShellExecuteW( NULL, open.c_str(), cmdLine.c_str(), fn.c_str(), NULL, SW_SHOWNORMAL );
+    auto success = ShellExecuteW(NULL, open.c_str(), cmdLine.c_str(),
+                                 fn.c_str(), NULL, SW_SHOWNORMAL);
     return (uintptr_t)success > 32;
 
 #elif defined __APPLE__
 
-    const auto cmdLine = options.customEditorProg + Glib::ustring(" \"") + fileName + Glib::ustring("\"");
-    return spawnCommandAsync (cmdLine);
+    const auto cmdLine = options.customEditorProg + Glib::ustring(" \"") +
+                         fileName + Glib::ustring("\"");
+    return spawnCommandAsync(cmdLine);
 
 #else
 
-    const auto cmdLine = Glib::ustring("\"") + options.customEditorProg + Glib::ustring("\" \"") + fileName + Glib::ustring("\"");
-    return spawnCommandAsync (cmdLine);
+    const auto cmdLine = Glib::ustring("\"") + options.customEditorProg +
+                         Glib::ustring("\" \"") + fileName +
+                         Glib::ustring("\"");
+    return spawnCommandAsync(cmdLine);
 
 #endif
 }

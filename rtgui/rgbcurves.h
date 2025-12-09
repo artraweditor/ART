@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,14 +20,18 @@
 #ifndef _RGBCURVES_H_
 #define _RGBCURVES_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
+#include "colorprovider.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
-#include "colorprovider.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class RGBCurves : public ToolParamBlock, public FoldableToolPanel, public CurveListener, public ColorProvider, public CurveBackgroundProvider {
+class RGBCurves: public ToolParamBlock,
+                 public FoldableToolPanel,
+                 public CurveListener,
+                 public ColorProvider,
+                 public CurveBackgroundProvider {
 private:
     CurveEditorGroup *curveEditorG;
     DiagonalCurveEditor *Rshape;
@@ -37,34 +41,29 @@ private:
     rtengine::procparams::RGBCurvesParams initial_params;
 
 public:
-
     RGBCurves();
     ~RGBCurves() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setEditProvider (EditDataProvider *provider) override;
-    void autoOpenCurve   () override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void setEditProvider(EditDataProvider *provider) override;
+    void autoOpenCurve() override;
 
-    void curveChanged (CurveEditor* ce) override;
+    void curveChanged(CurveEditor *ce) override;
     void updateCurveBackgroundHistogram(
-        const LUTu& histToneCurve,
-        const LUTu& histLCurve,
-        const LUTu& histCCurve,
-        const LUTu& histLCAM,
-        const LUTu& histCCAM,
-        const LUTu& histRed,
-        const LUTu& histGreen,
-        const LUTu& histBlue,
-        const LUTu& histLuma,
-        const LUTu& histLRETI
-    );
+        const LUTu &histToneCurve, const LUTu &histLCurve,
+        const LUTu &histCCurve, const LUTu &histLCAM, const LUTu &histCCAM,
+        const LUTu &histRed, const LUTu &histGreen, const LUTu &histBlue,
+        const LUTu &histLuma, const LUTu &histLRETI);
     void enabledChanged() override;
 
     void setDefaults(const rtengine::procparams::ProcParams *def) override;
     void toolReset(bool to_initial) override;
 
-    void renderCurveBackground(int caller_id, Glib::RefPtr<Gtk::StyleContext> style, Cairo::RefPtr<Cairo::Context> cr, double x, double y, double w, double h) override;
+    void renderCurveBackground(int caller_id,
+                               Glib::RefPtr<Gtk::StyleContext> style,
+                               Cairo::RefPtr<Cairo::Context> cr, double x,
+                               double y, double w, double h) override;
 };
 
 #endif

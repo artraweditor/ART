@@ -21,9 +21,9 @@
 #include "../rtgui/mydiagonalcurve.h"
 #include "../rtgui/myflatcurve.h"
 
-#include <vector>
 #include <array>
 #include <unordered_map>
+#include <vector>
 
 namespace rtengine {
 
@@ -41,15 +41,13 @@ bool set_int(cJSON *n, double &out)
     return false;
 }
 
-
 static const std::unordered_map<std::string, double> curvetypes = {
     {"Linear", double(DCT_Linear)},
     {"Spline", double(DCT_Spline)},
     {"CatmullRom", double(DCT_CatmullRom)},
     {"NURBS", double(DCT_NURBS)},
     {"Parametric", double(DCT_Parametric)},
-    {"ControlPoints", double(FCT_MinMaxCPoints)}
-};
+    {"ControlPoints", double(FCT_MinMaxCPoints)}};
 
 } // namespace
 
@@ -102,12 +100,12 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
     if (!cJSON_IsArray(root)) {
         return false;
     }
-    
+
     auto sz = cJSON_GetArraySize(root);
     if (sz < 2) {
         return false;
     }
-    
+
     auto n = cJSON_GetArrayItem(root, 0);
     if (!cJSON_IsString(n)) {
         return false;
@@ -121,53 +119,50 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
     gui_name = cJSON_GetStringValue(n);
     gui_group = "";
     gui_step = 1;
-    value_default = { 0 };
+    value_default = {0};
 
-    const auto set_group_tooltip =
-        [&](int i, int sz) -> bool
-        {
-            auto n = cJSON_GetArrayItem(root, i);
+    const auto set_group_tooltip = [&](int i, int sz) -> bool {
+        auto n = cJSON_GetArrayItem(root, i);
+        if (!cJSON_IsString(n)) {
+            return false;
+        }
+        gui_group = cJSON_GetStringValue(n);
+        if (i + 1 < sz) {
+            n = cJSON_GetArrayItem(root, i + 1);
             if (!cJSON_IsString(n)) {
                 return false;
             }
-            gui_group = cJSON_GetStringValue(n);
-            if (i+1 < sz) {
-                n = cJSON_GetArrayItem(root, i+1);
-                if (!cJSON_IsString(n)) {
-                    return false;
-                }
-                gui_tooltip = cJSON_GetStringValue(n);
-            }
-            return true;
-        };
+            gui_tooltip = cJSON_GetStringValue(n);
+        }
+        return true;
+    };
 
     const auto set_gradient =
-        [&](cJSON *n, std::vector<std::array<float, 4>> &out) -> bool
-        {
-            out.clear();
-            if (cJSON_IsNumber(n) && n->valuedouble == 0) {
-                return true;
-            } else if (cJSON_IsArray(n)) {
-                size_t k = cJSON_GetArraySize(n);
-                for (size_t j = 0; j < k; ++j) {
-                    auto g = cJSON_GetArrayItem(n, j);
-                    if (!cJSON_IsArray(g) || cJSON_GetArraySize(g) != 4) {
+        [&](cJSON *n, std::vector<std::array<float, 4>> &out) -> bool {
+        out.clear();
+        if (cJSON_IsNumber(n) && n->valuedouble == 0) {
+            return true;
+        } else if (cJSON_IsArray(n)) {
+            size_t k = cJSON_GetArraySize(n);
+            for (size_t j = 0; j < k; ++j) {
+                auto g = cJSON_GetArrayItem(n, j);
+                if (!cJSON_IsArray(g) || cJSON_GetArraySize(g) != 4) {
+                    return false;
+                }
+                out.emplace_back();
+                auto &arr = out.back();
+                for (size_t c = 0; c < 4; ++c) {
+                    auto e = cJSON_GetArrayItem(g, c);
+                    if (!cJSON_IsNumber(e)) {
                         return false;
                     }
-                    out.emplace_back();
-                    auto &arr = out.back();
-                    for (size_t c = 0; c < 4; ++c) {
-                        auto e = cJSON_GetArrayItem(g, c);
-                        if (!cJSON_IsNumber(e)) {
-                            return false;
-                        }
-                        arr[c] = e->valuedouble;
-                    }
+                    arr[c] = e->valuedouble;
                 }
-                return true;
             }
-            return false;
-        };
+            return true;
+        }
+        return false;
+    };
 
     switch (type) {
     case CLUTParamType::PT_BOOL:
@@ -176,7 +171,7 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
         } else if (sz >= 3 && sz <= 5) {
             n = cJSON_GetArrayItem(root, 2);
             if (cJSON_IsBool(n)) {
-                value_default = { double(cJSON_IsTrue(n)) };
+                value_default = {double(cJSON_IsTrue(n))};
             }
             if (sz >= 4) {
                 return set_group_tooltip(3, sz);
@@ -202,7 +197,7 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
             if (sz >= 5) {
                 n = cJSON_GetArrayItem(root, 4);
                 if (cJSON_IsNumber(n)) {
-                    value_default = { n->valuedouble };
+                    value_default = {n->valuedouble};
                 } else {
                     return false;
                 }
@@ -288,14 +283,15 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
                     n = cJSON_GetArrayItem(root, 3);
                     if (cJSON_IsNumber(n) && n->valuedouble == 0) {
                         // 0 is a special case for a default curve
-                        value_default = { 0 };
+                        value_default = {0};
                     } else if (cJSON_IsArray(n)) {
                         value_default.clear();
                         for (int i = 0, k = cJSON_GetArraySize(n); i < k; ++i) {
                             auto v = cJSON_GetArrayItem(n, i);
                             double d = 0;
                             if (i == 0 && cJSON_IsString(v)) {
-                                auto it = curvetypes.find(cJSON_GetStringValue(v));
+                                auto it =
+                                    curvetypes.find(cJSON_GetStringValue(v));
                                 if (it == curvetypes.end()) {
                                     return false;
                                 } else {
@@ -345,17 +341,17 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
         return false;
     }
 
-    return false;  
+    return false;
 }
 
-
-const std::vector<std::pair<std::string, Glib::ustring>> &CLUTParamDescriptorList::get_presets() const
+const std::vector<std::pair<std::string, Glib::ustring>> &
+CLUTParamDescriptorList::get_presets() const
 {
     return presets_;
 }
 
-
-bool CLUTParamDescriptorList::apply_preset(const std::string &key, CLUTParamValueMap &out)
+bool CLUTParamDescriptorList::apply_preset(const std::string &key,
+                                           CLUTParamValueMap &out)
 {
     auto it = presets_map_.find(key);
     if (it == presets_map_.end()) {
@@ -369,18 +365,17 @@ bool CLUTParamDescriptorList::apply_preset(const std::string &key, CLUTParamValu
     return true;
 }
 
-
 bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
 {
     if (!cJSON_IsArray(root)) {
         return false;
     }
-    
+
     auto sz = cJSON_GetArraySize(root);
     if (sz < 3) {
         return false;
     }
-    
+
     auto n = cJSON_GetArrayItem(root, 0);
     if (!cJSON_IsString(n)) {
         return false;
@@ -407,7 +402,7 @@ bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
 
     for (auto c = n->child; c; c = c->next) {
         std::vector<double> value;
-        
+
         if (!c->string) {
             return false;
         }
@@ -416,11 +411,11 @@ bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
             return false;
         }
         auto type = jt->second;
-    
+
         switch (type) {
         case CLUTParamType::PT_BOOL:
             if (cJSON_IsBool(c)) {
-                value = { double(cJSON_IsTrue(c)) };
+                value = {double(cJSON_IsTrue(c))};
             } else {
                 return false;
             }
@@ -444,7 +439,7 @@ bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
         case CLUTParamType::PT_FLATCURVE_PERIODIC:
             if (cJSON_IsNumber(c) && c->valuedouble == 0) {
                 // 0 is a special case for a default curve
-                value = { 0 };
+                value = {0};
             } else if (cJSON_IsArray(c)) {
                 for (int i = 0, k = cJSON_GetArraySize(c); i < k; ++i) {
                     auto v = cJSON_GetArrayItem(c, i);
@@ -477,8 +472,9 @@ bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
     return add_preset(key, gui_name, vmap);
 }
 
-
-bool CLUTParamDescriptorList::add_preset(const std::string &key, const Glib::ustring &gui_name, const CLUTParamValueMap &value)
+bool CLUTParamDescriptorList::add_preset(const std::string &key,
+                                         const Glib::ustring &gui_name,
+                                         const CLUTParamValueMap &value)
 {
     if (presets_map_.find(key) != presets_map_.end()) {
         return false;

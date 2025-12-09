@@ -18,11 +18,9 @@
  */
 #include "lwbuttonset.h"
 
-LWButtonSet::LWButtonSet () : aw(0), ah(0), ax(-1), ay(-1)
-{
-}
+LWButtonSet::LWButtonSet(): aw(0), ah(0), ax(-1), ay(-1) {}
 
-LWButtonSet::~LWButtonSet ()
+LWButtonSet::~LWButtonSet()
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
@@ -30,13 +28,9 @@ LWButtonSet::~LWButtonSet ()
     }
 }
 
-void LWButtonSet::add (LWButton* b)
-{
+void LWButtonSet::add(LWButton *b) { buttons.push_back(b); }
 
-    buttons.push_back (b);
-}
-
-void LWButtonSet::getMinimalDimensions (int& w, int& h)
+void LWButtonSet::getMinimalDimensions(int &w, int &h)
 {
 
     w = 0;
@@ -50,15 +44,15 @@ void LWButtonSet::getMinimalDimensions (int& w, int& h)
     }
 }
 
-void LWButtonSet::arrangeButtons (int x, int y, int w, int h)
+void LWButtonSet::arrangeButtons(int x, int y, int w, int h)
 {
 
-    if (x == ax && y == ay && w == aw && (h == -1 || h == ah )) {
+    if (x == ax && y == ay && w == aw && (h == -1 || h == ah)) {
         return;
     }
 
     int mw, mh;
-    getMinimalDimensions (mw, mh);
+    getMinimalDimensions(mw, mh);
 
     if (w < 0) {
         w = mw;
@@ -74,8 +68,8 @@ void LWButtonSet::arrangeButtons (int x, int y, int w, int h)
     for (size_t i = 0; i < buttons.size(); i++) {
         LWButton::Alignment halign, valign;
         int bx = 0, by = 0, bw = 0, bh = 0;
-        buttons[i]->getSize (bw, bh);
-        buttons[i]->getAlignment (halign, valign);
+        buttons[i]->getSize(bw, bh);
+        buttons[i]->getAlignment(halign, valign);
 
         if (halign == LWButton::Left) {
             bx = begx;
@@ -93,7 +87,7 @@ void LWButtonSet::arrangeButtons (int x, int y, int w, int h)
             by = y + (h - bh) / 2;
         }
 
-        buttons[i]->setPosition (bx, by);
+        buttons[i]->setPosition(bx, by);
     }
 
     aw = w;
@@ -102,105 +96,105 @@ void LWButtonSet::arrangeButtons (int x, int y, int w, int h)
     ay = y;
 }
 
-void LWButtonSet::move (int nx, int ny)
+void LWButtonSet::move(int nx, int ny)
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
         int x, y;
-        buttons[i]->getPosition (x, y);
-        buttons[i]->setPosition (x + nx - ax, y + ny - ay);
+        buttons[i]->getPosition(x, y);
+        buttons[i]->setPosition(x + nx - ax, y + ny - ay);
     }
 
     ax = nx;
     ay = ny;
 }
 
-void LWButtonSet::redraw (Cairo::RefPtr<Cairo::Context> context)
+void LWButtonSet::redraw(Cairo::RefPtr<Cairo::Context> context)
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        buttons[i]->redraw (context);
+        buttons[i]->redraw(context);
     }
 }
 
-bool LWButtonSet::motionNotify (int x, int y)
+bool LWButtonSet::motionNotify(int x, int y)
 {
 
     bool res = false;
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        bool handled = buttons[i]->motionNotify (x, y);
+        bool handled = buttons[i]->motionNotify(x, y);
         res = res || handled;
     }
 
     return res;
 }
 
-bool LWButtonSet::pressNotify (int x, int y)
+bool LWButtonSet::pressNotify(int x, int y)
 {
 
     bool res = false;
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        bool handled = buttons[i]->pressNotify (x, y);
+        bool handled = buttons[i]->pressNotify(x, y);
         res = res || handled;
     }
 
     return res;
 }
 
-bool LWButtonSet::releaseNotify (int x, int y)
+bool LWButtonSet::releaseNotify(int x, int y)
 {
 
     bool res = false;
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        bool handled = buttons[i]->releaseNotify (x, y);
+        bool handled = buttons[i]->releaseNotify(x, y);
         res = res || handled;
     }
 
     return res;
 }
 
-bool LWButtonSet::inside (int x, int y)
+bool LWButtonSet::inside(int x, int y)
 {
 
     for (size_t i = 0; i < buttons.size(); i++)
-        if (buttons[i]->inside (x, y)) {
+        if (buttons[i]->inside(x, y)) {
             return true;
         }
 
     return false;
 }
 
-void LWButtonSet::setButtonListener (LWButtonListener* bl)
+void LWButtonSet::setButtonListener(LWButtonListener *bl)
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        buttons[i]->setButtonListener (bl);
+        buttons[i]->setButtonListener(bl);
     }
 }
 
-void LWButtonSet::getAllocatedDimensions (int& w, int& h)
+void LWButtonSet::getAllocatedDimensions(int &w, int &h)
 {
 
     w = aw;
     h = ah;
 }
 
-void LWButtonSet::setColors (const Gdk::RGBA& bg, const Gdk::RGBA& fg)
+void LWButtonSet::setColors(const Gdk::RGBA &bg, const Gdk::RGBA &fg)
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        buttons[i]->setColors (bg, fg);
+        buttons[i]->setColors(bg, fg);
     }
 }
 
-Glib::ustring LWButtonSet::getToolTip (int x, int y)
+Glib::ustring LWButtonSet::getToolTip(int x, int y)
 {
 
     for (size_t i = 0; i < buttons.size(); i++) {
-        Glib::ustring ttip = buttons[i]->getToolTip (x, y);
+        Glib::ustring ttip = buttons[i]->getToolTip(x, y);
 
         if (ttip != "") {
             return ttip;

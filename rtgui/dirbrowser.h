@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,32 +19,31 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include <giomm.h>
+#include <gtkmm.h>
 
-#include "guiutils.h"
 #include "dirtreeview.h"
+#include "guiutils.h"
 
 #ifdef WIN32
 #include "windows.h"
 #endif
 
-class DirBrowser : public Gtk::VBox
-{
+class DirBrowser: public Gtk::VBox {
 public:
-    typedef sigc::signal<void, const Glib::ustring&, const Glib::ustring&> DirSelectionSignal;
+    typedef sigc::signal<void, const Glib::ustring &, const Glib::ustring &>
+        DirSelectionSignal;
 
 private:
-
     Glib::RefPtr<Gtk::TreeStore> dirTreeModel;
 
-    struct DirTreeColumns : public Gtk::TreeModelColumnRecord {
+    struct DirTreeColumns: public Gtk::TreeModelColumnRecord {
     public:
         Gtk::TreeModelColumn<Glib::ustring> filename;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > icon1;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > icon2;
+        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> icon1;
+        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> icon2;
         Gtk::TreeModelColumn<Glib::ustring> dirname;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gio::FileMonitor> > monitor;
+        Gtk::TreeModelColumn<Glib::RefPtr<Gio::FileMonitor>> monitor;
 
         DirTreeColumns()
         {
@@ -62,12 +61,11 @@ private:
     Gtk::CellRendererPixbuf crb;
     Glib::ustring selected_dir_;
 
-
     DirTreeView *dirtree;
     Gtk::ScrolledWindow *scrolledwindow4;
     DirSelectionSignal dirSelectionSignal;
 
-    void fillRoot ();
+    void fillRoot();
 
     Glib::RefPtr<Gdk::Pixbuf> openfolder;
     Glib::RefPtr<Gdk::Pixbuf> closedfolder;
@@ -81,39 +79,50 @@ private:
 
 #ifdef WIN32
     unsigned int volumes;
+
 public:
-    void updateVolumes ();
-    void updateDirTree  (const Gtk::TreeModel::iterator& iter);
-    void updateDirTreeRoot  ();
+    void updateVolumes();
+    void updateDirTree(const Gtk::TreeModel::iterator &iter);
+    void updateDirTreeRoot();
+
 private:
-    void addRoot (char letter);
+    void addRoot(char letter);
 #endif
-    void addDir (const Gtk::TreeModel::iterator& iter, const Glib::ustring& dirname);
-    Gtk::TreePath expandToDir (const Glib::ustring& dirName);
-    void updateDir (const Gtk::TreeModel::iterator& iter);
+    void addDir(const Gtk::TreeModel::iterator &iter,
+                const Glib::ustring &dirname);
+    Gtk::TreePath expandToDir(const Glib::ustring &dirName);
+    void updateDir(const Gtk::TreeModel::iterator &iter);
 
     IdleRegister idle_register;
 
-    void on_cell_data_name(Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &iter);
+    void on_cell_data_name(Gtk::CellRenderer *renderer,
+                           const Gtk::TreeModel::iterator &iter);
 
 public:
-    DirBrowser ();
+    DirBrowser();
     ~DirBrowser() override;
 
-    void fillDirTree ();
+    void fillDirTree();
     void on_sort_column_changed() const;
-    void row_expanded   (const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path);
-    void row_activated  (const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
-    void file_changed   (const Glib::RefPtr<Gio::File>& file, const Glib::RefPtr<Gio::File>& other_file, Gio::FileMonitorEvent event_type, const Gtk::TreeModel::iterator& iter, const Glib::ustring& dirName);
-    void open           (const Glib::ustring& dirName, const Glib::ustring& fileName = ""); // goes to dir "dirName" and selects file "fileName"
-    void selectDir      (Glib::ustring dir);
-    void menu_item_activated(const UserCommand& cmd);
+    void row_expanded(const Gtk::TreeModel::iterator &iter,
+                      const Gtk::TreeModel::Path &path);
+    void row_activated(const Gtk::TreeModel::Path &path,
+                       Gtk::TreeViewColumn *column);
+    void file_changed(const Glib::RefPtr<Gio::File> &file,
+                      const Glib::RefPtr<Gio::File> &other_file,
+                      Gio::FileMonitorEvent event_type,
+                      const Gtk::TreeModel::iterator &iter,
+                      const Glib::ustring &dirName);
+    void open(const Glib::ustring &dirName,
+              const Glib::ustring &fileName =
+                  ""); // goes to dir "dirName" and selects file "fileName"
+    void selectDir(Glib::ustring dir);
+    void menu_item_activated(const UserCommand &cmd);
 
-    DirSelectionSignal dirSelected () const;
+    DirSelectionSignal dirSelected() const;
 };
 
-inline DirBrowser::DirSelectionSignal DirBrowser::dirSelected () const
+inline DirBrowser::DirSelectionSignal DirBrowser::dirSelected() const
 {
     return dirSelectionSignal;
 }
-

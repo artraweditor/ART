@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -22,30 +22,34 @@
 
 #include "rtengine.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-class ProcessingJobImpl : public ProcessingJob
-{
+class ProcessingJobImpl: public ProcessingJob {
 
 public:
     Glib::ustring fname;
     bool isRaw;
-    InitialImage* initialImage;
+    InitialImage *initialImage;
     procparams::ProcParams pparams;
     bool fast;
     bool use_batch_profile;
 
-    ProcessingJobImpl (const Glib::ustring& fn, bool iR, const procparams::ProcParams& pp, bool ff, bool ubp=true)
-        : fname(fn), isRaw(iR), initialImage(nullptr), pparams(pp), fast(ff), use_batch_profile(ubp) {}
+    ProcessingJobImpl(const Glib::ustring &fn, bool iR,
+                      const procparams::ProcParams &pp, bool ff,
+                      bool ubp = true)
+        : fname(fn), isRaw(iR), initialImage(nullptr), pparams(pp), fast(ff),
+          use_batch_profile(ubp)
+    {
+    }
 
-    ProcessingJobImpl (InitialImage* iImage, const procparams::ProcParams& pp, bool ff)
+    ProcessingJobImpl(InitialImage *iImage, const procparams::ProcParams &pp,
+                      bool ff)
         : fname(""), isRaw(true), initialImage(iImage), pparams(pp), fast(ff)
     {
         iImage->increaseRef();
     }
 
-    ~ProcessingJobImpl () override
+    ~ProcessingJobImpl() override
     {
         if (initialImage) {
             initialImage->decreaseRef();
@@ -55,6 +59,6 @@ public:
     bool fastPipeline() const override { return fast; }
 };
 
-}
+} // namespace rtengine
 
 #endif

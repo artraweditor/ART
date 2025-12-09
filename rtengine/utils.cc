@@ -16,28 +16,29 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "rt_math.h"
 #include <cmath>
-#include <cstring>
 #include <cstdio>
-#include "rt_math.h"
+#include <cstring>
 
+#include "rt_math.h"
 #include "utils.h"
-#include "rt_math.h"
 
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
-#include <glib/gstdio.h>
 #include <giomm.h>
+#include <glib/gstdio.h>
 #ifdef WIN32
-#  include <windows.h>
+#include <windows.h>
 #endif
 
 namespace rtengine {
 
-void poke255_uc(unsigned char*& dest, unsigned char r, unsigned char g, unsigned char b)
+void poke255_uc(unsigned char *&dest, unsigned char r, unsigned char g,
+                unsigned char b)
 {
-#if __BYTE_ORDER__==__ORDER_LITTLE_ENDIAN__
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     *(dest++) = b;
     *(dest++) = g;
     *(dest++) = r;
@@ -50,10 +51,10 @@ void poke255_uc(unsigned char*& dest, unsigned char r, unsigned char g, unsigned
 #endif
 }
 
-void poke01_d(unsigned char*& dest, double r, double g, double b, double a)
+void poke01_d(unsigned char *&dest, double r, double g, double b, double a)
 {
     double aa = (1.0 - a) * 255.;
-#if __BYTE_ORDER__==__ORDER_LITTLE_ENDIAN__
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     *(dest++) = (unsigned char)(b * aa);
     *(dest++) = (unsigned char)(g * aa);
     *(dest++) = (unsigned char)(r * aa);
@@ -81,7 +82,8 @@ void poke01_d(unsigned char*& dest, double r, double g, double b, double a)
 // #endif
 // }
 
-void bilinearInterp(const unsigned char* src, int sw, int sh, unsigned char* dst, int dw, int dh)
+void bilinearInterp(const unsigned char *src, int sw, int sh,
+                    unsigned char *dst, int dw, int dh)
 {
     int ix = 0;
 
@@ -120,25 +122,32 @@ void bilinearInterp(const unsigned char* src, int sw, int sh, unsigned char* dst
             int ofs12 = or1 + 3 * nx;
             int ofs21 = or2 + 3 * sx;
             int ofs22 = or2 + 3 * nx;
-            unsigned int val = src[ofs11] * (1 - dx) * (1 - dy) + src[ofs12] * dx * (1 - dy) + src[ofs21] * (1 - dx) * dy + src[ofs22] * dx * dy;
+            unsigned int val =
+                src[ofs11] * (1 - dx) * (1 - dy) + src[ofs12] * dx * (1 - dy) +
+                src[ofs21] * (1 - dx) * dy + src[ofs22] * dx * dy;
             dst[ix++] = val;
             ofs11++;
             ofs12++;
             ofs21++;
             ofs22++;
-            val = src[ofs11] * (1 - dx) * (1 - dy) + src[ofs12] * dx * (1 - dy) + src[ofs21] * (1 - dx) * dy + src[ofs22] * dx * dy;
+            val = src[ofs11] * (1 - dx) * (1 - dy) +
+                  src[ofs12] * dx * (1 - dy) + src[ofs21] * (1 - dx) * dy +
+                  src[ofs22] * dx * dy;
             dst[ix++] = val;
             ofs11++;
             ofs12++;
             ofs21++;
             ofs22++;
-            val = src[ofs11] * (1 - dx) * (1 - dy) + src[ofs12] * dx * (1 - dy) + src[ofs21] * (1 - dx) * dy + src[ofs22] * dx * dy;
+            val = src[ofs11] * (1 - dx) * (1 - dy) +
+                  src[ofs12] * dx * (1 - dy) + src[ofs21] * (1 - dx) * dy +
+                  src[ofs22] * dx * dy;
             dst[ix++] = val;
         }
     }
 }
 
-void nearestInterp(const unsigned char* src, int sw, int sh, unsigned char* dst, int dw, int dh)
+void nearestInterp(const unsigned char *src, int sw, int sh, unsigned char *dst,
+                   int dw, int dh)
 {
     int ix = 0;
 
@@ -155,13 +164,13 @@ void nearestInterp(const unsigned char* src, int sw, int sh, unsigned char* dst,
     }
 }
 
-void rotate(unsigned char* img, int& w, int& h, int deg)
+void rotate(unsigned char *img, int &w, int &h, int deg)
 {
     if (deg == 0) {
         return;
     }
 
-    unsigned char* rotated = new unsigned char[3 * w * h];
+    unsigned char *rotated = new unsigned char[3 * w * h];
     int ix = 0;
 
     if (deg == 90) {
@@ -172,7 +181,7 @@ void rotate(unsigned char* img, int& w, int& h, int deg)
                 rotated[3 * (j * h + h - i - 1) + 2] = img[ix++];
             }
 
-        std::swap(w,h);
+        std::swap(w, h);
     } else if (deg == 270) {
         for (int i = 0; i < h; i++)
             for (int j = 0; j < w; j++) {
@@ -181,7 +190,7 @@ void rotate(unsigned char* img, int& w, int& h, int deg)
                 rotated[3 * (h * (w - j - 1) + i) + 2] = img[ix++];
             }
 
-        std::swap(w,h);
+        std::swap(w, h);
     } else /*if (deg == 180) */
         for (int i = 0; i < h; i++)
             for (int j = 0; j < w; j++) {
@@ -194,10 +203,10 @@ void rotate(unsigned char* img, int& w, int& h, int deg)
     delete[] rotated;
 }
 
-void hflip(unsigned char* img, int w, int h)
+void hflip(unsigned char *img, int w, int h)
 {
-    if(w > 0 && h > 0) {
-        unsigned char* flipped = new unsigned char[3 * w * h];
+    if (w > 0 && h > 0) {
+        unsigned char *flipped = new unsigned char[3 * w * h];
         int ix = 0;
 
         for (int i = 0; i < h; i++)
@@ -212,10 +221,10 @@ void hflip(unsigned char* img, int w, int h)
     }
 }
 
-void vflip(unsigned char* img, int w, int h)
+void vflip(unsigned char *img, int w, int h)
 {
-    if(w > 0 && h > 0) {
-        unsigned char* flipped = new unsigned char[3 * w * h];
+    if (w > 0 && h > 0) {
+        unsigned char *flipped = new unsigned char[3 * w * h];
         int ix = 0;
 
         for (int i = 0; i < h; i++)
@@ -230,37 +239,36 @@ void vflip(unsigned char* img, int w, int h)
     }
 }
 
-Glib::ustring getFileExtension(const Glib::ustring& filename)
+Glib::ustring getFileExtension(const Glib::ustring &filename)
 {
     const Glib::ustring::size_type lastdot_pos = filename.find_last_of('.');
-    return
-        lastdot_pos != Glib::ustring::npos
-            ? filename.substr(lastdot_pos + 1).lowercase()
-            : Glib::ustring();
+    return lastdot_pos != Glib::ustring::npos
+               ? filename.substr(lastdot_pos + 1).lowercase()
+               : Glib::ustring();
 }
 
-bool hasJpegExtension(const Glib::ustring& filename)
+bool hasJpegExtension(const Glib::ustring &filename)
 {
-   const Glib::ustring extension = getFileExtension(filename);
-   return extension == "jpg" || extension == "jpeg";
+    const Glib::ustring extension = getFileExtension(filename);
+    return extension == "jpg" || extension == "jpeg";
 }
 
-bool hasTiffExtension(const Glib::ustring& filename)
+bool hasTiffExtension(const Glib::ustring &filename)
 {
-   const Glib::ustring extension = getFileExtension(filename);
-   return extension == "tif" || extension == "tiff";
+    const Glib::ustring extension = getFileExtension(filename);
+    return extension == "tif" || extension == "tiff";
 }
 
-bool hasPngExtension(const Glib::ustring& filename)
+bool hasPngExtension(const Glib::ustring &filename)
 {
-   return getFileExtension(filename) == "png";
+    return getFileExtension(filename) == "png";
 }
 
-void swab(const void* from, void* to, ssize_t n)
+void swab(const void *from, void *to, ssize_t n)
 {
     // Adapted from glibc
-    const char* char_from = static_cast<const char*>(from);
-    char* char_to = static_cast<char*>(to);
+    const char *char_from = static_cast<const char *>(from);
+    char *char_to = static_cast<char *>(to);
 
     n &= ~static_cast<ssize_t>(1);
 
@@ -271,19 +279,25 @@ void swab(const void* from, void* to, ssize_t n)
     }
 }
 
-
-std::string getMD5(const Glib::ustring& fname, bool extended)
+std::string getMD5(const Glib::ustring &fname, bool extended)
 {
 
 #ifdef WIN32
 
-    std::unique_ptr<wchar_t, GFreeFunc> wfname(reinterpret_cast<wchar_t*>(g_utf8_to_utf16(fname.c_str(), -1, NULL, NULL, NULL)), g_free);
+    std::unique_ptr<wchar_t, GFreeFunc> wfname(
+        reinterpret_cast<wchar_t *>(
+            g_utf8_to_utf16(fname.c_str(), -1, NULL, NULL, NULL)),
+        g_free);
 
     WIN32_FILE_ATTRIBUTE_DATA fileAttr;
     if (GetFileAttributesExW(wfname.get(), GetFileExInfoStandard, &fileAttr)) {
         // We use name, size and creation time to identify a file.
-        const auto identifier = Glib::ustring::compose("%1-%2-%3-%4", fileAttr.nFileSizeLow, fileAttr.ftCreationTime.dwHighDateTime, fileAttr.ftCreationTime.dwLowDateTime, fname);
-        return Glib::Checksum::compute_checksum(Glib::Checksum::CHECKSUM_MD5, identifier);
+        const auto identifier = Glib::ustring::compose(
+            "%1-%2-%3-%4", fileAttr.nFileSizeLow,
+            fileAttr.ftCreationTime.dwHighDateTime,
+            fileAttr.ftCreationTime.dwLowDateTime, fname);
+        return Glib::Checksum::compute_checksum(Glib::Checksum::CHECKSUM_MD5,
+                                                identifier);
     }
 
 #else
@@ -291,22 +305,27 @@ std::string getMD5(const Glib::ustring& fname, bool extended)
     const auto file = Gio::File::create_for_path(fname);
     if (file) {
 
-        try
-        {
-            const auto info = file->query_info("standard::*," G_FILE_ATTRIBUTE_TIME_MODIFIED);
+        try {
+            const auto info =
+                file->query_info("standard::*," G_FILE_ATTRIBUTE_TIME_MODIFIED);
             if (info) {
                 // We only use name and size to identify a file.
                 Glib::ustring identifier;
                 if (!extended) {
-                    identifier = Glib::ustring::compose("%1%2", fname, info->get_size());
+                    identifier =
+                        Glib::ustring::compose("%1%2", fname, info->get_size());
                 } else {
                     auto tv = info->modification_time();
-                    identifier = Glib::ustring::compose("%1%2-%3%4", fname, info->get_size(), tv.tv_sec, tv.tv_usec);
+                    identifier = Glib::ustring::compose("%1%2-%3%4", fname,
+                                                        info->get_size(),
+                                                        tv.tv_sec, tv.tv_usec);
                 }
-                return Glib::Checksum::compute_checksum(Glib::Checksum::CHECKSUM_MD5, identifier);
+                return Glib::Checksum::compute_checksum(
+                    Glib::Checksum::CHECKSUM_MD5, identifier);
             }
 
-        } catch(Gio::Error&) {}
+        } catch (Gio::Error &) {
+        }
     }
 
 #endif
@@ -314,32 +333,31 @@ std::string getMD5(const Glib::ustring& fname, bool extended)
     return {};
 }
 
-
 std::string get_html_color(int r, int g, int b)
 {
     std::ostringstream out;
     out << "#";
-    out << std::setbase(16) << LIM(r, 0, 255) << LIM(g, 0, 255) << LIM(b, 0, 255);
+    out << std::setbase(16) << LIM(r, 0, 255) << LIM(g, 0, 255)
+        << LIM(b, 0, 255);
     return out.str();
 }
-
 
 } // namespace rtengine
 
 #if __SIZEOF_WCHAR_T__ == 4
-Glib::ustring utf32_to_utf8(wchar_t* UTF32Buffer, size_t sizeOfUTF32Buffer)
+Glib::ustring utf32_to_utf8(wchar_t *UTF32Buffer, size_t sizeOfUTF32Buffer)
 {
     char *buffer2 = new char[sizeOfUTF32Buffer];
     char *pBuffer2 = buffer2;
     gchar a[6];
-    for (size_t i=0; i < sizeOfUTF32Buffer/4; ++i) {
+    for (size_t i = 0; i < sizeOfUTF32Buffer / 4; ++i) {
         gint bytesWritten = g_unichar_to_utf8((gunichar)UTF32Buffer[i], a);
-        for (gint j=0; j < bytesWritten; ++j) {
+        for (gint j = 0; j < bytesWritten; ++j) {
             *(pBuffer2++) = a[j];
         }
     }
     Glib::ustring modelDesc(buffer2);
-    delete [] buffer2;
+    delete[] buffer2;
     return modelDesc;
 }
 #endif

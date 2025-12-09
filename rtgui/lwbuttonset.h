@@ -19,36 +19,36 @@
 #ifndef _LWBUTTONSET_
 #define _LWBUTTONSET_
 
-#include <gtkmm.h>
 #include "lwbutton.h"
+#include <gtkmm.h>
 #include <vector>
 
-class LWButtonSet
-{
+class LWButtonSet {
 
 protected:
-    std::vector<LWButton*> buttons;
+    std::vector<LWButton *> buttons;
     int aw, ah, ax, ay;
+
 public:
-    LWButtonSet ();
-    ~LWButtonSet ();
+    LWButtonSet();
+    ~LWButtonSet();
 
-    void add (LWButton* b);
+    void add(LWButton *b);
 
-    void    getMinimalDimensions (int& w, int& h);
-    void    getAllocatedDimensions (int& w, int& h);
-    void    arrangeButtons (int x, int y, int w, int h);
-    void    setColors     (const Gdk::RGBA& bg, const Gdk::RGBA& fg);
-    bool    motionNotify  (int x, int y);
-    bool    pressNotify   (int x, int y);
-    bool    releaseNotify (int x, int y);
-    void    move          (int nx, int ny);
-    bool    inside        (int x, int y);
+    void getMinimalDimensions(int &w, int &h);
+    void getAllocatedDimensions(int &w, int &h);
+    void arrangeButtons(int x, int y, int w, int h);
+    void setColors(const Gdk::RGBA &bg, const Gdk::RGBA &fg);
+    bool motionNotify(int x, int y);
+    bool pressNotify(int x, int y);
+    bool releaseNotify(int x, int y);
+    void move(int nx, int ny);
+    bool inside(int x, int y);
 
-    Glib::ustring getToolTip (int x, int y);
+    Glib::ustring getToolTip(int x, int y);
 
-    void    setButtonListener   (LWButtonListener* bl);
-    void    redraw              (Cairo::RefPtr<Cairo::Context> context);
+    void setButtonListener(LWButtonListener *bl);
+    void redraw(Cairo::RefPtr<Cairo::Context> context);
 };
 
 #endif

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,12 +19,11 @@
  */
 #include "smoothing.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
-
 
 //-----------------------------------------------------------------------------
 // SmoothingMasksContentProvider
@@ -32,20 +31,11 @@ using namespace rtengine::procparams;
 
 class SmoothingMasksContentProvider: public MasksContentProvider {
 public:
-    SmoothingMasksContentProvider(Smoothing *parent):
-        parent_(parent)
-    {
-    }
+    SmoothingMasksContentProvider(Smoothing *parent): parent_(parent) {}
 
-    Glib::ustring getToolName() override
-    {
-        return "smoothing";
-    }
+    Glib::ustring getToolName() override { return "smoothing"; }
 
-    Gtk::Container *getContainer() override
-    {
-        return parent_->box;
-    }
+    Gtk::Container *getContainer() override { return parent_->box; }
 
     void getEvents(Events &events) override
     {
@@ -73,19 +63,14 @@ public:
         return nullptr;
     }
 
-    void selectionChanging(int idx) override
-    {
-        parent_->regionGet(idx);
-    }
+    void selectionChanging(int idx) override { parent_->regionGet(idx); }
 
-    void selectionChanged(int idx) override
-    {
-        parent_->regionShow(idx);
-    }
+    void selectionChanged(int idx) override { parent_->regionShow(idx); }
 
     bool addPressed(int idx) override
     {
-        parent_->data.insert(parent_->data.begin() + idx, SmoothingParams::Region());
+        parent_->data.insert(parent_->data.begin() + idx,
+                             SmoothingParams::Region());
         return true;
     }
 
@@ -94,20 +79,21 @@ public:
         parent_->data.erase(parent_->data.begin() + idx);
         return true;
     }
-    
+
     bool copyPressed(int idx) override
     {
-        parent_->data.insert(parent_->data.begin() + idx + 1, parent_->data[idx]);
+        parent_->data.insert(parent_->data.begin() + idx + 1,
+                             parent_->data[idx]);
         return true;
     }
 
     bool resetPressed(int idx) override
     {
         parent_->data[idx] = SmoothingParams::Region();
-        //parent_->masks_->setMasks({ Mask() }, -1);
+        // parent_->masks_->setMasks({ Mask() }, -1);
         return true;
     }
-    
+
     bool moveUpPressed(int idx) override
     {
         auto r = parent_->data[idx];
@@ -116,7 +102,7 @@ public:
         parent_->data.insert(parent_->data.begin() + idx, r);
         return true;
     }
-    
+
     bool moveDownPressed(int idx) override
     {
         auto r = parent_->data[idx];
@@ -126,66 +112,66 @@ public:
         return true;
     }
 
-    int getColumnCount() override
-    {
-        return 1;
-    }
-    
+    int getColumnCount() override { return 1; }
+
     Glib::ustring getColumnHeader(int col) override
     {
         return M("TP_LABMASKS_PARAMETERS");
     }
-    
+
     Glib::ustring getColumnContent(int col, int row) override
     {
         auto &r = parent_->data[row];
         const char *ch =
-            r.channel == SmoothingParams::Region::Channel::LUMINANCE ? "L" :
-            (r.channel == SmoothingParams::Region::Channel::CHROMINANCE ? "C" : "RGB");
+            r.channel == SmoothingParams::Region::Channel::LUMINANCE
+                ? "L"
+                : (r.channel == SmoothingParams::Region::Channel::CHROMINANCE
+                       ? "C"
+                       : "RGB");
 
         switch (r.mode) {
         case SmoothingParams::Region::Mode::GUIDED:
-            return Glib::ustring::compose(
-                "%5: %1 %2 %4 [%3]", r.radius, r.epsilon, 
-                ch, r.iterations, M("TP_SMOOTHING_MODE_GUIDED"));
+            return Glib::ustring::compose("%5: %1 %2 %4 [%3]", r.radius,
+                                          r.epsilon, ch, r.iterations,
+                                          M("TP_SMOOTHING_MODE_GUIDED"));
         case SmoothingParams::Region::Mode::GAUSSIAN:
-            return Glib::ustring::compose(
-                "%4: %1 %2 [%3]", r.sigma, r.iterations, ch,
-                M("TP_SMOOTHING_MODE_GAUSSIAN"));
+            return Glib::ustring::compose("%4: %1 %2 [%3]", r.sigma,
+                                          r.iterations, ch,
+                                          M("TP_SMOOTHING_MODE_GAUSSIAN"));
         case SmoothingParams::Region::Mode::GAUSSIAN_GLOW:
-            return Glib::ustring::compose(
-                "%4: %1 %2 %3", r.sigma, r.iterations, r.falloff,
-                M("TP_SMOOTHING_MODE_GAUSSIAN_GLOW"));
+            return Glib::ustring::compose("%4: %1 %2 %3", r.sigma, r.iterations,
+                                          r.falloff,
+                                          M("TP_SMOOTHING_MODE_GAUSSIAN_GLOW"));
         case SmoothingParams::Region::Mode::NLMEANS:
-            return Glib::ustring::compose(
-                "%5: %1 %2 %3 [%4]", r.nlstrength, r.nldetail, r.iterations, 
-                ch, M("TP_SMOOTHING_MODE_NLMEANS"));
+            return Glib::ustring::compose("%5: %1 %2 %3 [%4]", r.nlstrength,
+                                          r.nldetail, r.iterations, ch,
+                                          M("TP_SMOOTHING_MODE_NLMEANS"));
         case SmoothingParams::Region::Mode::MOTION:
-            return Glib::ustring::compose(
-                "%5: %1 %2 %3 %4", r.radius, r.angle, r.curvature, r.offset,
-                M("TP_SMOOTHING_MODE_MOTION"));
+            return Glib::ustring::compose("%5: %1 %2 %3 %4", r.radius, r.angle,
+                                          r.curvature, r.offset,
+                                          M("TP_SMOOTHING_MODE_MOTION"));
         case SmoothingParams::Region::Mode::LENS:
-            return Glib::ustring::compose(
-                "%4: %1 %2 %3", r.radius, r.numblades, r.angle,
-                M("TP_SMOOTHING_MODE_LENS"));
+            return Glib::ustring::compose("%4: %1 %2 %3", r.radius, r.numblades,
+                                          r.angle, M("TP_SMOOTHING_MODE_LENS"));
         case SmoothingParams::Region::Mode::NOISE:
-            return Glib::ustring::compose(
-                "%3: %1 %2 [%4]", r.noise_strength, r.noise_coarseness,
-                M("TP_SMOOTHING_MODE_NOISE"), ch);
+            return Glib::ustring::compose("%3: %1 %2 [%4]", r.noise_strength,
+                                          r.noise_coarseness,
+                                          M("TP_SMOOTHING_MODE_NOISE"), ch);
         case SmoothingParams::Region::Mode::HALATION:
-            return Glib::ustring::compose(
-                "%3: %1 %2", r.halation_size, r.halation_color,
-                M("TP_SMOOTHING_MODE_HALATION"));
+            return Glib::ustring::compose("%3: %1 %2", r.halation_size,
+                                          r.halation_color,
+                                          M("TP_SMOOTHING_MODE_HALATION"));
         case SmoothingParams::Region::Mode::WAVELETS:
-            return Glib::ustring::compose(
-                "%4: %1 %2 %3 [%5]", r.wav_strength, r.wav_levels, r.wav_gamma,
-                M("TP_SMOOTHING_MODE_WAVELETS"), ch);
+            return Glib::ustring::compose("%4: %1 %2 %3 [%5]", r.wav_strength,
+                                          r.wav_levels, r.wav_gamma,
+                                          M("TP_SMOOTHING_MODE_WAVELETS"), ch);
         default:
             return "";
         }
     }
 
-    void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve, EditUniqueID &lcurve, EditUniqueID &deltaE) override
+    void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve,
+                    EditUniqueID &lcurve, EditUniqueID &deltaE) override
     {
         hcurve = EUID_Masks_H3;
         ccurve = EUID_Masks_C3;
@@ -197,40 +183,21 @@ private:
     Smoothing *parent_;
 };
 
-
 //-----------------------------------------------------------------------------
 // Smoothing
 //-----------------------------------------------------------------------------
 
 namespace {
 
-const int idx2mode[] = {
-    0,
-    1,
-    2,
-    3,
-    8,
-    4,
-    5,
-    6,
-    7
-};
+const int idx2mode[] = {0, 1, 2, 3, 8, 4, 5, 6, 7};
 
-const int mode2idx[] = {
-    0,
-    1,
-    2,
-    3,
-    5,
-    6,
-    7,
-    8,
-    4
-};
+const int mode2idx[] = {0, 1, 2, 3, 5, 6, 7, 8, 4};
 
 } // namespace
 
-Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LABEL"), true, true, true)
+Smoothing::Smoothing()
+    : FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LABEL"), true, true,
+                        true)
 {
     auto m = ProcEventMapper::getInstance();
     auto EVENT = rtengine::LUMINANCECURVE | rtengine::M_LUMACURVE;
@@ -248,26 +215,34 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
     EvAngle = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_ANGLE");
     EvCurvature = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_CURVATURE");
     EvOffset = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_OFFSET");
-    EvNoiseStrength = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_NOISE_STRENGTH");
-    EvNoiseCoarseness = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_NOISE_COARSENESS");
+    EvNoiseStrength =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_NOISE_STRENGTH");
+    EvNoiseCoarseness =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_NOISE_COARSENESS");
     EvHalationSize = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_HALATION_SIZE");
-    EvHalationColor = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_HALATION_COLOR");
-    EvWavStrength = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_WAVELETS_STRENGTH");
+    EvHalationColor =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_HALATION_COLOR");
+    EvWavStrength =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_WAVELETS_STRENGTH");
     EvWavLevels = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_WAVELETS_LEVELS");
     EvWavGamma = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_WAVELETS_GAMMA");
 
     EvList = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_LIST");
-    EvParametricMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_PARAMETRICMASK");
+    EvParametricMask =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_PARAMETRICMASK");
     EvHueMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_HUEMASK");
-    EvChromaticityMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_CHROMATICITYMASK");
+    EvChromaticityMask =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_CHROMATICITYMASK");
     EvLightnessMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_LIGHTNESSMASK");
     EvMaskBlur = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_MASKBLUR");
     EvShowMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_SHOWMASK");
     EvAreaMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_AREAMASK");
     EvDeltaEMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_DELTAEMASK");
-    EvContrastThresholdMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_CONTRASTTHRESHOLDMASK");
+    EvContrastThresholdMask =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_CONTRASTTHRESHOLDMASK");
     EvDrawnMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_DRAWNMASK");
-    EvMaskPostprocess = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_MASK_POSTPROCESS");
+    EvMaskPostprocess =
+        m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_MASK_POSTPROCESS");
     EvLinkedMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_LINKEDMASK");
     EvExternalMask = m->newEvent(EVENT, "HISTORY_MSG_SMOOTHING_EXTERNALMASK");
 
@@ -287,33 +262,39 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
     mode->append(M("TP_SMOOTHING_MODE_NOISE"));
     mode->append(M("TP_SMOOTHING_MODE_HALATION"));
     mode->set_active(0);
-    mode->signal_changed().connect(sigc::mem_fun(*this, &Smoothing::modeChanged));
+    mode->signal_changed().connect(
+        sigc::mem_fun(*this, &Smoothing::modeChanged));
     Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_SMOOTHING_MODE") + ":")), Gtk::PACK_SHRINK, 1);
+    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_SMOOTHING_MODE") + ":")),
+                   Gtk::PACK_SHRINK, 1);
     hb->pack_start(*mode, Gtk::PACK_EXPAND_WIDGET, 1);
     box->pack_start(*hb, Gtk::PACK_SHRINK, 1);
 
     hb = Gtk::manage(new Gtk::HBox());
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_SMOOTHING_CHANNEL") + ":")), Gtk::PACK_SHRINK, 1);
+    hb->pack_start(
+        *Gtk::manage(new Gtk::Label(M("TP_SMOOTHING_CHANNEL") + ":")),
+        Gtk::PACK_SHRINK, 1);
     channel = Gtk::manage(new MyComboBoxText());
     channel->append(M("TP_SMOOTHING_CHANNEL_L"));
     channel->append(M("TP_SMOOTHING_CHANNEL_C"));
     channel->append(M("TP_SMOOTHING_CHANNEL_RGB"));
     channel->set_active(2);
-    channel->signal_changed().connect(sigc::mem_fun(*this, &Smoothing::channelChanged));
+    channel->signal_changed().connect(
+        sigc::mem_fun(*this, &Smoothing::channelChanged));
     hb->pack_start(*channel, Gtk::PACK_EXPAND_WIDGET, 1);
     box->pack_start(*hb, Gtk::PACK_SHRINK, 1);
     chan_box = hb;
 
     guided_box = Gtk::manage(new Gtk::VBox());
     gaussian_box = Gtk::manage(new Gtk::VBox());
-    
+
     radius = Gtk::manage(new Adjuster(M("TP_SMOOTHING_RADIUS"), 0, 1000, 1, 0));
     radius->setLogScale(100, 0);
     radius->setAdjusterListener(this);
     guided_box->pack_start(*radius);
-    
-    epsilon = Gtk::manage(new Adjuster(M("TP_SMOOTHING_EPSILON"), -10, 10, 0.1, 0));
+
+    epsilon =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_EPSILON"), -10, 10, 0.1, 0));
     epsilon->setAdjusterListener(this);
     guided_box->pack_start(*epsilon);
 
@@ -323,18 +304,23 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
     gaussian_box->pack_start(*sigma);
 
     nl_box = Gtk::manage(new Gtk::VBox());
-    nlstrength = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 1, 0));
-    nldetail = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLDETAIL"), 1, 100, 1, 50));
+    nlstrength =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 1, 0));
+    nldetail =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLDETAIL"), 1, 100, 1, 50));
     nldetail->setAdjusterListener(this);
     nlstrength->setAdjusterListener(this);
     nl_box->pack_start(*nlstrength);
     nl_box->pack_start(*nldetail);
 
     lens_motion_box = Gtk::manage(new Gtk::VBox());
-    numblades = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NUMBLADES"), 3, 11, 1, 5));
+    numblades =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_NUMBLADES"), 3, 11, 1, 5));
     angle = Gtk::manage(new Adjuster(M("TP_SMOOTHING_ANGLE"), -90, 90, 1, 0));
-    curvature = Gtk::manage(new Adjuster(M("TP_SMOOTHING_CURVATURE"), -2, 2, 0.01, 0));
-    offset = Gtk::manage(new Adjuster(M("TP_SMOOTHING_OFFSET"), -1, 1, 0.01, 0));
+    curvature =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_CURVATURE"), -2, 2, 0.01, 0));
+    offset =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_OFFSET"), -1, 1, 0.01, 0));
     lens_motion_box->pack_start(*numblades);
     lens_motion_box->pack_start(*angle);
     lens_motion_box->pack_start(*curvature);
@@ -345,33 +331,40 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
     offset->setAdjusterListener(this);
 
     noise_box = Gtk::manage(new Gtk::VBox());
-    noise_strength = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 1, 10));
+    noise_strength =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 1, 10));
     noise_strength->setAdjusterListener(this);
     noise_box->pack_start(*noise_strength);
-    noise_coarseness = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NOISE_COARSENESS"), 0, 100, 1, 30));
+    noise_coarseness = Gtk::manage(
+        new Adjuster(M("TP_SMOOTHING_NOISE_COARSENESS"), 0, 100, 1, 30));
     noise_coarseness->setAdjusterListener(this);
     noise_box->pack_start(*noise_coarseness);
 
     halation_box = Gtk::manage(new Gtk::VBox());
-    halation_size = Gtk::manage(new Adjuster(M("TP_SMOOTHING_HALATION_SIZE"), 0.001, 5, 0.01, 1));
+    halation_size = Gtk::manage(
+        new Adjuster(M("TP_SMOOTHING_HALATION_SIZE"), 0.001, 5, 0.01, 1));
     halation_size->setLogScale(5, 1, true);
     halation_size->setAdjusterListener(this);
     halation_box->pack_start(*halation_size);
-    halation_color = Gtk::manage(new Adjuster(M("TP_SMOOTHING_HALATION_COLOR"), -0.5, 0.5, 0.001, 0));
+    halation_color = Gtk::manage(
+        new Adjuster(M("TP_SMOOTHING_HALATION_COLOR"), -0.5, 0.5, 0.001, 0));
     halation_color->setAdjusterListener(this);
     halation_box->pack_start(*halation_color);
 
     wavelets_box = Gtk::manage(new Gtk::VBox());
-    wav_strength = Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 0.1, 0));
+    wav_strength =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_NLSTRENGTH"), 0, 100, 0.1, 0));
     wav_strength->setAdjusterListener(this);
     wavelets_box->pack_start(*wav_strength);
-    wav_levels = Gtk::manage(new Adjuster(M("TP_SMOOTHING_WAVELETS_LEVELS"), 2, 8, 1, 5));
+    wav_levels = Gtk::manage(
+        new Adjuster(M("TP_SMOOTHING_WAVELETS_LEVELS"), 2, 8, 1, 5));
     wav_levels->setAdjusterListener(this);
     wavelets_box->pack_start(*wav_levels);
-    wav_gamma = Gtk::manage(new Adjuster(M("TP_DIRPYRDENOISE_MAIN_GAMMA"), 1, 4, 0.1, 2.2));
+    wav_gamma = Gtk::manage(
+        new Adjuster(M("TP_DIRPYRDENOISE_MAIN_GAMMA"), 1, 4, 0.1, 2.2));
     wav_gamma->setAdjusterListener(this);
     wavelets_box->pack_start(*wav_gamma);
-    
+
     box->pack_start(*guided_box);
     box->pack_start(*gaussian_box);
     box->pack_start(*nl_box);
@@ -380,16 +373,18 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
     box->pack_start(*halation_box);
     box->pack_start(*wavelets_box);
 
-    iterations = Gtk::manage(new Adjuster(M("TP_SMOOTHING_ITERATIONS"), 1, 10, 1, 1));
+    iterations =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_ITERATIONS"), 1, 10, 1, 1));
     iterations->setAdjusterListener(this);
 
     box->pack_start(*iterations);
 
-    falloff = Gtk::manage(new Adjuster(M("TP_SMOOTHING_FALLOFF"), 0.5, 2, 0.01, 1));
+    falloff =
+        Gtk::manage(new Adjuster(M("TP_SMOOTHING_FALLOFF"), 0.5, 2, 0.01, 1));
     falloff->setLogScale(2, 1, true);
     falloff->setAdjusterListener(this);
     box->pack_start(*falloff);
-    
+
     radius->delay = options.adjusterMaxDelay;
     epsilon->delay = options.adjusterMaxDelay;
     iterations->delay = options.adjusterMaxDelay;
@@ -411,11 +406,10 @@ Smoothing::Smoothing(): FoldableToolPanel(this, "smoothing", M("TP_SMOOTHING_LAB
 
     masks_content_provider_.reset(new SmoothingMasksContentProvider(this));
     masks_ = Gtk::manage(new MasksPanel(masks_content_provider_.get()));
-    pack_start(*masks_, Gtk::PACK_EXPAND_WIDGET, 4);   
+    pack_start(*masks_, Gtk::PACK_EXPAND_WIDGET, 4);
 
     show_all_children();
 }
-
 
 void Smoothing::read(const ProcParams *pp)
 {
@@ -428,12 +422,14 @@ void Smoothing::read(const ProcParams *pp)
         data.emplace_back(rtengine::procparams::SmoothingParams::Region());
         m.emplace_back(rtengine::procparams::Mask());
     }
-    masks_->setMasks(m, pp->smoothing.selectedRegion, pp->smoothing.showMask >= 0 && pp->smoothing.showMask == pp->smoothing.selectedRegion);
+    masks_->setMasks(m, pp->smoothing.selectedRegion,
+                     pp->smoothing.showMask >= 0 &&
+                         pp->smoothing.showMask ==
+                             pp->smoothing.selectedRegion);
     modeChanged();
 
     enableListener();
 }
-
 
 void Smoothing::write(ProcParams *pp)
 {
@@ -449,7 +445,6 @@ void Smoothing::write(ProcParams *pp)
     masks_->updateSelected();
 }
 
-
 void Smoothing::setDefaults(const ProcParams *defParams)
 {
     radius->setDefault(defParams->smoothing.regions[0].radius);
@@ -464,7 +459,8 @@ void Smoothing::setDefaults(const ProcParams *defParams)
     curvature->setDefault(defParams->smoothing.regions[0].curvature);
     offset->setDefault(defParams->smoothing.regions[0].offset);
     noise_strength->setDefault(defParams->smoothing.regions[0].noise_strength);
-    noise_coarseness->setDefault(defParams->smoothing.regions[0].noise_coarseness);
+    noise_coarseness->setDefault(
+        defParams->smoothing.regions[0].noise_coarseness);
     halation_size->setDefault(defParams->smoothing.regions[0].halation_size);
     halation_color->setDefault(defParams->smoothing.regions[0].halation_color);
     wav_strength->setDefault(defParams->smoothing.regions[0].wav_strength);
@@ -474,12 +470,11 @@ void Smoothing::setDefaults(const ProcParams *defParams)
     initial_params = defParams->smoothing;
 }
 
-
-void Smoothing::adjusterChanged(Adjuster* a, double newval)
+void Smoothing::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         masks_->setEdited(true);
-        
+
         if (a == radius) {
             listener->panelChanged(EvRadius, a->getTextValue());
         } else if (a == epsilon) {
@@ -520,8 +515,7 @@ void Smoothing::adjusterChanged(Adjuster* a, double newval)
     }
 }
 
-
-void Smoothing::enabledChanged ()
+void Smoothing::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
@@ -538,38 +532,35 @@ void Smoothing::enabledChanged ()
     }
 }
 
-
 void Smoothing::setEditProvider(EditDataProvider *provider)
 {
     masks_->setEditProvider(provider);
 }
 
-
 void Smoothing::procParamsChanged(
-    const rtengine::procparams::ProcParams* params,
-    const rtengine::ProcEvent& ev,
-    const Glib::ustring& descr,
-    const ParamsEdited* paramsEdited)
+    const rtengine::procparams::ProcParams *params,
+    const rtengine::ProcEvent &ev, const Glib::ustring &descr,
+    const ParamsEdited *paramsEdited)
 {
     masks_->updateLinkedMaskList(params);
 }
-
 
 void Smoothing::updateGeometry(int fw, int fh)
 {
     masks_->updateGeometry(fw, fh);
 }
 
-
 void Smoothing::regionGet(int idx)
 {
     if (idx < 0 || size_t(idx) >= data.size()) {
         return;
     }
-    
+
     auto &r = data[idx];
-    r.mode = SmoothingParams::Region::Mode(idx2mode[mode->get_active_row_number()]);
-    r.channel = SmoothingParams::Region::Channel(channel->get_active_row_number());
+    r.mode =
+        SmoothingParams::Region::Mode(idx2mode[mode->get_active_row_number()]);
+    r.channel =
+        SmoothingParams::Region::Channel(channel->get_active_row_number());
     r.radius = radius->getValue();
     r.epsilon = epsilon->getValue();
     r.iterations = iterations->getValue();
@@ -589,7 +580,6 @@ void Smoothing::regionGet(int idx)
     r.wav_levels = wav_levels->getValue();
     r.wav_gamma = wav_gamma->getValue();
 }
-
 
 void Smoothing::regionShow(int idx)
 {
@@ -619,12 +609,11 @@ void Smoothing::regionShow(int idx)
     wav_strength->setValue(r.wav_strength);
     wav_levels->setValue(r.wav_levels);
     wav_gamma->setValue(r.wav_gamma);
-    
+
     if (disable) {
         enableListener();
     }
 }
-
 
 void Smoothing::channelChanged()
 {
@@ -632,7 +621,6 @@ void Smoothing::channelChanged()
         listener->panelChanged(EvChannel, channel->get_active_text());
     }
 }
-
 
 void Smoothing::modeChanged()
 {
@@ -672,18 +660,15 @@ void Smoothing::modeChanged()
     }
 }
 
-
 void Smoothing::setAreaDrawListener(AreaDrawListener *l)
 {
     masks_->setAreaDrawListener(l);
 }
 
-
 void Smoothing::setDeltaEColorProvider(DeltaEColorProvider *p)
 {
     masks_->setDeltaEColorProvider(p);
 }
-
 
 void Smoothing::toolReset(bool to_initial)
 {

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -35,19 +35,17 @@
 #include "thumbnail.h"
 #include "thumbnaillistener.h"
 
-
 class FileBrowserEntry;
 struct FileBrowserEntryIdleHelper {
-    FileBrowserEntry* fbentry;
+    FileBrowserEntry *fbentry;
     bool destroyed;
     std::atomic<int> pending;
 };
 
 class FileThumbnailButtonSet;
-class FileBrowserEntry : public ThumbBrowserEntryBase,
-    public ThumbnailListener,
-    public ThumbImageUpdateListener
-{
+class FileBrowserEntry: public ThumbBrowserEntryBase,
+                        public ThumbnailListener,
+                        public ThumbImageUpdateListener {
 
     double scale;
     bool wasInside;
@@ -55,8 +53,8 @@ class FileBrowserEntry : public ThumbBrowserEntryBase,
     double rot_deg;
     int coarse_rotate;
     rtengine::procparams::CropParams cropParams;
-    CropGUIListener* cropgl;
-    FileBrowserEntryIdleHelper* feih;
+    CropGUIListener *cropgl;
+    FileBrowserEntryIdleHelper *feih;
 
     ImgEditState state;
     float crop_custom_ratio;
@@ -65,46 +63,50 @@ class FileBrowserEntry : public ThumbBrowserEntryBase,
 
     // bool onArea (CursorArea a, int x, int y);
     // void updateCursor (int x, int y);
-    void drawStraightenGuide (Cairo::RefPtr<Cairo::Context> c);
-    void customBackBufferUpdate (Cairo::RefPtr<Cairo::Context> c) override;
+    void drawStraightenGuide(Cairo::RefPtr<Cairo::Context> c);
+    void customBackBufferUpdate(Cairo::RefPtr<Cairo::Context> c) override;
 
     enum class RefreshStatus { READY, PENDING, QUICK, FULL };
     RefreshStatus refresh_status_;
     bool refresh_disabled_;
     void update_refresh_status();
-    
-public:
 
+public:
     static Glib::RefPtr<Gdk::Pixbuf> editedIcon;
     static Glib::RefPtr<Gdk::Pixbuf> recentlySavedIcon;
     static Glib::RefPtr<Gdk::Pixbuf> enqueuedIcon;
     static Glib::RefPtr<Gdk::Pixbuf> hdr;
     static Glib::RefPtr<Gdk::Pixbuf> ps;
 
-    FileBrowserEntry (Thumbnail* thm, const Glib::ustring& fname);
-    ~FileBrowserEntry () override;
-    static void init ();
-    void draw (Cairo::RefPtr<Cairo::Context> cc) override;
+    FileBrowserEntry(Thumbnail *thm, const Glib::ustring &fname);
+    ~FileBrowserEntry() override;
+    static void init();
+    void draw(Cairo::RefPtr<Cairo::Context> cc) override;
 
-    FileThumbnailButtonSet* getThumbButtonSet ();
+    FileThumbnailButtonSet *getThumbButtonSet();
 
-    void refreshThumbnailImage () override;
-    void refreshQuickThumbnailImage () override;
-    void calcThumbnailSize () override;
+    void refreshThumbnailImage() override;
+    void refreshQuickThumbnailImage() override;
+    void calcThumbnailSize() override;
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea () override;
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getSpecificityIconsOnImageArea () override;
-    void getIconSize (int& w, int& h) const override;
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea() override;
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+    getSpecificityIconsOnImageArea() override;
+    void getIconSize(int &w, int &h) const override;
 
     // thumbnaillistener interface
-    void procParamsChanged (Thumbnail* thm, int whoChangedIt) override;
+    void procParamsChanged(Thumbnail *thm, int whoChangedIt) override;
     // thumbimageupdatelistener interface
-    void updateImage(rtengine::IImage8* img, double scale, const rtengine::procparams::CropParams& cropParams) override;
-    void _updateImage(rtengine::IImage8* img, double scale, const rtengine::procparams::CropParams& cropParams); // inside gtk thread
+    void
+    updateImage(rtengine::IImage8 *img, double scale,
+                const rtengine::procparams::CropParams &cropParams) override;
+    void _updateImage(rtengine::IImage8 *img, double scale,
+                      const rtengine::procparams::CropParams
+                          &cropParams); // inside gtk thread
 
-    bool    motionNotify  (int x, int y) override;
-    bool    pressNotify   (int button, int type, int bstate, int x, int y) override;
-    bool    releaseNotify (int button, int type, int bstate, int x, int y) override;
+    bool motionNotify(int x, int y) override;
+    bool pressNotify(int button, int type, int bstate, int x, int y) override;
+    bool releaseNotify(int button, int type, int bstate, int x, int y) override;
 
     void enableThumbRefresh();
 };

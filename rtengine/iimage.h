@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,38 +20,37 @@
 #ifndef _IIMAGE_
 #define _IIMAGE_
 
+#include "../rtgui/threadutils.h"
+#include "LUT.h"
+#include "alignedbuffer.h"
+#include "color.h"
+#include "coord2d.h"
+#include "imagedimensions.h"
+#include "procparams.h"
+#include "rt_math.h"
 #include <glibmm.h>
 #include <vector>
-#include "rt_math.h"
-#include "alignedbuffer.h"
-#include "imagedimensions.h"
-#include "LUT.h"
-#include "coord2d.h"
-#include "procparams.h"
-#include "color.h"
-#include "../rtgui/threadutils.h"
 
-#define TR_NONE     0
-#define TR_R90      1
-#define TR_R180     2
-#define TR_R270     3
-#define TR_VFLIP    4
-#define TR_HFLIP    8
-#define TR_ROT      3
+#define TR_NONE 0
+#define TR_R90 1
+#define TR_R180 2
+#define TR_R270 3
+#define TR_VFLIP 4
+#define TR_HFLIP 8
+#define TR_ROT 3
 
 #ifndef NDEBUG
-#  define CHECK_BOUNDS 1
+#define CHECK_BOUNDS 1
 #else
-#  define CHECK_BOUNDS 0
+#define CHECK_BOUNDS 0
 #endif
 
-namespace rtengine
-{
+namespace rtengine {
 
 extern const char sImage8[];
 extern const char sImage16[];
 extern const char sImagefloat[];
-int getCoarseBitMask( const procparams::CoarseTransformParams &coarse);
+int getCoarseBitMask(const procparams::CoarseTransformParams &coarse);
 class ProgressListener;
 class Color;
 
@@ -61,72 +60,73 @@ enum TypeInterpolation { TI_Nearest, TI_Bilinear };
 //                       Generic classes
 // --------------------------------------------------------------------
 
-class ImageDatas : virtual public ImageDimensions
-{
+class ImageDatas: virtual public ImageDimensions {
 public:
-    template<class S, class D>
-    void convertTo(S src, D& dst) const
+    template <class S, class D> void convertTo(S src, D &dst) const
     {
         dst = src;
     }
 
-    // parameters that will never be used, replaced by the subclasses r, g and b parameters!
-    // they are still necessary to implement operator() in this parent class
+    // parameters that will never be used, replaced by the subclasses r, g and b
+    // parameters! they are still necessary to implement operator() in this
+    // parent class
     virtual ~ImageDatas() {}
-    virtual void allocate (int W, int H) {}
-    virtual void rotate (int deg) {}
+    virtual void allocate(int W, int H) {}
+    virtual void rotate(int deg) {}
     // free the memory allocated for the image data without deleting the object.
-    virtual void flushData ()
-    {
-        allocate(0, 0);
-    }
+    virtual void flushData() { allocate(0, 0); }
 
-    virtual void hflip () {}
-    virtual void vflip () {}
+    virtual void hflip() {}
+    virtual void vflip() {}
 
     // Read the raw dump of the data
-    void readData  (FILE *fh) {}
+    void readData(FILE *fh) {}
     // Write a raw dump of the data
-    void writeData (FILE *fh) const {}
+    void writeData(FILE *fh) const {}
 
-    virtual void computeHistogramAutoWB (double &avg_r, double &avg_g, double &avg_b, int &n, LUTu &histogram, int compression) const {}
-    virtual void getSpotWBData (double &reds, double &greens, double &blues, int &rn, int &gn, int &bn,
-                                std::vector<Coord2D> &red, std::vector<Coord2D> &green, std::vector<Coord2D> &blue,
-                                int tran) const {}
-    virtual void getAutoWBMultipliers (double &rm, double &gm, double &bm) const
+    virtual void computeHistogramAutoWB(double &avg_r, double &avg_g,
+                                        double &avg_b, int &n, LUTu &histogram,
+                                        int compression) const
+    {
+    }
+    virtual void getSpotWBData(double &reds, double &greens, double &blues,
+                               int &rn, int &gn, int &bn,
+                               std::vector<Coord2D> &red,
+                               std::vector<Coord2D> &green,
+                               std::vector<Coord2D> &blue, int tran) const
+    {
+    }
+    virtual void getAutoWBMultipliers(double &rm, double &gm, double &bm) const
     {
         rm = gm = bm = 1.0;
     }
-
 };
 
-template<>
-inline void ImageDatas::convertTo(unsigned short src, unsigned char& dst) const
+template <>
+inline void ImageDatas::convertTo(unsigned short src, unsigned char &dst) const
 {
     dst = uint16ToUint8Rounded(src);
 }
-template<>
-inline void ImageDatas::convertTo(unsigned char src, int& dst) const
+template <> inline void ImageDatas::convertTo(unsigned char src, int &dst) const
 {
     dst = src * 257;
 }
-template<>
-inline void ImageDatas::convertTo(unsigned char src, unsigned short& dst) const
+template <>
+inline void ImageDatas::convertTo(unsigned char src, unsigned short &dst) const
 {
     dst = src * 257;
 }
-template<>
-inline void ImageDatas::convertTo(float src, unsigned char& dst) const
+template <>
+inline void ImageDatas::convertTo(float src, unsigned char &dst) const
 {
     dst = uint16ToUint8Rounded(CLIP(src));
 }
-template<>
-inline void ImageDatas::convertTo(unsigned char src, float& dst) const
+template <>
+inline void ImageDatas::convertTo(unsigned char src, float &dst) const
 {
     dst = src * 257;
 }
-template<>
-inline void ImageDatas::convertTo(float src, float& dst) const
+template <> inline void ImageDatas::convertTo(float src, float &dst) const
 {
     dst = std::isnan(src) ? 0.f : src;
 }
@@ -135,21 +135,20 @@ inline void ImageDatas::convertTo(float src, float& dst) const
 //                       Planar order classes
 // --------------------------------------------------------------------
 
-template <class T>
-class PlanarPtr
-{
+template <class T> class PlanarPtr {
 protected:
-    AlignedBuffer<T*> ab;
+    AlignedBuffer<T *> ab;
+
 public:
 #if CHECK_BOUNDS
     size_t width_, height_;
 #endif
-    T** ptrs;
+    T **ptrs;
 
 #if CHECK_BOUNDS
-    PlanarPtr() : width_(0), height_(0), ptrs (NULL) {}
+    PlanarPtr(): width_(0), height_(0), ptrs(NULL) {}
 #else
-    PlanarPtr() : ptrs (nullptr) {}
+    PlanarPtr(): ptrs(nullptr) {}
 #endif
 
     bool resize(size_t newSize)
@@ -162,10 +161,10 @@ public:
             return false;
         }
     }
-    void swap (PlanarPtr<T> &other)
+    void swap(PlanarPtr<T> &other)
     {
         ab.swap(other.ab);
-        T** tmpsPtrs = other.ptrs;
+        T **tmpsPtrs = other.ptrs;
         other.ptrs = ptrs;
         ptrs = tmpsPtrs;
 
@@ -179,68 +178,64 @@ public:
 #endif
     }
 
-    T*&       operator() (size_t row)
+    T *&operator()(size_t row)
     {
 #if CHECK_BOUNDS
-        assert (row < height_);
+        assert(row < height_);
 #endif
         return ptrs[row];
     }
-    // Will send back the start of a row, starting with a red, green or blue value
-    T*        operator() (size_t row) const
+    // Will send back the start of a row, starting with a red, green or blue
+    // value
+    T *operator()(size_t row) const
     {
 #if CHECK_BOUNDS
-        assert (row < height_);
+        assert(row < height_);
 #endif
         return ptrs[row];
     }
     // Will send back a value at a given row, col position
-    T&        operator() (size_t row, size_t col)
+    T &operator()(size_t row, size_t col)
     {
 #if CHECK_BOUNDS
-        assert (row < height_ && col < width_);
+        assert(row < height_ && col < width_);
 #endif
         return ptrs[row][col];
     }
-    const T   operator() (size_t row, size_t col) const
+    const T operator()(size_t row, size_t col) const
     {
 #if CHECK_BOUNDS
-        assert (row < height_ && col < width_);
+        assert(row < height_ && col < width_);
 #endif
         return ptrs[row][col];
     }
 };
 
-template <class T>
-class PlanarWhateverData : virtual public ImageDatas
-{
+template <class T> class PlanarWhateverData: virtual public ImageDatas {
 
 private:
     AlignedBuffer<T> abData;
 
-    size_t rowstride;    // Plan size, in bytes (all padding bytes included)
+    size_t rowstride; // Plan size, in bytes (all padding bytes included)
 
 public:
-    T* data;
-    PlanarPtr<T> v;  // v stands for "value", whatever it represent
+    T *data;
+    PlanarPtr<T> v; // v stands for "value", whatever it represent
 
-    PlanarWhateverData() : rowstride(0), data (nullptr) {}
-    PlanarWhateverData(int w, int h) : rowstride(0), data (nullptr)
+    PlanarWhateverData(): rowstride(0), data(nullptr) {}
+    PlanarWhateverData(int w, int h): rowstride(0), data(nullptr)
     {
         allocate(w, h);
     }
 
     // Send back the row stride. WARNING: unit = byte, not element!
-    size_t getRowStride () const
-    {
-        return rowstride;
-    }
+    size_t getRowStride() const { return rowstride; }
 
     void swap(PlanarWhateverData<T> &other)
     {
         abData.swap(other.abData);
         v.swap(other.v);
-        T* tmpData = other.data;
+        T *tmpData = other.data;
         other.data = data;
         data = tmpData;
         int tmpWidth = other.width;
@@ -256,11 +251,12 @@ public:
     }
 
     // use as pointer to data
-    //operator void*() { return data; };
+    // operator void*() { return data; };
 
-    /* If any of the required allocation fails, "width" and "height" are set to -1, and all remaining buffer are freed
-     * Can be safely used to reallocate an existing image */
-    void allocate (int W, int H) override
+    /* If any of the required allocation fails, "width" and "height" are set to
+     * -1, and all remaining buffer are freed Can be safely used to reallocate
+     * an existing image */
+    void allocate(int W, int H) override
     {
         if (W == width && H == height) {
             return;
@@ -275,7 +271,7 @@ public:
 
         if (sizeof(T) > 1) {
             // 128 bits memory alignment for >8bits data
-            rowstride = ( width * sizeof(T) + 15 ) / 16 * 16;
+            rowstride = (width * sizeof(T) + 15) / 16 * 16;
         } else {
             // No memory alignment for 8bits data
             rowstride = width * sizeof(T);
@@ -289,9 +285,8 @@ public:
             rowstride = 0;
         }
 
-        if (size && abData.resize(size, 1)
-                && v.resize(height) ) {
-            data   = abData.data;
+        if (size && abData.resize(size, 1) && v.resize(height)) {
+            data = abData.data;
         } else {
             // asking for a new size of 0 is safe and will free memory, if any!
             abData.resize(0);
@@ -305,18 +300,18 @@ public:
             return;
         }
 
-        char *start   = (char*)(data);
+        char *start = (char *)(data);
 
         for (int i = 0; i < height; ++i) {
             int k = i * rowstride;
-            v(i) = (T*)(start   + k);
+            v(i) = (T *)(start + k);
         }
     }
 
     /** Copy the data to another PlanarWhateverData */
     void copyData(PlanarWhateverData<T> *dest) const
     {
-        assert (dest != NULL);
+        assert(dest != NULL);
         // Make sure that the size is the same, reallocate if necessary
         dest->allocate(width, height);
 
@@ -325,15 +320,16 @@ public:
         }
 
         for (int i = 0; i < height; i++) {
-            memcpy (dest->v(i), v(i), width * sizeof(T));
+            memcpy(dest->v(i), v(i), width * sizeof(T));
         }
     }
 
-    void rotate (int deg) override
+    void rotate(int deg) override
     {
 
         if (deg == 90) {
-            PlanarWhateverData<T> rotatedImg(height, width);  // New image, rotated
+            PlanarWhateverData<T> rotatedImg(height,
+                                             width); // New image, rotated
 
             for (int ny = 0; ny < rotatedImg.height; ny++) {
                 int ox = ny;
@@ -347,7 +343,8 @@ public:
 
             swap(rotatedImg);
         } else if (deg == 270) {
-            PlanarWhateverData<T> rotatedImg(height, width);  // New image, rotated
+            PlanarWhateverData<T> rotatedImg(height,
+                                             width); // New image, rotated
 
             for (int nx = 0; nx < rotatedImg.width; nx++) {
                 int oy = nx;
@@ -364,9 +361,10 @@ public:
             int height2 = height / 2 + (height & 1);
 
 #ifdef _OPENMP
-            // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+            // difficult to find a cutoff value where parallelization is counter
+            // productive because of processor's data cache collision...
             bool bigImage = width > 32 && height > 50;
-            #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
             for (int i = 0; i < height2; i++) {
@@ -387,11 +385,15 @@ public:
     }
 
     template <class IC>
-    void resizeImgTo (int nw, int nh, TypeInterpolation interp, PlanarWhateverData<IC> *imgPtr) const
+    void resizeImgTo(int nw, int nh, TypeInterpolation interp,
+                     PlanarWhateverData<IC> *imgPtr) const
     {
-        //printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width, imgPtr->height);
+        // printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x
+        // %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width,
+        // imgPtr->height);
         if (width == nw && height == nh) {
-            // special case where no resizing is necessary, just type conversion....
+            // special case where no resizing is necessary, just type
+            // conversion....
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
                     convertTo(v(i, j), imgPtr->v(i, j));
@@ -435,7 +437,11 @@ public:
                         nx = sx;
                     }
 
-                    convertTo(v(sy, sx) * (1.f - dx) * (1.f - dy) + v(sy, nx)*dx * (1.f - dy) + v(ny, sx) * (1.f - dx)*dy + v(ny, nx)*dx * dy, imgPtr->v(i, j));
+                    convertTo(v(sy, sx) * (1.f - dx) * (1.f - dy) +
+                                  v(sy, nx) * dx * (1.f - dy) +
+                                  v(ny, sx) * (1.f - dx) * dy +
+                                  v(ny, nx) * dx * dy,
+                              imgPtr->v(i, j));
                 }
             }
         } else {
@@ -448,14 +454,15 @@ public:
         }
     }
 
-    void hflip () override
+    void hflip() override
     {
         int width2 = width / 2;
 
 #ifdef _OPENMP
-        // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+        // difficult to find a cutoff value where parallelization is counter
+        // productive because of processor's data cache collision...
         bool bigImage = width > 32 && height > 50;
-        #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
         for (int i = 0; i < height; i++)
@@ -472,15 +479,16 @@ public:
 #endif
     }
 
-    void vflip () override
+    void vflip() override
     {
 
         int height2 = height / 2;
 
 #ifdef _OPENMP
-        // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+        // difficult to find a cutoff value where parallelization is counter
+        // productive because of processor's data cache collision...
         bool bigImage = width > 32 && height > 50;
-        #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
         for (int i = 0; i < height2; i++)
@@ -497,7 +505,7 @@ public:
 #endif
     }
 
-    void transformPixel (int x, int y, int tran, int& tx, int& ty) const
+    void transformPixel(int x, int y, int tran, int &tx, int &ty) const
     {
 
         if (!tran) {
@@ -540,17 +548,20 @@ public:
         }
     }
 
-    void getPipetteData (T &value, int posX, int posY, int squareSize, int tran) const
+    void getPipetteData(T &value, int posX, int posY, int squareSize,
+                        int tran) const
     {
         int x;
         int y;
-        float accumulator = 0.f;  // using float to avoid range overflow; -> please creates specialization if necessary
+        float accumulator = 0.f; // using float to avoid range overflow; ->
+                                 // please creates specialization if necessary
         unsigned long int n = 0;
         int halfSquare = squareSize / 2;
-        transformPixel (posX, posY, tran, x, y);
+        transformPixel(posX, posY, tran, x, y);
 
         for (int iy = y - halfSquare; iy < y - halfSquare + squareSize; ++iy) {
-            for (int ix = x - halfSquare; ix < x - halfSquare + squareSize; ++ix) {
+            for (int ix = x - halfSquare; ix < x - halfSquare + squareSize;
+                 ++ix) {
                 if (ix >= 0 && iy >= 0 && ix < width && iy < height) {
                     accumulator += float(this->v(iy, ix));
                     ++n;
@@ -561,64 +572,56 @@ public:
         value = n ? T(accumulator / float(n)) : T(0);
     }
 
-    void readData (FILE *f)
+    void readData(FILE *f)
     {
         for (int i = 0; i < height; i++) {
-            fread (v(i), sizeof(T), width, f);
+            fread(v(i), sizeof(T), width, f);
         }
     }
 
-    void writeData (FILE *f) const
+    void writeData(FILE *f) const
     {
         for (int i = 0; i < height; i++) {
-            fwrite (v(i), sizeof(T), width, f);
+            fwrite(v(i), sizeof(T), width, f);
         }
     }
 
-    void fill (T value) {
+    void fill(T value)
+    {
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 v(i, j) = value;
             }
         }
     }
-
 };
 
-
-template <class T>
-class PlanarRGBData : virtual public ImageDatas
-{
+template <class T> class PlanarRGBData: virtual public ImageDatas {
 
 private:
     AlignedBuffer<T> abData;
 
-    size_t rowstride;    // Plan size, in bytes (all padding bytes included)
-    size_t planestride;  // Row length, in bytes (padding bytes included)
+    size_t rowstride;   // Plan size, in bytes (all padding bytes included)
+    size_t planestride; // Row length, in bytes (padding bytes included)
 protected:
-    T* data;
+    T *data;
 
 public:
     PlanarPtr<T> r;
     PlanarPtr<T> g;
     PlanarPtr<T> b;
 
-    PlanarRGBData() : rowstride(0), planestride(0), data (nullptr) {}
-    PlanarRGBData(size_t w, size_t h) : rowstride(0), planestride(0), data (nullptr)
+    PlanarRGBData(): rowstride(0), planestride(0), data(nullptr) {}
+    PlanarRGBData(size_t w, size_t h)
+        : rowstride(0), planestride(0), data(nullptr)
     {
         allocate(w, h);
     }
 
     // Send back the row stride. WARNING: unit = byte, not element!
-    size_t getRowStride () const
-    {
-        return rowstride;
-    }
+    size_t getRowStride() const { return rowstride; }
     // Send back the plane stride. WARNING: unit = byte, not element!
-    size_t getPlaneStride () const
-    {
-        return planestride;
-    }
+    size_t getPlaneStride() const { return planestride; }
 
     void swap(PlanarRGBData<T> &other)
     {
@@ -626,7 +629,7 @@ public:
         r.swap(other.r);
         g.swap(other.g);
         b.swap(other.b);
-        T* tmpData = other.data;
+        T *tmpData = other.data;
         other.data = data;
         data = tmpData;
         int tmpWidth = other.width;
@@ -646,11 +649,12 @@ public:
     }
 
     // use as pointer to data
-    //operator void*() { return data; };
+    // operator void*() { return data; };
 
-    /* If any of the required allocation fails, "width" and "height" are set to -1, and all remaining buffer are freed
-     * Can be safely used to reallocate an existing image */
-    void allocate (int W, int H) override
+    /* If any of the required allocation fails, "width" and "height" are set to
+     * -1, and all remaining buffer are freed Can be safely used to reallocate
+     * an existing image */
+    void allocate(int W, int H) override
     {
 
         if (W == width && H == height) {
@@ -670,7 +674,7 @@ public:
 
         if (sizeof(T) > 1) {
             // 128 bits memory alignment for >8bits data
-            rowstride = ( width * sizeof(T) + 15 ) / 16 * 16;
+            rowstride = (width * sizeof(T) + 15) / 16 * 16;
             planestride = rowstride * height;
         } else {
             // No memory alignment for 8bits data
@@ -686,11 +690,9 @@ public:
             rowstride = 0;
         }
 
-        if (size && abData.resize(size, 1)
-                && r.resize(height)
-                && g.resize(height)
-                && b.resize(height) ) {
-            data   = abData.data;
+        if (size && abData.resize(size, 1) && r.resize(height) &&
+            g.resize(height) && b.resize(height)) {
+            data = abData.data;
         } else {
             // asking for a new size of 0 is safe and will free memory, if any!
             abData.resize(0);
@@ -707,22 +709,22 @@ public:
             return;
         }
 
-        char *redstart   = (char*)(data);
-        char *greenstart = (char*)(data) +   planestride;
-        char *bluestart  = (char*)(data) + 2 * planestride;
+        char *redstart = (char *)(data);
+        char *greenstart = (char *)(data) + planestride;
+        char *bluestart = (char *)(data) + 2 * planestride;
 
         for (int i = 0; i < height; ++i) {
             size_t k = i * rowstride;
-            r(i) = (T*)(redstart   + k);
-            g(i) = (T*)(greenstart + k);
-            b(i) = (T*)(bluestart  + k);
+            r(i) = (T *)(redstart + k);
+            g(i) = (T *)(greenstart + k);
+            b(i) = (T *)(bluestart + k);
         }
     }
 
     /** Copy the data to another PlanarRGBData */
     void copyData(PlanarRGBData<T> *dest) const
     {
-        assert (dest != nullptr);
+        assert(dest != nullptr);
         // Make sure that the size is the same, reallocate if necessary
         dest->allocate(width, height);
 
@@ -732,17 +734,17 @@ public:
         }
 
         for (int i = 0; i < height; i++) {
-            memcpy (dest->r(i), r(i), width * sizeof(T));
-            memcpy (dest->g(i), g(i), width * sizeof(T));
-            memcpy (dest->b(i), b(i), width * sizeof(T));
+            memcpy(dest->r(i), r(i), width * sizeof(T));
+            memcpy(dest->g(i), g(i), width * sizeof(T));
+            memcpy(dest->b(i), b(i), width * sizeof(T));
         }
     }
 
-    void rotate (int deg) override
+    void rotate(int deg) override
     {
 
         if (deg == 90) {
-            PlanarRGBData<T> rotatedImg(height, width);  // New image, rotated
+            PlanarRGBData<T> rotatedImg(height, width); // New image, rotated
 
             for (int ny = 0; ny < rotatedImg.height; ny++) {
                 int ox = ny;
@@ -758,7 +760,7 @@ public:
 
             swap(rotatedImg);
         } else if (deg == 270) {
-            PlanarRGBData<T> rotatedImg(height, width);  // New image, rotated
+            PlanarRGBData<T> rotatedImg(height, width); // New image, rotated
 
             for (int nx = 0; nx < rotatedImg.width; nx++) {
                 int oy = nx;
@@ -777,9 +779,10 @@ public:
             int height2 = height / 2 + (height & 1);
 
 #ifdef _OPENMP
-            // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+            // difficult to find a cutoff value where parallelization is counter
+            // productive because of processor's data cache collision...
             bool bigImage = width > 32 && height > 50;
-            #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
             for (int i = 0; i < height2; i++) {
@@ -808,11 +811,14 @@ public:
     }
 
     template <class IC>
-    void resizeImgTo (int nw, int nh, TypeInterpolation interp, IC *imgPtr) const
+    void resizeImgTo(int nw, int nh, TypeInterpolation interp, IC *imgPtr) const
     {
-        //printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width, imgPtr->height);
+        // printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x
+        // %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width,
+        // imgPtr->height);
         if (width == nw && height == nh) {
-            // special case where no resizing is necessary, just type conversion....
+            // special case where no resizing is necessary, just type
+            // conversion....
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
                     convertTo(r(i, j), imgPtr->r(i, j));
@@ -848,9 +854,21 @@ public:
                     float dx = sxf - float(sx);
                     int nx = sx < width - 1 ? sx + 1 : sx;
 
-                    convertTo(r(sy, sx) * (1.f - dx) * (1.f - dy) + r(sy, nx)*dx * (1.f - dy) + r(ny, sx) * (1.f - dx)*dy + r(ny, nx)*dx * dy, imgPtr->r(i, j));
-                    convertTo(g(sy, sx) * (1.f - dx) * (1.f - dy) + g(sy, nx)*dx * (1.f - dy) + g(ny, sx) * (1.f - dx)*dy + g(ny, nx)*dx * dy, imgPtr->g(i, j));
-                    convertTo(b(sy, sx) * (1.f - dx) * (1.f - dy) + b(sy, nx)*dx * (1.f - dy) + b(ny, sx) * (1.f - dx)*dy + b(ny, nx)*dx * dy, imgPtr->b(i, j));
+                    convertTo(r(sy, sx) * (1.f - dx) * (1.f - dy) +
+                                  r(sy, nx) * dx * (1.f - dy) +
+                                  r(ny, sx) * (1.f - dx) * dy +
+                                  r(ny, nx) * dx * dy,
+                              imgPtr->r(i, j));
+                    convertTo(g(sy, sx) * (1.f - dx) * (1.f - dy) +
+                                  g(sy, nx) * dx * (1.f - dy) +
+                                  g(ny, sx) * (1.f - dx) * dy +
+                                  g(ny, nx) * dx * dy,
+                              imgPtr->g(i, j));
+                    convertTo(b(sy, sx) * (1.f - dx) * (1.f - dy) +
+                                  b(sy, nx) * dx * (1.f - dy) +
+                                  b(ny, sx) * (1.f - dx) * dy +
+                                  b(ny, nx) * dx * dy,
+                              imgPtr->b(i, j));
                 }
             }
         } else {
@@ -865,14 +883,15 @@ public:
         }
     }
 
-    void hflip () override
+    void hflip() override
     {
         int width2 = width / 2;
 
 #ifdef _OPENMP
-        // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+        // difficult to find a cutoff value where parallelization is counter
+        // productive because of processor's data cache collision...
         bool bigImage = width > 32 && height > 50;
-        #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
         for (int i = 0; i < height; i++)
@@ -897,15 +916,16 @@ public:
 #endif
     }
 
-    void vflip () override
+    void vflip() override
     {
 
         int height2 = height / 2;
 
 #ifdef _OPENMP
-        // difficult to find a cutoff value where parallelization is counter productive because of processor's data cache collision...
+        // difficult to find a cutoff value where parallelization is counter
+        // productive because of processor's data cache collision...
         bool bigImage = width > 32 && height > 50;
-        #pragma omp parallel for schedule(static) if(bigImage)
+#pragma omp parallel for schedule(static) if (bigImage)
 #endif
 
         for (int i = 0; i < height2; i++)
@@ -944,7 +964,7 @@ public:
             }
     }
 
-    void computeAutoHistogram (LUTu & histogram, int& histcompr) const
+    void computeAutoHistogram(LUTu &histogram, int &histcompr) const
     {
         histcompr = 3;
 
@@ -957,13 +977,15 @@ public:
                 convertTo<T, float>(r(i, j), r_);
                 convertTo<T, float>(g(i, j), g_);
                 convertTo<T, float>(b(i, j), b_);
-                histogram[(int)Color::igamma_srgb (r_) >> histcompr]++;
-                histogram[(int)Color::igamma_srgb (g_) >> histcompr]++;
-                histogram[(int)Color::igamma_srgb (b_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(r_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(g_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(b_) >> histcompr]++;
             }
     }
 
-    void computeHistogramAutoWB (double &avg_r, double &avg_g, double &avg_b, int &n, LUTu &histogram, const int compression) const override
+    void computeHistogramAutoWB(double &avg_r, double &avg_g, double &avg_b,
+                                int &n, LUTu &histogram,
+                                const int compression) const override
     {
         histogram.clear();
         avg_r = avg_g = avg_b = 0.;
@@ -975,9 +997,9 @@ public:
                 convertTo<T, float>(r(i, j), r_);
                 convertTo<T, float>(g(i, j), g_);
                 convertTo<T, float>(b(i, j), b_);
-                int rtemp = Color::igamma_srgb (r_);
-                int gtemp = Color::igamma_srgb (g_);
-                int btemp = Color::igamma_srgb (b_);
+                int rtemp = Color::igamma_srgb(r_);
+                int gtemp = Color::igamma_srgb(g_);
+                int btemp = Color::igamma_srgb(b_);
 
                 histogram[rtemp >> compression]++;
                 histogram[gtemp >> compression] += 2;
@@ -995,14 +1017,14 @@ public:
             }
     }
 
-    void getAutoWBMultipliers (double &rm, double &gm, double &bm) const override
+    void getAutoWBMultipliers(double &rm, double &gm, double &bm) const override
     {
 
         double avg_r = 0.;
         double avg_g = 0.;
         double avg_b = 0.;
         int n = 0;
-        //int p = 6;
+        // int p = 6;
 
         for (unsigned int i = 0; i < (unsigned int)(height); i++)
             for (unsigned int j = 0; j < (unsigned int)(width); j++) {
@@ -1026,7 +1048,7 @@ public:
         bm = avg_b / double(n);
     }
 
-    void transformPixel (int x, int y, int tran, int& tx, int& ty) const
+    void transformPixel(int x, int y, int tran, int &tx, int &ty) const
     {
 
         if (!tran) {
@@ -1069,9 +1091,10 @@ public:
         }
     }
 
-    void getSpotWBData (double &reds, double &greens, double &blues, int &rn, int &gn, int &bn,
-                                std::vector<Coord2D> &red, std::vector<Coord2D> &green, std::vector<Coord2D> &blue,
-                                int tran) const override
+    void getSpotWBData(double &reds, double &greens, double &blues, int &rn,
+                       int &gn, int &bn, std::vector<Coord2D> &red,
+                       std::vector<Coord2D> &green, std::vector<Coord2D> &blue,
+                       int tran) const override
     {
         int x;
         int y;
@@ -1079,7 +1102,7 @@ public:
         rn = 0, gn = 0, bn = 0;
 
         for (size_t i = 0; i < red.size(); i++) {
-            transformPixel (red[i].x, red[i].y, tran, x, y);
+            transformPixel(red[i].x, red[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1088,7 +1111,7 @@ public:
                 rn++;
             }
 
-            transformPixel (green[i].x, green[i].y, tran, x, y);
+            transformPixel(green[i].x, green[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1097,7 +1120,7 @@ public:
                 gn++;
             }
 
-            transformPixel (blue[i].x, blue[i].y, tran, x, y);
+            transformPixel(blue[i].x, blue[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1108,19 +1131,22 @@ public:
         }
     }
 
-    void getPipetteData (T &valueR, T &valueG, T &valueB, int posX, int posY, int squareSize, int tran) const
+    void getPipetteData(T &valueR, T &valueG, T &valueB, int posX, int posY,
+                        int squareSize, int tran) const
     {
         int x;
         int y;
-        float accumulatorR = 0.f;  // using float to avoid range overflow; -> please creates specialization if necessary
-        float accumulatorG = 0.f;  //    "
-        float accumulatorB = 0.f;  //    "
+        float accumulatorR = 0.f; // using float to avoid range overflow; ->
+                                  // please creates specialization if necessary
+        float accumulatorG = 0.f; //    "
+        float accumulatorB = 0.f; //    "
         unsigned long int n = 0;
         int halfSquare = squareSize / 2;
-        transformPixel (posX, posY, tran, x, y);
+        transformPixel(posX, posY, tran, x, y);
 
         for (int iy = y - halfSquare; iy < y - halfSquare + squareSize; ++iy) {
-            for (int ix = x - halfSquare; ix < x - halfSquare + squareSize; ++ix) {
+            for (int ix = x - halfSquare; ix < x - halfSquare + squareSize;
+                 ++ix) {
                 if (ix >= 0 && iy >= 0 && ix < width && iy < height) {
                     accumulatorR += float(this->r(iy, ix));
                     accumulatorG += float(this->g(iy, ix));
@@ -1135,7 +1161,7 @@ public:
         valueB = n ? T(accumulatorB / float(n)) : T(0);
     }
 
-    void readData (FILE *f)
+    void readData(FILE *f)
     {
         for (int i = 0; i < height; i++) {
             if (fread(r(i), sizeof(T), width, f) < static_cast<size_t>(width)) {
@@ -1156,51 +1182,49 @@ public:
         }
     }
 
-    void writeData (FILE *f) const
+    void writeData(FILE *f) const
     {
         for (int i = 0; i < height; i++) {
-            fwrite (r(i), sizeof(T), width, f);
+            fwrite(r(i), sizeof(T), width, f);
         }
 
         for (int i = 0; i < height; i++) {
-            fwrite (g(i), sizeof(T), width, f);
+            fwrite(g(i), sizeof(T), width, f);
         }
 
         for (int i = 0; i < height; i++) {
-            fwrite (b(i), sizeof(T), width, f);
+            fwrite(b(i), sizeof(T), width, f);
         }
     }
-
 };
 
 // --------------------------------------------------------------------
 //                       Chunky order classes
 // --------------------------------------------------------------------
 
-template <class T>
-class ChunkyPtr
-{
+template <class T> class ChunkyPtr {
 private:
-    T* ptr;
+    T *ptr;
     ssize_t width;
+
 public:
 #if CHECK_BOUNDS
     size_t width_, height_;
 #endif
 
 #if CHECK_BOUNDS
-    ChunkyPtr() : ptr (NULL), width(-1), width_(0), height_(0) {}
+    ChunkyPtr(): ptr(NULL), width(-1), width_(0), height_(0) {}
 #else
-    ChunkyPtr() : ptr (nullptr), width(-1) {}
+    ChunkyPtr(): ptr(nullptr), width(-1) {}
 #endif
-    void init(T* base, ssize_t w = -1)
+    void init(T *base, ssize_t w = -1)
     {
         ptr = base;
         width = w;
     }
-    void swap (ChunkyPtr<T> &other)
+    void swap(ChunkyPtr<T> &other)
     {
-        T* tmpsPtr = other.ptr;
+        T *tmpsPtr = other.ptr;
         other.ptr = ptr;
         ptr = tmpsPtr;
 
@@ -1216,59 +1240,52 @@ public:
         other.height_ = height_;
         height_ = tmp;
 #endif
-
     }
 
-    // Will send back the start of a row, starting with a red, green or blue value
-    T* operator() (size_t row) const
+    // Will send back the start of a row, starting with a red, green or blue
+    // value
+    T *operator()(size_t row) const
     {
 #if CHECK_BOUNDS
-        assert (row < height_);
+        assert(row < height_);
 #endif
         return &ptr[3 * (row * width)];
     }
     // Will send back a value at a given row, col position
-    T& operator() (size_t row, size_t col)
+    T &operator()(size_t row, size_t col)
     {
 #if CHECK_BOUNDS
-        assert (row < height_ && col < width_);
+        assert(row < height_ && col < width_);
 #endif
         return ptr[3 * (row * width + col)];
     }
-    const T  operator() (size_t row, size_t col) const
+    const T operator()(size_t row, size_t col) const
     {
 #if CHECK_BOUNDS
-        assert (row < height_ && col < width_);
+        assert(row < height_ && col < width_);
 #endif
         return ptr[3 * (row * width + col)];
     }
 };
 
-template <class T>
-class ChunkyRGBData : virtual public ImageDatas
-{
+template <class T> class ChunkyRGBData: virtual public ImageDatas {
 
 private:
     AlignedBuffer<T> abData;
 
 public:
-    T* data;
+    T *data;
     ChunkyPtr<T> r;
     ChunkyPtr<T> g;
     ChunkyPtr<T> b;
 
-    ChunkyRGBData() : data (nullptr) {}
-    ChunkyRGBData(int w, int h) : data (nullptr)
-    {
-        allocate(w, h);
-    }
+    ChunkyRGBData(): data(nullptr) {}
+    ChunkyRGBData(int w, int h): data(nullptr) { allocate(w, h); }
 
-    /** Returns the pixel data, in r/g/b order from top left to bottom right continuously.
-      * @return a pointer to the pixel data */
-    const T* getData ()
-    {
-        return data;
-    }
+    /** Returns the pixel data, in r/g/b order from top left to bottom right
+     * continuously.
+     * @return a pointer to the pixel data */
+    const T *getData() { return data; }
 
     void swap(ChunkyRGBData<T> &other)
     {
@@ -1276,7 +1293,7 @@ public:
         r.swap(other.r);
         g.swap(other.g);
         b.swap(other.b);
-        T* tmpData = other.data;
+        T *tmpData = other.data;
         other.data = data;
         data = tmpData;
         int tmpWidth = other.width;
@@ -1296,10 +1313,11 @@ public:
     }
 
     /*
-     * If any of the required allocation fails, "width" and "height" are set to -1, and all remaining buffer are freed
-     * Can be safely used to reallocate an existing image or to free up it's memory with "allocate (0,0);"
+     * If any of the required allocation fails, "width" and "height" are set to
+     * -1, and all remaining buffer are freed Can be safely used to reallocate
+     * an existing image or to free up it's memory with "allocate (0,0);"
      */
-    void allocate (int W, int H) override
+    void allocate(int W, int H) override
     {
 
         if (W == width && H == height) {
@@ -1321,7 +1339,7 @@ public:
 
         if (!abData.isEmpty()) {
             data = abData.data;
-            r.init(data,   width);
+            r.init(data, width);
             g.init(data + 1, width);
             b.init(data + 2, width);
         } else {
@@ -1341,7 +1359,7 @@ public:
     /** Copy the data to another ChunkyRGBData */
     void copyData(ChunkyRGBData<T> *dest) const
     {
-        assert (dest != nullptr);
+        assert(dest != nullptr);
         // Make sure that the size is the same, reallocate if necessary
         dest->allocate(width, height);
 
@@ -1350,14 +1368,14 @@ public:
             return;
         }
 
-        memcpy (dest->data, data, 3 * width * height * sizeof(T));
+        memcpy(dest->data, data, 3 * width * height * sizeof(T));
     }
 
-    void rotate (int deg) override
+    void rotate(int deg) override
     {
 
         if (deg == 90) {
-            ChunkyRGBData<T> rotatedImg(height, width);  // New image, rotated
+            ChunkyRGBData<T> rotatedImg(height, width); // New image, rotated
 
             for (int ny = 0; ny < rotatedImg.height; ny++) {
                 int ox = ny;
@@ -1373,7 +1391,7 @@ public:
 
             swap(rotatedImg);
         } else if (deg == 270) {
-            ChunkyRGBData<T> rotatedImg(height, width);  // New image, rotated
+            ChunkyRGBData<T> rotatedImg(height, width); // New image, rotated
 
             for (int nx = 0; nx < rotatedImg.width; nx++) {
                 int oy = nx;
@@ -1415,11 +1433,14 @@ public:
     }
 
     template <class IC>
-    void resizeImgTo (int nw, int nh, TypeInterpolation interp, IC *imgPtr) const
+    void resizeImgTo(int nw, int nh, TypeInterpolation interp, IC *imgPtr) const
     {
-        //printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width, imgPtr->height);
+        // printf("resizeImgTo: resizing %s image data (%d x %d) to %s (%d x
+        // %d)\n", getType(), width, height, imgPtr->getType(), imgPtr->width,
+        // imgPtr->height);
         if (width == nw && height == nh) {
-            // special case where no resizing is necessary, just type conversion....
+            // special case where no resizing is necessary, just type
+            // conversion....
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
                     convertTo(r(i, j), imgPtr->r(i, j));
@@ -1467,9 +1488,15 @@ public:
                         nx = sx;
                     }
 
-                    T valR = r(sy, sx) * (1.f - dx) * (1.f - dy) + r(sy, nx) * dx * (1.f - dy) + r(ny, sx) * (1.f - dx) * dy + r(ny, nx) * dx * dy;
-                    T valG = g(sy, sx) * (1.f - dx) * (1.f - dy) + g(sy, nx) * dx * (1.f - dy) + g(ny, sx) * (1.f - dx) * dy + g(ny, nx) * dx * dy;
-                    T valB = b(sy, sx) * (1.f - dx) * (1.f - dy) + b(sy, nx) * dx * (1.f - dy) + b(ny, sx) * (1.f - dx) * dy + b(ny, nx) * dx * dy;
+                    T valR = r(sy, sx) * (1.f - dx) * (1.f - dy) +
+                             r(sy, nx) * dx * (1.f - dy) +
+                             r(ny, sx) * (1.f - dx) * dy + r(ny, nx) * dx * dy;
+                    T valG = g(sy, sx) * (1.f - dx) * (1.f - dy) +
+                             g(sy, nx) * dx * (1.f - dy) +
+                             g(ny, sx) * (1.f - dx) * dy + g(ny, nx) * dx * dy;
+                    T valB = b(sy, sx) * (1.f - dx) * (1.f - dy) +
+                             b(sy, nx) * dx * (1.f - dy) +
+                             b(ny, sx) * (1.f - dx) * dy + b(ny, nx) * dx * dy;
                     convertTo(valR, imgPtr->r(i, j));
                     convertTo(valG, imgPtr->g(i, j));
                     convertTo(valB, imgPtr->b(i, j));
@@ -1487,7 +1514,7 @@ public:
         }
     }
 
-    void hflip () override
+    void hflip() override
     {
         int width2 = width / 2;
 
@@ -1518,24 +1545,23 @@ public:
 
                 ++offsetBegin;
                 offsetEnd -= 5;
-
             }
         }
     }
 
-    void vflip () override
+    void vflip() override
     {
 
         AlignedBuffer<T> lBuffer(3 * width);
-        T* lineBuffer = lBuffer.data;
+        T *lineBuffer = lBuffer.data;
         size_t size = 3 * width * sizeof(T);
 
         for (int i = 0; i < height / 2; i++) {
             T *lineBegin1 = r(i);
             T *lineBegin2 = r(height - 1 - i);
-            memcpy (lineBuffer, lineBegin1, size);
-            memcpy (lineBegin1, lineBegin2, size);
-            memcpy (lineBegin2, lineBuffer, size);
+            memcpy(lineBuffer, lineBegin1, size);
+            memcpy(lineBegin1, lineBegin2, size);
+            memcpy(lineBegin2, lineBuffer, size);
         }
     }
 
@@ -1553,7 +1579,7 @@ public:
             }
     }
 
-    void computeAutoHistogram (LUTu & histogram, int& histcompr) const
+    void computeAutoHistogram(LUTu &histogram, int &histcompr) const
     {
         histcompr = 3;
 
@@ -1566,13 +1592,15 @@ public:
                 convertTo<T, float>(r(i, j), r_);
                 convertTo<T, float>(g(i, j), g_);
                 convertTo<T, float>(b(i, j), b_);
-                histogram[(int)Color::igamma_srgb (r_) >> histcompr]++;
-                histogram[(int)Color::igamma_srgb (g_) >> histcompr]++;
-                histogram[(int)Color::igamma_srgb (b_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(r_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(g_) >> histcompr]++;
+                histogram[(int)Color::igamma_srgb(b_) >> histcompr]++;
             }
     }
 
-    void computeHistogramAutoWB (double &avg_r, double &avg_g, double &avg_b, int &n, LUTu &histogram, const int compression) const override
+    void computeHistogramAutoWB(double &avg_r, double &avg_g, double &avg_b,
+                                int &n, LUTu &histogram,
+                                const int compression) const override
     {
         histogram.clear();
         avg_r = avg_g = avg_b = 0.;
@@ -1584,9 +1612,9 @@ public:
                 convertTo<T, float>(r(i, j), r_);
                 convertTo<T, float>(g(i, j), g_);
                 convertTo<T, float>(b(i, j), b_);
-                int rtemp = Color::igamma_srgb (r_);
-                int gtemp = Color::igamma_srgb (g_);
-                int btemp = Color::igamma_srgb (b_);
+                int rtemp = Color::igamma_srgb(r_);
+                int gtemp = Color::igamma_srgb(g_);
+                int btemp = Color::igamma_srgb(b_);
 
                 histogram[rtemp >> compression]++;
                 histogram[gtemp >> compression] += 2;
@@ -1604,14 +1632,14 @@ public:
             }
     }
 
-    void getAutoWBMultipliers (double &rm, double &gm, double &bm) const override
+    void getAutoWBMultipliers(double &rm, double &gm, double &bm) const override
     {
 
         double avg_r = 0.;
         double avg_g = 0.;
         double avg_b = 0.;
         int n = 0;
-        //int p = 6;
+        // int p = 6;
 
         for (unsigned int i = 0; i < (unsigned int)(height); i++)
             for (unsigned int j = 0; j < (unsigned int)(width); j++) {
@@ -1635,7 +1663,7 @@ public:
         bm = avg_b / double(n);
     }
 
-    void transformPixel (int x, int y, int tran, int& tx, int& ty) const
+    void transformPixel(int x, int y, int tran, int &tx, int &ty) const
     {
 
         if (!tran) {
@@ -1678,9 +1706,10 @@ public:
         }
     }
 
-    void getSpotWBData (double &reds, double &greens, double &blues, int &rn, int &gn, int &bn,
-                                std::vector<Coord2D> &red, std::vector<Coord2D> &green, std::vector<Coord2D> &blue,
-                                int tran) const override
+    void getSpotWBData(double &reds, double &greens, double &blues, int &rn,
+                       int &gn, int &bn, std::vector<Coord2D> &red,
+                       std::vector<Coord2D> &green, std::vector<Coord2D> &blue,
+                       int tran) const override
     {
         int x;
         int y;
@@ -1688,7 +1717,7 @@ public:
         rn = 0, gn = 0, bn = 0;
 
         for (size_t i = 0; i < red.size(); i++) {
-            transformPixel (red[i].x, red[i].y, tran, x, y);
+            transformPixel(red[i].x, red[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1697,7 +1726,7 @@ public:
                 rn++;
             }
 
-            transformPixel (green[i].x, green[i].y, tran, x, y);
+            transformPixel(green[i].x, green[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1706,7 +1735,7 @@ public:
                 gn++;
             }
 
-            transformPixel (blue[i].x, blue[i].y, tran, x, y);
+            transformPixel(blue[i].x, blue[i].y, tran, x, y);
 
             if (x >= 0 && y >= 0 && x < width && y < height) {
                 float v;
@@ -1717,91 +1746,102 @@ public:
         }
     }
 
-    void readData (FILE *f)
+    void readData(FILE *f)
     {
         for (int i = 0; i < height; i++) {
-            if (fread(r(i), sizeof(T), 3 * width, f) < 3 * static_cast<size_t>(width)) {
+            if (fread(r(i), sizeof(T), 3 * width, f) <
+                3 * static_cast<size_t>(width)) {
                 break;
             }
         }
     }
 
-    void writeData (FILE *f) const
+    void writeData(FILE *f) const
     {
         for (int i = 0; i < height; i++) {
-            fwrite (r(i), sizeof(T), 3 * width, f);
+            fwrite(r(i), sizeof(T), 3 * width, f);
         }
     }
-
 };
 
 // --------------------------------------------------------------------
 
-
-/** @brief This class represents an image (the result of the image processing) */
-class IImage : virtual public ImageDimensions
-{
+/** @brief This class represents an image (the result of the image processing)
+ */
+class IImage: virtual public ImageDimensions {
 public:
-
     virtual ~IImage() {}
-    /** @brief Returns a mutex that can is useful in many situations. No image operations shuold be performed without locking this mutex.
-      * @return The mutex */
-    virtual MyMutex& getMutex () = 0;
-    virtual cmsHPROFILE getProfile () const = 0;
+    /** @brief Returns a mutex that can is useful in many situations. No image
+     * operations shuold be performed without locking this mutex.
+     * @return The mutex */
+    virtual MyMutex &getMutex() = 0;
+    virtual cmsHPROFILE getProfile() const = 0;
     /** @brief Returns the bits per pixel of the image.
-      * @return The bits per pixel of the image */
-    virtual int getBitsPerPixel () const = 0;
-    /** @brief Saves the image to file. It autodetects the format (jpg, tif, png are supported).
+     * @return The bits per pixel of the image */
+    virtual int getBitsPerPixel() const = 0;
+    /** @brief Saves the image to file. It autodetects the format (jpg, tif, png
+      are supported).
       * @param fname is the name of the file
         @return the error code, 0 if none */
-    virtual int saveToFile (const Glib::ustring &fname) const = 0;
+    virtual int saveToFile(const Glib::ustring &fname) const = 0;
     /** @brief Saves the image to file in a png format.
       * @param fname is the name of the file
-      * @param compression is the amount of compression (0-6), -1 corresponds to the default
-      * @param bps can be 8 or 16 depending on the bits per pixels the output file will have
+      * @param compression is the amount of compression (0-6), -1 corresponds to
+      the default
+      * @param bps can be 8 or 16 depending on the bits per pixels the output
+      file will have
         @return the error code, 0 if none */
-    virtual int saveAsPNG (const Glib::ustring &fname, int bps = -1, bool uncompressed=false) const = 0;
+    virtual int saveAsPNG(const Glib::ustring &fname, int bps = -1,
+                          bool uncompressed = false) const = 0;
     /** @brief Saves the image to file in a jpg format.
       * @param fname is the name of the file
-      * @param quality is the quality of the jpeg (0...100), set it to -1 to use default
+      * @param quality is the quality of the jpeg (0...100), set it to -1 to use
+      default
         @return the error code, 0 if none */
-    virtual int saveAsJPEG (const Glib::ustring &fname, int quality = 100, int subSamp = 3 ) const = 0;
+    virtual int saveAsJPEG(const Glib::ustring &fname, int quality = 100,
+                           int subSamp = 3) const = 0;
     /** @brief Saves the image to file in a tif format.
       * @param fname is the name of the file
-      * @param bps can be 8 or 16 depending on the bits per pixels the output file will have
-      * @param isFloat is true for saving float images. Will be ignored by file format not supporting float data
+      * @param bps can be 8 or 16 depending on the bits per pixels the output
+      file will have
+      * @param isFloat is true for saving float images. Will be ignored by file
+      format not supporting float data
         @return the error code, 0 if none */
-    virtual int saveAsTIFF (const Glib::ustring &fname, int bps = -1, bool isFloat = false, bool uncompressed = false) const = 0;
-    /** @brief Sets the progress listener if you want to follow the progress of the image saving operations (optional).
-      * @param pl is the pointer to the class implementing the ProgressListener interface */
-    virtual void setSaveProgressListener (ProgressListener* pl) = 0;
+    virtual int saveAsTIFF(const Glib::ustring &fname, int bps = -1,
+                           bool isFloat = false,
+                           bool uncompressed = false) const = 0;
+    /** @brief Sets the progress listener if you want to follow the progress of
+     * the image saving operations (optional).
+     * @param pl is the pointer to the class implementing the ProgressListener
+     * interface */
+    virtual void setSaveProgressListener(ProgressListener *pl) = 0;
     /** @brief Free the image */
-    virtual void free () = 0;
+    virtual void free() = 0;
 };
 
-/** @brief This class represents an image having a float pixel planar representation.
-    The planes are stored as two dimensional arrays. All the rows have a 128 bits alignment. */
-class IImagefloat : public IImage, public PlanarRGBData<float>
-{
+/** @brief This class represents an image having a float pixel planar
+   representation. The planes are stored as two dimensional arrays. All the rows
+   have a 128 bits alignment. */
+class IImagefloat: public IImage, public PlanarRGBData<float> {
 public:
     ~IImagefloat() override {}
 };
 
-/** @brief This class represents an image having a classical 8 bits/pixel representation */
-class IImage8 : public IImage, public ChunkyRGBData<unsigned char>
-{
+/** @brief This class represents an image having a classical 8 bits/pixel
+ * representation */
+class IImage8: public IImage, public ChunkyRGBData<unsigned char> {
 public:
     ~IImage8() override {}
 };
 
-/** @brief This class represents an image having a 16 bits/pixel planar representation.
-  The planes are stored as two dimensional arrays. All the rows have a 128 bits alignment. */
-class IImage16 : public IImage, public PlanarRGBData<unsigned short>
-{
+/** @brief This class represents an image having a 16 bits/pixel planar
+  representation. The planes are stored as two dimensional arrays. All the rows
+  have a 128 bits alignment. */
+class IImage16: public IImage, public PlanarRGBData<unsigned short> {
 public:
     ~IImage16() override {}
 };
 
-}
+} // namespace rtengine
 
 #endif

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,11 +19,12 @@
  */
 #pragma once
 
+#include <vector>
+
 namespace rtengine {
 class ControlLine;
 class ProcEvent;
 } // namespace rtengine
-
 
 class LensGeomListener {
 public:
@@ -32,9 +33,9 @@ public:
     virtual void autoCropRequested() = 0;
     virtual double autoDistorRequested() = 0;
     virtual void autoPerspectiveRequested(
-        bool horiz, bool vert,
-        double &angle, double &horizontal, double &vertical, double &shear,
-        const std::vector<rtengine::ControlLine> *lines=nullptr) = 0;
-    virtual void updateTransformPreviewRequested (rtengine::ProcEvent event, bool render_perspective) = 0;
+        bool horiz, bool vert, double &angle, double &horizontal,
+        double &vertical, double &shear,
+        const std::vector<rtengine::ControlLine> *lines = nullptr) = 0;
+    virtual void updateTransformPreviewRequested(rtengine::ProcEvent event,
+                                                 bool render_perspective) = 0;
 };
-

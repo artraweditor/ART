@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -18,8 +18,8 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "edit.h"
 #include "areamask.h"
+#include "edit.h"
 
 using rtengine::Coord;
 using rtengine::PolarCoord;
@@ -30,59 +30,30 @@ namespace {
 // constexpr int CURVE_POLY  = 0;
 // constexpr int CAGE_POLY   = 1;
 // constexpr int INSERT_LINE = 2;
-constexpr int SEL_DISC    = 1;
-constexpr int PREV_DISC   = 2;
-//constexpr int NEXT_DISC   = 3;
+constexpr int SEL_DISC = 1;
+constexpr int PREV_DISC = 2;
+// constexpr int NEXT_DISC   = 3;
 
 } // namespace
 
-AreaMask::AreaMask():
-    EditSubscriber(ET_OBJECTS),
-    last_object_(-1),
-    dragged_point_old_angle_(-1000),
-    dragged_point_adjuster_angle_(-1000),
-    dragged_feather_offset_(0),
-    dragged_center_(0, 0),
-    center_x_(0),
-    center_y_(0),
-    width_(100),
-    height_(100),
-    strength_start_(100),
-    strength_end_(100.),
-    feather_(0.),
-    angle_(0),
-    top_id_(0),
-    bottom_id_(0),
-    left_id_(0),
-    right_id_(0),
-    rotate_w_id_(0),
-    rotate_h_id_(0),
-    center_id_(0),
-    insertion_line(nullptr),
-    curve(nullptr),
-    cage(nullptr),
-    sel_knot(nullptr),
-    sel_knot_bg_(nullptr),
-    prev_knot(nullptr),
-    next_knot(nullptr),
-    hovered_line_id_(-1),
-    sel_poly_knot_id_(-1),
-    prev_poly_knot_id_(-1),
-    next_poly_knot_id_(-1),
-    dragged_element_(DraggedElement::NONE),
-    h_line_id_(0),
-    v_line_id_(0),
-    feather_line1_id_(0),
-    feather_line2_id_(0),
-    center_circle_id_(0),
-    geomType (rteMaskShape::Type::RECTANGLE)
+AreaMask::AreaMask()
+    : EditSubscriber(ET_OBJECTS), last_object_(-1),
+      dragged_point_old_angle_(-1000), dragged_point_adjuster_angle_(-1000),
+      dragged_feather_offset_(0), dragged_center_(0, 0), center_x_(0),
+      center_y_(0), width_(100), height_(100), strength_start_(100),
+      strength_end_(100.), feather_(0.), angle_(0), top_id_(0), bottom_id_(0),
+      left_id_(0), right_id_(0), rotate_w_id_(0), rotate_h_id_(0),
+      center_id_(0), insertion_line(nullptr), curve(nullptr), cage(nullptr),
+      sel_knot(nullptr), sel_knot_bg_(nullptr), prev_knot(nullptr),
+      next_knot(nullptr), hovered_line_id_(-1), sel_poly_knot_id_(-1),
+      prev_poly_knot_id_(-1), next_poly_knot_id_(-1),
+      dragged_element_(DraggedElement::NONE), h_line_id_(0), v_line_id_(0),
+      feather_line1_id_(0), feather_line2_id_(0), center_circle_id_(0),
+      geomType(rteMaskShape::Type::RECTANGLE)
 {
 }
 
-AreaMask::~AreaMask()
-{
-    deleteGeometry();
-}
+AreaMask::~AreaMask() { deleteGeometry(); }
 
 void AreaMask::deleteGeometry()
 {
@@ -91,12 +62,12 @@ void AreaMask::deleteGeometry()
     }
     visibleGeometry.clear();
 
-    if (geomType == rteMaskShape::Type::RECTANGLE || geomType == rteMaskShape::Type::GRADIENT) {
+    if (geomType == rteMaskShape::Type::RECTANGLE ||
+        geomType == rteMaskShape::Type::GRADIENT) {
         for (auto geometry : mouseOverGeometry) {
             delete geometry;
         }
-    }
-    else {  // geomType == rteMaskShape::Type::POLYGON
+    } else { // geomType == rteMaskShape::Type::POLYGON
         // Some shapes are in visible and mouseOver geometry, so need
         // to be deleted differently
         for (auto geom : segments_MO) {
@@ -122,41 +93,39 @@ void AreaMask::deleteGeometry()
 
 void AreaMask::createRectangleGeometry()
 {
-    const auto mkline = [](std::vector<Geometry *> &geom) -> int
-                        {
-                            Line *ret = new Line();
-                            ret->innerLineWidth = 2;
-                            ret->datum = Geometry::IMAGE;
-                            geom.push_back(ret);
-                            return geom.size() - 1;
-                        };
+    const auto mkline = [](std::vector<Geometry *> &geom) -> int {
+        Line *ret = new Line();
+        ret->innerLineWidth = 2;
+        ret->datum = Geometry::IMAGE;
+        geom.push_back(ret);
+        return geom.size() - 1;
+    };
 
-    const auto mkcircle = [](std::vector<Geometry *> &geom) -> int
-                          {
-                              Circle *ret = new Circle();
-                              ret->datum = Geometry::IMAGE;
-                              ret->radiusInImageSpace = false;
-                              ret->radius = 6;
-                              ret->filled = true;
-                              geom.push_back(ret);
-                              return geom.size() - 1;
-                          };
-    
-    top_id_ = mkline(visibleGeometry); // top
-    bottom_id_ = mkline(visibleGeometry); // bottom
-    left_id_ = mkline(visibleGeometry); // left
-    right_id_ = mkline(visibleGeometry); // right
+    const auto mkcircle = [](std::vector<Geometry *> &geom) -> int {
+        Circle *ret = new Circle();
+        ret->datum = Geometry::IMAGE;
+        ret->radiusInImageSpace = false;
+        ret->radius = 6;
+        ret->filled = true;
+        geom.push_back(ret);
+        return geom.size() - 1;
+    };
+
+    top_id_ = mkline(visibleGeometry);      // top
+    bottom_id_ = mkline(visibleGeometry);   // bottom
+    left_id_ = mkline(visibleGeometry);     // left
+    right_id_ = mkline(visibleGeometry);    // right
     rotate_w_id_ = mkline(visibleGeometry); // rotate_w
     rotate_h_id_ = mkline(visibleGeometry); // rotate_h
     center_id_ = mkcircle(visibleGeometry); // center
 
     // MouseOver geometry
-    mkline(mouseOverGeometry); // top
-    mkline(mouseOverGeometry); // bottom
-    mkline(mouseOverGeometry); // left
-    mkline(mouseOverGeometry); // right
-    mkline(mouseOverGeometry); // rotate_w
-    mkline(mouseOverGeometry); // rotate_h
+    mkline(mouseOverGeometry);   // top
+    mkline(mouseOverGeometry);   // bottom
+    mkline(mouseOverGeometry);   // left
+    mkline(mouseOverGeometry);   // right
+    mkline(mouseOverGeometry);   // rotate_w
+    mkline(mouseOverGeometry);   // rotate_h
     mkcircle(mouseOverGeometry); // center
 }
 
@@ -181,29 +150,29 @@ void AreaMask::createPolygonGeometry()
     cage->setDashed(true);
     visibleGeometry.push_back(cage);
 
-    const auto mkcircle = [this](Circle* &circle) -> void
-                          {
-                              circle = new Circle();
-                              circle->datum = Geometry::IMAGE;
-                              circle->radiusInImageSpace = false;
-                              circle->radius = 3;
-                              circle->filled = true;
-                              circle->setVisible(false);
-                              circle->setHoverable(false);
-                              visibleGeometry.push_back(circle);
-                              //have to be added after the segments,
-                              //so it's added to the vectors in setPolylineSize
-                              //mouseOverGeometry.push_back(circle);
-                          };
+    const auto mkcircle = [this](Circle *&circle) -> void {
+        circle = new Circle();
+        circle->datum = Geometry::IMAGE;
+        circle->radiusInImageSpace = false;
+        circle->radius = 3;
+        circle->filled = true;
+        circle->setVisible(false);
+        circle->setHoverable(false);
+        visibleGeometry.push_back(circle);
+        // have to be added after the segments,
+        // so it's added to the vectors in setPolylineSize
+        // mouseOverGeometry.push_back(circle);
+    };
 
     mkcircle(sel_knot_bg_);
     visibleGeometry.pop_back(); // the bg circle is only for mouse wheel
-    
+
     mkcircle(sel_knot);
     mkcircle(prev_knot);
     mkcircle(next_knot);
 
-    sel_knot->state = Geometry::PRELIGHT;  // always prelight, but either visible or invisible
+    sel_knot->state =
+        Geometry::PRELIGHT; // always prelight, but either visible or invisible
     sel_knot_bg_->radius = 7;
     sel_knot_bg_->setHoverable(true);
 
@@ -215,25 +184,23 @@ void AreaMask::createPolygonGeometry()
 
 void AreaMask::createGradientGeometry()
 {
-    const auto mkline = [](std::vector<Geometry *> &geom) -> int
-                        {
-                            Line *ret = new Line();
-                            ret->innerLineWidth = 2;
-                            ret->datum = Geometry::IMAGE;
-                            geom.push_back(ret);
-                            return geom.size() - 1;
-                        };
+    const auto mkline = [](std::vector<Geometry *> &geom) -> int {
+        Line *ret = new Line();
+        ret->innerLineWidth = 2;
+        ret->datum = Geometry::IMAGE;
+        geom.push_back(ret);
+        return geom.size() - 1;
+    };
 
-    const auto mkcircle = [](std::vector<Geometry *> &geom, int radius) -> int
-                          {
-                              Circle *ret = new Circle();
-                              ret->datum = Geometry::IMAGE;
-                              ret->radiusInImageSpace = false;
-                              ret->radius = radius;
-                              ret->filled = true;
-                              geom.push_back(ret);
-                              return geom.size() - 1;
-                          };
+    const auto mkcircle = [](std::vector<Geometry *> &geom, int radius) -> int {
+        Circle *ret = new Circle();
+        ret->datum = Geometry::IMAGE;
+        ret->radiusInImageSpace = false;
+        ret->radius = radius;
+        ret->filled = true;
+        geom.push_back(ret);
+        return geom.size() - 1;
+    };
 
     h_line_id_ = mkline(visibleGeometry);
     v_line_id_ = mkline(visibleGeometry);
@@ -248,17 +215,13 @@ void AreaMask::createGradientGeometry()
     mkcircle(mouseOverGeometry, 20);
 }
 
-size_t AreaMask::getPolygonSize()
-{
-    return poly_knots_.size();
-}
+size_t AreaMask::getPolygonSize() { return poly_knots_.size(); }
 
 void AreaMask::setPolygon(const std::vector<rteMaskPoly::Knot> &new_poly)
 {
     if (new_poly.empty()) {
         poly_knots_.clear();
-    }
-    else {
+    } else {
         poly_knots_ = new_poly;
     }
     if (geomType == rteMaskShape::Type::POLYGON) {
@@ -267,10 +230,7 @@ void AreaMask::setPolygon(const std::vector<rteMaskPoly::Knot> &new_poly)
     }
 }
 
-std::vector<rteMaskPoly::Knot> AreaMask::getPolygon()
-{
-    return poly_knots_;
-}
+std::vector<rteMaskPoly::Knot> AreaMask::getPolygon() { return poly_knots_; }
 
 void AreaMask::clearPolygon()
 {
@@ -291,14 +251,14 @@ void AreaMask::initHoverGeometry()
 
         if (poly_knots_.size() == 1) {
             prev_poly_knot_id_ = 0;
-        }
-        else if (poly_knots_.size() == 2) {
+        } else if (poly_knots_.size() == 2) {
             prev_poly_knot_id_ = 0;
             next_poly_knot_id_ = 1;
-        }
-        else if (poly_knots_.size() > 2) {
+        } else if (poly_knots_.size() > 2) {
             prev_poly_knot_id_ = hovered_line_id_;
-            next_poly_knot_id_ = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : sel_poly_knot_id_ + 1;
+            next_poly_knot_id_ = hovered_line_id_ == (int)poly_knots_.size() - 1
+                                     ? 0
+                                     : sel_poly_knot_id_ + 1;
         }
     }
 }
@@ -322,23 +282,22 @@ void AreaMask::setGeometryType(rteMaskShape::Type newType)
     }
 }
 
-rteMaskShape::Type AreaMask::getGeometryType()
-{
-    return geomType;
-}
+rteMaskShape::Type AreaMask::getGeometryType() { return geomType; }
 
 CursorShape AreaMask::getCursor(int objectID)
 {
     switch (geomType) {
     case rteMaskShape::Type::RECTANGLE:
         if (objectID == top_id_ || objectID == bottom_id_) {
-            if (angle_ < -135 || (angle_ >= -45 && angle_ <= 45) || angle_ > 135) {
+            if (angle_ < -135 || (angle_ >= -45 && angle_ <= 45) ||
+                angle_ > 135) {
                 return CSMove1DV;
             } else {
                 return CSMove1DH;
             }
         } else if (objectID == left_id_ || objectID == right_id_) {
-            if (angle_ < -135 || (angle_ >= -45 && angle_ <= 45) || angle_ > 135) {
+            if (angle_ < -135 || (angle_ >= -45 && angle_ <= 45) ||
+                angle_ > 135) {
                 return CSMove1DH;
             } else {
                 return CSMove1DV;
@@ -352,16 +311,17 @@ CursorShape AreaMask::getCursor(int objectID)
     case rteMaskShape::Type::GRADIENT:
         if (objectID == h_line_id_ || objectID == v_line_id_) {
             return CSMoveRotate;
-        } else if (objectID == feather_line1_id_ || objectID == feather_line2_id_) {
-            if (angle_ < -135. || (angle_ >= -45. && angle_ <= 45.) || angle_ > 135.) {
+        } else if (objectID == feather_line1_id_ ||
+                   objectID == feather_line2_id_) {
+            if (angle_ < -135. || (angle_ >= -45. && angle_ <= 45.) ||
+                angle_ > 135.) {
                 return CSMove1DV;
             }
 
             return CSMove1DH;
         } else if (objectID == center_circle_id_) {
             return CSMove2D;
-        }
-        else {
+        } else {
             return CSArrow;
         }
         break;
@@ -380,7 +340,6 @@ CursorShape AreaMask::getCursor(int objectID)
 
     return CSArrow;
 }
-
 
 bool AreaMask::mouseOver(int modifierKey)
 {
@@ -414,7 +373,8 @@ bool AreaMask::mouseOver(int modifierKey)
                     visibleGeometry[2]->state = Geometry::PRELIGHT;
                     visibleGeometry[3]->state = Geometry::PRELIGHT;
                 } else {
-                    visibleGeometry[provider->object]->state = Geometry::PRELIGHT;
+                    visibleGeometry[provider->object]->state =
+                        Geometry::PRELIGHT;
                 }
             }
         } else if (geomType == rteMaskShape::Type::POLYGON) {
@@ -431,8 +391,11 @@ bool AreaMask::mouseOver(int modifierKey)
                 hovered_line_id_ = -1;
                 // if over a knot, the knots might be updated
                 if (provider->object >= discsPos + PREV_DISC) {
-                    // if over a disc, 3 disc to be shown : selected (= hovered) + previous + next
-                    sel_poly_knot_id_ = provider->object == discsPos + PREV_DISC ? prev_poly_knot_id_ : next_poly_knot_id_;
+                    // if over a disc, 3 disc to be shown : selected (= hovered)
+                    // + previous + next
+                    sel_poly_knot_id_ = provider->object == discsPos + PREV_DISC
+                                            ? prev_poly_knot_id_
+                                            : next_poly_knot_id_;
                     if (poly_knots_.size() == 1) {
                         prev_poly_knot_id_ = -1;
                         next_poly_knot_id_ = -1;
@@ -441,15 +404,18 @@ bool AreaMask::mouseOver(int modifierKey)
                         if (sel_poly_knot_id_ == 0) {
                             prev_poly_knot_id_ = -1;
                             next_poly_knot_id_ = 1;
-                        }
-                        else if (sel_poly_knot_id_ == 1) {
+                        } else if (sel_poly_knot_id_ == 1) {
                             prev_poly_knot_id_ = 0;
                             next_poly_knot_id_ = -1;
                         }
-                    }
-                    else { // poly_knots_.size() >= 3
-                        prev_poly_knot_id_ = !sel_poly_knot_id_ ? poly_knots_.size() - 1 : sel_poly_knot_id_ - 1;
-                        next_poly_knot_id_ = sel_poly_knot_id_ == (int)poly_knots_.size() - 1 ? 0 : sel_poly_knot_id_ + 1;
+                    } else { // poly_knots_.size() >= 3
+                        prev_poly_knot_id_ = !sel_poly_knot_id_
+                                                 ? poly_knots_.size() - 1
+                                                 : sel_poly_knot_id_ - 1;
+                        next_poly_knot_id_ =
+                            sel_poly_knot_id_ == (int)poly_knots_.size() - 1
+                                ? 0
+                                : sel_poly_knot_id_ + 1;
                     }
                 }
             } else if (provider->object >= 0) {
@@ -461,7 +427,10 @@ bool AreaMask::mouseOver(int modifierKey)
                 } else {
                     hovered_line_id_ = provider->object;
                     prev_poly_knot_id_ = hovered_line_id_;
-                    next_poly_knot_id_ = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : prev_poly_knot_id_ + 1;
+                    next_poly_knot_id_ =
+                        hovered_line_id_ == (int)poly_knots_.size() - 1
+                            ? 0
+                            : prev_poly_knot_id_ + 1;
                 }
                 sel_poly_knot_id_ = -1;
             } else if (provider->object == -1) {
@@ -473,24 +442,24 @@ bool AreaMask::mouseOver(int modifierKey)
                     prev_poly_knot_id_ = -1;
                     next_poly_knot_id_ = -1;
                     return false;
-                }
-                else if (poly_knots_.size() == 1) {
+                } else if (poly_knots_.size() == 1) {
                     sel_poly_knot_id_ = -1;
                     hovered_line_id_ = -1;
                     prev_poly_knot_id_ = 0;
                     next_poly_knot_id_ = -1;
-                }
-                else if (poly_knots_.size() == 2) {
+                } else if (poly_knots_.size() == 2) {
                     sel_poly_knot_id_ = -1;
                     hovered_line_id_ = 1;
                     prev_poly_knot_id_ = 0;
                     next_poly_knot_id_ = 1;
-                }
-                else { // poly_knots_.size() >= 3
+                } else { // poly_knots_.size() >= 3
                     sel_poly_knot_id_ = -1;
                     hovered_line_id_ = poly_knots_.size() - 1;
                     prev_poly_knot_id_ = hovered_line_id_;
-                    next_poly_knot_id_ = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : prev_poly_knot_id_ + 1;
+                    next_poly_knot_id_ =
+                        hovered_line_id_ == (int)poly_knots_.size() - 1
+                            ? 0
+                            : prev_poly_knot_id_ + 1;
                 }
             }
             updateGeometry();
@@ -501,7 +470,6 @@ bool AreaMask::mouseOver(int modifierKey)
 
     return false;
 }
-
 
 bool AreaMask::button1Pressed(int modifierKey)
 {
@@ -520,7 +488,8 @@ bool AreaMask::button1Pressed(int modifierKey)
             PolarCoord pCoord;
             double halfSizeW = imW / 2.;
             double halfSizeH = imH / 2.;
-            dragged_center_.set(halfSizeW + halfSizeW * (center_x_ / 100), halfSizeH + halfSizeH * center_y_ / 100);
+            dragged_center_.set(halfSizeW + halfSizeW * (center_x_ / 100),
+                                halfSizeH + halfSizeH * center_y_ / 100);
 
             // trick to get the correct angle (clockwise/counter-clockwise)
             rtengine::Coord p1 = dragged_center_;
@@ -552,7 +521,9 @@ bool AreaMask::button1Pressed(int modifierKey)
             provider->getImageSize(imW, imH);
             double halfSizeW = imW / 2.;
             double halfSizeH = imH / 2.;
-            dragged_center_.set(int(halfSizeW + halfSizeW * (center_x_ / 100.)), int(halfSizeH + halfSizeH * (center_y_ / 100.)));
+            dragged_center_.set(
+                int(halfSizeW + halfSizeW * (center_x_ / 100.)),
+                int(halfSizeH + halfSizeH * (center_y_ / 100.)));
 
             // trick to get the correct angle (clockwise/counter-clockwise)
             rtengine::Coord p1 = dragged_center_;
@@ -563,7 +534,8 @@ bool AreaMask::button1Pressed(int modifierKey)
 
             pCoord = p2 - p1;
             dragged_point_old_angle_ = pCoord.angle;
-            //printf("\ndraggedPointOldAngle=%.3f\n\n", dragged_point_old_angle_);
+            // printf("\ndraggedPointOldAngle=%.3f\n\n",
+            // dragged_point_old_angle_);
             dragged_point_adjuster_angle_ = angle_;
 
             if (last_object_ == 2 || last_object_ == 3) {
@@ -573,7 +545,8 @@ bool AreaMask::button1Pressed(int modifierKey)
                 currPos = provider->posImage;
                 rtengine::Coord centerPos = dragged_center_;
 
-                double diagonal = sqrt(double(imW) * double(imW) + double(imH) * double(imH));
+                double diagonal =
+                    sqrt(double(imW) * double(imW) + double(imH) * double(imH));
 
                 // trick to get the correct angle (clockwise/counter-clockwise)
                 int p = centerPos.y;
@@ -582,7 +555,9 @@ bool AreaMask::button1Pressed(int modifierKey)
 
                 draggedPoint = currPos - centerPos;
                 // compute the projected value of the dragged point
-                dragged_feather_offset_ = draggedPoint.radius * sin((draggedPoint.angle - angle_) / 180.*rtengine::RT_PI);
+                dragged_feather_offset_ =
+                    draggedPoint.radius *
+                    sin((draggedPoint.angle - angle_) / 180. * rtengine::RT_PI);
 
                 if (last_object_ == 3) {
                     dragged_feather_offset_ = -dragged_feather_offset_;
@@ -599,7 +574,8 @@ bool AreaMask::button1Pressed(int modifierKey)
                 EditSubscriber::visibleGeometry.at(2)->state = Geometry::NORMAL;
                 EditSubscriber::visibleGeometry.at(3)->state = Geometry::NORMAL;
             } else {
-                EditSubscriber::visibleGeometry.at(last_object_)->state = Geometry::NORMAL;
+                EditSubscriber::visibleGeometry.at(last_object_)->state =
+                    Geometry::NORMAL;
             }
 
             last_object_ = -1;
@@ -607,37 +583,37 @@ bool AreaMask::button1Pressed(int modifierKey)
         }
     }
     case rteMaskShape::Type::POLYGON:
-        if ((modifierKey & GDK_CONTROL_MASK)
-             && sel_poly_knot_id_ == -1)
-        {
+        if ((modifierKey & GDK_CONTROL_MASK) && sel_poly_knot_id_ == -1) {
             // add a new point
             rteMaskPoly::Knot newKnot;
             newKnot.x = rteMaskShape::toParamRange(provider->posImage.x, imW);
             newKnot.y = rteMaskShape::toParamRange(provider->posImage.y, imH);
             newKnot.roundness = modifierKey & GDK_SHIFT_MASK ? 100. : 0.;
             if (hovered_line_id_ == -1) {
-                // no selected knot & no hovered line = one of the 1 first point creation
+                // no selected knot & no hovered line = one of the 1 first point
+                // creation
                 poly_knots_.push_back(newKnot);
                 sel_poly_knot_id_ = (int)poly_knots_.size() - 1;
                 if (sel_poly_knot_id_ == 0) {
                     prev_poly_knot_id_ = -1;
-                }
-                else if (sel_poly_knot_id_ == 1) {
+                } else if (sel_poly_knot_id_ == 1) {
                     prev_poly_knot_id_ = 0;
                 }
                 next_poly_knot_id_ = -1;
-            }
-            else {
+            } else {
 
                 if (hovered_line_id_ == (int)poly_knots_.size() - 1) {
                     poly_knots_.push_back(newKnot);
-                }
-                else {
-                    poly_knots_.insert(poly_knots_.begin() + (hovered_line_id_ + 1), newKnot);
+                } else {
+                    poly_knots_.insert(
+                        poly_knots_.begin() + (hovered_line_id_ + 1), newKnot);
                 }
                 sel_poly_knot_id_ = hovered_line_id_ + 1;
                 prev_poly_knot_id_ = sel_poly_knot_id_ - 1;
-                next_poly_knot_id_ = sel_poly_knot_id_ == (int)poly_knots_.size() - 1 ? 0 : sel_poly_knot_id_ + 1;
+                next_poly_knot_id_ =
+                    sel_poly_knot_id_ == (int)poly_knots_.size() - 1
+                        ? 0
+                        : sel_poly_knot_id_ + 1;
                 hovered_line_id_ = -1;
             }
             rtengine::CoordD pt(newKnot.x, newKnot.y);
@@ -646,24 +622,22 @@ bool AreaMask::button1Pressed(int modifierKey)
             EditSubscriber::action = ES_ACTION_DRAGGING;
             updateGeometry(imW, imH);
             last_object_ = segments_MO.size() + SEL_DISC;
-        }
-        else if(sel_poly_knot_id_ >= 0) {
+        } else if (sel_poly_knot_id_ >= 0) {
             if (modifierKey & GDK_SHIFT_MASK) {
                 if (poly_knots_.size() > 2) {
                     dragged_element_ = DraggedElement::ROUNDNESS;
                     EditSubscriber::action = ES_ACTION_DRAGGING;
                 }
-            }
-            else {
+            } else {
                 dragged_element_ = DraggedElement::POINT;
                 rtengine::CoordD pt(poly_knots_.at(sel_poly_knot_id_).x,
                                     poly_knots_.at(sel_poly_knot_id_).y);
                 dragged_points_.emplace_back(pt);
                 EditSubscriber::action = ES_ACTION_DRAGGING;
             }
-        }
-        else if(hovered_line_id_ >= 0 && last_object_ != -1) {
-            if ((modifierKey & GDK_SHIFT_MASK) && !(modifierKey & GDK_CONTROL_MASK) ) {
+        } else if (hovered_line_id_ >= 0 && last_object_ != -1) {
+            if ((modifierKey & GDK_SHIFT_MASK) &&
+                !(modifierKey & GDK_CONTROL_MASK)) {
                 dragged_element_ = DraggedElement::WHOLE;
                 rtengine::CoordD pt;
                 for (auto knot : poly_knots_) {
@@ -672,14 +646,15 @@ bool AreaMask::button1Pressed(int modifierKey)
                     dragged_points_.emplace_back(pt);
                 }
                 EditSubscriber::action = ES_ACTION_DRAGGING;
-            }
-            else {
+            } else {
                 dragged_element_ = DraggedElement::SEGMENT;
                 rtengine::CoordD pt;
                 pt.x = poly_knots_.at(hovered_line_id_).x;
                 pt.y = poly_knots_.at(hovered_line_id_).y;
                 dragged_points_.emplace_back(pt);
-                int i = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : hovered_line_id_ + 1;
+                int i = hovered_line_id_ == (int)poly_knots_.size() - 1
+                            ? 0
+                            : hovered_line_id_ + 1;
                 pt.x = poly_knots_.at(i).x;
                 pt.y = poly_knots_.at(i).y;
                 dragged_points_.emplace_back(pt);
@@ -693,7 +668,6 @@ bool AreaMask::button1Pressed(int modifierKey)
 
     return EditSubscriber::action == ES_ACTION_DRAGGING;
 }
-
 
 bool AreaMask::button1Released()
 {
@@ -725,7 +699,6 @@ bool AreaMask::button1Released()
     return true;
 }
 
-
 bool AreaMask::drag1(int modifierKey)
 {
     // compute the polar coordinate of the mouse position
@@ -734,8 +707,7 @@ bool AreaMask::drag1(int modifierKey)
     provider->getImageSize(imW, imH);
 
     switch (geomType) {
-    case rteMaskShape::Type::RECTANGLE:
-    {
+    case rteMaskShape::Type::RECTANGLE: {
         double halfSizeW = imW / 2.;
         double halfSizeH = imH / 2.;
 
@@ -760,9 +732,11 @@ bool AreaMask::drag1(int modifierKey)
             dragged_point_adjuster_angle_ += deltaAngle;
 
             if (dragged_point_adjuster_angle_ > 180.) {
-                dragged_point_adjuster_angle_ = -360. + dragged_point_adjuster_angle_;
+                dragged_point_adjuster_angle_ =
+                    -360. + dragged_point_adjuster_angle_;
             } else if (dragged_point_adjuster_angle_ < -180.) {
-                dragged_point_adjuster_angle_ = 360. - dragged_point_adjuster_angle_;
+                dragged_point_adjuster_angle_ =
+                    360. - dragged_point_adjuster_angle_;
             }
 
             if (dragged_point_adjuster_angle_ != angle_) {
@@ -783,16 +757,22 @@ bool AreaMask::drag1(int modifierKey)
             std::swap(centerPos.y, currPos.y);
 
             PolarCoord draggedPoint(currPos - centerPos);
-            double cur_offset_h = draggedPoint.radius * sin((draggedPoint.angle - angle_) / 180.*rtengine::RT_PI);
-            double cur_offset_w = draggedPoint.radius * cos((draggedPoint.angle - angle_) / 180.*rtengine::RT_PI);
+            double cur_offset_h =
+                draggedPoint.radius *
+                sin((draggedPoint.angle - angle_) / 180. * rtengine::RT_PI);
+            double cur_offset_w =
+                draggedPoint.radius *
+                cos((draggedPoint.angle - angle_) / 180. * rtengine::RT_PI);
 
             double ww = width_, hh = height_;
 
             if (last_object_ == top_id_ || last_object_ == bottom_id_) {
-                double ch = (cur_offset_h - height_ / 2) * (last_object_ == top_id_ ? -1 : 1);
+                double ch = (cur_offset_h - height_ / 2) *
+                            (last_object_ == top_id_ ? -1 : 1);
                 hh = std::max(ch * 200 / imH, 0.1);
             } else { // left_id_ || right_id_
-                double cw = (cur_offset_w - width_ / 2) * (last_object_ == left_id_ ? -1 : 1);
+                double cw = (cur_offset_w - width_ / 2) *
+                            (last_object_ == left_id_ ? -1 : 1);
                 ww = std::max(cw * 200 / imW, 0.1);
             }
 
@@ -819,8 +799,7 @@ bool AreaMask::drag1(int modifierKey)
         }
         break;
     }
-    case rteMaskShape::Type::GRADIENT:
-    {
+    case rteMaskShape::Type::GRADIENT: {
         double halfSizeW = imW / 2.;
         double halfSizeH = imH / 2.;
 
@@ -849,13 +828,21 @@ bool AreaMask::drag1(int modifierKey)
             dragged_point_adjuster_angle_ += deltaAngle;
 
             if (dragged_point_adjuster_angle_ > 180.) {
-                dragged_point_adjuster_angle_ = -360. + dragged_point_adjuster_angle_;
+                dragged_point_adjuster_angle_ =
+                    -360. + dragged_point_adjuster_angle_;
             } else if (dragged_point_adjuster_angle_ < -180.) {
-                dragged_point_adjuster_angle_ = 360. - dragged_point_adjuster_angle_;
+                dragged_point_adjuster_angle_ =
+                    360. - dragged_point_adjuster_angle_;
             }
 
-            //printf("dragged_point_old_angle_: %.3f /  From %d,%d to %d,%d -> angle = %.3f  /  ", dragged_point_adjuster_angle_, centerPos.x, centerPos.y, currPos.x, currPos.y, draggedPoint.angle);
-            //printf("currAngle: %.3f = degree: %.3f + deltaAngle: %.3f %s /  dragged_point_old_angle_: %.3f\n", dragged_point_adjuster_angle_, degree->getValue(), deltaAngle, degree->getValue()>180.?">180":degree->getValue()<180.?"<180":"", dragged_point_old_angle_);
+            // printf("dragged_point_old_angle_: %.3f /  From %d,%d to %d,%d ->
+            // angle = %.3f  /  ", dragged_point_adjuster_angle_, centerPos.x,
+            // centerPos.y, currPos.x, currPos.y, draggedPoint.angle);
+            // printf("currAngle: %.3f = degree: %.3f + deltaAngle: %.3f %s /
+            // dragged_point_old_angle_: %.3f\n", dragged_point_adjuster_angle_,
+            // degree->getValue(), deltaAngle,
+            // degree->getValue()>180.?">180":degree->getValue()<180.?"<180":"",
+            // dragged_point_old_angle_);
             if (dragged_point_adjuster_angle_ != angle_) {
                 angle_ = dragged_point_adjuster_angle_;
                 updateGeometry();
@@ -868,7 +855,8 @@ bool AreaMask::drag1(int modifierKey)
             currPos = provider->posImage + provider->deltaImage;
             rtengine::Coord centerPos = dragged_center_;
 
-            double diagonal = sqrt(double(imW) * double(imW) + double(imH) * double(imH));
+            double diagonal =
+                sqrt(double(imW) * double(imW) + double(imH) * double(imH));
 
             // trick to get the correct angle (clockwise/counter-clockwise)
             int p = centerPos.y;
@@ -876,23 +864,27 @@ bool AreaMask::drag1(int modifierKey)
             currPos.y = p;
 
             draggedPoint = currPos - centerPos;
-            double curr_dragged_feather_offset = draggedPoint.radius * sin((draggedPoint.angle - angle_) / 180.*rtengine::RT_PI);
+            double curr_dragged_feather_offset =
+                draggedPoint.radius *
+                sin((draggedPoint.angle - angle_) / 180. * rtengine::RT_PI);
 
             if (last_object_ == 2)
-                // Dragging the upper feather bar
+            // Dragging the upper feather bar
             {
                 curr_dragged_feather_offset -= dragged_feather_offset_;
             } else if (last_object_ == 3)
-                // Dragging the lower feather bar
+            // Dragging the lower feather bar
             {
-                curr_dragged_feather_offset = -curr_dragged_feather_offset + dragged_feather_offset_;
+                curr_dragged_feather_offset =
+                    -curr_dragged_feather_offset + dragged_feather_offset_;
             }
 
-            curr_dragged_feather_offset = curr_dragged_feather_offset * 200. / diagonal;
+            curr_dragged_feather_offset =
+                curr_dragged_feather_offset * 200. / diagonal;
 
             if (curr_dragged_feather_offset != feather_) {
                 feather_ = curr_dragged_feather_offset;
-                updateGeometry ();
+                updateGeometry();
                 return true;
             }
         } else if (last_object_ == 4) {
@@ -913,58 +905,68 @@ bool AreaMask::drag1(int modifierKey)
         }
         break;
     }
-    case rteMaskShape::Type::POLYGON:
-    {
+    case rteMaskShape::Type::POLYGON: {
         rtengine::CoordD d;
         bool moved = false;
-        const auto clipDelta = [this, &d]() -> bool
-                    {
-                        for (auto point : dragged_points_) {
-                            double v = point.x + d.x;
-                            if      (v >  200.) d.x =  200. - point.x;
-                            else if (v < -200.) d.x = -200. - point.x;
-                            v = point.y + d.y;
-                            if      (v >  200.) d.y =  200. - point.y;
-                            else if (v < -200.) d.y = -200. - point.y;
-                        }
-                        return d.x != 0. || d.y != 0.;
-                    };
+        const auto clipDelta = [this, &d]() -> bool {
+            for (auto point : dragged_points_) {
+                double v = point.x + d.x;
+                if (v > 200.)
+                    d.x = 200. - point.x;
+                else if (v < -200.)
+                    d.x = -200. - point.x;
+                v = point.y + d.y;
+                if (v > 200.)
+                    d.y = 200. - point.y;
+                else if (v < -200.)
+                    d.y = -200. - point.y;
+            }
+            return d.x != 0. || d.y != 0.;
+        };
         switch (dragged_element_) {
-        case DraggedElement::POINT:
-        {
-            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2, imW);
-            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2, imH);
+        case DraggedElement::POINT: {
+            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2,
+                                             imW);
+            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2,
+                                             imH);
             moved = clipDelta();
             poly_knots_.at(sel_poly_knot_id_).x = dragged_points_.at(0).x + d.x;
             poly_knots_.at(sel_poly_knot_id_).y = dragged_points_.at(0).y + d.y;
             break;
         }
-        case DraggedElement::SEGMENT:
-        {
-            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2, imW);
-            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2, imH);
+        case DraggedElement::SEGMENT: {
+            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2,
+                                             imW);
+            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2,
+                                             imH);
             moved = clipDelta();
             poly_knots_.at(hovered_line_id_).x = dragged_points_.at(0).x + d.x;
             poly_knots_.at(hovered_line_id_).y = dragged_points_.at(0).y + d.y;
-            int i = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : hovered_line_id_ + 1;
+            int i = hovered_line_id_ == (int)poly_knots_.size() - 1
+                        ? 0
+                        : hovered_line_id_ + 1;
             poly_knots_.at(i).x = dragged_points_.at(1).x + d.x;
             poly_knots_.at(i).y = dragged_points_.at(1).y + d.y;
             break;
         }
-        case DraggedElement::ROUNDNESS:
-        {
+        case DraggedElement::ROUNDNESS: {
             // 5px = 1.  (range = [0. ; 100.])
             double old_val = poly_knots_.at(sel_poly_knot_id_).roundness;
-            double new_val = old_val + provider->deltaPrevScreen.x / (modifierKey & GDK_CONTROL_MASK ? 10. : 2.);
-            poly_knots_.at(sel_poly_knot_id_).roundness = new_val = rtengine::LIM<double>( new_val, 0., 100.);
+            double new_val =
+                old_val + provider->deltaPrevScreen.x /
+                              (modifierKey & GDK_CONTROL_MASK ? 10. : 2.);
+            poly_knots_.at(sel_poly_knot_id_).roundness = new_val =
+                rtengine::LIM<double>(new_val, 0., 100.);
             moved = old_val != new_val;
             break;
         }
         case DraggedElement::WHOLE:
-            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2, imW);
-            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2, imH);
+            d.x = rteMaskShape::toParamRange(provider->deltaImage.x + imW / 2,
+                                             imW);
+            d.y = rteMaskShape::toParamRange(provider->deltaImage.y + imH / 2,
+                                             imH);
             moved = clipDelta();
-            for (size_t i = 0 ; i < poly_knots_.size(); ++i) {
+            for (size_t i = 0; i < poly_knots_.size(); ++i) {
                 poly_knots_.at(i).x = dragged_points_.at(i).x + d.x;
                 poly_knots_.at(i).y = dragged_points_.at(i).y + d.y;
             }
@@ -986,11 +988,9 @@ bool AreaMask::drag1(int modifierKey)
 
 bool AreaMask::button3Pressed(int modifierKey)
 {
-    if (geomType == rteMaskShape::Type::POLYGON
-        && (modifierKey & GDK_CONTROL_MASK)
-        && sel_poly_knot_id_ >= 0
-        && (int)poly_knots_.size() > 3)
-    {
+    if (geomType == rteMaskShape::Type::POLYGON &&
+        (modifierKey & GDK_CONTROL_MASK) && sel_poly_knot_id_ >= 0 &&
+        (int)poly_knots_.size() > 3) {
         action = ES_ACTION_PICKING;
     }
     return false;
@@ -1009,15 +1009,15 @@ bool AreaMask::pick3(bool picked)
     return false;
 }
 
-bool AreaMask::scroll(int modifierKey, GdkScrollDirection direction, double deltaX, double deltaY, bool &propagateEvent)
+bool AreaMask::scroll(int modifierKey, GdkScrollDirection direction,
+                      double deltaX, double deltaY, bool &propagateEvent)
 {
     EditDataProvider *provider = getEditProvider();
-    if (!provider
-        || geomType != rteMaskShape::Type::POLYGON
-        || sel_poly_knot_id_ == -1
-        || (direction == GDK_SCROLL_SMOOTH && deltaY == 0.)
-        || (direction != GDK_SCROLL_SMOOTH && direction != GDK_SCROLL_UP && direction != GDK_SCROLL_DOWN))
-    {
+    if (!provider || geomType != rteMaskShape::Type::POLYGON ||
+        sel_poly_knot_id_ == -1 ||
+        (direction == GDK_SCROLL_SMOOTH && deltaY == 0.) ||
+        (direction != GDK_SCROLL_SMOOTH && direction != GDK_SCROLL_UP &&
+         direction != GDK_SCROLL_DOWN)) {
         propagateEvent = true;
         return false;
     }
@@ -1028,15 +1028,18 @@ bool AreaMask::scroll(int modifierKey, GdkScrollDirection direction, double delt
     int imW, imH;
     provider->getImageSize(imW, imH);
 
-    // Since 'ImageArea::on_realize()' sets 'SMOOTH_SCROLL_MASK' to 'add_events' on Linux and Window system,
-    // they'll always receive 'GDK_SCROLL_SMOOTH events', even with standard mouses. Only MacOS will receive discrete
+    // Since 'ImageArea::on_realize()' sets 'SMOOTH_SCROLL_MASK' to 'add_events'
+    // on Linux and Window system, they'll always receive 'GDK_SCROLL_SMOOTH
+    // events', even with standard mouses. Only MacOS will receive discrete
     // scroll values ('GDK_SCROLL_UP' / 'GDK_SCROLL_DOWN')
-    double delta = (direction == GDK_SCROLL_SMOOTH ?
-                   deltaY
-                 : (direction == GDK_SCROLL_UP ? 3. : -3.)) / (modifierKey & GDK_CONTROL_MASK ? 8. : 0.1);
+    double delta = (direction == GDK_SCROLL_SMOOTH
+                        ? deltaY
+                        : (direction == GDK_SCROLL_UP ? 3. : -3.)) /
+                   (modifierKey & GDK_CONTROL_MASK ? 8. : 0.1);
     double old_val = poly_knots_.at(sel_poly_knot_id_).roundness;
     double new_val = old_val - delta;
-    poly_knots_.at(sel_poly_knot_id_).roundness = new_val = rtengine::LIM<double>( new_val, 0., 100.);
+    poly_knots_.at(sel_poly_knot_id_).roundness = new_val =
+        rtengine::LIM<double>(new_val, 0., 100.);
     if (old_val != new_val) {
         updateGeometry();
         return true;
@@ -1061,8 +1064,7 @@ void AreaMask::setPolylineSize(size_t newSize)
             segments_MO.at(i)->datum = Geometry::IMAGE;
             mouseOverGeometry.at(i) = segments_MO.at(i);
         }
-    }
-    else /*if (segments_MO.size() > newSize)*/ {
+    } else /*if (segments_MO.size() > newSize)*/ {
         // needs to delete unused Lines
         for (int i = (int)segments_MO.size() - 1; i >= (int)newSize; --i) {
             delete segments_MO.at(i);
@@ -1076,10 +1078,9 @@ void AreaMask::setPolylineSize(size_t newSize)
     mouseOverGeometry.at(mouseOverGeometry.size() - 1) = next_knot;
 }
 
-
 void AreaMask::updateGeometry(const int fullWidth, const int fullHeight)
 {
-    EditDataProvider* provider = getEditProvider();
+    EditDataProvider *provider = getEditProvider();
 
     if (!provider) {
         return;
@@ -1101,86 +1102,79 @@ void AreaMask::updateGeometry(const int fullWidth, const int fullHeight)
     const auto height = height_ / 100 * imH;
 
     switch (geomType) {
-    case rteMaskShape::Type::RECTANGLE:
-    {
+    case rteMaskShape::Type::RECTANGLE: {
         if (mouseOverGeometry.empty() || visibleGeometry.empty()) {
             return;
         }
-        
+
         rtengine::Coord origin(rteMaskShape::toImgSpace(center_x_, imW),
                                rteMaskShape::toImgSpace(center_y_, imH));
 
-        const auto update_border =
-            [&](Geometry *geometry, int direction)
-            {
-                const auto line = static_cast<Line *>(geometry);
-                float w = width / 2;
-                float h = height / 2;
-                int sx, sy;
-                if (direction == top_id_) {
-                    sx = sy = 1;
-                } else if (direction == bottom_id_) {
-                    sx = 1;
-                    sy = -1;
-                } else if (direction == left_id_) {
-                    sx = -1;
-                    sy = 1;
-                } else {
-                    sx = 1;
-                    sy = 1;
-                }
-                PolarCoord begin, end;
-                if (direction == top_id_ || direction == bottom_id_) {
-                    begin = Coord(-sx * w, sy * h);
-                    end = Coord(sx * w, sy * h);
-                } else {
-                    begin = Coord(sx * w, -sy * h);
-                    end = Coord(sx * w, sy * h);
-                }
-                double r, a;
-                begin.get(r, a);
-                begin.set(r, a - angle_);
-                end.get(r, a);
-                end.set(r, a - angle_);
+        const auto update_border = [&](Geometry *geometry, int direction) {
+            const auto line = static_cast<Line *>(geometry);
+            float w = width / 2;
+            float h = height / 2;
+            int sx, sy;
+            if (direction == top_id_) {
+                sx = sy = 1;
+            } else if (direction == bottom_id_) {
+                sx = 1;
+                sy = -1;
+            } else if (direction == left_id_) {
+                sx = -1;
+                sy = 1;
+            } else {
+                sx = 1;
+                sy = 1;
+            }
+            PolarCoord begin, end;
+            if (direction == top_id_ || direction == bottom_id_) {
+                begin = Coord(-sx * w, sy * h);
+                end = Coord(sx * w, sy * h);
+            } else {
+                begin = Coord(sx * w, -sy * h);
+                end = Coord(sx * w, sy * h);
+            }
+            double r, a;
+            begin.get(r, a);
+            begin.set(r, a - angle_);
+            end.get(r, a);
+            end.set(r, a - angle_);
 
-                line->begin = begin;
-                line->end = end;
-                line->begin += origin;
-                line->end += origin;
-            };
+            line->begin = begin;
+            line->end = end;
+            line->begin += origin;
+            line->end += origin;
+        };
 
-        const auto update_inner =
-            [&](Geometry *geometry, int direction)
-            {
-                const auto line = static_cast<Line *>(geometry);
-                PolarCoord begin, end;
-                float w = width / 4;
-                float h = height / 4;
-                if (direction == rotate_w_id_) {
-                    begin = Coord(-w, 0);
-                    end = Coord(w, 0);
-                } else {
-                    begin = Coord(0, -h);
-                    end = Coord(0, h);
-                }
-                double r, a;
-                begin.get(r, a);
-                begin.set(r, a - angle_);
-                end.get(r, a);
-                end.set(r, a - angle_);
+        const auto update_inner = [&](Geometry *geometry, int direction) {
+            const auto line = static_cast<Line *>(geometry);
+            PolarCoord begin, end;
+            float w = width / 4;
+            float h = height / 4;
+            if (direction == rotate_w_id_) {
+                begin = Coord(-w, 0);
+                end = Coord(w, 0);
+            } else {
+                begin = Coord(0, -h);
+                end = Coord(0, h);
+            }
+            double r, a;
+            begin.get(r, a);
+            begin.set(r, a - angle_);
+            end.get(r, a);
+            end.set(r, a - angle_);
 
-                line->begin = begin;
-                line->end = end;
-                line->begin += origin;
-                line->end += origin;
-            };
+            line->begin = begin;
+            line->end = end;
+            line->begin += origin;
+            line->end += origin;
+        };
 
-        const auto update_center =
-            [&](Geometry *geometry)
-            {
-                const auto circle = static_cast<Circle *>(geometry);
-                circle->center = origin;
-            };
+        const auto update_center = [&](Geometry *geometry) {
+            const auto circle = static_cast<Circle *>(geometry);
+            circle->center = origin;
+        };
 
         for (int dir = top_id_; dir <= right_id_; ++dir) {
             update_border(visibleGeometry[dir], dir);
@@ -1196,8 +1190,7 @@ void AreaMask::updateGeometry(const int fullWidth, const int fullHeight)
         update_center(mouseOverGeometry[center_id_]);
         break;
     }
-    case rteMaskShape::Type::POLYGON:
-    {
+    case rteMaskShape::Type::POLYGON: {
         std::vector<rteMaskPoly::Knot> imgSpacePoly(poly_knots_.size());
         const size_t k_size = poly_knots_.size();
 
@@ -1210,8 +1203,8 @@ void AreaMask::updateGeometry(const int fullWidth, const int fullHeight)
 
         if (poly_knots_.size() > 1) {
             for (size_t i = 0; i < poly_knots_.size(); ++i) {
-                rteMaskPoly::Knot* currKnot = &poly_knots_.at(i);
-                rteMaskPoly::Knot* nextKnot = nullptr;
+                rteMaskPoly::Knot *currKnot = &poly_knots_.at(i);
+                rteMaskPoly::Knot *nextKnot = nullptr;
                 int currX = rteMaskShape::toImgSpace(currKnot->x, imW);
                 int currY = rteMaskShape::toImgSpace(currKnot->y, imH);
 
@@ -1226,85 +1219,100 @@ void AreaMask::updateGeometry(const int fullWidth, const int fullHeight)
                     nextKnot = &poly_knots_.at(i + 1);
                 }
                 segments_MO.at(i)->begin.set(currX, currY);
-                segments_MO.at(i)->end.set(rteMaskShape::toImgSpace(nextKnot->x, imW),
-                                           rteMaskShape::toImgSpace(nextKnot->y, imH));
-                if(hovered_line_id_ == (int)i) {
+                segments_MO.at(i)->end.set(
+                    rteMaskShape::toImgSpace(nextKnot->x, imW),
+                    rteMaskShape::toImgSpace(nextKnot->y, imH));
+                if (hovered_line_id_ == (int)i) {
                     insertion_line->begin.set(currX, currY);
-                    int endKnot = hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0 : i + 1;
-                    insertion_line->end.set(rteMaskShape::toImgSpace(poly_knots_.at(endKnot).x, imW),
-                                            rteMaskShape::toImgSpace(poly_knots_.at(endKnot).y, imH));
+                    int endKnot =
+                        hovered_line_id_ == (int)poly_knots_.size() - 1 ? 0
+                                                                        : i + 1;
+                    insertion_line->end.set(
+                        rteMaskShape::toImgSpace(poly_knots_.at(endKnot).x,
+                                                 imW),
+                        rteMaskShape::toImgSpace(poly_knots_.at(endKnot).y,
+                                                 imH));
                 }
             }
         }
-        insertion_line->setVisible(hovered_line_id_ >= 0 && dragged_element_ == DraggedElement::NONE);
+        insertion_line->setVisible(hovered_line_id_ >= 0 &&
+                                   dragged_element_ == DraggedElement::NONE);
 
-        const auto updateKnot = [this, imW, imH](int knot_id, Circle *knot)
-                {
-                    if (knot_id >= 0) {
-                        knot->center.set(rteMaskShape::toImgSpace(poly_knots_.at(knot_id).x, imW),
-                                         rteMaskShape::toImgSpace(poly_knots_.at(knot_id).y, imH));
-                    }
-                    knot->setVisible(knot_id >= 0 && (dragged_element_ == DraggedElement::NONE || poly_knots_.size() <= 2));
-                    knot->setHoverable(knot_id >= 0 && dragged_element_ == DraggedElement::NONE);
-                };
+        const auto updateKnot = [this, imW, imH](int knot_id, Circle *knot) {
+            if (knot_id >= 0) {
+                knot->center.set(
+                    rteMaskShape::toImgSpace(poly_knots_.at(knot_id).x, imW),
+                    rteMaskShape::toImgSpace(poly_knots_.at(knot_id).y, imH));
+            }
+            knot->setVisible(knot_id >= 0 &&
+                             (dragged_element_ == DraggedElement::NONE ||
+                              poly_knots_.size() <= 2));
+            knot->setHoverable(knot_id >= 0 &&
+                               dragged_element_ == DraggedElement::NONE);
+        };
         updateKnot(sel_poly_knot_id_, sel_knot_bg_);
         sel_knot_bg_->setVisible(false);
         updateKnot(sel_poly_knot_id_, sel_knot);
         updateKnot(prev_poly_knot_id_, prev_knot);
         updateKnot(next_poly_knot_id_, next_knot);
 
-        curve->points = rtengine::procparams::AreaMask::Polygon::get_tessellation(imgSpacePoly);
+        curve->points =
+            rtengine::procparams::AreaMask::Polygon::get_tessellation(
+                imgSpacePoly);
         curve->setVisible(poly_knots_.size() > 1);
         break;
     }
-    case rteMaskShape::Type::GRADIENT:
-    {
-        const auto decay = feather_ * rtengine::norm2<double> (imW, imH) / 200.0;
-        rtengine::Coord origin (imW / 2 + center_x_ * imW / 200, imH / 2 + center_y_ * imH / 200);
+    case rteMaskShape::Type::GRADIENT: {
+        const auto decay = feather_ * rtengine::norm2<double>(imW, imH) / 200.0;
+        rtengine::Coord origin(imW / 2 + center_x_ * imW / 200,
+                               imH / 2 + center_y_ * imH / 200);
 
-        const auto updateLine = [&](Geometry* geometry, const float radius, const float begin, const float end)
-        {
-            const auto line = static_cast<Line*>(geometry);
+        const auto updateLine = [&](Geometry *geometry, const float radius,
+                                    const float begin, const float end) {
+            const auto line = static_cast<Line *>(geometry);
             line->begin = PolarCoord(radius, -angle_ + begin);
             line->begin += origin;
             line->end = PolarCoord(radius, -angle_ + end);
             line->end += origin;
         };
 
-        const auto updateLineWithDecay = [&](Geometry* geometry, const float radius, const float offSetAngle)
-        {
-            const auto line = static_cast<Line*>(geometry);
-            line->begin = PolarCoord (radius, -angle_ + 180.) + PolarCoord (decay, -angle_ + offSetAngle);
+        const auto updateLineWithDecay = [&](Geometry *geometry,
+                                             const float radius,
+                                             const float offSetAngle) {
+            const auto line = static_cast<Line *>(geometry);
+            line->begin = PolarCoord(radius, -angle_ + 180.) +
+                          PolarCoord(decay, -angle_ + offSetAngle);
             line->begin += origin;
-            line->end = PolarCoord (radius, -angle_) + PolarCoord (decay, -angle_ + offSetAngle);
+            line->end = PolarCoord(radius, -angle_) +
+                        PolarCoord(decay, -angle_ + offSetAngle);
             line->end += origin;
         };
 
-        const auto updateCircle = [&](Geometry* geometry)
-        {
-            const auto circle = static_cast<Circle*>(geometry);
+        const auto updateCircle = [&](Geometry *geometry) {
+            const auto circle = static_cast<Circle *>(geometry);
             circle->center = origin;
         };
 
         // update horizontal line
-        updateLine (visibleGeometry.at(h_line_id_), 1500., 0., 180.);
-        updateLine (mouseOverGeometry.at(h_line_id_), 1500., 0., 180.);
+        updateLine(visibleGeometry.at(h_line_id_), 1500., 0., 180.);
+        updateLine(mouseOverGeometry.at(h_line_id_), 1500., 0., 180.);
 
         // update vertical line
-        updateLine (visibleGeometry.at(v_line_id_), 700., 90., 270.);
-        updateLine (mouseOverGeometry.at(v_line_id_), 700., 90., 270.);
+        updateLine(visibleGeometry.at(v_line_id_), 700., 90., 270.);
+        updateLine(mouseOverGeometry.at(v_line_id_), 700., 90., 270.);
 
         // update upper feather line
-        updateLineWithDecay (visibleGeometry.at(feather_line1_id_), 350., 270.);
-        updateLineWithDecay (mouseOverGeometry.at(feather_line1_id_), 350., 270.);
+        updateLineWithDecay(visibleGeometry.at(feather_line1_id_), 350., 270.);
+        updateLineWithDecay(mouseOverGeometry.at(feather_line1_id_), 350.,
+                            270.);
 
         // update lower feather line
-        updateLineWithDecay (visibleGeometry.at(feather_line2_id_), 350., 90.);
-        updateLineWithDecay (mouseOverGeometry.at(feather_line2_id_), 350., 90.);
+        updateLineWithDecay(visibleGeometry.at(feather_line2_id_), 350., 90.);
+        updateLineWithDecay(mouseOverGeometry.at(feather_line2_id_), 350., 90.);
 
         // update circle's position
-        updateCircle (visibleGeometry.at(center_circle_id_));
-        updateCircle (mouseOverGeometry.at(center_circle_id_));
+        updateCircle(visibleGeometry.at(center_circle_id_));
+        updateCircle(mouseOverGeometry.at(center_circle_id_));
 
         break;
     }

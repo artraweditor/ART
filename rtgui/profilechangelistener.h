@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -24,19 +24,16 @@
 
 #include "../rtengine/rtengine.h"
 
-class ProfileChangeListener
-{
+class ProfileChangeListener {
 public:
     virtual ~ProfileChangeListener() = default;
-    virtual void profileChange(
-        const rtengine::procparams::PartialProfile *nparams,
-        const rtengine::ProcEvent& event,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr,
-        bool fromLastSaved = false
-    ) = 0;
-    virtual void setDefaults(const rtengine::procparams::ProcParams* defparams) = 0;
+    virtual void
+    profileChange(const rtengine::procparams::PartialProfile *nparams,
+                  const rtengine::ProcEvent &event, const Glib::ustring &descr,
+                  const ParamsEdited *paramsEdited = nullptr,
+                  bool fromLastSaved = false) = 0;
+    virtual void
+    setDefaults(const rtengine::procparams::ProcParams *defparams) = 0;
 };
 
 #endif
-

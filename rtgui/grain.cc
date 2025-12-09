@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,36 +19,42 @@
  */
 #include "grain.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-FilmGrain::FilmGrain(): FoldableToolPanel(this, "grain", M("TP_GRAIN_LABEL"), true, true, true)
+FilmGrain::FilmGrain()
+    : FoldableToolPanel(this, "grain", M("TP_GRAIN_LABEL"), true, true, true)
 {
     auto m = ProcEventMapper::getInstance();
-    EvEnabled = m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_ENABLED");
-    EvStrength = m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_STRENGTH");
+    EvEnabled =
+        m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_ENABLED");
+    EvStrength =
+        m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_STRENGTH");
     EvISO = m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_ISO");
     EvColor = m->newEvent(rtengine::DIRPYREQUALIZER, "HISTORY_MSG_GRAIN_COLOR");
     EvToolReset.set_action(rtengine::DIRPYREQUALIZER);
 
-    Gtk::HBox *hb = Gtk::manage (new Gtk::HBox ());
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_GRAIN_MODE") + ": ")), Gtk::PACK_SHRINK);
+    Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
+    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_GRAIN_MODE") + ": ")),
+                   Gtk::PACK_SHRINK);
     color = Gtk::manage(new MyComboBoxText());
     color->append(M("TP_GRAIN_BW"));
     color->append(M("TP_GRAIN_COLOR"));
     hb->pack_start(*color);
-    color->signal_changed().connect(sigc::mem_fun(*this, &FilmGrain::colorChanged));
+    color->signal_changed().connect(
+        sigc::mem_fun(*this, &FilmGrain::colorChanged));
     hb->show();
     color->show();
-    
+
     iso = Gtk::manage(new Adjuster(M("TP_GRAIN_ISO"), 100., 6400., 50., 400.));
     iso->setAdjusterListener(this);
     iso->show();
 
-    strength = Gtk::manage(new Adjuster(M("TP_GRAIN_STRENGTH"), 0., 100., 1., 25.));
+    strength =
+        Gtk::manage(new Adjuster(M("TP_GRAIN_STRENGTH"), 0., 100., 1., 25.));
     strength->setAdjusterListener(this);
     strength->show();
 
@@ -56,7 +62,6 @@ FilmGrain::FilmGrain(): FoldableToolPanel(this, "grain", M("TP_GRAIN_LABEL"), tr
     pack_start(*iso);
     pack_start(*strength);
 }
-
 
 void FilmGrain::read(const ProcParams *pp)
 {
@@ -69,7 +74,6 @@ void FilmGrain::read(const ProcParams *pp)
 
     enableListener();
 }
-
 
 void FilmGrain::write(ProcParams *pp)
 {
@@ -87,8 +91,7 @@ void FilmGrain::setDefaults(const ProcParams *defParams)
     initial_params = defParams->grain;
 }
 
-
-void FilmGrain::adjusterChanged(Adjuster* a, double newval)
+void FilmGrain::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         if (a == strength) {
@@ -99,8 +102,7 @@ void FilmGrain::adjusterChanged(Adjuster* a, double newval)
     }
 }
 
-
-void FilmGrain::enabledChanged ()
+void FilmGrain::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
@@ -113,14 +115,12 @@ void FilmGrain::enabledChanged ()
     }
 }
 
-
 void FilmGrain::colorChanged()
 {
     if (listener) {
         listener->panelChanged(EvColor, color->get_active_text());
     }
 }
-
 
 void FilmGrain::toolReset(bool to_initial)
 {

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,26 +19,30 @@
  */
 #include "softlight.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-SoftLight::SoftLight(): FoldableToolPanel(this, "softlight", M("TP_SOFTLIGHT_LABEL"), false, true, true)
+SoftLight::SoftLight()
+    : FoldableToolPanel(this, "softlight", M("TP_SOFTLIGHT_LABEL"), false, true,
+                        true)
 {
     auto m = ProcEventMapper::getInstance();
-    EvSoftLightEnabled = m->newEvent(rtengine::M_LUMINANCE, "HISTORY_MSG_SOFTLIGHT_ENABLED");
-    EvSoftLightStrength = m->newEvent(rtengine::M_LUMINANCE, "HISTORY_MSG_SOFTLIGHT_STRENGTH");
+    EvSoftLightEnabled =
+        m->newEvent(rtengine::M_LUMINANCE, "HISTORY_MSG_SOFTLIGHT_ENABLED");
+    EvSoftLightStrength =
+        m->newEvent(rtengine::M_LUMINANCE, "HISTORY_MSG_SOFTLIGHT_STRENGTH");
     EvToolEnabled.set_action(rtengine::M_LUMINANCE);
-    
-    strength = Gtk::manage(new Adjuster(M("TP_SOFTLIGHT_STRENGTH"), 0., 100., 1., 30.));
+
+    strength = Gtk::manage(
+        new Adjuster(M("TP_SOFTLIGHT_STRENGTH"), 0., 100., 1., 30.));
     strength->setAdjusterListener(this);
     strength->show();
 
     pack_start(*strength);
 }
-
 
 void SoftLight::read(const ProcParams *pp)
 {
@@ -49,7 +53,6 @@ void SoftLight::read(const ProcParams *pp)
 
     enableListener();
 }
-
 
 void SoftLight::write(ProcParams *pp)
 {
@@ -63,21 +66,16 @@ void SoftLight::setDefaults(const ProcParams *defParams)
     initial_params = defParams->softlight;
 }
 
-
-void SoftLight::adjusterChanged(Adjuster* a, double newval)
+void SoftLight::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         listener->panelChanged(EvSoftLightStrength, a->getTextValue());
     }
 }
 
+void SoftLight::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void SoftLight::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
-
-
-void SoftLight::enabledChanged ()
+void SoftLight::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
@@ -90,7 +88,6 @@ void SoftLight::enabledChanged ()
     }
 }
 
-
 void SoftLight::toolReset(bool to_initial)
 {
     ProcParams pp;
@@ -100,7 +97,6 @@ void SoftLight::toolReset(bool to_initial)
     pp.softlight.enabled = getEnabled();
     read(&pp);
 }
-
 
 void SoftLight::registerShortcuts(ToolShortcutManager *mgr)
 {

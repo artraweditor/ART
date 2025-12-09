@@ -18,30 +18,21 @@
  */
 #include "rtengine.h"
 #include <iostream>
-//#include <giomm.h>
+// #include <giomm.h>
 #include <helpers.h>
 
-class PListener :
-    public rtengine::ProgressListener
-{
+class PListener: public rtengine::ProgressListener {
 public:
-    void setProgressStr(const Glib::ustring& str)
+    void setProgressStr(const Glib::ustring &str)
     {
         std::cout << str << std::endl;
     }
-    void setProgress(double p)
-    {
-        std::cout << p << std::endl;
-    }
-    void setProgressState(bool inProcessing)
-    {
-    }
-    void error(const Glib::ustring& descr)
-    {
-    }
+    void setProgress(double p) { std::cout << p << std::endl; }
+    void setProgressState(bool inProcessing) {}
+    void error(const Glib::ustring &descr) {}
 };
 
-int main (int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     if (argc < 4) {
         std::cout << "Usage: rtcmd <infile> <paramfile> <outfile>" << std::endl;
@@ -55,16 +46,16 @@ int main (int argc, char* argv[])
     s.colorimetricIntent = 1;
     s.monitorProfile = "";
 
-    Glib::thread_init ();
-    rtengine::init (s, "");
+    Glib::thread_init();
+    rtengine::init(s, "");
     PListener pl;
 
-    rtengine::InitialImage* ii;
+    rtengine::InitialImage *ii;
     int errorCode;
-    ii = rtengine::InitialImage::load (argv[1], true, errorCode, &pl);
+    ii = rtengine::InitialImage::load(argv[1], true, errorCode, &pl);
 
     if (!ii) {
-        ii = rtengine::InitialImage::load (argv[1], false, errorCode, &pl);
+        ii = rtengine::InitialImage::load(argv[1], false, errorCode, &pl);
     }
 
     if (!ii) {
@@ -73,10 +64,9 @@ int main (int argc, char* argv[])
     }
 
     rtengine::procparams::ProcParams params;
-    params.load (argv[2]);
+    params.load(argv[2]);
 
-    rtengine::ProcessingJob* job = ProcessingJob::create (ii, params);
-    rtengine::IImage16* res = rtengine::processImage (job, errorCode, &pl);
-    res->saveToFile (argv[3]);
+    rtengine::ProcessingJob *job = ProcessingJob::create(ii, params);
+    rtengine::IImage16 *res = rtengine::processImage(job, errorCode, &pl);
+    res->saveToFile(argv[3]);
 }
-

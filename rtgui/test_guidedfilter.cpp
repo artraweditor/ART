@@ -1,6 +1,6 @@
-#include "../rtengine/imagefloat.h"
-#include "../rtengine/guidedfilter.h"
 #include "../rtengine/color.h"
+#include "../rtengine/guidedfilter.h"
+#include "../rtengine/imagefloat.h"
 #include "../rtengine/stdimagesource.h"
 #include <stdio.h>
 
@@ -10,7 +10,7 @@ void save(array2D<float> &img, const char *filename)
 {
     Imagefloat im(img.width(), img.height());
 #ifdef _OPENMP
-    #pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < im.getHeight(); ++y) {
         for (int x = 0; x < im.getWidth(); ++x) {
@@ -18,15 +18,14 @@ void save(array2D<float> &img, const char *filename)
         }
     }
 
-    im.saveTIFF(filename, 16);    
+    im.saveTIFF(filename, 16);
 }
-
 
 int main(int argc, const char **argv)
 {
-    Gio::init ();
+    Gio::init();
     Options::load(true);
-    
+
     int err = 0;
     InitialImage *ii = InitialImage::load(argv[1], false, &err);
     if (err) {
@@ -36,26 +35,28 @@ int main(int argc, const char **argv)
 
     fprintf(stderr, "loaded\n");
     fflush(stderr);
-    
+
     ImageSource *src = ii->getImageSource();
 
-    
     int w, h;
     src->getFullSize(w, h);
     Imagefloat im(w, h);
-    src->getImage(ColorTemp(), TR_NONE, &im, PreviewProps(0, 0, w, h, 1), ExposureParams(), RAWParams());
+    src->getImage(ColorTemp(), TR_NONE, &im, PreviewProps(0, 0, w, h, 1),
+                  ExposureParams(), RAWParams());
 
     fprintf(stderr, "before saving\n");
-    
+
     im.saveTIFF("/tmp/input.tif", 16);
 
     array2D<float> Y(im.getWidth(), im.getHeight());
 #ifdef _OPENMP
-    #pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < im.getHeight(); ++y) {
         for (int x = 0; x < im.getWidth(); ++x) {
-            Y[y][x] = 1.f - Color::rgbLuminance(im.r(y, x), im.g(y, x), im.b(y, x)) / 65535.f;
+            Y[y][x] =
+                1.f - Color::rgbLuminance(im.r(y, x), im.g(y, x), im.b(y, x)) /
+                          65535.f;
         }
     }
 
@@ -63,7 +64,7 @@ int main(int argc, const char **argv)
 
     array2D<float> mask(im.getWidth(), im.getHeight());
 #ifdef _OPENMP
-    #pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < im.getHeight(); ++y) {
         for (int x = 0; x < im.getWidth(); ++x) {
@@ -85,8 +86,9 @@ int main(int argc, const char **argv)
     if (argc >= 5) {
         scale = atoi(argv[4]);
     }
-    fprintf(stderr, "\n*** RUNNING WITH r = %d, eps = %f, scale = %d\n\n", r, eps, scale);
-    
+    fprintf(stderr, "\n*** RUNNING WITH r = %d, eps = %f, scale = %d\n\n", r,
+            eps, scale);
+
     array2D<float> blurred(im.getWidth(), im.getHeight());
     guidedFilter(Y, mask, blurred, r, eps, true, scale);
     // for (int y = 0; y < im.getHeight(); ++y) {
@@ -95,7 +97,7 @@ int main(int argc, const char **argv)
     //             std::cerr << "BAD NEG!!" << std::endl;
     //             return 1;
     //         }
-    //         if (blurred[y][x] > 1.f) {            
+    //         if (blurred[y][x] > 1.f) {
     //             std::cerr << "BAD POS!!" << std::endl;
     //             return 1;
     //         }
@@ -103,6 +105,6 @@ int main(int argc, const char **argv)
     // }
 
     save(blurred, "/tmp/guided.tif");
-    
+
     return 0;
 }

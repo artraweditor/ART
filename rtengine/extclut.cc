@@ -19,22 +19,22 @@
  */
 #include "extclut.h"
 #include "cJSON.h"
-#include "settings.h"
 #include "compress.h"
+#include "settings.h"
 
 #include "../rtgui/multilangmgr.h"
-#include "../rtgui/pathutils.h"
 #include "../rtgui/options.h"
+#include "../rtgui/pathutils.h"
 
+#include <algorithm>
+#include <giomm.h>
+#include <glib/gstdio.h>
+#include <iostream>
+#include <locale.h>
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
-#include <glib/gstdio.h>
 #include <unistd.h>
-#include <giomm.h>
-#include <algorithm>
-#include <locale.h>
 
 namespace rtengine {
 
@@ -47,11 +47,8 @@ bool add_param(CLUTParamDescriptorList &params, cJSON *elem)
     params.emplace_back();
     auto &p = params.back();
     static CLUTParamType pt[4] = {
-        CLUTParamType::PT_INT,
-        CLUTParamType::PT_FLOAT,
-        CLUTParamType::PT_BOOL,
-        CLUTParamType::PT_CURVE
-    };
+        CLUTParamType::PT_INT, CLUTParamType::PT_FLOAT, CLUTParamType::PT_BOOL,
+        CLUTParamType::PT_CURVE};
     for (int i = 0; i < 4; ++i) {
         p.type = pt[i];
         if (p.fill_from_json(elem)) {
@@ -61,20 +58,20 @@ bool add_param(CLUTParamDescriptorList &params, cJSON *elem)
     return false;
 }
 
-
 std::string get_params_json(const CLUTParamDescriptorList &params,
                             const CLUTParamValueMap &values)
 {
     setlocale(LC_NUMERIC, "C");
-    
+
     cJSON *root = cJSON_CreateObject();
-    const std::unique_ptr<cJSON, decltype(&cJSON_Delete)> del_root(root, cJSON_Delete);
+    const std::unique_ptr<cJSON, decltype(&cJSON_Delete)> del_root(
+        root, cJSON_Delete);
 
     for (const auto &p : params) {
         auto it = values.find(p.name);
         const auto &vv = (it != values.end()) ? it->second : p.value_default;
         auto v = vv[0];
-        
+
         cJSON *val = nullptr;
         switch (p.type) {
         case CLUTParamType::PT_FLOAT:
@@ -101,14 +98,14 @@ std::string get_params_json(const CLUTParamDescriptorList &params,
     return ret;
 }
 
-
 std::string generate_params(const CLUTParamDescriptorList &params,
                             const CLUTParamValueMap &values)
 {
     std::string fn = "";
     std::string json = get_params_json(params, values);
     if (!json.empty()) {
-        fn = Glib::build_filename(Glib::get_tmp_dir(), "ART-extclut-params-XXXXXX");
+        fn = Glib::build_filename(Glib::get_tmp_dir(),
+                                  "ART-extclut-params-XXXXXX");
         int fd = Glib::mkstemp(fn);
         if (fd < 0) {
             return "";
@@ -119,25 +116,30 @@ std::string generate_params(const CLUTParamDescriptorList &params,
         fputs(json.c_str(), out);
         fclose(out);
     }
-    
+
     return fn;
 }
 
-
-std::pair<std::string, std::string> get_cache_keys(const Glib::ustring &filename, const CLUTParamDescriptorList &params, const CLUTParamValueMap &values)
+std::pair<std::string, std::string>
+get_cache_keys(const Glib::ustring &filename,
+               const CLUTParamDescriptorList &params,
+               const CLUTParamValueMap &values)
 {
     auto md5 = getMD5(filename, true);
     auto json = get_params_json(params, values);
-    auto csum = Glib::Checksum::compute_checksum(Glib::Checksum::CHECKSUM_SHA256, Glib::filename_from_utf8(filename) + "\n" + md5 + "\n" + json);
+    auto csum = Glib::Checksum::compute_checksum(
+        Glib::Checksum::CHECKSUM_SHA256,
+        Glib::filename_from_utf8(filename) + "\n" + md5 + "\n" + json);
     return std::make_pair(csum, csum + ".clfz");
 }
-
 
 std::string find_in_cache(MyMutex &mtx, const std::string &key)
 {
     auto name = Glib::build_filename(options.cacheBaseDir, "extlut", key);
     if (Glib::file_test(name, Glib::FILE_TEST_EXISTS)) {
-        std::string templ = Glib::build_filename(Glib::get_tmp_dir(), Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX", key));
+        std::string templ = Glib::build_filename(
+            Glib::get_tmp_dir(),
+            Glib::ustring::compose("ART-ocio-clf-%1-XXXXXX", key));
         int fd = Glib::mkstemp(templ);
         if (fd < 0) {
             return "";
@@ -159,7 +161,6 @@ std::string find_in_cache(MyMutex &mtx, const std::string &key)
     return "";
 }
 
-
 void store_in_cache(MyMutex &mtx, const std::string &key, const std::string &fn)
 {
     auto dir = Glib::build_filename(options.cacheBaseDir, "extlut");
@@ -174,7 +175,6 @@ void store_in_cache(MyMutex &mtx, const std::string &key, const std::string &fn)
         }
     }
 }
-
 
 bool skip_line(subprocess::SubprocessInfo *p, std::vector<char> *buf)
 {
@@ -195,7 +195,6 @@ bool skip_line(subprocess::SubprocessInfo *p, std::vector<char> *buf)
 
 } // namespace
 
-
 //-----------------------------------------------------------------------------
 // ExternalLUT3D::SubprocessManager
 //-----------------------------------------------------------------------------
@@ -205,15 +204,19 @@ ExternalLUT3D::SubprocessManager::~SubprocessManager()
     for (auto &p : procs_) {
         if (p.second->live()) {
             if (settings->verbose > 1) {
-                std::cout << "extlut - terminating process with id: " << p.second->id() << ", key: " << p.first << std::endl;
+                std::cout << "extlut - terminating process with id: "
+                          << p.second->id() << ", key: " << p.first
+                          << std::endl;
             }
             p.second->kill();
         }
     }
 }
 
-
-bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, const Glib::ustring &workdir, const std::vector<Glib::ustring> &argv, const std::string &params, const std::string &outname)
+bool ExternalLUT3D::SubprocessManager::process(
+    const Glib::ustring &filename, const Glib::ustring &workdir,
+    const std::vector<Glib::ustring> &argv, const std::string &params,
+    const std::string &outname)
 {
     auto key = getMD5(filename, true);
     auto it = procs_.find(key);
@@ -233,7 +236,8 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
         p = pp.get();
         procs_[key] = std::move(pp);
         if (settings->verbose > 1) {
-            std::cout << "extlut - started server for filename: " << filename << ", key: " << key << ", id: " << p->id() << std::endl;
+            std::cout << "extlut - started server for filename: " << filename
+                      << ", key: " << key << ", id: " << p->id() << std::endl;
         }
     } else {
         p = it->second.get();
@@ -268,7 +272,8 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
                     int n = atoi(&buf[0]);
                     buf.clear();
                     while (n > 0) {
-                        if (!skip_line(p, settings->verbose > 1 ? &buf : nullptr)) {
+                        if (!skip_line(p, settings->verbose > 1 ? &buf
+                                                                : nullptr)) {
                             err = true;
                             break;
                         }
@@ -276,7 +281,8 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
                     }
                     if (settings->verbose > 1) {
                         buf.push_back(0);
-                        std::cout << "subprocess output:\n" << (&buf[0]) << std::endl;
+                        std::cout << "subprocess output:\n"
+                                  << (&buf[0]) << std::endl;
                     }
                 }
                 if (!err) {
@@ -284,7 +290,8 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
                 }
             } else {
                 if (settings->verbose) {
-                    std::cout << "unexpected output from subprocess: " << char(c);
+                    std::cout << "unexpected output from subprocess: "
+                              << char(c);
                     const char *dbg = g_getenv("ART_DEBUG_EXTCLUT");
                     if (dbg && atoi(dbg)) {
                         while ((c = p->read()) > 0) {
@@ -307,7 +314,7 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
         }
         procs_.erase(key);
     }
-    
+
     return false;
 }
 
@@ -315,50 +322,35 @@ bool ExternalLUT3D::SubprocessManager::process(const Glib::ustring &filename, co
 // ExternalLUT3D
 //-----------------------------------------------------------------------------
 
-
-std::unique_ptr<Cache<std::string, OCIO::ConstProcessorRcPtr>> ExternalLUT3D::cache_;
+std::unique_ptr<Cache<std::string, OCIO::ConstProcessorRcPtr>>
+    ExternalLUT3D::cache_;
 MyMutex ExternalLUT3D::disk_cache_mutex_;
 ExternalLUT3D::SubprocessManager ExternalLUT3D::smgr_;
 
-
 void ExternalLUT3D::init()
 {
-    cache_.reset(new Cache<std::string, OCIO::ConstProcessorRcPtr>(options.clutCacheSize * 4));
+    cache_.reset(new Cache<std::string, OCIO::ConstProcessorRcPtr>(
+        options.clutCacheSize * 4));
 }
 
+void ExternalLUT3D::cleanup() { cache_.reset(nullptr); }
 
-void ExternalLUT3D::cleanup()
-{
-    cache_.reset(nullptr);
-}
+ExternalLUT3D::ExternalLUT3D(): ok_(false), is_server_(false) {}
 
-
-ExternalLUT3D::ExternalLUT3D():
-    ok_(false),
-    is_server_(false)
-{
-}
-
-
-ExternalLUT3D::ExternalLUT3D(const Glib::ustring &filename):
-    ok_(false),
-    is_server_(false),
-    filename_(filename)
+ExternalLUT3D::ExternalLUT3D(const Glib::ustring &filename)
+    : ok_(false), is_server_(false), filename_(filename)
 {
     init(filename);
 }
-
 
 bool ExternalLUT3D::init(const Glib::ustring &filename)
 {
     ok_ = false;
     is_server_ = false;
     filename_ = filename;
-    
-    const std::unique_ptr<FILE, std::function<void (FILE*)>> file(
-        g_fopen(filename.c_str(), "rb"),
-        [](FILE *file) { fclose(file); }
-        );
+
+    const std::unique_ptr<FILE, std::function<void(FILE *)>> file(
+        g_fopen(filename.c_str(), "rb"), [](FILE *file) { fclose(file); });
 
     if (!file) {
         return false;
@@ -377,8 +369,9 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
 
     setlocale(LC_NUMERIC, "C");
     cJSON_Minify(buffer.get());
-    
-    const std::unique_ptr<cJSON, decltype(&cJSON_Delete)> root_p(cJSON_Parse(buffer.get()), cJSON_Delete);
+
+    const std::unique_ptr<cJSON, decltype(&cJSON_Delete)> root_p(
+        cJSON_Parse(buffer.get()), cJSON_Delete);
     cJSON *root = root_p.get();
     if (!root || !cJSON_IsObject(root)) {
         return false;
@@ -430,12 +423,12 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
         if (!gui_name_.empty() && gui_name_[0] == '$') {
             auto pos = gui_name_.find(';');
             if (pos != Glib::ustring::npos) {
-                auto key = gui_name_.substr(1, pos-1);
-                auto dflt = gui_name_.substr(pos+1);
+                auto key = gui_name_.substr(1, pos - 1);
+                auto dflt = gui_name_.substr(pos + 1);
                 auto res = M(key);
                 gui_name_ = (res == key) ? dflt : res;
             } else {
-                gui_name_ = M(gui_name_.c_str()+1);
+                gui_name_ = M(gui_name_.c_str() + 1);
             }
         }
     }
@@ -447,7 +440,7 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
         }
         is_server_ = cJSON_IsTrue(is_server);
     }
-    
+
     if (gui_name_.empty()) {
         gui_name_ = removeExtension(Glib::path_get_basename(filename_));
     }
@@ -456,7 +449,6 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     return true;
 }
 
-
 bool ExternalLUT3D::set_param_values(const CLUTParamValueMap &values)
 {
     if (!ok_) {
@@ -464,7 +456,8 @@ bool ExternalLUT3D::set_param_values(const CLUTParamValueMap &values)
     }
     bool success = true;
     OCIO::ConstProcessorRcPtr lut;
-    std::pair<std::string, std::string> key = get_cache_keys(filename_, params_, values);
+    std::pair<std::string, std::string> key =
+        get_cache_keys(filename_, params_, values);
     bool found = cache_->get(key.first, lut);
     if (!found) {
         if (settings->verbose) {
@@ -490,7 +483,7 @@ bool ExternalLUT3D::set_param_values(const CLUTParamValueMap &values)
             ok_ = false;
             success = false;
         }
-        
+
         if (!pn.empty()) {
             g_remove(pn.c_str());
         }
@@ -500,7 +493,7 @@ bool ExternalLUT3D::set_param_values(const CLUTParamValueMap &values)
     }
     if (lut) {
         try {
-            proc_ = lut->getOptimizedCPUProcessor(OCIO::BIT_DEPTH_F32, 
+            proc_ = lut->getOptimizedCPUProcessor(OCIO::BIT_DEPTH_F32,
                                                   OCIO::BIT_DEPTH_F32,
                                                   OCIO::OPTIMIZATION_DEFAULT);
         } catch (...) {
@@ -513,23 +506,24 @@ bool ExternalLUT3D::set_param_values(const CLUTParamValueMap &values)
     return success;
 }
 
-
 void ExternalLUT3D::trim_cache()
 {
     MyMutex::MyLock lck(disk_cache_mutex_);
-    
+
     size_t num_files = 0;
-    const size_t max_num_files = std::min(size_t(options.clutCacheSize) * 100, options.maxCacheEntries);
+    const size_t max_num_files =
+        std::min(size_t(options.clutCacheSize) * 100, options.maxCacheEntries);
     const auto dir_name = Glib::build_filename(options.cacheBaseDir, "extlut");
     const auto dir = Gio::File::create_for_path(dir_name);
-    
+
     try {
         auto enumerator = dir->enumerate_children("");
 
         while (num_files <= max_num_files && enumerator->next_file()) {
             ++num_files;
         }
-    } catch (Glib::Exception&) {}
+    } catch (Glib::Exception &) {
+    }
 
     if (num_files <= max_num_files) {
         return;
@@ -539,20 +533,22 @@ void ExternalLUT3D::trim_cache()
     std::vector<FNameMTime> files;
 
     try {
-        auto enumerator = dir->enumerate_children("standard::name,time::modified");
+        auto enumerator =
+            dir->enumerate_children("standard::name,time::modified");
         while (auto file = enumerator->next_file()) {
             files.emplace_back(file->get_name(), file->modification_time());
         }
-    } catch (Glib::Exception&) {}
+    } catch (Glib::Exception &) {
+    }
 
     if (files.size() <= max_num_files) {
         return;
     }
 
-    std::sort(files.begin(), files.end(), [](const FNameMTime& lhs, const FNameMTime& rhs)
-    {
-        return lhs.second < rhs.second;
-    });
+    std::sort(files.begin(), files.end(),
+              [](const FNameMTime &lhs, const FNameMTime &rhs) {
+                  return lhs.second < rhs.second;
+              });
 
     auto cache_entries = files.size();
     size_t num_removed = 0;
@@ -561,17 +557,18 @@ void ExternalLUT3D::trim_cache()
         auto pth = Glib::build_filename(dir_name, name);
         auto error = g_remove(pth.c_str());
         if (error && settings->verbose) {
-            std::cerr << "extlut - error removing cache file: " << name << std::endl;
+            std::cerr << "extlut - error removing cache file: " << name
+                      << std::endl;
         } else {
             ++num_removed;
         }
     }
 
     if (settings->verbose > 1) {
-        std::cout << "extlut - removed " << num_removed << " cache files" << std::endl;
+        std::cout << "extlut - removed " << num_removed << " cache files"
+                  << std::endl;
     }
 }
-
 
 void ExternalLUT3D::clear_cache()
 {
@@ -593,24 +590,28 @@ void ExternalLUT3D::clear_cache()
         }
 
         if (error && settings->verbose) {
-            std::cerr << "extlut - failed to delete all entries in cache directory '" << dirname << "': " << g_strerror(errno) << std::endl;
+            std::cerr
+                << "extlut - failed to delete all entries in cache directory '"
+                << dirname << "': " << g_strerror(errno) << std::endl;
         } else if (settings->verbose > 1) {
-            std::cout << "extlut - removed " << num_removed << " cache files" << std::endl;
+            std::cout << "extlut - removed " << num_removed << " cache files"
+                      << std::endl;
         }
-    } catch (Glib::Error&) {}
+    } catch (Glib::Error &) {
+    }
 }
-
 
 std::string ExternalLUT3D::recompute_lut(const std::string &params)
 {
     const auto &workdir = workdir_;
     const auto &argv = argv_;
-    
+
     if (params.empty()) {
         return "";
     }
-    
-    std::string fn = Glib::build_filename(Glib::get_tmp_dir(), "ART-extclut-params-XXXXXX");
+
+    std::string fn =
+        Glib::build_filename(Glib::get_tmp_dir(), "ART-extclut-params-XXXXXX");
     int fd = Glib::mkstemp(fn);
     if (fd < 0) {
         return "";
@@ -620,12 +621,14 @@ std::string ExternalLUT3D::recompute_lut(const std::string &params)
     try {
         if (is_server_) {
             if (settings->verbose > 1) {
-                std::cout << "extlut - executing server for " << filename_ << ": " << params << " " << fn << std::endl;
+                std::cout << "extlut - executing server for " << filename_
+                          << ": " << params << " " << fn << std::endl;
             }
             MyMutex::MyLock lck(disk_cache_mutex_);
             if (!smgr_.process(filename_, workdir_, argv_, params, fn)) {
                 if (settings->verbose) {
-                    std::cout << "extlut - exec server error for " << filename_ << std::endl;
+                    std::cout << "extlut - exec server error for " << filename_
+                              << std::endl;
                 }
                 if (!fn.empty()) {
                     g_remove(fn.c_str());
@@ -646,7 +649,8 @@ std::string ExternalLUT3D::recompute_lut(const std::string &params)
             }
             subprocess::exec_sync(workdir, args, true, &sout, &serr);
             if (settings->verbose > 1) {
-                std::cout << "  stdout: " << sout << "\n  stderr: " << serr << std::endl;
+                std::cout << "  stdout: " << sout << "\n  stderr: " << serr
+                          << std::endl;
             }
         }
     } catch (subprocess::error &err) {

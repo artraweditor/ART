@@ -16,31 +16,31 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "previewmodepanel.h"
-#include "options.h"
-#include "multilangmgr.h"
 #include "imagearea.h"
+#include "multilangmgr.h"
+#include "options.h"
 #include "rtimage.h"
 
-PreviewModePanel::PreviewModePanel (ImageArea* ia) : imageArea(ia)
+PreviewModePanel::PreviewModePanel(ImageArea *ia): imageArea(ia)
 {
 
-    iR  = new RTImage ("square-toggle-red-on-narrow.svg");
-    iG  = new RTImage ("square-toggle-green-on-narrow.svg");
-    iB  = new RTImage ("square-toggle-blue-on-narrow.svg");
-    iL  = new RTImage ("square-toggle-luminosity-on-narrow.svg");
+    iR = new RTImage("square-toggle-red-on-narrow.svg");
+    iG = new RTImage("square-toggle-green-on-narrow.svg");
+    iB = new RTImage("square-toggle-blue-on-narrow.svg");
+    iL = new RTImage("square-toggle-luminosity-on-narrow.svg");
     // iBC0 = new RTImage ("square-toggle-theme-on-narrow.svg");
-    iBC1 = new RTImage ("square-toggle-black-on-narrow.svg");
-    iBC2 = new RTImage ("square-toggle-white-on-narrow.svg");
-    iBC3 = new RTImage ("square-toggle-gray-on-narrow.svg");
+    iBC1 = new RTImage("square-toggle-black-on-narrow.svg");
+    iBC2 = new RTImage("square-toggle-white-on-narrow.svg");
+    iBC3 = new RTImage("square-toggle-gray-on-narrow.svg");
 
-    igR = new RTImage ("square-toggle-red-off-narrow.svg");
-    igG = new RTImage ("square-toggle-green-off-narrow.svg");
-    igB = new RTImage ("square-toggle-blue-off-narrow.svg");
-    igL = new RTImage ("square-toggle-luminosity-off-narrow.svg");
+    igR = new RTImage("square-toggle-red-off-narrow.svg");
+    igG = new RTImage("square-toggle-green-off-narrow.svg");
+    igB = new RTImage("square-toggle-blue-off-narrow.svg");
+    igL = new RTImage("square-toggle-luminosity-off-narrow.svg");
     // igBC0 = new RTImage ("square-toggle-theme-off-narrow.svg");
-    igBC1 = new RTImage ("square-toggle-black-off-narrow.svg");
-    igBC2 = new RTImage ("square-toggle-white-off-narrow.svg");
-    igBC3 = new RTImage ("square-toggle-gray-off-narrow.svg");
+    igBC1 = new RTImage("square-toggle-black-off-narrow.svg");
+    igBC2 = new RTImage("square-toggle-white-off-narrow.svg");
+    igBC3 = new RTImage("square-toggle-gray-off-narrow.svg");
 
     // backColor0 = Gtk::manage (new Gtk::ToggleButton ());
     // backColor0->get_style_context()->add_class("narrowbutton");
@@ -48,84 +48,96 @@ PreviewModePanel::PreviewModePanel (ImageArea* ia) : imageArea(ia)
     // backColor0->set_tooltip_markup (M("MAIN_TOOLTIP_BACKCOLOR0"));
     // backColor0->set_image(options.bgcolor == 0 ? *iBC0 : *igBC0);
 
-    backColor1 = Gtk::manage (new Gtk::ToggleButton ());
+    backColor1 = Gtk::manage(new Gtk::ToggleButton());
     backColor1->get_style_context()->add_class("narrowbutton");
     backColor1->set_relief(Gtk::RELIEF_NONE);
-    backColor1->set_tooltip_markup (M("MAIN_TOOLTIP_BACKCOLOR1"));
+    backColor1->set_tooltip_markup(M("MAIN_TOOLTIP_BACKCOLOR1"));
     backColor1->set_image(options.bgcolor == 1 ? *iBC1 : *igBC1);
 
-    backColor3 = Gtk::manage (new Gtk::ToggleButton ());
+    backColor3 = Gtk::manage(new Gtk::ToggleButton());
     backColor3->get_style_context()->add_class("narrowbutton");
     backColor3->set_relief(Gtk::RELIEF_NONE);
-    backColor3->set_tooltip_markup (M("MAIN_TOOLTIP_BACKCOLOR3"));
+    backColor3->set_tooltip_markup(M("MAIN_TOOLTIP_BACKCOLOR3"));
     backColor3->set_image(options.bgcolor == 3 ? *iBC3 : *igBC3);
 
-    backColor2 = Gtk::manage (new Gtk::ToggleButton ());
+    backColor2 = Gtk::manage(new Gtk::ToggleButton());
     backColor2->get_style_context()->add_class("narrowbutton");
     backColor2->set_relief(Gtk::RELIEF_NONE);
-    backColor2->set_tooltip_markup (M("MAIN_TOOLTIP_BACKCOLOR2"));
+    backColor2->set_tooltip_markup(M("MAIN_TOOLTIP_BACKCOLOR2"));
     backColor2->set_image(options.bgcolor == 2 ? *iBC2 : *igBC2);
 
-    previewR = Gtk::manage (new Gtk::ToggleButton ());
+    previewR = Gtk::manage(new Gtk::ToggleButton());
     previewR->get_style_context()->add_class("narrowbutton");
     previewR->set_relief(Gtk::RELIEF_NONE);
-    previewR->set_tooltip_markup (M("MAIN_TOOLTIP_PREVIEWR"));
+    previewR->set_tooltip_markup(M("MAIN_TOOLTIP_PREVIEWR"));
     previewR->set_image(*igR);
 
-    previewG = Gtk::manage (new Gtk::ToggleButton ());
+    previewG = Gtk::manage(new Gtk::ToggleButton());
     previewG->get_style_context()->add_class("narrowbutton");
     previewG->set_relief(Gtk::RELIEF_NONE);
-    previewG->set_tooltip_markup (M("MAIN_TOOLTIP_PREVIEWG"));
+    previewG->set_tooltip_markup(M("MAIN_TOOLTIP_PREVIEWG"));
     previewG->set_image(*igG);
 
-    previewB = Gtk::manage (new Gtk::ToggleButton ());
+    previewB = Gtk::manage(new Gtk::ToggleButton());
     previewB->get_style_context()->add_class("narrowbutton");
     previewB->set_relief(Gtk::RELIEF_NONE);
-    previewB->set_tooltip_markup (M("MAIN_TOOLTIP_PREVIEWB"));
+    previewB->set_tooltip_markup(M("MAIN_TOOLTIP_PREVIEWB"));
     previewB->set_image(*igB);
 
-    previewL = Gtk::manage (new Gtk::ToggleButton ());
+    previewL = Gtk::manage(new Gtk::ToggleButton());
     previewL->get_style_context()->add_class("narrowbutton");
     previewL->set_relief(Gtk::RELIEF_NONE);
-    previewL->set_tooltip_markup (M("MAIN_TOOLTIP_PREVIEWL"));
+    previewL->set_tooltip_markup(M("MAIN_TOOLTIP_PREVIEWL"));
     previewL->set_image(*igL);
 
-    previewR->set_active (false);
-    previewG->set_active (false);
-    previewB->set_active (false);
-    previewL->set_active (false);
+    previewR->set_active(false);
+    previewG->set_active(false);
+    previewB->set_active(false);
+    previewL->set_active(false);
 
     // backColor0->set_active (options.bgcolor == 0);
-    backColor1->set_active (options.bgcolor <= 1);
-    backColor2->set_active (options.bgcolor == 2);
-    backColor3->set_active (options.bgcolor == 3);
+    backColor1->set_active(options.bgcolor <= 1);
+    backColor2->set_active(options.bgcolor == 2);
+    backColor3->set_active(options.bgcolor == 3);
 
     // pack_start (*backColor0, Gtk::PACK_SHRINK, 0);
-    pack_start (*backColor1, Gtk::PACK_SHRINK, 0);
-    pack_start (*backColor3, Gtk::PACK_SHRINK, 0);
-    pack_start (*backColor2, Gtk::PACK_SHRINK, 0);
+    pack_start(*backColor1, Gtk::PACK_SHRINK, 0);
+    pack_start(*backColor3, Gtk::PACK_SHRINK, 0);
+    pack_start(*backColor2, Gtk::PACK_SHRINK, 0);
 
-    pack_start (*Gtk::manage (new Gtk::VSeparator ()), Gtk::PACK_SHRINK, 2);
+    pack_start(*Gtk::manage(new Gtk::VSeparator()), Gtk::PACK_SHRINK, 2);
 
-    pack_start (*previewR, Gtk::PACK_SHRINK, 0);
-    pack_start (*previewG, Gtk::PACK_SHRINK, 0);
-    pack_start (*previewB, Gtk::PACK_SHRINK, 0);
-    pack_start (*previewL, Gtk::PACK_SHRINK, 0);
+    pack_start(*previewR, Gtk::PACK_SHRINK, 0);
+    pack_start(*previewG, Gtk::PACK_SHRINK, 0);
+    pack_start(*previewB, Gtk::PACK_SHRINK, 0);
+    pack_start(*previewL, Gtk::PACK_SHRINK, 0);
 
-    connR = previewR->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewR) );
-    connG = previewG->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewG) );
-    connB = previewB->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewB) );
-    connL = previewL->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewL) );
+    connR = previewR->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewR));
+    connG = previewG->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewG));
+    connB = previewB->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewB));
+    connL = previewL->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled), previewL));
 
-    // connbackColor0 = backColor0->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor), backColor0) );
-    connbackColor1 = backColor1->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor), backColor1) );
-    connbackColor2 = backColor2->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor), backColor2) );
-    connbackColor3 = backColor3->signal_toggled().connect( sigc::bind(sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor), backColor3) );
+    // connbackColor0 = backColor0->signal_toggled().connect(
+    // sigc::bind(sigc::mem_fun(*this,
+    // &PreviewModePanel::buttonToggled_backColor), backColor0) );
+    connbackColor1 = backColor1->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor),
+        backColor1));
+    connbackColor2 = backColor2->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor),
+        backColor2));
+    connbackColor3 = backColor3->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PreviewModePanel::buttonToggled_backColor),
+        backColor3));
 
-    //show_all ();
+    // show_all ();
 }
 
-PreviewModePanel::~PreviewModePanel ()
+PreviewModePanel::~PreviewModePanel()
 {
     delete iR;
     delete iG;
@@ -144,20 +156,20 @@ PreviewModePanel::~PreviewModePanel ()
     delete igBC2;
     delete igBC3;
 }
-//toggle Functions below are for shortcuts
-void PreviewModePanel::toggleR ()
+// toggle Functions below are for shortcuts
+void PreviewModePanel::toggleR()
 {
     previewR->set_active(!previewR->get_active());
 }
-void PreviewModePanel::toggleG ()
+void PreviewModePanel::toggleG()
 {
     previewG->set_active(!previewG->get_active());
 }
-void PreviewModePanel::toggleB ()
+void PreviewModePanel::toggleB()
 {
     previewB->set_active(!previewB->get_active());
 }
-void PreviewModePanel::toggleL ()
+void PreviewModePanel::toggleL()
 {
     previewL->set_active(!previewL->get_active());
 }
@@ -166,20 +178,20 @@ void PreviewModePanel::toggleL ()
 // {
 //     backColor0->set_active(!backColor0->get_active());
 // }
-void PreviewModePanel::togglebackColor1 ()
+void PreviewModePanel::togglebackColor1()
 {
     backColor1->set_active(!backColor1->get_active());
 }
-void PreviewModePanel::togglebackColor2 ()
+void PreviewModePanel::togglebackColor2()
 {
     backColor2->set_active(!backColor2->get_active());
 }
-void PreviewModePanel::togglebackColor3 ()
+void PreviewModePanel::togglebackColor3()
 {
     backColor3->set_active(!backColor3->get_active());
 }
 
-void PreviewModePanel::buttonToggled (Gtk::ToggleButton* tbpreview)
+void PreviewModePanel::buttonToggled(Gtk::ToggleButton *tbpreview)
 {
 
     connR.block(true);
@@ -216,12 +228,12 @@ void PreviewModePanel::buttonToggled (Gtk::ToggleButton* tbpreview)
     connB.block(false);
     connL.block(false);
 
-    imageArea->queue_draw ();
+    imageArea->queue_draw();
 
     // this will redraw the linked Before image area
     // which is set when before/after view is enabled
     if (imageArea->iLinkedImageArea != nullptr) {
-        imageArea->iLinkedImageArea->queue_draw ();
+        imageArea->iLinkedImageArea->queue_draw();
     }
 }
 
@@ -233,15 +245,15 @@ int PreviewModePanel::GetbackColor()
     //     backColor = 0;
     // }
 
-    if (backColor1->get_active ()) {
+    if (backColor1->get_active()) {
         backColor = 1;
     }
 
-    if (backColor2->get_active ()) {
+    if (backColor2->get_active()) {
         backColor = 2;
     }
 
-    if (backColor3->get_active ()) {
+    if (backColor3->get_active()) {
         backColor = 3;
     }
 
@@ -255,16 +267,16 @@ void PreviewModePanel::togglebackColor()
     // if(backColor == 0) {
     //     togglebackColor1();
     // } else
-    if(backColor == 1) {
+    if (backColor == 1) {
         togglebackColor3();
-    } else if(backColor == 3) {
+    } else if (backColor == 3) {
         togglebackColor2();
     } else {
         togglebackColor1();
     }
 }
 
-void PreviewModePanel::buttonToggled_backColor (Gtk::ToggleButton* tbbackColor)
+void PreviewModePanel::buttonToggled_backColor(Gtk::ToggleButton *tbbackColor)
 {
 
     // connbackColor0.block(true);
@@ -317,12 +329,13 @@ void PreviewModePanel::buttonToggled_backColor (Gtk::ToggleButton* tbbackColor)
     connbackColor2.block(false);
     connbackColor3.block(false);
 
-    //TODO not sure if queue_draw is necessary, but will need to reach to backColor of the Before view
-    imageArea->queue_draw ();
+    // TODO not sure if queue_draw is necessary, but will need to reach to
+    // backColor of the Before view
+    imageArea->queue_draw();
 
     // this will redraw the linked Before image area
     // which is set when before/after view is enabled
     if (imageArea->iLinkedImageArea != nullptr) {
-        imageArea->iLinkedImageArea->queue_draw ();
+        imageArea->iLinkedImageArea->queue_draw();
     }
 }

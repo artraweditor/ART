@@ -19,14 +19,14 @@
  */
 #pragma once
 
-#include <glibmm.h>
 #include <OpenColorIO/OpenColorIO.h>
+#include <glibmm.h>
 namespace OCIO = OCIO_NAMESPACE;
 
-#include "clutparams.h"
 #include "cache.h"
-#include "utils.h"
+#include "clutparams.h"
 #include "subprocess.h"
+#include "utils.h"
 
 namespace rtengine {
 
@@ -46,22 +46,28 @@ public:
 
     static void init();
     static void cleanup();
-    
+
 private:
     class SubprocessManager {
     public:
         ~SubprocessManager();
-        bool process(const Glib::ustring &filename, const Glib::ustring &workdir, const std::vector<Glib::ustring> &argv, const std::string &params, const std::string &outname);
+        bool process(const Glib::ustring &filename,
+                     const Glib::ustring &workdir,
+                     const std::vector<Glib::ustring> &argv,
+                     const std::string &params, const std::string &outname);
 
     private:
-        std::unordered_map<std::string, std::unique_ptr<subprocess::SubprocessInfo>> procs_;
+        std::unordered_map<std::string,
+                           std::unique_ptr<subprocess::SubprocessInfo>>
+            procs_;
     };
-    static std::unique_ptr<Cache<std::string, OCIO::ConstProcessorRcPtr>> cache_;
+    static std::unique_ptr<Cache<std::string, OCIO::ConstProcessorRcPtr>>
+        cache_;
     static MyMutex disk_cache_mutex_;
     static SubprocessManager smgr_;
 
     std::string recompute_lut(const std::string &params);
-    
+
     bool ok_;
     bool is_server_;
     Glib::ustring filename_;

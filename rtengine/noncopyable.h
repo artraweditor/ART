@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2016 Flössie <floessie.mail@gmail.com>
@@ -26,9 +26,8 @@ class NonCopyable {
 public:
     NonCopyable() = default;
 
-    explicit NonCopyable(const NonCopyable&) = delete;
-    NonCopyable& operator =(const NonCopyable&) = delete;
+    explicit NonCopyable(const NonCopyable &) = delete;
+    NonCopyable &operator=(const NonCopyable &) = delete;
 };
 
 } // namespace rtengine
-

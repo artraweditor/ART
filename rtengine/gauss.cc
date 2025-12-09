@@ -17,45 +17,46 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "gauss.h"
+#include "alignedbuffer.h"
+#include "boxblur.h"
+#include "opthelper.h"
 #include "rt_math.h"
 #include <cmath>
 #include <cstdlib>
-#include "opthelper.h"
-#include "boxblur.h"
-#include "alignedbuffer.h"
 
 namespace {
 
-template <class T>
-class AlignedMatrix {
+template <class T> class AlignedMatrix {
 public:
-    AlignedMatrix(int h, int w): w_(w), h_(h), buf_(w * h)  {}
+    AlignedMatrix(int h, int w): w_(w), h_(h), buf_(w * h) {}
     T *operator[](int x) { return buf_.data + (x * w_); }
+
 private:
     int w_;
     int h_;
     rtengine::AlignedBuffer<T> buf_;
 };
 
-template <class T>
-class AlignedVector {
+template <class T> class AlignedVector {
 public:
-    AlignedVector(int w): w_(w), buf_(w)  {}
+    AlignedVector(int w): w_(w), buf_(w) {}
     operator T *() { return buf_.data; }
+
 private:
     int w_;
     rtengine::AlignedBuffer<T> buf_;
 };
 
-
-
-void compute7x7kernel(float sigma, float kernel[7][7]) {
+void compute7x7kernel(float sigma, float kernel[7][7])
+{
     const double temp = -2.f * rtengine::SQR(sigma);
     float sum = 0.f;
     for (int i = -3; i <= 3; ++i) {
         for (int j = -3; j <= 3; ++j) {
-            if((rtengine::SQR(i) + rtengine::SQR(j)) <= rtengine::SQR(3.0 * 1.15)) {
-                kernel[i + 3][j + 3] = std::exp((rtengine::SQR(i) + rtengine::SQR(j)) / temp);
+            if ((rtengine::SQR(i) + rtengine::SQR(j)) <=
+                rtengine::SQR(3.0 * 1.15)) {
+                kernel[i + 3][j + 3] =
+                    std::exp((rtengine::SQR(i) + rtengine::SQR(j)) / temp);
                 sum += kernel[i + 3][j + 3];
             } else {
                 kernel[i + 3][j + 3] = 0.f;
@@ -70,13 +71,16 @@ void compute7x7kernel(float sigma, float kernel[7][7]) {
     }
 }
 
-void compute5x5kernel(float sigma, float kernel[5][5]) {
+void compute5x5kernel(float sigma, float kernel[5][5])
+{
     const double temp = -2.f * rtengine::SQR(sigma);
     float sum = 0.f;
     for (int i = -2; i <= 2; ++i) {
         for (int j = -2; j <= 2; ++j) {
-            if((rtengine::SQR(i) + rtengine::SQR(j)) <= rtengine::SQR(3.0 * 0.84)) {
-                kernel[i + 2][j + 2] = std::exp((rtengine::SQR(i) + rtengine::SQR(j)) / temp);
+            if ((rtengine::SQR(i) + rtengine::SQR(j)) <=
+                rtengine::SQR(3.0 * 0.84)) {
+                kernel[i + 2][j + 2] =
+                    std::exp((rtengine::SQR(i) + rtengine::SQR(j)) / temp);
                 sum += kernel[i + 2][j + 2];
             } else {
                 kernel[i + 2][j + 2] = 0.f;
@@ -91,13 +95,14 @@ void compute5x5kernel(float sigma, float kernel[5][5]) {
     }
 }
 
-template<class T> void calculateYvVFactors( const T sigma, T &b1, T &b2, T &b3, T &B, T M[3][3])
+template <class T>
+void calculateYvVFactors(const T sigma, T &b1, T &b2, T &b3, T &B, T M[3][3])
 {
     // coefficient calculation
     T q;
 
     if (sigma < 2.5) {
-        q = 3.97156 - 4.14554 * sqrt (1.0 - 0.26891 * sigma);
+        q = 3.97156 - 4.14554 * sqrt(1.0 - 0.26891 * sigma);
     } else {
         q = 0.98711 * sigma - 0.96330;
     }
@@ -112,7 +117,8 @@ template<class T> void calculateYvVFactors( const T sigma, T &b1, T &b2, T &b3, 
     b2 /= b0;
     b3 /= b0;
 
-    // From: Bill Triggs, Michael Sdika: Boundary Conditions for Young-van Vliet Recursive Filtering
+    // From: Bill Triggs, Michael Sdika: Boundary Conditions for Young-van Vliet
+    // Recursive Filtering
     M[0][0] = -b3 * b1 + 1.0 - b3 * b3 - b2;
     M[0][1] = (b3 + b1) * (b2 + b3 * b1);
     M[0][2] = b3 * (b1 + b3 * b2);
@@ -120,24 +126,25 @@ template<class T> void calculateYvVFactors( const T sigma, T &b1, T &b2, T &b3, 
     M[1][1] = -(b2 - 1.0) * (b2 + b3 * b1);
     M[1][2] = -(b3 * b1 + b3 * b3 + b2 - 1.0) * b3;
     M[2][0] = b3 * b1 + b2 + b1 * b1 - b2 * b2;
-    M[2][1] = b1 * b2 + b3 * b2 * b2 - b1 * b3 * b3 - b3 * b3 * b3 - b3 * b2 + b3;
+    M[2][1] =
+        b1 * b2 + b3 * b2 * b2 - b1 * b3 * b3 - b3 * b3 * b3 - b3 * b2 + b3;
     M[2][2] = b3 * (b1 + b3 * b2);
-
 }
 
 // classical filtering if the support window is small and src != dst
-template<class T> void gauss3x3 (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const T c0, const T c1, const T c2, const T b0, const T b1)
+template <class T>
+void gauss3x3(T **RESTRICT src, T **RESTRICT dst, const int W, const int H,
+              const T c0, const T c1, const T c2, const T b0, const T b1)
 {
 
     // first row
 #ifdef _OPENMP
-    #pragma omp single nowait
+#pragma omp single nowait
 #endif
     {
         dst[0][0] = src[0][0];
 
-        for (int j = 1; j < W - 1; j++)
-        {
+        for (int j = 1; j < W - 1; j++) {
             dst[0][j] = b1 * (src[0][j - 1] + src[0][j + 1]) + b0 * src[0][j];
         }
 
@@ -145,28 +152,34 @@ template<class T> void gauss3x3 (T** RESTRICT src, T** RESTRICT dst, const int W
     }
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 1; i < H - 1; i++) {
         dst[i][0] = b1 * (src[i - 1][0] + src[i + 1][0]) + b0 * src[i][0];
 
         for (int j = 1; j < W - 1; j++) {
-            dst[i][j] = c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
+            dst[i][j] = c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                              src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                        c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] +
+                              src[i + 1][j]) +
+                        c0 * src[i][j];
         }
 
-        dst[i][W - 1] = b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1];
+        dst[i][W - 1] =
+            b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1];
     }
 
     // last row
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
     {
         dst[H - 1][0] = src[H - 1][0];
 
         for (int j = 1; j < W - 1; j++) {
-            dst[H - 1][j] = b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) + b0 * src[H - 1][j];
+            dst[H - 1][j] = b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) +
+                            b0 * src[H - 1][j];
         }
 
         dst[H - 1][W - 1] = src[H - 1][W - 1];
@@ -174,18 +187,19 @@ template<class T> void gauss3x3 (T** RESTRICT src, T** RESTRICT dst, const int W
 }
 
 // classical filtering if the support window is small and src != dst
-template<class T> void gauss3x3mult (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const T c0, const T c1, const T c2, const T b0, const T b1)
+template <class T>
+void gauss3x3mult(T **RESTRICT src, T **RESTRICT dst, const int W, const int H,
+                  const T c0, const T c1, const T c2, const T b0, const T b1)
 {
 
     // first row
 #ifdef _OPENMP
-    #pragma omp single nowait
+#pragma omp single nowait
 #endif
     {
         dst[0][0] *= src[0][0];
 
-        for (int j = 1; j < W - 1; j++)
-        {
+        for (int j = 1; j < W - 1; j++) {
             dst[0][j] *= b1 * (src[0][j - 1] + src[0][j + 1]) + b0 * src[0][j];
         }
 
@@ -193,87 +207,116 @@ template<class T> void gauss3x3mult (T** RESTRICT src, T** RESTRICT dst, const i
     }
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 1; i < H - 1; i++) {
         dst[i][0] *= b1 * (src[i - 1][0] + src[i + 1][0]) + b0 * src[i][0];
 
         for (int j = 1; j < W - 1; j++) {
-            dst[i][j] *= c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
+            dst[i][j] *= c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                               src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                         c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] +
+                               src[i + 1][j]) +
+                         c0 * src[i][j];
         }
 
-        dst[i][W - 1] *= b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1];
+        dst[i][W - 1] *=
+            b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1];
     }
 
     // last row
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
     {
         dst[H - 1][0] *= src[H - 1][0];
 
         for (int j = 1; j < W - 1; j++) {
-            dst[H - 1][j] *= b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) + b0 * src[H - 1][j];
+            dst[H - 1][j] *= b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) +
+                             b0 * src[H - 1][j];
         }
 
         dst[H - 1][W - 1] *= src[H - 1][W - 1];
     }
 }
 
-template<class T> void gauss3x3div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, const T c0, const T c1, const T c2, const T b0, const T b1)
+template <class T>
+void gauss3x3div(T **RESTRICT src, T **RESTRICT dst, T **RESTRICT divBuffer,
+                 const int W, const int H, const T c0, const T c1, const T c2,
+                 const T b0, const T b1)
 {
 
     // first row
 #ifdef _OPENMP
-    #pragma omp single nowait
+#pragma omp single nowait
 #endif
     {
-        dst[0][0] = rtengine::max(divBuffer[0][0] / (src[0][0] > 0.f ? src[0][0] : 1.f), 0.f);
+        dst[0][0] = rtengine::max(
+            divBuffer[0][0] / (src[0][0] > 0.f ? src[0][0] : 1.f), 0.f);
 
-        for (int j = 1; j < W - 1; j++)
-        {
+        for (int j = 1; j < W - 1; j++) {
             float tmp = (b1 * (src[0][j - 1] + src[0][j + 1]) + b0 * src[0][j]);
-            dst[0][j] = rtengine::max(divBuffer[0][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
+            dst[0][j] =
+                rtengine::max(divBuffer[0][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
         }
 
-        dst[0][W - 1] = rtengine::max(divBuffer[0][W - 1] / (src[0][W - 1] > 0.f ? src[0][W - 1] : 1.f), 0.f);
+        dst[0][W - 1] = rtengine::max(
+            divBuffer[0][W - 1] / (src[0][W - 1] > 0.f ? src[0][W - 1] : 1.f),
+            0.f);
     }
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 1; i < H - 1; i++) {
         float tmp = (b1 * (src[i - 1][0] + src[i + 1][0]) + b0 * src[i][0]);
-        dst[i][0] = rtengine::max(divBuffer[i][0] / (tmp > 0.f ? tmp : 1.f), 0.f);
+        dst[i][0] =
+            rtengine::max(divBuffer[i][0] / (tmp > 0.f ? tmp : 1.f), 0.f);
 
         for (int j = 1; j < W - 1; j++) {
-            tmp = (c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j]);
-            dst[i][j] = rtengine::max(divBuffer[i][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
+            tmp = (c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                         src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                   c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] +
+                         src[i + 1][j]) +
+                   c0 * src[i][j]);
+            dst[i][j] =
+                rtengine::max(divBuffer[i][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
         }
 
-        tmp = (b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1]);
-        dst[i][W - 1] = rtengine::max(divBuffer[i][W - 1] / (tmp > 0.f ? tmp : 1.f), 0.f);
+        tmp =
+            (b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1]);
+        dst[i][W - 1] =
+            rtengine::max(divBuffer[i][W - 1] / (tmp > 0.f ? tmp : 1.f), 0.f);
     }
 
     // last row
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
     {
-        dst[H - 1][0] = rtengine::max(divBuffer[H - 1][0] / (src[H - 1][0] > 0.f ? src[H - 1][0] : 1.f), 0.f);
+        dst[H - 1][0] = rtengine::max(
+            divBuffer[H - 1][0] / (src[H - 1][0] > 0.f ? src[H - 1][0] : 1.f),
+            0.f);
 
         for (int j = 1; j < W - 1; j++) {
-            float tmp = (b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) + b0 * src[H - 1][j]);
-            dst[H - 1][j] = rtengine::max(divBuffer[H - 1][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
+            float tmp = (b1 * (src[H - 1][j - 1] + src[H - 1][j + 1]) +
+                         b0 * src[H - 1][j]);
+            dst[H - 1][j] = rtengine::max(
+                divBuffer[H - 1][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
         }
 
-        dst[H - 1][W - 1] = rtengine::max(divBuffer[H - 1][W - 1] / (src[H - 1][W - 1] > 0.f ? src[H - 1][W - 1] : 1.f), 0.f);
+        dst[H - 1][W - 1] = rtengine::max(
+            divBuffer[H - 1][W - 1] /
+                (src[H - 1][W - 1] > 0.f ? src[H - 1][W - 1] : 1.f),
+            0.f);
     }
 }
 
-template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, float sigma)
+template <class T>
+void gauss7x7div(T **RESTRICT src, T **RESTRICT dst, T **RESTRICT divBuffer,
+                 const int W, const int H, float sigma)
 {
 
     float kernel[7][7];
@@ -289,21 +332,33 @@ template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** REST
     const float c00 = kernel[3][3];
 
 #ifdef _OPENMP
-    #pragma omp for schedule(dynamic, 16) nowait
+#pragma omp for schedule(dynamic, 16) nowait
 #endif
 
     for (int i = 3; i < H - 3; ++i) {
         dst[i][0] = dst[i][1] = dst[i][2] = 1.f;
         // I tried hand written SSE code but gcc vectorizes better
         for (int j = 3; j < W - 3; ++j) {
-            const float val = c31 * (src[i - 3][j - 1] + src[i - 3][j + 1] + src[i - 1][j - 3] + src[i - 1][j + 3] + src[i + 1][j - 3] + src[i + 1][j + 3] + src[i + 3][j - 1] + src[i + 3][j + 1]) +
-                              c30 * (src[i - 3][j] + src[i][j - 3] + src[i][j + 3] + src[i + 3][j]) +
-                              c22 * (src[i - 2][j - 2] + src[i - 2][j + 2] + src[i + 2][j - 2] + src[i + 2][j + 2]) +
-                              c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] * c21 + src[i - 1][j - 2] + src[i - 1][j + 2] + src[i + 1][j - 2] + src[i + 1][j + 2] + src[i + 2][j - 1] + src[i + 2][j + 1]) +
-                              c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] + src[i + 2][j]) +
-                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) +
-                              c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) +
-                              c00 * src[i][j];
+            const float val =
+                c31 *
+                    (src[i - 3][j - 1] + src[i - 3][j + 1] + src[i - 1][j - 3] +
+                     src[i - 1][j + 3] + src[i + 1][j - 3] + src[i + 1][j + 3] +
+                     src[i + 3][j - 1] + src[i + 3][j + 1]) +
+                c30 * (src[i - 3][j] + src[i][j - 3] + src[i][j + 3] +
+                       src[i + 3][j]) +
+                c22 * (src[i - 2][j - 2] + src[i - 2][j + 2] +
+                       src[i + 2][j - 2] + src[i + 2][j + 2]) +
+                c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] * c21 +
+                       src[i - 1][j - 2] + src[i - 1][j + 2] +
+                       src[i + 1][j - 2] + src[i + 1][j + 2] +
+                       src[i + 2][j - 1] + src[i + 2][j + 1]) +
+                c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] +
+                       src[i + 2][j]) +
+                c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                       src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] +
+                       src[i + 1][j]) +
+                c00 * src[i][j];
 
             dst[i][j] = divBuffer[i][j] / std::max(val, 0.00001f);
         }
@@ -312,7 +367,7 @@ template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** REST
 
     // first and last rows
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
     {
         for (int i = 0; i < 3; ++i) {
@@ -320,7 +375,7 @@ template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** REST
                 dst[i][j] = 1.f;
             }
         }
-        for (int i = H - 3 ; i < H; ++i) {
+        for (int i = H - 3; i < H; ++i) {
             for (int j = 0; j < W; ++j) {
                 dst[i][j] = 1.f;
             }
@@ -328,7 +383,9 @@ template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** REST
     }
 }
 
-template<class T> void gauss5x5div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, float sigma)
+template <class T>
+void gauss5x5div(T **RESTRICT src, T **RESTRICT dst, T **RESTRICT divBuffer,
+                 const int W, const int H, float sigma)
 {
 
     float kernel[5][5];
@@ -341,17 +398,23 @@ template<class T> void gauss5x5div (T** RESTRICT src, T** RESTRICT dst, T** REST
     const float c00 = kernel[2][2];
 
 #ifdef _OPENMP
-    #pragma omp for schedule(dynamic, 16) nowait
+#pragma omp for schedule(dynamic, 16) nowait
 #endif
 
     for (int i = 2; i < H - 2; ++i) {
         dst[i][0] = dst[i][1] = 1.f;
         // I tried hand written SSE code but gcc vectorizes better
         for (int j = 2; j < W - 2; ++j) {
-            const float val = c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] + src[i - 1][j - 2] + src[i - 1][j + 2] + src[i + 1][j - 2] + src[i + 1][j + 2] + src[i + 2][j - 1] + src[i + 2][j + 1]) +
-                              c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] + src[i + 2][j]) +
-                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) +
-                              c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) +
+            const float val = c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] +
+                                     src[i - 1][j - 2] + src[i - 1][j + 2] +
+                                     src[i + 1][j - 2] + src[i + 1][j + 2] +
+                                     src[i + 2][j - 1] + src[i + 2][j + 1]) +
+                              c20 * (src[i - 2][j] + src[i][j - 2] +
+                                     src[i][j + 2] + src[i + 2][j]) +
+                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                                     src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                              c10 * (src[i - 1][j] + src[i][j - 1] +
+                                     src[i][j + 1] + src[i + 1][j]) +
                               c00 * src[i][j];
 
             dst[i][j] = divBuffer[i][j] / std::max(val, 0.00001f);
@@ -361,7 +424,7 @@ template<class T> void gauss5x5div (T** RESTRICT src, T** RESTRICT dst, T** REST
 
     // first and last rows
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
     {
         for (int i = 0; i < 2; ++i) {
@@ -369,7 +432,7 @@ template<class T> void gauss5x5div (T** RESTRICT src, T** RESTRICT dst, T** REST
                 dst[i][j] = 1.f;
             }
         }
-        for (int i = H - 2 ; i < H; ++i) {
+        for (int i = H - 2; i < H; ++i) {
             for (int j = 0; j < W; ++j) {
                 dst[i][j] = 1.f;
             }
@@ -377,7 +440,9 @@ template<class T> void gauss5x5div (T** RESTRICT src, T** RESTRICT dst, T** REST
     }
 }
 
-template<class T> void gauss7x7mult (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, float sigma)
+template <class T>
+void gauss7x7mult(T **RESTRICT src, T **RESTRICT dst, const int W, const int H,
+                  float sigma)
 {
 
     float kernel[7][7];
@@ -392,27 +457,41 @@ template<class T> void gauss7x7mult (T** RESTRICT src, T** RESTRICT dst, const i
     const float c00 = kernel[3][3];
 
 #ifdef _OPENMP
-    #pragma omp for schedule(dynamic, 16)
+#pragma omp for schedule(dynamic, 16)
 #endif
 
     for (int i = 3; i < H - 3; ++i) {
         // I tried hand written SSE code but gcc vectorizes better
         for (int j = 3; j < W - 3; ++j) {
-            const float val = c31 * (src[i - 3][j - 1] + src[i - 3][j + 1] + src[i - 1][j - 3] + src[i - 1][j + 3] + src[i + 1][j - 3] + src[i + 1][j + 3] + src[i + 3][j - 1] + src[i + 3][j + 1]) +
-                              c30 * (src[i - 3][j] + src[i][j - 3] + src[i][j + 3] + src[i + 3][j]) +
-                              c22 * (src[i - 2][j - 2] + src[i - 2][j + 2] + src[i + 2][j - 2] + src[i + 2][j + 2]) +
-                              c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] * c21 + src[i - 1][j - 2] + src[i - 1][j + 2] + src[i + 1][j - 2] + src[i + 1][j + 2] + src[i + 2][j - 1] + src[i + 2][j + 1]) +
-                              c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] + src[i + 2][j]) +
-                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) +
-                              c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) +
-                              c00 * src[i][j];
+            const float val =
+                c31 *
+                    (src[i - 3][j - 1] + src[i - 3][j + 1] + src[i - 1][j - 3] +
+                     src[i - 1][j + 3] + src[i + 1][j - 3] + src[i + 1][j + 3] +
+                     src[i + 3][j - 1] + src[i + 3][j + 1]) +
+                c30 * (src[i - 3][j] + src[i][j - 3] + src[i][j + 3] +
+                       src[i + 3][j]) +
+                c22 * (src[i - 2][j - 2] + src[i - 2][j + 2] +
+                       src[i + 2][j - 2] + src[i + 2][j + 2]) +
+                c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] * c21 +
+                       src[i - 1][j - 2] + src[i - 1][j + 2] +
+                       src[i + 1][j - 2] + src[i + 1][j + 2] +
+                       src[i + 2][j - 1] + src[i + 2][j + 1]) +
+                c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] +
+                       src[i + 2][j]) +
+                c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                       src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] +
+                       src[i + 1][j]) +
+                c00 * src[i][j];
 
             dst[i][j] *= val;
         }
     }
 }
 
-template<class T> void gauss5x5mult (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, float sigma)
+template <class T>
+void gauss5x5mult(T **RESTRICT src, T **RESTRICT dst, const int W, const int H,
+                  float sigma)
 {
 
     float kernel[5][5];
@@ -425,16 +504,22 @@ template<class T> void gauss5x5mult (T** RESTRICT src, T** RESTRICT dst, const i
     const float c00 = kernel[2][2];
 
 #ifdef _OPENMP
-    #pragma omp for schedule(dynamic, 16)
+#pragma omp for schedule(dynamic, 16)
 #endif
 
     for (int i = 2; i < H - 2; ++i) {
         // I tried hand written SSE code but gcc vectorizes better
         for (int j = 2; j < W - 2; ++j) {
-            const float val = c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] + src[i - 1][j - 2] + src[i - 1][j + 2] + src[i + 1][j - 2] + src[i + 1][j + 2] + src[i + 2][j - 1] + src[i + 2][j + 1]) +
-                              c20 * (src[i - 2][j] + src[i][j - 2] + src[i][j + 2] + src[i + 2][j]) +
-                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) +
-                              c10 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) +
+            const float val = c21 * (src[i - 2][j - 1] + src[i - 2][j + 1] +
+                                     src[i - 1][j - 2] + src[i - 1][j + 2] +
+                                     src[i + 1][j - 2] + src[i + 1][j + 2] +
+                                     src[i + 2][j - 1] + src[i + 2][j + 1]) +
+                              c20 * (src[i - 2][j] + src[i][j - 2] +
+                                     src[i][j + 2] + src[i + 2][j]) +
+                              c11 * (src[i - 1][j - 1] + src[i - 1][j + 1] +
+                                     src[i + 1][j - 1] + src[i + 1][j + 1]) +
+                              c10 * (src[i - 1][j] + src[i][j - 1] +
+                                     src[i][j + 1] + src[i + 1][j]) +
                               c00 * src[i][j];
 
             dst[i][j] *= val;
@@ -443,28 +528,33 @@ template<class T> void gauss5x5mult (T** RESTRICT src, T** RESTRICT dst, const i
 }
 
 // use separated filter if the support window is small and src == dst
-template<class T> void gaussHorizontal3 (T** src, T** dst, int W, int H, const float c0, const float c1)
+template <class T>
+void gaussHorizontal3(T **src, T **dst, int W, int H, const float c0,
+                      const float c1)
 {
     AlignedVector<T> temp(W);
-    //T temp[W] ALIGNED16;
+    // T temp[W] ALIGNED16;
 #ifdef _OPENMP
-    #pragma omp for
+#pragma omp for
 #endif
 
     for (int i = 0; i < H; i++) {
         for (int j = 1; j < W - 1; j++) {
-            temp[j] = (T)(c1 * (src[i][j - 1] + src[i][j + 1]) + c0 * src[i][j]);
+            temp[j] =
+                (T)(c1 * (src[i][j - 1] + src[i][j + 1]) + c0 * src[i][j]);
         }
 
         dst[i][0] = src[i][0];
-        memcpy (dst[i] + 1, temp + 1, (W - 2)*sizeof(T));
+        memcpy(dst[i] + 1, temp + 1, (W - 2) * sizeof(T));
 
         dst[i][W - 1] = src[i][W - 1];
     }
 }
 
 #ifdef __SSE2__
-template<class T> void gaussVertical3 (T** src, T** dst, int W, int H, const float c0, const float c1)
+template <class T>
+void gaussVertical3(T **src, T **dst, int W, int H, const float c0,
+                    const float c1)
 {
     vfloat Tv = F2V(0.f), Tm1v, Tp1v;
     vfloat Tv1 = F2V(0.f), Tm1v1, Tp1v1;
@@ -473,41 +563,41 @@ template<class T> void gaussVertical3 (T** src, T** dst, int W, int H, const flo
     c1v = F2V(c1);
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     // process 8 columns per iteration for better usage of cpu cache
     for (int i = 0; i < W - 7; i += 8) {
-        Tm1v = LVFU( src[0][i] );
-        Tm1v1 = LVFU( src[0][i + 4] );
-        STVFU( dst[0][i], Tm1v);
-        STVFU( dst[0][i + 4], Tm1v1);
+        Tm1v = LVFU(src[0][i]);
+        Tm1v1 = LVFU(src[0][i + 4]);
+        STVFU(dst[0][i], Tm1v);
+        STVFU(dst[0][i + 4], Tm1v1);
 
         if (H > 1) {
-            Tv = LVFU( src[1][i]);
-            Tv1 = LVFU( src[1][i + 4]);
+            Tv = LVFU(src[1][i]);
+            Tv1 = LVFU(src[1][i + 4]);
         }
 
         for (int j = 1; j < H - 1; j++) {
-            Tp1v = LVFU( src[j + 1][i]);
-            Tp1v1 = LVFU( src[j + 1][i + 4]);
-            STVFU( dst[j][i], c1v * (Tp1v + Tm1v) + Tv * c0v);
-            STVFU( dst[j][i + 4], c1v * (Tp1v1 + Tm1v1) + Tv1 * c0v);
+            Tp1v = LVFU(src[j + 1][i]);
+            Tp1v1 = LVFU(src[j + 1][i + 4]);
+            STVFU(dst[j][i], c1v * (Tp1v + Tm1v) + Tv * c0v);
+            STVFU(dst[j][i + 4], c1v * (Tp1v1 + Tm1v1) + Tv1 * c0v);
             Tm1v = Tv;
             Tm1v1 = Tv1;
             Tv = Tp1v;
             Tv1 = Tp1v1;
         }
 
-        STVFU( dst[H - 1][i], LVFU( src[H - 1][i]));
-        STVFU( dst[H - 1][i + 4], LVFU( src[H - 1][i + 4]));
+        STVFU(dst[H - 1][i], LVFU(src[H - 1][i]));
+        STVFU(dst[H - 1][i + 4], LVFU(src[H - 1][i + 4]));
     }
 
-// Borders are done without SSE
-    //float temp[H] ALIGNED16;
+    // Borders are done without SSE
+    // float temp[H] ALIGNED16;
     AlignedVector<float> temp(H);
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     for (int i = W - (W % 8); i < W; i++) {
@@ -525,17 +615,20 @@ template<class T> void gaussVertical3 (T** src, T** dst, int W, int H, const flo
     }
 }
 #else
-template<class T> void gaussVertical3 (T** src, T** dst, int W, int H, const float c0, const float c1)
+template <class T>
+void gaussVertical3(T **src, T **dst, int W, int H, const float c0,
+                    const float c1)
 {
-    //T temp[H] ALIGNED16;
+    // T temp[H] ALIGNED16;
     AlignedVector<T> temp(H);
 #ifdef _OPENMP
-    #pragma omp for
+#pragma omp for
 #endif
 
     for (int i = 0; i < W; i++) {
         for (int j = 1; j < H - 1; j++) {
-            temp[j] = (T)(c1 * (src[j - 1][i] + src[j + 1][i]) + c0 * src[j][i]);
+            temp[j] =
+                (T)(c1 * (src[j - 1][i] + src[j + 1][i]) + c0 * src[j][i]);
         }
 
         dst[0][i] = src[0][i];
@@ -551,7 +644,9 @@ template<class T> void gaussVertical3 (T** src, T** dst, int W, int H, const flo
 
 #ifdef __SSE2__
 // fast gaussian approximation if the support window is large
-template<class T> void gaussHorizontalSse (T** src, T** dst, const int W, const int H, const float sigma)
+template <class T>
+void gaussHorizontalSse(T **src, T **dst, const int W, const int H,
+                        const float sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -566,7 +661,7 @@ template<class T> void gaussHorizontalSse (T** src, T** dst, const int W, const 
     vfloat Tv, Tm2v, Tm3v;
     vfloat Bv, b1v, b2v, b3v;
     vfloat temp2W, temp2Wp1;
-    //float tmp[W][4] ALIGNED16;
+    // float tmp[W][4] ALIGNED16;
     AlignedMatrix<float> tmp(W, 4);
     Bv = F2V(B);
     b1v = F2V(b1);
@@ -574,34 +669,47 @@ template<class T> void gaussHorizontalSse (T** src, T** dst, const int W, const 
     b3v = F2V(b3);
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 0; i < H - 3; i += 4) {
         Tv = _mm_set_ps(src[i][0], src[i + 1][0], src[i + 2][0], src[i + 3][0]);
         Tm3v = Tv * (Bv + b1v + b2v + b3v);
-        STVF( tmp[0][0], Tm3v );
+        STVF(tmp[0][0], Tm3v);
 
-        Tm2v = _mm_set_ps(src[i][1], src[i + 1][1], src[i + 2][1], src[i + 3][1]) * Bv + Tm3v * b1v + Tv * (b2v + b3v);
-        STVF( tmp[1][0], Tm2v );
+        Tm2v =
+            _mm_set_ps(src[i][1], src[i + 1][1], src[i + 2][1], src[i + 3][1]) *
+                Bv +
+            Tm3v * b1v + Tv * (b2v + b3v);
+        STVF(tmp[1][0], Tm2v);
 
-        Rv = _mm_set_ps(src[i][2], src[i + 1][2], src[i + 2][2], src[i + 3][2]) * Bv + Tm2v * b1v + Tm3v * b2v + Tv * b3v;
-        STVF( tmp[2][0], Rv );
+        Rv =
+            _mm_set_ps(src[i][2], src[i + 1][2], src[i + 2][2], src[i + 3][2]) *
+                Bv +
+            Tm2v * b1v + Tm3v * b2v + Tv * b3v;
+        STVF(tmp[2][0], Rv);
 
         for (int j = 3; j < W; j++) {
             Tv = Rv;
-            Rv = _mm_set_ps(src[i][j], src[i + 1][j], src[i + 2][j], src[i + 3][j]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            STVF( tmp[j][0], Rv );
+            Rv = _mm_set_ps(src[i][j], src[i + 1][j], src[i + 2][j],
+                            src[i + 3][j]) *
+                     Bv +
+                 Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            STVF(tmp[j][0], Rv);
             Tm3v = Tm2v;
             Tm2v = Tv;
         }
 
-        Tv = _mm_set_ps(src[i][W - 1], src[i + 1][W - 1], src[i + 2][W - 1], src[i + 3][W - 1]);
+        Tv = _mm_set_ps(src[i][W - 1], src[i + 1][W - 1], src[i + 2][W - 1],
+                        src[i + 3][W - 1]);
 
-        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * ( Tm2v - Tv ) +  F2V(M[2][2]) * (Tm3v - Tv);
-        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) + F2V(M[1][2]) * (Tm3v - Tv);
+        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) +
+                   F2V(M[2][2]) * (Tm3v - Tv);
+        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) +
+                 F2V(M[1][2]) * (Tm3v - Tv);
 
-        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) + F2V(M[0][2]) * (Tm3v - Tv);
+        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) +
+             F2V(M[0][2]) * (Tm3v - Tv);
         STVF(tmp[W - 1][0], Rv);
 
         Tm2v = Bv * Tm2v + b1v * Rv + b2v * temp2W + b3v * temp2Wp1;
@@ -628,34 +736,46 @@ template<class T> void gaussHorizontalSse (T** src, T** dst, const int W, const 
             dst[i + 1][j] = tmp[j][2];
             dst[i + 0][j] = tmp[j][3];
         }
-
-
     }
 
 // Borders are done without SSE
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     for (int i = H - (H % 4); i < H; i++) {
         tmp[0][0] = src[i][0] * (B + b1 + b2 + b3);
-        tmp[1][0] = B * src[i][1] + b1 * tmp[0][0]  + src[i][0] * (b2 + b3);
-        tmp[2][0] = B * src[i][2] + b1 * tmp[1][0]  + b2 * tmp[0][0]  + b3 * src[i][0];
+        tmp[1][0] = B * src[i][1] + b1 * tmp[0][0] + src[i][0] * (b2 + b3);
+        tmp[2][0] =
+            B * src[i][2] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[i][0];
 
         for (int j = 3; j < W; j++) {
-            tmp[j][0] = B * src[i][j] + b1 * tmp[j - 1][0] + b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
+            tmp[j][0] = B * src[i][j] + b1 * tmp[j - 1][0] +
+                        b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
         }
 
-        float temp2Wm1 = src[i][W - 1] + M[0][0] * (tmp[W - 1][0] - src[i][W - 1]) + M[0][1] * (tmp[W - 2][0] - src[i][W - 1]) + M[0][2] * (tmp[W - 3][0] - src[i][W - 1]);
-        float temp2W   = src[i][W - 1] + M[1][0] * (tmp[W - 1][0] - src[i][W - 1]) + M[1][1] * (tmp[W - 2][0] - src[i][W - 1]) + M[1][2] * (tmp[W - 3][0] - src[i][W - 1]);
-        float temp2Wp1 = src[i][W - 1] + M[2][0] * (tmp[W - 1][0] - src[i][W - 1]) + M[2][1] * (tmp[W - 2][0] - src[i][W - 1]) + M[2][2] * (tmp[W - 3][0] - src[i][W - 1]);
+        float temp2Wm1 = src[i][W - 1] +
+                         M[0][0] * (tmp[W - 1][0] - src[i][W - 1]) +
+                         M[0][1] * (tmp[W - 2][0] - src[i][W - 1]) +
+                         M[0][2] * (tmp[W - 3][0] - src[i][W - 1]);
+        float temp2W = src[i][W - 1] +
+                       M[1][0] * (tmp[W - 1][0] - src[i][W - 1]) +
+                       M[1][1] * (tmp[W - 2][0] - src[i][W - 1]) +
+                       M[1][2] * (tmp[W - 3][0] - src[i][W - 1]);
+        float temp2Wp1 = src[i][W - 1] +
+                         M[2][0] * (tmp[W - 1][0] - src[i][W - 1]) +
+                         M[2][1] * (tmp[W - 2][0] - src[i][W - 1]) +
+                         M[2][2] * (tmp[W - 3][0] - src[i][W - 1]);
 
         tmp[W - 1][0] = temp2Wm1;
-        tmp[W - 2][0] = B * tmp[W - 2][0] + b1 * tmp[W - 1][0] + b2 * temp2W + b3 * temp2Wp1;
-        tmp[W - 3][0] = B * tmp[W - 3][0] + b1 * tmp[W - 2][0] + b2 * tmp[W - 1][0] + b3 * temp2W;
+        tmp[W - 2][0] = B * tmp[W - 2][0] + b1 * tmp[W - 1][0] + b2 * temp2W +
+                        b3 * temp2Wp1;
+        tmp[W - 3][0] = B * tmp[W - 3][0] + b1 * tmp[W - 2][0] +
+                        b2 * tmp[W - 1][0] + b3 * temp2W;
 
         for (int j = W - 4; j >= 0; j--) {
-            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] + b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
+            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] +
+                        b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
         }
 
         for (int j = 0; j < W; j++) {
@@ -666,7 +786,9 @@ template<class T> void gaussHorizontalSse (T** src, T** dst, const int W, const 
 #endif
 
 // fast gaussian approximation if the support window is large
-template<class T> void gaussHorizontal (T** src, T** dst, const int W, const int H, const double sigma)
+template <class T>
+void gaussHorizontal(T **src, T **dst, const int W, const int H,
+                     const double sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -676,44 +798,61 @@ template<class T> void gaussHorizontal (T** src, T** dst, const int W, const int
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 + b2 + (b1 - b3) * b3);
         }
 
-    //double temp2[W] ALIGNED16;
+    // double temp2[W] ALIGNED16;
     AlignedVector<double> temp2(W);
 
 #ifdef _OPENMP
-    #pragma omp for
+#pragma omp for
 #endif
 
     for (int i = 0; i < H; i++) {
 
-        temp2[0] = B * src[i][0] + b1 * src[i][0] + b2 * src[i][0] + b3 * src[i][0];
-        temp2[1] = B * src[i][1] + b1 * temp2[0]  + b2 * src[i][0] + b3 * src[i][0];
-        temp2[2] = B * src[i][2] + b1 * temp2[1]  + b2 * temp2[0]  + b3 * src[i][0];
+        temp2[0] =
+            B * src[i][0] + b1 * src[i][0] + b2 * src[i][0] + b3 * src[i][0];
+        temp2[1] =
+            B * src[i][1] + b1 * temp2[0] + b2 * src[i][0] + b3 * src[i][0];
+        temp2[2] =
+            B * src[i][2] + b1 * temp2[1] + b2 * temp2[0] + b3 * src[i][0];
 
         for (int j = 3; j < W; j++) {
-            temp2[j] = B * src[i][j] + b1 * temp2[j - 1] + b2 * temp2[j - 2] + b3 * temp2[j - 3];
+            temp2[j] = B * src[i][j] + b1 * temp2[j - 1] + b2 * temp2[j - 2] +
+                       b3 * temp2[j - 3];
         }
 
-        double temp2Wm1 = src[i][W - 1] + M[0][0] * (temp2[W - 1] - src[i][W - 1]) + M[0][1] * (temp2[W - 2] - src[i][W - 1]) + M[0][2] * (temp2[W - 3] - src[i][W - 1]);
-        double temp2W   = src[i][W - 1] + M[1][0] * (temp2[W - 1] - src[i][W - 1]) + M[1][1] * (temp2[W - 2] - src[i][W - 1]) + M[1][2] * (temp2[W - 3] - src[i][W - 1]);
-        double temp2Wp1 = src[i][W - 1] + M[2][0] * (temp2[W - 1] - src[i][W - 1]) + M[2][1] * (temp2[W - 2] - src[i][W - 1]) + M[2][2] * (temp2[W - 3] - src[i][W - 1]);
+        double temp2Wm1 = src[i][W - 1] +
+                          M[0][0] * (temp2[W - 1] - src[i][W - 1]) +
+                          M[0][1] * (temp2[W - 2] - src[i][W - 1]) +
+                          M[0][2] * (temp2[W - 3] - src[i][W - 1]);
+        double temp2W = src[i][W - 1] +
+                        M[1][0] * (temp2[W - 1] - src[i][W - 1]) +
+                        M[1][1] * (temp2[W - 2] - src[i][W - 1]) +
+                        M[1][2] * (temp2[W - 3] - src[i][W - 1]);
+        double temp2Wp1 = src[i][W - 1] +
+                          M[2][0] * (temp2[W - 1] - src[i][W - 1]) +
+                          M[2][1] * (temp2[W - 2] - src[i][W - 1]) +
+                          M[2][2] * (temp2[W - 3] - src[i][W - 1]);
 
         temp2[W - 1] = temp2Wm1;
-        temp2[W - 2] = B * temp2[W - 2] + b1 * temp2[W - 1] + b2 * temp2W + b3 * temp2Wp1;
-        temp2[W - 3] = B * temp2[W - 3] + b1 * temp2[W - 2] + b2 * temp2[W - 1] + b3 * temp2W;
+        temp2[W - 2] =
+            B * temp2[W - 2] + b1 * temp2[W - 1] + b2 * temp2W + b3 * temp2Wp1;
+        temp2[W - 3] = B * temp2[W - 3] + b1 * temp2[W - 2] +
+                       b2 * temp2[W - 1] + b3 * temp2W;
 
         for (int j = W - 4; j >= 0; j--) {
-            temp2[j] = B * temp2[j] + b1 * temp2[j + 1] + b2 * temp2[j + 2] + b3 * temp2[j + 3];
+            temp2[j] = B * temp2[j] + b1 * temp2[j + 1] + b2 * temp2[j + 2] +
+                       b3 * temp2[j + 3];
         }
 
         for (int j = 0; j < W; j++) {
             dst[i][j] = (T)temp2[j];
         }
-
     }
 }
 
 #ifdef __SSE2__
-template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const int H, const float sigma)
+template <class T>
+void gaussVerticalSse(T **src, T **dst, const int W, const int H,
+                      const float sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -724,7 +863,7 @@ template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const in
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 - b1 - b2 - b3);
         }
 
-    //float tmp[H][8] ALIGNED16;
+    // float tmp[H][8] ALIGNED16;
     AlignedMatrix<float> tmp(H, 8);
     vfloat Rv;
     vfloat Tv, Tm2v, Tm3v;
@@ -739,39 +878,40 @@ template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const in
     b3v = F2V(b3);
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     // process 8 columns per iteration for better usage of cpu cache
     for (int i = 0; i < W - 7; i += 8) {
-        Tv = LVFU( src[0][i]);
-        Tv1 = LVFU( src[0][i + 4]);
+        Tv = LVFU(src[0][i]);
+        Tv1 = LVFU(src[0][i + 4]);
         Rv = Tv * (Bv + b1v + b2v + b3v);
         Rv1 = Tv1 * (Bv + b1v + b2v + b3v);
         Tm3v = Rv;
         Tm3v1 = Rv1;
-        STVF( tmp[0][0], Rv );
-        STVF( tmp[0][4], Rv1 );
+        STVF(tmp[0][0], Rv);
+        STVF(tmp[0][4], Rv1);
 
         Rv = LVFU(src[1][i]) * Bv + Rv * b1v + Tv * (b2v + b3v);
         Rv1 = LVFU(src[1][i + 4]) * Bv + Rv1 * b1v + Tv1 * (b2v + b3v);
         Tm2v = Rv;
         Tm2v1 = Rv1;
-        STVF( tmp[1][0], Rv );
-        STVF( tmp[1][4], Rv1 );
+        STVF(tmp[1][0], Rv);
+        STVF(tmp[1][4], Rv1);
 
         Rv = LVFU(src[2][i]) * Bv + Rv * b1v + Tm3v * b2v + Tv * b3v;
         Rv1 = LVFU(src[2][i + 4]) * Bv + Rv1 * b1v + Tm3v1 * b2v + Tv1 * b3v;
-        STVF( tmp[2][0], Rv );
-        STVF( tmp[2][4], Rv1 );
+        STVF(tmp[2][0], Rv);
+        STVF(tmp[2][4], Rv1);
 
         for (int j = 3; j < H; j++) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVFU(src[j][i]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVFU(src[j][i + 4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVF( tmp[j][0], Rv );
-            STVF( tmp[j][4], Rv1 );
+            Rv = LVFU(src[j][i]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVFU(src[j][i + 4]) * Bv + Tv1 * b1v + Tm2v1 * b2v +
+                  Tm3v1 * b3v;
+            STVF(tmp[j][0], Rv);
+            STVF(tmp[j][4], Rv1);
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -781,25 +921,31 @@ template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const in
         Tv = LVFU(src[H - 1][i]);
         Tv1 = LVFU(src[H - 1][i + 4]);
 
-        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) + F2V(M[2][2]) * (Tm3v - Tv);
-        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) + F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
-        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) + F2V(M[1][2]) * (Tm3v - Tv);
-        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) + F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
+        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) +
+                   F2V(M[2][2]) * (Tm3v - Tv);
+        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) +
+                    F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
+        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) +
+                 F2V(M[1][2]) * (Tm3v - Tv);
+        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) +
+                  F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
 
-        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) + F2V(M[0][2]) * (Tm3v - Tv);
-        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) + F2V(M[0][2]) * (Tm3v1 - Tv1);
-        STVFU( dst[H - 1][i], Rv );
-        STVFU( dst[H - 1][i + 4], Rv1 );
+        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) +
+             F2V(M[0][2]) * (Tm3v - Tv);
+        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) +
+              F2V(M[0][2]) * (Tm3v1 - Tv1);
+        STVFU(dst[H - 1][i], Rv);
+        STVFU(dst[H - 1][i + 4], Rv1);
 
         Tm2v = Bv * Tm2v + b1v * Rv + b2v * temp2W + b3v * temp2Wp1;
         Tm2v1 = Bv * Tm2v1 + b1v * Rv1 + b2v * temp2W1 + b3v * temp2Wp11;
-        STVFU( dst[H - 2][i], Tm2v );
-        STVFU( dst[H - 2][i + 4], Tm2v1 );
+        STVFU(dst[H - 2][i], Tm2v);
+        STVFU(dst[H - 2][i + 4], Tm2v1);
 
         Tm3v = Bv * Tm3v + b1v * Tm2v + b2v * Rv + b3v * temp2W;
         Tm3v1 = Bv * Tm3v1 + b1v * Tm2v1 + b2v * Rv1 + b3v * temp2W1;
-        STVFU( dst[H - 3][i], Tm3v );
-        STVFU( dst[H - 3][i + 4], Tm3v1 );
+        STVFU(dst[H - 3][i], Tm3v);
+        STVFU(dst[H - 3][i + 4], Tm3v1);
 
         Tv = Rv;
         Tv1 = Rv1;
@@ -811,10 +957,10 @@ template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const in
         for (int j = H - 4; j >= 0; j--) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVF(tmp[j][0]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVF(tmp[j][4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVFU( dst[j][i], Rv );
-            STVFU( dst[j][i + 4], Rv1 );
+            Rv = LVF(tmp[j][0]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVF(tmp[j][4]) * Bv + Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
+            STVFU(dst[j][i], Rv);
+            STVFU(dst[j][i + 4], Rv1);
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -824,40 +970,55 @@ template<class T> void gaussVerticalSse (T** src, T** dst, const int W, const in
 
 // Borders are done without SSE
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     for (int i = W - (W % 8); i < W; i++) {
         tmp[0][0] = src[0][i] * (B + b1 + b2 + b3);
         tmp[1][0] = B * src[1][i] + b1 * tmp[0][0] + src[0][i] * (b2 + b3);
-        tmp[2][0] = B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
+        tmp[2][0] =
+            B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] + b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
+            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] +
+                        b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
         }
 
-        float temp2Hm1 = src[H - 1][i] + M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2H   = src[H - 1][i] + M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2Hp1 = src[H - 1][i] + M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hm1 = src[H - 1][i] +
+                         M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2H = src[H - 1][i] +
+                       M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                       M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                       M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hp1 = src[H - 1][i] +
+                         M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
 
         tmp[H - 1][0] = temp2Hm1;
-        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H + b3 * temp2Hp1;
-        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] + b2 * tmp[H - 1][0] + b3 * temp2H;
+        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H +
+                        b3 * temp2Hp1;
+        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] +
+                        b2 * tmp[H - 1][0] + b3 * temp2H;
 
         for (int j = H - 4; j >= 0; j--) {
-            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] + b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
+            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] +
+                        b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
         }
 
         for (int j = 0; j < H; j++) {
             dst[j][i] = tmp[j][0];
         }
-
     }
 }
 #endif
 
 #ifdef __SSE2__
-template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const float sigma)
+template <class T>
+void gaussVerticalSsemult(T **RESTRICT src, T **RESTRICT dst, const int W,
+                          const int H, const float sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -868,7 +1029,7 @@ template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst,
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 - b1 - b2 - b3);
         }
 
-    //float tmp[H][8] ALIGNED16;
+    // float tmp[H][8] ALIGNED16;
     AlignedMatrix<float> tmp(H, 8);
     vfloat Rv;
     vfloat Tv, Tm2v, Tm3v;
@@ -883,39 +1044,40 @@ template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst,
     b3v = F2V(b3);
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     // process 8 columns per iteration for better usage of cpu cache
     for (int i = 0; i < W - 7; i += 8) {
-        Tv = LVFU( src[0][i]);
-        Tv1 = LVFU( src[0][i + 4]);
+        Tv = LVFU(src[0][i]);
+        Tv1 = LVFU(src[0][i + 4]);
         Rv = Tv * (Bv + b1v + b2v + b3v);
         Rv1 = Tv1 * (Bv + b1v + b2v + b3v);
         Tm3v = Rv;
         Tm3v1 = Rv1;
-        STVF( tmp[0][0], Rv );
-        STVF( tmp[0][4], Rv1 );
+        STVF(tmp[0][0], Rv);
+        STVF(tmp[0][4], Rv1);
 
         Rv = LVFU(src[1][i]) * Bv + Rv * b1v + Tv * (b2v + b3v);
         Rv1 = LVFU(src[1][i + 4]) * Bv + Rv1 * b1v + Tv1 * (b2v + b3v);
         Tm2v = Rv;
         Tm2v1 = Rv1;
-        STVF( tmp[1][0], Rv );
-        STVF( tmp[1][4], Rv1 );
+        STVF(tmp[1][0], Rv);
+        STVF(tmp[1][4], Rv1);
 
         Rv = LVFU(src[2][i]) * Bv + Rv * b1v + Tm3v * b2v + Tv * b3v;
         Rv1 = LVFU(src[2][i + 4]) * Bv + Rv1 * b1v + Tm3v1 * b2v + Tv1 * b3v;
-        STVF( tmp[2][0], Rv );
-        STVF( tmp[2][4], Rv1 );
+        STVF(tmp[2][0], Rv);
+        STVF(tmp[2][4], Rv1);
 
         for (int j = 3; j < H; j++) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVFU(src[j][i]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVFU(src[j][i + 4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVF( tmp[j][0], Rv );
-            STVF( tmp[j][4], Rv1 );
+            Rv = LVFU(src[j][i]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVFU(src[j][i + 4]) * Bv + Tv1 * b1v + Tm2v1 * b2v +
+                  Tm3v1 * b3v;
+            STVF(tmp[j][0], Rv);
+            STVF(tmp[j][4], Rv1);
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -925,25 +1087,31 @@ template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst,
         Tv = LVFU(src[H - 1][i]);
         Tv1 = LVFU(src[H - 1][i + 4]);
 
-        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) + F2V(M[2][2]) * (Tm3v - Tv);
-        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) + F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
-        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) + F2V(M[1][2]) * (Tm3v - Tv);
-        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) + F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
+        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) +
+                   F2V(M[2][2]) * (Tm3v - Tv);
+        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) +
+                    F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
+        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) +
+                 F2V(M[1][2]) * (Tm3v - Tv);
+        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) +
+                  F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
 
-        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) + F2V(M[0][2]) * (Tm3v - Tv);
-        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) + F2V(M[0][2]) * (Tm3v1 - Tv1);
-        STVFU( dst[H - 1][i], LVFU(dst[H - 1][i]) * Rv );
-        STVFU( dst[H - 1][i + 4], LVFU(dst[H - 1][i + 4]) * Rv1 );
+        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) +
+             F2V(M[0][2]) * (Tm3v - Tv);
+        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) +
+              F2V(M[0][2]) * (Tm3v1 - Tv1);
+        STVFU(dst[H - 1][i], LVFU(dst[H - 1][i]) * Rv);
+        STVFU(dst[H - 1][i + 4], LVFU(dst[H - 1][i + 4]) * Rv1);
 
         Tm2v = Bv * Tm2v + b1v * Rv + b2v * temp2W + b3v * temp2Wp1;
         Tm2v1 = Bv * Tm2v1 + b1v * Rv1 + b2v * temp2W1 + b3v * temp2Wp11;
-        STVFU( dst[H - 2][i], LVFU(dst[H - 2][i]) * Tm2v );
-        STVFU( dst[H - 2][i + 4], LVFU(dst[H - 2][i + 4]) * Tm2v1 );
+        STVFU(dst[H - 2][i], LVFU(dst[H - 2][i]) * Tm2v);
+        STVFU(dst[H - 2][i + 4], LVFU(dst[H - 2][i + 4]) * Tm2v1);
 
         Tm3v = Bv * Tm3v + b1v * Tm2v + b2v * Rv + b3v * temp2W;
         Tm3v1 = Bv * Tm3v1 + b1v * Tm2v1 + b2v * Rv1 + b3v * temp2W1;
-        STVFU( dst[H - 3][i], LVFU(dst[H - 3][i]) * Tm3v );
-        STVFU( dst[H - 3][i + 4], LVFU(dst[H - 3][i + 4]) * Tm3v1 );
+        STVFU(dst[H - 3][i], LVFU(dst[H - 3][i]) * Tm3v);
+        STVFU(dst[H - 3][i + 4], LVFU(dst[H - 3][i + 4]) * Tm3v1);
 
         Tv = Rv;
         Tv1 = Rv1;
@@ -955,10 +1123,10 @@ template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst,
         for (int j = H - 4; j >= 0; j--) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVF(tmp[j][0]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVF(tmp[j][4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVFU( dst[j][i], LVFU(dst[j][i]) * Rv );
-            STVFU( dst[j][i + 4], LVFU(dst[j][i + 4]) * Rv1 );
+            Rv = LVF(tmp[j][0]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVF(tmp[j][4]) * Bv + Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
+            STVFU(dst[j][i], LVFU(dst[j][i]) * Rv);
+            STVFU(dst[j][i + 4], LVFU(dst[j][i + 4]) * Rv1);
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -968,38 +1136,53 @@ template<class T> void gaussVerticalSsemult (T** RESTRICT src, T** RESTRICT dst,
 
 // Borders are done without SSE
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     for (int i = W - (W % 8); i < W; i++) {
         tmp[0][0] = src[0][i] * (B + b1 + b2 + b3);
         tmp[1][0] = B * src[1][i] + b1 * tmp[0][0] + src[0][i] * (b2 + b3);
-        tmp[2][0] = B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
+        tmp[2][0] =
+            B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] + b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
+            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] +
+                        b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
         }
 
-        float temp2Hm1 = src[H - 1][i] + M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2H   = src[H - 1][i] + M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2Hp1 = src[H - 1][i] + M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hm1 = src[H - 1][i] +
+                         M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2H = src[H - 1][i] +
+                       M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                       M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                       M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hp1 = src[H - 1][i] +
+                         M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
 
         tmp[H - 1][0] = temp2Hm1;
-        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H + b3 * temp2Hp1;
-        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] + b2 * tmp[H - 1][0] + b3 * temp2H;
+        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H +
+                        b3 * temp2Hp1;
+        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] +
+                        b2 * tmp[H - 1][0] + b3 * temp2H;
 
         for (int j = H - 4; j >= 0; j--) {
-            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] + b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
+            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] +
+                        b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
         }
 
         for (int j = 0; j < H; j++) {
             dst[j][i] *= tmp[j][0];
         }
-
     }
 }
 
-template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, const int W, const int H, const float sigma)
+template <class T>
+void gaussVerticalSsediv(T **src, T **dst, T **divBuffer, const int W,
+                         const int H, const float sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -1010,7 +1193,7 @@ template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, con
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 - b1 - b2 - b3);
         }
 
-    //float tmp[H][8] ALIGNED16;
+    // float tmp[H][8] ALIGNED16;
     AlignedMatrix<float> tmp(H, 8);
     vfloat Rv;
     vfloat Tv, Tm2v, Tm3v;
@@ -1026,39 +1209,40 @@ template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, con
     b3v = F2V(b3);
 
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     // process 8 columns per iteration for better usage of cpu cache
     for (int i = 0; i < W - 7; i += 8) {
-        Tv = LVFU( src[0][i]);
-        Tv1 = LVFU( src[0][i + 4]);
+        Tv = LVFU(src[0][i]);
+        Tv1 = LVFU(src[0][i + 4]);
         Rv = Tv * (Bv + b1v + b2v + b3v);
         Rv1 = Tv1 * (Bv + b1v + b2v + b3v);
         Tm3v = Rv;
         Tm3v1 = Rv1;
-        STVF( tmp[0][0], Rv );
-        STVF( tmp[0][4], Rv1 );
+        STVF(tmp[0][0], Rv);
+        STVF(tmp[0][4], Rv1);
 
         Rv = LVFU(src[1][i]) * Bv + Rv * b1v + Tv * (b2v + b3v);
         Rv1 = LVFU(src[1][i + 4]) * Bv + Rv1 * b1v + Tv1 * (b2v + b3v);
         Tm2v = Rv;
         Tm2v1 = Rv1;
-        STVF( tmp[1][0], Rv );
-        STVF( tmp[1][4], Rv1 );
+        STVF(tmp[1][0], Rv);
+        STVF(tmp[1][4], Rv1);
 
         Rv = LVFU(src[2][i]) * Bv + Rv * b1v + Tm3v * b2v + Tv * b3v;
         Rv1 = LVFU(src[2][i + 4]) * Bv + Rv1 * b1v + Tm3v1 * b2v + Tv1 * b3v;
-        STVF( tmp[2][0], Rv );
-        STVF( tmp[2][4], Rv1 );
+        STVF(tmp[2][0], Rv);
+        STVF(tmp[2][4], Rv1);
 
         for (int j = 3; j < H; j++) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVFU(src[j][i]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVFU(src[j][i + 4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVF( tmp[j][0], Rv );
-            STVF( tmp[j][4], Rv1 );
+            Rv = LVFU(src[j][i]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVFU(src[j][i + 4]) * Bv + Tv1 * b1v + Tm2v1 * b2v +
+                  Tm3v1 * b3v;
+            STVF(tmp[j][0], Rv);
+            STVF(tmp[j][4], Rv1);
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -1068,26 +1252,40 @@ template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, con
         Tv = LVFU(src[H - 1][i]);
         Tv1 = LVFU(src[H - 1][i + 4]);
 
-        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) + F2V(M[2][2]) * (Tm3v - Tv);
-        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) + F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
-        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) + F2V(M[1][2]) * (Tm3v - Tv);
-        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) + F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
+        temp2Wp1 = Tv + F2V(M[2][0]) * (Rv - Tv) + F2V(M[2][1]) * (Tm2v - Tv) +
+                   F2V(M[2][2]) * (Tm3v - Tv);
+        temp2Wp11 = Tv1 + F2V(M[2][0]) * (Rv1 - Tv1) +
+                    F2V(M[2][1]) * (Tm2v1 - Tv1) + F2V(M[2][2]) * (Tm3v1 - Tv1);
+        temp2W = Tv + F2V(M[1][0]) * (Rv - Tv) + F2V(M[1][1]) * (Tm2v - Tv) +
+                 F2V(M[1][2]) * (Tm3v - Tv);
+        temp2W1 = Tv1 + F2V(M[1][0]) * (Rv1 - Tv1) +
+                  F2V(M[1][1]) * (Tm2v1 - Tv1) + F2V(M[1][2]) * (Tm3v1 - Tv1);
 
-        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) + F2V(M[0][2]) * (Tm3v - Tv);
-        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) + F2V(M[0][2]) * (Tm3v1 - Tv1);
+        Rv = Tv + F2V(M[0][0]) * (Rv - Tv) + F2V(M[0][1]) * (Tm2v - Tv) +
+             F2V(M[0][2]) * (Tm3v - Tv);
+        Rv1 = Tv1 + F2V(M[0][0]) * (Rv1 - Tv1) + F2V(M[0][1]) * (Tm2v1 - Tv1) +
+              F2V(M[0][2]) * (Tm3v1 - Tv1);
 
-        STVFU( dst[H - 1][i], LVFU(divBuffer[H - 1][i]) / vself(vmaskf_gt(Rv, ZEROV), Rv, onev));
-        STVFU( dst[H - 1][i + 4], LVFU(divBuffer[H - 1][i + 4]) / vself(vmaskf_gt(Rv1, ZEROV), Rv1, onev));
+        STVFU(dst[H - 1][i], LVFU(divBuffer[H - 1][i]) /
+                                 vself(vmaskf_gt(Rv, ZEROV), Rv, onev));
+        STVFU(dst[H - 1][i + 4], LVFU(divBuffer[H - 1][i + 4]) /
+                                     vself(vmaskf_gt(Rv1, ZEROV), Rv1, onev));
 
         Tm2v = Bv * Tm2v + b1v * Rv + b2v * temp2W + b3v * temp2Wp1;
         Tm2v1 = Bv * Tm2v1 + b1v * Rv1 + b2v * temp2W1 + b3v * temp2Wp11;
-        STVFU( dst[H - 2][i], LVFU(divBuffer[H - 2][i]) / vself(vmaskf_gt(Tm2v, ZEROV), Tm2v, onev));
-        STVFU( dst[H - 2][i + 4], LVFU(divBuffer[H - 2][i + 4]) / vself(vmaskf_gt(Tm2v1, ZEROV), Tm2v1, onev));
+        STVFU(dst[H - 2][i], LVFU(divBuffer[H - 2][i]) /
+                                 vself(vmaskf_gt(Tm2v, ZEROV), Tm2v, onev));
+        STVFU(dst[H - 2][i + 4],
+              LVFU(divBuffer[H - 2][i + 4]) /
+                  vself(vmaskf_gt(Tm2v1, ZEROV), Tm2v1, onev));
 
         Tm3v = Bv * Tm3v + b1v * Tm2v + b2v * Rv + b3v * temp2W;
         Tm3v1 = Bv * Tm3v1 + b1v * Tm2v1 + b2v * Rv1 + b3v * temp2W1;
-        STVFU( dst[H - 3][i], LVFU(divBuffer[H - 3][i]) / vself(vmaskf_gt(Tm3v, ZEROV), Tm3v, onev));
-        STVFU( dst[H - 3][i + 4], LVFU(divBuffer[H - 3][i + 4]) / vself(vmaskf_gt(Tm3v1, ZEROV), Tm3v1, onev));
+        STVFU(dst[H - 3][i], LVFU(divBuffer[H - 3][i]) /
+                                 vself(vmaskf_gt(Tm3v, ZEROV), Tm3v, onev));
+        STVFU(dst[H - 3][i + 4],
+              LVFU(divBuffer[H - 3][i + 4]) /
+                  vself(vmaskf_gt(Tm3v1, ZEROV), Tm3v1, onev));
 
         Tv = Rv;
         Tv1 = Rv1;
@@ -1099,10 +1297,15 @@ template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, con
         for (int j = H - 4; j >= 0; j--) {
             Tv = Rv;
             Tv1 = Rv1;
-            Rv = LVF(tmp[j][0]) * Bv +  Tv * b1v + Tm2v * b2v + Tm3v * b3v;
-            Rv1 = LVF(tmp[j][4]) * Bv +  Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
-            STVFU( dst[j][i], vmaxf(LVFU(divBuffer[j][i]) / vself(vmaskf_gt(Rv, ZEROV), Rv, onev), ZEROV));
-            STVFU( dst[j][i + 4], vmaxf(LVFU(divBuffer[j][i + 4]) / vself(vmaskf_gt(Rv1, ZEROV), Rv1, onev), ZEROV));
+            Rv = LVF(tmp[j][0]) * Bv + Tv * b1v + Tm2v * b2v + Tm3v * b3v;
+            Rv1 = LVF(tmp[j][4]) * Bv + Tv1 * b1v + Tm2v1 * b2v + Tm3v1 * b3v;
+            STVFU(dst[j][i], vmaxf(LVFU(divBuffer[j][i]) /
+                                       vself(vmaskf_gt(Rv, ZEROV), Rv, onev),
+                                   ZEROV));
+            STVFU(dst[j][i + 4],
+                  vmaxf(LVFU(divBuffer[j][i + 4]) /
+                            vself(vmaskf_gt(Rv1, ZEROV), Rv1, onev),
+                        ZEROV));
             Tm3v = Tm2v;
             Tm3v1 = Tm2v1;
             Tm2v = Tv;
@@ -1112,40 +1315,56 @@ template<class T> void gaussVerticalSsediv (T** src, T** dst, T** divBuffer, con
 
 // Borders are done without SSE
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     for (int i = W - (W % 8); i < W; i++) {
         tmp[0][0] = src[0][i] * (B + b1 + b2 + b3);
         tmp[1][0] = B * src[1][i] + b1 * tmp[0][0] + src[0][i] * (b2 + b3);
-        tmp[2][0] = B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
+        tmp[2][0] =
+            B * src[2][i] + b1 * tmp[1][0] + b2 * tmp[0][0] + b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] + b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
+            tmp[j][0] = B * src[j][i] + b1 * tmp[j - 1][0] +
+                        b2 * tmp[j - 2][0] + b3 * tmp[j - 3][0];
         }
 
-        float temp2Hm1 = src[H - 1][i] + M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2H   = src[H - 1][i] + M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
-        float temp2Hp1 = src[H - 1][i] + M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) + M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) + M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hm1 = src[H - 1][i] +
+                         M[0][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[0][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[0][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2H = src[H - 1][i] +
+                       M[1][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                       M[1][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                       M[1][2] * (tmp[H - 3][0] - src[H - 1][i]);
+        float temp2Hp1 = src[H - 1][i] +
+                         M[2][0] * (tmp[H - 1][0] - src[H - 1][i]) +
+                         M[2][1] * (tmp[H - 2][0] - src[H - 1][i]) +
+                         M[2][2] * (tmp[H - 3][0] - src[H - 1][i]);
 
         tmp[H - 1][0] = temp2Hm1;
-        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H + b3 * temp2Hp1;
-        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] + b2 * tmp[H - 1][0] + b3 * temp2H;
+        tmp[H - 2][0] = B * tmp[H - 2][0] + b1 * tmp[H - 1][0] + b2 * temp2H +
+                        b3 * temp2Hp1;
+        tmp[H - 3][0] = B * tmp[H - 3][0] + b1 * tmp[H - 2][0] +
+                        b2 * tmp[H - 1][0] + b3 * temp2H;
 
         for (int j = H - 4; j >= 0; j--) {
-            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] + b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
+            tmp[j][0] = B * tmp[j][0] + b1 * tmp[j + 1][0] +
+                        b2 * tmp[j + 2][0] + b3 * tmp[j + 3][0];
         }
 
         for (int j = 0; j < H; j++) {
-            dst[j][i] = rtengine::max(divBuffer[j][i] / (tmp[j][0] > 0.f ? tmp[j][0] : 1.f), 0.f);
+            dst[j][i] = rtengine::max(
+                divBuffer[j][i] / (tmp[j][0] > 0.f ? tmp[j][0] : 1.f), 0.f);
         }
-
     }
 }
 
 #endif
 
-template<class T> void gaussVertical (T** src, T** dst, const int W, const int H, const double sigma)
+template <class T>
+void gaussVertical(T **src, T **dst, const int W, const int H,
+                   const double sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -1155,77 +1374,120 @@ template<class T> void gaussVertical (T** src, T** dst, const int W, const int H
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 + b2 + (b1 - b3) * b3);
         }
 
-    // process 'numcols' columns for better usage of L1 cpu cache (especially faster for large values of H)
+    // process 'numcols' columns for better usage of L1 cpu cache (especially
+    // faster for large values of H)
     static const int numcols = 8;
-    //double temp2[H][numcols] ALIGNED16;
+    // double temp2[H][numcols] ALIGNED16;
     AlignedMatrix<double> temp2(H, numcols);
     double temp2Hm1[numcols], temp2H[numcols], temp2Hp1[numcols];
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
-    for (unsigned int i = 0; i < static_cast<unsigned>(std::max(0, W - numcols + 1)); i += numcols) {
+    for (unsigned int i = 0;
+         i < static_cast<unsigned>(std::max(0, W - numcols + 1));
+         i += numcols) {
         for (int k = 0; k < numcols; k++) {
-            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] + b2 * temp2[0][k] + b3 * src[0][i + k];
+            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] +
+                          b2 * temp2[0][k] + b3 * src[0][i + k];
         }
 
         for (int j = 3; j < H; j++) {
             for (int k = 0; k < numcols; k++) {
-                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] + b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
+                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] +
+                              b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
             }
         }
 
         for (int k = 0; k < numcols; k++) {
-            temp2Hm1[k] = src[H - 1][i + k] + M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2H[k]   = src[H - 1][i + k] + M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2Hp1[k] = src[H - 1][i + k] + M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hm1[k] = src[H - 1][i + k] +
+                          M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2H[k] = src[H - 1][i + k] +
+                        M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                        M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                        M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hp1[k] = src[H - 1][i + k] +
+                          M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
         }
 
         for (int k = 0; k < numcols; k++) {
             dst[H - 1][i + k] = temp2[H - 1][k] = temp2Hm1[k];
-            dst[H - 2][i + k] = temp2[H - 2][k] = B * temp2[H - 2][k] + b1 * temp2[H - 1][k] + b2 * temp2H[k] + b3 * temp2Hp1[k];
-            dst[H - 3][i + k] = temp2[H - 3][k] = B * temp2[H - 3][k] + b1 * temp2[H - 2][k] + b2 * temp2[H - 1][k] + b3 * temp2H[k];
+            dst[H - 2][i + k] = temp2[H - 2][k] =
+                B * temp2[H - 2][k] + b1 * temp2[H - 1][k] + b2 * temp2H[k] +
+                b3 * temp2Hp1[k];
+            dst[H - 3][i + k] = temp2[H - 3][k] =
+                B * temp2[H - 3][k] + b1 * temp2[H - 2][k] +
+                b2 * temp2[H - 1][k] + b3 * temp2H[k];
         }
 
         for (int j = H - 4; j >= 0; j--) {
             for (int k = 0; k < numcols; k++) {
-                dst[j][i + k] = temp2[j][k] = B * temp2[j][k] + b1 * temp2[j + 1][k] + b2 * temp2[j + 2][k] + b3 * temp2[j + 3][k];
+                dst[j][i + k] = temp2[j][k] =
+                    B * temp2[j][k] + b1 * temp2[j + 1][k] +
+                    b2 * temp2[j + 2][k] + b3 * temp2[j + 3][k];
             }
         }
     }
 
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     // process remaining columns
     for (int i = W - (W % numcols); i < W; i++) {
-        temp2[0][0] = B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
-        temp2[1][0] = B * src[1][i] + b1 * temp2[0][0]  + b2 * src[0][i] + b3 * src[0][i];
-        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0]  + b2 * temp2[0][0]  + b3 * src[0][i];
+        temp2[0][0] =
+            B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[1][0] =
+            B * src[1][i] + b1 * temp2[0][0] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0] + b2 * temp2[0][0] +
+                      b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] + b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
+            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] +
+                          b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
         }
 
-        double temp2Hm1 = src[H - 1][i] + M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2H   = src[H - 1][i] + M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2Hp1 = src[H - 1][i] + M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hm1 = src[H - 1][i] +
+                          M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2H = src[H - 1][i] +
+                        M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                        M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                        M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hp1 = src[H - 1][i] +
+                          M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
 
         dst[H - 1][i] = temp2[H - 1][0] = temp2Hm1;
-        dst[H - 2][i] = temp2[H - 2][0] = B * temp2[H - 2][0] + b1 * temp2[H - 1][0] + b2 * temp2H + b3 * temp2Hp1;
-        dst[H - 3][i] = temp2[H - 3][0] = B * temp2[H - 3][0] + b1 * temp2[H - 2][0] + b2 * temp2[H - 1][0] + b3 * temp2H;
+        dst[H - 2][i] = temp2[H - 2][0] = B * temp2[H - 2][0] +
+                                          b1 * temp2[H - 1][0] + b2 * temp2H +
+                                          b3 * temp2Hp1;
+        dst[H - 3][i] = temp2[H - 3][0] = B * temp2[H - 3][0] +
+                                          b1 * temp2[H - 2][0] +
+                                          b2 * temp2[H - 1][0] + b3 * temp2H;
 
         for (int j = H - 4; j >= 0; j--) {
-            dst[j][i] = temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] + b2 * temp2[j + 2][0] + b3 * temp2[j + 3][0];
+            dst[j][i] = temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] +
+                                      b2 * temp2[j + 2][0] +
+                                      b3 * temp2[j + 3][0];
         }
     }
 }
 
 #ifndef __SSE2__
-template<class T> void gaussVerticaldiv (T** src, T** dst, T** divBuffer, const int W, const int H, const double sigma)
+template <class T>
+void gaussVerticaldiv(T **src, T **dst, T **divBuffer, const int W, const int H,
+                      const double sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -1235,76 +1497,134 @@ template<class T> void gaussVerticaldiv (T** src, T** dst, T** divBuffer, const 
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 + b2 + (b1 - b3) * b3);
         }
 
-    // process 'numcols' columns for better usage of L1 cpu cache (especially faster for large values of H)
+    // process 'numcols' columns for better usage of L1 cpu cache (especially
+    // faster for large values of H)
     static const int numcols = 8;
-    //double temp2[H][numcols] ALIGNED16;
+    // double temp2[H][numcols] ALIGNED16;
     AlignedMatrix<double> temp2(H, numcols);
     double temp2Hm1[numcols], temp2H[numcols], temp2Hp1[numcols];
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 0; i < W - numcols + 1; i += numcols) {
         for (int k = 0; k < numcols; k++) {
-            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] + b2 * temp2[0][k] + b3 * src[0][i + k];
+            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] +
+                          b2 * temp2[0][k] + b3 * src[0][i + k];
         }
 
         for (int j = 3; j < H; j++) {
             for (int k = 0; k < numcols; k++) {
-                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] + b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
+                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] +
+                              b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
             }
         }
 
         for (int k = 0; k < numcols; k++) {
-            temp2Hm1[k] = src[H - 1][i + k] + M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2H[k]   = src[H - 1][i + k] + M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2Hp1[k] = src[H - 1][i + k] + M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hm1[k] = src[H - 1][i + k] +
+                          M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2H[k] = src[H - 1][i + k] +
+                        M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                        M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                        M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hp1[k] = src[H - 1][i + k] +
+                          M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
         }
 
         for (int k = 0; k < numcols; k++) {
-            dst[H - 1][i + k] = rtengine::max(divBuffer[H - 1][i + k] / (temp2[H - 1][k] = temp2Hm1[k]), 0.0);
-            dst[H - 2][i + k] = rtengine::max(divBuffer[H - 2][i + k] / (temp2[H - 2][k] = B * temp2[H - 2][k] + b1 * temp2[H - 1][k] + b2 * temp2H[k] + b3 * temp2Hp1[k]), 0.0);
-            dst[H - 3][i + k] = rtengine::max(divBuffer[H - 3][i + k] / (temp2[H - 3][k] = B * temp2[H - 3][k] + b1 * temp2[H - 2][k] + b2 * temp2[H - 1][k] + b3 * temp2H[k]), 0.0);
+            dst[H - 1][i + k] = rtengine::max(
+                divBuffer[H - 1][i + k] / (temp2[H - 1][k] = temp2Hm1[k]), 0.0);
+            dst[H - 2][i + k] = rtengine::max(
+                divBuffer[H - 2][i + k] /
+                    (temp2[H - 2][k] = B * temp2[H - 2][k] +
+                                       b1 * temp2[H - 1][k] + b2 * temp2H[k] +
+                                       b3 * temp2Hp1[k]),
+                0.0);
+            dst[H - 3][i + k] = rtengine::max(
+                divBuffer[H - 3][i + k] /
+                    (temp2[H - 3][k] = B * temp2[H - 3][k] +
+                                       b1 * temp2[H - 2][k] +
+                                       b2 * temp2[H - 1][k] + b3 * temp2H[k]),
+                0.0);
         }
 
         for (int j = H - 4; j >= 0; j--) {
             for (int k = 0; k < numcols; k++) {
-                dst[j][i + k] = rtengine::max(divBuffer[j][i + k] / (temp2[j][k] = B * temp2[j][k] + b1 * temp2[j + 1][k] + b2 * temp2[j + 2][k] + b3 * temp2[j + 3][k]), 0.0);
+                dst[j][i + k] = rtengine::max(
+                    divBuffer[j][i + k] /
+                        (temp2[j][k] = B * temp2[j][k] + b1 * temp2[j + 1][k] +
+                                       b2 * temp2[j + 2][k] +
+                                       b3 * temp2[j + 3][k]),
+                    0.0);
             }
         }
     }
 
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     // process remaining columns
     for (int i = W - (W % numcols); i < W; i++) {
-        temp2[0][0] = B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
-        temp2[1][0] = B * src[1][i] + b1 * temp2[0][0]  + b2 * src[0][i] + b3 * src[0][i];
-        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0]  + b2 * temp2[0][0]  + b3 * src[0][i];
+        temp2[0][0] =
+            B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[1][0] =
+            B * src[1][i] + b1 * temp2[0][0] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0] + b2 * temp2[0][0] +
+                      b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] + b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
+            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] +
+                          b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
         }
 
-        double temp2Hm1 = src[H - 1][i] + M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2H   = src[H - 1][i] + M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2Hp1 = src[H - 1][i] + M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hm1 = src[H - 1][i] +
+                          M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2H = src[H - 1][i] +
+                        M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                        M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                        M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hp1 = src[H - 1][i] +
+                          M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
 
-        dst[H - 1][i] = rtengine::max(divBuffer[H - 1][i] / (temp2[H - 1][0] = temp2Hm1), 0.0);
-        dst[H - 2][i] = rtengine::max(divBuffer[H - 2][i] / (temp2[H - 2][0] = B * temp2[H - 2][0] + b1 * temp2[H - 1][0] + b2 * temp2H + b3 * temp2Hp1), 0.0);
-        dst[H - 3][i] = rtengine::max(divBuffer[H - 3][i] / (temp2[H - 3][0] = B * temp2[H - 3][0] + b1 * temp2[H - 2][0] + b2 * temp2[H - 1][0] + b3 * temp2H), 0.0);
+        dst[H - 1][i] = rtengine::max(
+            divBuffer[H - 1][i] / (temp2[H - 1][0] = temp2Hm1), 0.0);
+        dst[H - 2][i] = rtengine::max(
+            divBuffer[H - 2][i] /
+                (temp2[H - 2][0] = B * temp2[H - 2][0] + b1 * temp2[H - 1][0] +
+                                   b2 * temp2H + b3 * temp2Hp1),
+            0.0);
+        dst[H - 3][i] = rtengine::max(
+            divBuffer[H - 3][i] /
+                (temp2[H - 3][0] = B * temp2[H - 3][0] + b1 * temp2[H - 2][0] +
+                                   b2 * temp2[H - 1][0] + b3 * temp2H),
+            0.0);
 
         for (int j = H - 4; j >= 0; j--) {
-            dst[j][i] = rtengine::max(divBuffer[j][i] / (temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] + b2 * temp2[j + 2][0] + b3 * temp2[j + 3][0]), 0.0);
+            dst[j][i] = rtengine::max(
+                divBuffer[j][i] /
+                    (temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] +
+                                   b2 * temp2[j + 2][0] + b3 * temp2[j + 3][0]),
+                0.0);
         }
     }
 }
 
-template<class T> void gaussVerticalmult (T** src, T** dst, const int W, const int H, const double sigma)
+template <class T>
+void gaussVerticalmult(T **src, T **dst, const int W, const int H,
+                       const double sigma)
 {
     double b1, b2, b3, B, M[3][3];
     calculateYvVFactors<double>(sigma, b1, b2, b3, B, M);
@@ -1314,77 +1634,120 @@ template<class T> void gaussVerticalmult (T** src, T** dst, const int W, const i
             M[i][j] /= (1.0 + b1 - b2 + b3) * (1.0 + b2 + (b1 - b3) * b3);
         }
 
-    // process 'numcols' columns for better usage of L1 cpu cache (especially faster for large values of H)
+    // process 'numcols' columns for better usage of L1 cpu cache (especially
+    // faster for large values of H)
     static const int numcols = 8;
-    //double temp2[H][numcols] ALIGNED16;
+    // double temp2[H][numcols] ALIGNED16;
     AlignedMatrix<double> temp2(H, numcols);
     double temp2Hm1[numcols], temp2H[numcols], temp2Hp1[numcols];
 #ifdef _OPENMP
-    #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
     for (int i = 0; i < W - numcols + 1; i += numcols) {
         for (int k = 0; k < numcols; k++) {
-            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] + b2 * src[0][i + k] + b3 * src[0][i + k];
-            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] + b2 * temp2[0][k] + b3 * src[0][i + k];
+            temp2[0][k] = B * src[0][i + k] + b1 * src[0][i + k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[1][k] = B * src[1][i + k] + b1 * temp2[0][k] +
+                          b2 * src[0][i + k] + b3 * src[0][i + k];
+            temp2[2][k] = B * src[2][i + k] + b1 * temp2[1][k] +
+                          b2 * temp2[0][k] + b3 * src[0][i + k];
         }
 
         for (int j = 3; j < H; j++) {
             for (int k = 0; k < numcols; k++) {
-                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] + b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
+                temp2[j][k] = B * src[j][i + k] + b1 * temp2[j - 1][k] +
+                              b2 * temp2[j - 2][k] + b3 * temp2[j - 3][k];
             }
         }
 
         for (int k = 0; k < numcols; k++) {
-            temp2Hm1[k] = src[H - 1][i + k] + M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2H[k]   = src[H - 1][i + k] + M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
-            temp2Hp1[k] = src[H - 1][i + k] + M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) + M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) + M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hm1[k] = src[H - 1][i + k] +
+                          M[0][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[0][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[0][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2H[k] = src[H - 1][i + k] +
+                        M[1][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                        M[1][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                        M[1][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
+            temp2Hp1[k] = src[H - 1][i + k] +
+                          M[2][0] * (temp2[H - 1][k] - src[H - 1][i + k]) +
+                          M[2][1] * (temp2[H - 2][k] - src[H - 1][i + k]) +
+                          M[2][2] * (temp2[H - 3][k] - src[H - 1][i + k]);
         }
 
         for (int k = 0; k < numcols; k++) {
             dst[H - 1][i + k] *= temp2[H - 1][k] = temp2Hm1[k];
-            dst[H - 2][i + k] *= temp2[H - 2][k] = B * temp2[H - 2][k] + b1 * temp2[H - 1][k] + b2 * temp2H[k] + b3 * temp2Hp1[k];
-            dst[H - 3][i + k] *= temp2[H - 3][k] = B * temp2[H - 3][k] + b1 * temp2[H - 2][k] + b2 * temp2[H - 1][k] + b3 * temp2H[k];
+            dst[H - 2][i + k] *= temp2[H - 2][k] =
+                B * temp2[H - 2][k] + b1 * temp2[H - 1][k] + b2 * temp2H[k] +
+                b3 * temp2Hp1[k];
+            dst[H - 3][i + k] *= temp2[H - 3][k] =
+                B * temp2[H - 3][k] + b1 * temp2[H - 2][k] +
+                b2 * temp2[H - 1][k] + b3 * temp2H[k];
         }
 
         for (int j = H - 4; j >= 0; j--) {
             for (int k = 0; k < numcols; k++) {
-                dst[j][i + k] *= (temp2[j][k] = B * temp2[j][k] + b1 * temp2[j + 1][k] + b2 * temp2[j + 2][k] + b3 * temp2[j + 3][k]);
+                dst[j][i + k] *=
+                    (temp2[j][k] = B * temp2[j][k] + b1 * temp2[j + 1][k] +
+                                   b2 * temp2[j + 2][k] + b3 * temp2[j + 3][k]);
             }
         }
     }
 
 #ifdef _OPENMP
-    #pragma omp single
+#pragma omp single
 #endif
 
     // process remaining columns
     for (int i = W - (W % numcols); i < W; i++) {
-        temp2[0][0] = B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
-        temp2[1][0] = B * src[1][i] + b1 * temp2[0][0]  + b2 * src[0][i] + b3 * src[0][i];
-        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0]  + b2 * temp2[0][0]  + b3 * src[0][i];
+        temp2[0][0] =
+            B * src[0][i] + b1 * src[0][i] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[1][0] =
+            B * src[1][i] + b1 * temp2[0][0] + b2 * src[0][i] + b3 * src[0][i];
+        temp2[2][0] = B * src[2][i] + b1 * temp2[1][0] + b2 * temp2[0][0] +
+                      b3 * src[0][i];
 
         for (int j = 3; j < H; j++) {
-            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] + b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
+            temp2[j][0] = B * src[j][i] + b1 * temp2[j - 1][0] +
+                          b2 * temp2[j - 2][0] + b3 * temp2[j - 3][0];
         }
 
-        double temp2Hm1 = src[H - 1][i] + M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2H   = src[H - 1][i] + M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
-        double temp2Hp1 = src[H - 1][i] + M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) + M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) + M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hm1 = src[H - 1][i] +
+                          M[0][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[0][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[0][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2H = src[H - 1][i] +
+                        M[1][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                        M[1][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                        M[1][2] * (temp2[H - 3][0] - src[H - 1][i]);
+        double temp2Hp1 = src[H - 1][i] +
+                          M[2][0] * (temp2[H - 1][0] - src[H - 1][i]) +
+                          M[2][1] * (temp2[H - 2][0] - src[H - 1][i]) +
+                          M[2][2] * (temp2[H - 3][0] - src[H - 1][i]);
 
         dst[H - 1][i] *= temp2[H - 1][0] = temp2Hm1;
-        dst[H - 2][i] *= temp2[H - 2][0] = B * temp2[H - 2][0] + b1 * temp2[H - 1][0] + b2 * temp2H + b3 * temp2Hp1;
-        dst[H - 3][i] *= temp2[H - 3][0] = B * temp2[H - 3][0] + b1 * temp2[H - 2][0] + b2 * temp2[H - 1][0] + b3 * temp2H;
+        dst[H - 2][i] *= temp2[H - 2][0] = B * temp2[H - 2][0] +
+                                           b1 * temp2[H - 1][0] + b2 * temp2H +
+                                           b3 * temp2Hp1;
+        dst[H - 3][i] *= temp2[H - 3][0] = B * temp2[H - 3][0] +
+                                           b1 * temp2[H - 2][0] +
+                                           b2 * temp2[H - 1][0] + b3 * temp2H;
 
         for (int j = H - 4; j >= 0; j--) {
-            dst[j][i] *= (temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] + b2 * temp2[j + 2][0] + b3 * temp2[j + 3][0]);
+            dst[j][i] *=
+                (temp2[j][0] = B * temp2[j][0] + b1 * temp2[j + 1][0] +
+                               b2 * temp2[j + 2][0] + b3 * temp2[j + 3][0]);
         }
     }
 }
 #endif
 
-template<class T> void gaussianBlurImpl(T** src, T** dst, const int W, const int H, const double sigma, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr)
+template <class T>
+void gaussianBlurImpl(T **src, T **dst, const int W, const int H,
+                      const double sigma, T *buffer = nullptr,
+                      eGaussType gausstype = GAUSS_STANDARD,
+                      T **buffer2 = nullptr)
 {
     static constexpr auto GAUSS_SKIP = 0.25;
     static constexpr auto GAUSS_3X3_LIMIT = 0.6;
@@ -1392,62 +1755,64 @@ template<class T> void gaussianBlurImpl(T** src, T** dst, const int W, const int
     static constexpr auto GAUSS_7X7_LIMIT = 1.15;
     static constexpr auto GAUSS_DOUBLE = 25.0;
 
-    if(buffer) {
-        // special variant for very large sigma, currently only used by retinex algorithm
-        // use iterated boxblur to approximate gaussian blur
-        // Compute ideal averaging filter width and number of iterations
+    if (buffer) {
+        // special variant for very large sigma, currently only used by retinex
+        // algorithm use iterated boxblur to approximate gaussian blur Compute
+        // ideal averaging filter width and number of iterations
         int n = 1;
         double wIdeal = sqrt((12 * sigma * sigma) + 1);
 
-        while(wIdeal > W || wIdeal > H) {
+        while (wIdeal > W || wIdeal > H) {
             n++;
             wIdeal = sqrt((12 * sigma * sigma / n) + 1);
         }
 
-        if(n < 3) {
+        if (n < 3) {
             n = 3;
             wIdeal = sqrt((12 * sigma * sigma / n) + 1);
-        } else if(n > 6) {
+        } else if (n > 6) {
             n = 6;
         }
 
         int wl = wIdeal;
 
-        if(wl % 2 == 0) {
+        if (wl % 2 == 0) {
             wl--;
         }
 
         int wu = wl + 2;
 
-        double mIdeal = (12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4);
+        double mIdeal =
+            (12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) /
+            (-4 * wl - 4);
         int m = round(mIdeal);
 
         int sizes[n];
 
-        for(int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++) {
             sizes[i] = ((i < m ? wl : wu) - 1) / 2;
         }
 
         rtengine::boxblur(src, dst, buffer, sizes[0], sizes[0], W, H);
 
-        for(int i = 1; i < n; i++) {
+        for (int i = 1; i < n; i++) {
             rtengine::boxblur(dst, dst, buffer, sizes[i], sizes[i], W, H);
         }
     } else {
         if (sigma < GAUSS_SKIP) {
             // don't perform filtering
             if (src != dst) {
-                for(int i = 0; i < H; ++i) {
+                for (int i = 0; i < H; ++i) {
                     memcpy(dst[i], src[i], W * sizeof(T));
                 }
             }
         } else if (sigma < GAUSS_3X3_LIMIT) {
-            if(src != dst) {
+            if (src != dst) {
                 // If src != dst we can take the fast way
                 // compute 3x3 kernel values
                 double c0 = 1.0;
-                double c1 = exp( -0.5 * (rtengine::SQR(1.0 / sigma)) );
-                double c2 = exp( -rtengine::SQR(1.0 / sigma) );
+                double c1 = exp(-0.5 * (rtengine::SQR(1.0 / sigma)));
+                double c2 = exp(-rtengine::SQR(1.0 / sigma));
 
                 // normalize kernel values
                 double sum = c0 + 4.0 * (c1 + c2);
@@ -1455,110 +1820,110 @@ template<class T> void gaussianBlurImpl(T** src, T** dst, const int W, const int
                 c1 /= sum;
                 c2 /= sum;
                 // compute kernel values for border pixels
-                double b1 = exp (-1.0 / (2.0 * sigma * sigma));
+                double b1 = exp(-1.0 / (2.0 * sigma * sigma));
                 double bsum = 2.0 * b1 + 1.0;
                 b1 /= bsum;
                 double b0 = 1.0 / bsum;
 
                 switch (gausstype) {
-                case GAUSS_MULT     :
-                    gauss3x3mult<T> (src, dst, W, H, c0, c1, c2, b0, b1);
+                case GAUSS_MULT:
+                    gauss3x3mult<T>(src, dst, W, H, c0, c1, c2, b0, b1);
                     break;
 
-                case GAUSS_DIV      :
-                    gauss3x3div<T> (src, dst, buffer2, W, H, c0, c1, c2, b0, b1);
+                case GAUSS_DIV:
+                    gauss3x3div<T>(src, dst, buffer2, W, H, c0, c1, c2, b0, b1);
                     break;
 
-                case GAUSS_STANDARD :
-                    gauss3x3<T> (src, dst, W, H, c0, c1, c2, b0, b1);
+                case GAUSS_STANDARD:
+                    gauss3x3<T>(src, dst, W, H, c0, c1, c2, b0, b1);
                     break;
                 }
             } else {
                 // compute kernel values for separated 3x3 gaussian blur
-                double c1 = exp (-1.0 / (2.0 * sigma * sigma));
+                double c1 = exp(-1.0 / (2.0 * sigma * sigma));
                 double csum = 2.0 * c1 + 1.0;
                 c1 /= csum;
                 double c0 = 1.0 / csum;
-                gaussHorizontal3<T> (src, dst, W, H, c0, c1);
-                gaussVertical3<T>   (dst, dst, W, H, c0, c1);
+                gaussHorizontal3<T>(src, dst, W, H, c0, c1);
+                gaussVertical3<T>(dst, dst, W, H, c0, c1);
             }
         } else {
 #ifdef __SSE2__
 
             if (sigma < GAUSS_DOUBLE) {
                 switch (gausstype) {
-                case GAUSS_MULT : {
+                case GAUSS_MULT: {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
                         gauss5x5mult(src, dst, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
                         gauss7x7mult(src, dst, W, H, sigma);
                     } else {
-                        gaussHorizontalSse<T> (src, src, W, H, sigma);
-                        gaussVerticalSsemult<T> (src, dst, W, H, sigma);
+                        gaussHorizontalSse<T>(src, src, W, H, sigma);
+                        gaussVerticalSsemult<T>(src, dst, W, H, sigma);
                     }
                     break;
                 }
 
-                case GAUSS_DIV : {
+                case GAUSS_DIV: {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-                        gauss5x5div (src, dst, buffer2, W, H, sigma);
+                        gauss5x5div(src, dst, buffer2, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
-                        gauss7x7div (src, dst, buffer2, W, H, sigma);
+                        gauss7x7div(src, dst, buffer2, W, H, sigma);
                     } else {
-                        gaussHorizontalSse<T> (src, dst, W, H, sigma);
-                        gaussVerticalSsediv<T> (dst, dst, buffer2, W, H, sigma);
+                        gaussHorizontalSse<T>(src, dst, W, H, sigma);
+                        gaussVerticalSsediv<T>(dst, dst, buffer2, W, H, sigma);
                     }
                     break;
                 }
 
-                case GAUSS_STANDARD : {
-                    gaussHorizontalSse<T> (src, dst, W, H, sigma);
-                    gaussVerticalSse<T> (dst, dst, W, H, sigma);
+                case GAUSS_STANDARD: {
+                    gaussHorizontalSse<T>(src, dst, W, H, sigma);
+                    gaussVerticalSse<T>(dst, dst, W, H, sigma);
                     break;
                 }
                 }
             } else { // large sigma only with double precision
-                gaussHorizontal<T> (src, dst, W, H, sigma);
-                gaussVertical<T>   (dst, dst, W, H, sigma);
+                gaussHorizontal<T>(src, dst, W, H, sigma);
+                gaussVertical<T>(dst, dst, W, H, sigma);
             }
 
 #else
 
             if (sigma < GAUSS_DOUBLE) {
                 switch (gausstype) {
-                case GAUSS_MULT : {
+                case GAUSS_MULT: {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
                         gauss5x5mult(src, dst, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
                         gauss7x7mult(src, dst, W, H, sigma);
                     } else {
-                        gaussHorizontal<T> (src, src, W, H, sigma);
-                        gaussVerticalmult<T> (src, dst, W, H, sigma);
+                        gaussHorizontal<T>(src, src, W, H, sigma);
+                        gaussVerticalmult<T>(src, dst, W, H, sigma);
                     }
                     break;
                 }
 
-                case GAUSS_DIV : {
+                case GAUSS_DIV: {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-                        gauss5x5div (src, dst, buffer2, W, H, sigma);
+                        gauss5x5div(src, dst, buffer2, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
-                        gauss7x7div (src, dst, buffer2, W, H, sigma);
+                        gauss7x7div(src, dst, buffer2, W, H, sigma);
                     } else {
-                        gaussHorizontal<T> (src, dst, W, H, sigma);
-                        gaussVerticaldiv<T> (dst, dst, buffer2, W, H, sigma);
+                        gaussHorizontal<T>(src, dst, W, H, sigma);
+                        gaussVerticaldiv<T>(dst, dst, buffer2, W, H, sigma);
                     }
                     break;
                 }
 
-                case GAUSS_STANDARD : {
-                    gaussHorizontal<T> (src, dst, W, H, sigma);
-                    gaussVertical<T> (dst, dst, W, H, sigma);
+                case GAUSS_STANDARD: {
+                    gaussHorizontal<T>(src, dst, W, H, sigma);
+                    gaussVertical<T>(dst, dst, W, H, sigma);
                     break;
                 }
                 }
             } else { // large sigma only with double precision
-                gaussHorizontal<T> (src, dst, W, H, sigma);
-                gaussVertical<T>   (dst, dst, W, H, sigma);
+                gaussHorizontal<T>(src, dst, W, H, sigma);
+                gaussVertical<T>(dst, dst, W, H, sigma);
             }
 
 #endif
@@ -1568,8 +1933,9 @@ template<class T> void gaussianBlurImpl(T** src, T** dst, const int W, const int
 
 } // namespace
 
-void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, float *buffer, eGaussType gausstype, float** buffer2)
+void gaussianBlur(float **src, float **dst, const int W, const int H,
+                  const double sigma, float *buffer, eGaussType gausstype,
+                  float **buffer2)
 {
     gaussianBlurImpl<float>(src, dst, W, H, sigma, buffer, gausstype, buffer2);
 }
-

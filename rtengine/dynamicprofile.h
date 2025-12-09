@@ -18,29 +18,27 @@
  */
 #pragma once
 
+#include "../rtgui/options.h"
 #include <glibmm.h>
 #include <vector>
-#include "../rtgui/options.h"
 
 class DynamicProfileRule {
 public:
-    template <class T>
-    struct Range {
+    template <class T> struct Range {
         T min;
         T max;
-        explicit Range(T l=T(), T u=T()): min(l), max(u) {}
+        explicit Range(T l = T(), T u = T()): min(l), max(u) {}
 
-        bool operator()(T val) const
-        {
-            return val >= min && val <= max;
-        }
+        bool operator()(T val) const { return val >= min && val <= max; }
     };
 
     struct Optional {
         Glib::ustring value;
         bool enabled;
-        explicit Optional(const Glib::ustring v="", bool e=false):
-            value(v), enabled(e) {}
+        explicit Optional(const Glib::ustring v = "", bool e = false)
+            : value(v), enabled(e)
+        {
+        }
 
         bool operator()(const Glib::ustring &val) const;
     };
@@ -49,7 +47,7 @@ public:
         std::vector<std::pair<std::string, std::string>> value;
         bool enabled;
 
-        explicit CustomMetadata(bool e=false): value(), enabled(e) {}
+        explicit CustomMetadata(bool e = false): value(), enabled(e) {}
 
         bool operator()(const rtengine::FramesMetaData *m) const;
     };
@@ -73,7 +71,6 @@ public:
     Glib::ustring profilepath;
 };
 
-
 class DynamicProfileRules {
 protected:
     /** cache for dynamic profile rules */
@@ -81,10 +78,10 @@ protected:
     bool rulesLoaded;
 
 public:
-    bool loadRules(bool force_builtins=false);
+    bool loadRules(bool force_builtins = false);
     bool storeRules();
     const std::vector<DynamicProfileRule> &getRules();
-    void setRules (const std::vector<DynamicProfileRule> &r);
+    void setRules(const std::vector<DynamicProfileRule> &r);
 
     static void init(const Glib::ustring &base_dir);
 

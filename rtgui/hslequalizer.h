@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  RawTherapee is free software: you can redistribute it and/or modify
@@ -20,16 +20,19 @@
 
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
-#include "guiutils.h"
+#include "colorprovider.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
-#include "colorprovider.h"
+#include "guiutils.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-
-class HSLEqualizer: public ToolParamBlock, public FoldableToolPanel, public CurveListener, public ColorProvider, public AdjusterListener {
+class HSLEqualizer: public ToolParamBlock,
+                    public FoldableToolPanel,
+                    public CurveListener,
+                    public ColorProvider,
+                    public AdjusterListener {
 public:
     HSLEqualizer();
     ~HSLEqualizer() override;
@@ -39,7 +42,9 @@ public:
     void curveChanged(CurveEditor *ce) override;
     void setEditProvider(EditDataProvider *provider) override;
     void autoOpenCurve() override;
-    void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller* caller) override;
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 
     void enabledChanged() override;
     void adjusterChanged(Adjuster *a, double newval) override;
@@ -50,7 +55,7 @@ public:
 
 private:
     rtengine::ProcEvent EvHSLSmoothing;
-    
+
     CurveEditorGroup *curveEditorG;
     FlatCurveEditor *hshape;
     FlatCurveEditor *sshape;

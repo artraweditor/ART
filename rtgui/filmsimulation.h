@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -21,19 +21,18 @@
 #ifndef FILM_SIMULATION_INCLUDED
 #define FILM_SIMULATION_INCLUDED
 
-#include <gtkmm.h>
-#include <glibmm.h>
-#include <memory>
-#include "toolpanel.h"
-#include "guiutils.h"
 #include "adjuster.h"
 #include "clutparamspanel.h"
-
+#include "guiutils.h"
+#include "toolpanel.h"
+#include <glibmm.h>
+#include <gtkmm.h>
+#include <memory>
 
 class ClutComboBox: public MyComboBox {
 public:
     explicit ClutComboBox(const std::vector<Glib::ustring> &paths);
-    //int fillFromDir (const Glib::ustring& path);
+    // int fillFromDir (const Glib::ustring& path);
     int foundClutsCount() const;
     std::pair<Glib::ustring, Glib::ustring> getSelectedClut();
     void setSelectedClut(Glib::ustring filename);
@@ -41,7 +40,12 @@ public:
     static void cleanup();
 
 private:
-    void updateUnchangedEntry(); // in batchMode we need to add an extra entry "(Unchanged)". We do this whenever the widget is mapped (connecting to signal_map()), unless options.multiDisplayMode (see the comment below about cm2 in this case)
+    void
+    updateUnchangedEntry(); // in batchMode we need to add an extra entry
+                            // "(Unchanged)". We do this whenever the widget is
+                            // mapped (connecting to signal_map()), unless
+                            // options.multiDisplayMode (see the comment below
+                            // about cm2 in this case)
 
     class ClutColumns: public Gtk::TreeModel::ColumnRecord {
     public:
@@ -62,22 +66,29 @@ private:
     Glib::RefPtr<Gtk::TreeStore> &m_model();
     ClutColumns &m_columns();
 
-    Gtk::TreeIter findRowByClutFilename(  Gtk::TreeModel::Children childs, Glib::ustring filename );
+    Gtk::TreeIter findRowByClutFilename(Gtk::TreeModel::Children childs,
+                                        Glib::ustring filename);
 
-    static std::unique_ptr<ClutModel> cm; // we use a shared TreeModel for all the combo boxes, to save time (no need to reparse the clut dir multiple times)...
-    static std::unique_ptr<ClutModel> cm2; // ... except when options.multiDisplayMode (i.e. editors in their own window), where we need two. This is because we might have two combo boxes displayed at the same time in this case
+    static std::unique_ptr<ClutModel>
+        cm; // we use a shared TreeModel for all the combo boxes, to save time
+            // (no need to reparse the clut dir multiple times)...
+    static std::unique_ptr<ClutModel>
+        cm2; // ... except when options.multiDisplayMode (i.e. editors in their
+             // own window), where we need two. This is because we might have
+             // two combo boxes displayed at the same time in this case
 };
 
-
-class FilmSimulation: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel {
+class FilmSimulation: public ToolParamBlock,
+                      public AdjusterListener,
+                      public FoldableToolPanel {
 public:
     FilmSimulation();
 
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void setDefaults(const rtengine::procparams::ProcParams *pp) override;
     void toolReset(bool to_initial) override;
@@ -91,14 +102,14 @@ private:
 
     ClutComboBox *m_clutComboBox;
     sigc::connection m_clutComboBoxConn;
-    //Glib::ustring m_oldClutFilename;
+    // Glib::ustring m_oldClutFilename;
 
     Adjuster *m_strength;
     Gtk::CheckButton *after_tone_curve_;
     Gtk::HBox *after_tone_curve_box_;
 
     CLUTParamsPanel *lut_params_;
-    
+
     rtengine::procparams::FilmSimulationParams initial_params;
 
     rtengine::ProcEvent EvAfterToneCurve;

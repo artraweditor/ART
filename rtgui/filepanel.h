@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,62 +19,61 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "filecatalog.h"
 #include "dirbrowser.h"
+#include "filecatalog.h"
 #include "fileselectionlistener.h"
-#include "placesbrowser.h"
-#include "recentbrowser.h"
-#include "pparamschangelistener.h"
-#include "history.h"
 #include "filterpanel.h"
+#include "history.h"
+#include "placesbrowser.h"
+#include "pparamschangelistener.h"
 #include "progressconnector.h"
+#include "recentbrowser.h"
+#include <gtkmm.h>
 
 class RTWindow;
 
-class FilePanel final :
-    public Gtk::HPaned,
-    public FileSelectionListener {
+class FilePanel final: public Gtk::HPaned, public FileSelectionListener {
 public:
-    FilePanel ();
-    ~FilePanel () override;
+    FilePanel();
+    ~FilePanel() override;
 
-    Gtk::Paned* placespaned;
-    Gtk::HPaned* dirpaned;
+    Gtk::Paned *placespaned;
+    Gtk::HPaned *dirpaned;
 
-    Gtk::HBox* rightBox;
+    Gtk::HBox *rightBox;
 
-    DirBrowser* dirBrowser;
-    FilterPanel* filterPanel;
-    FileCatalog* fileCatalog;
+    DirBrowser *dirBrowser;
+    FilterPanel *filterPanel;
+    FileCatalog *fileCatalog;
     Gtk::Paned *ribbonPane;
 
-    void setParent (RTWindow* p)
-    {
-        parent = p;
-    }
-    void init (); // don't call it directly, the constructor calls it as idle source
-    void on_realize () override;
+    void setParent(RTWindow *p) { parent = p; }
+    void
+    init(); // don't call it directly, the constructor calls it as idle source
+    void on_realize() override;
     void setAspect();
-    void open (const Glib::ustring& d); // open a file or a directory
-    void refreshEditedState (const std::set<Glib::ustring>& efiles)
+    void open(const Glib::ustring &d); // open a file or a directory
+    void refreshEditedState(const std::set<Glib::ustring> &efiles)
     {
-        fileCatalog->refreshEditedState (efiles);
+        fileCatalog->refreshEditedState(efiles);
     }
     void loadingThumbs(Glib::ustring str, double rate);
 
-    // call this before closing RT: it saves file browser's related things into options
-    void saveOptions ();
+    // call this before closing RT: it saves file browser's related things into
+    // options
+    void saveOptions();
 
     // interface fileselectionlistener
-    Result fileSelected(Thumbnail* thm) override;
-    bool addBatchQueueJobs(const std::vector<BatchQueueEntry*>& entries) override;
+    Result fileSelected(Thumbnail *thm) override;
+    bool
+    addBatchQueueJobs(const std::vector<BatchQueueEntry *> &entries) override;
 
     void optionsChanged();
-    bool imageLoaded( Thumbnail* thm, ProgressConnector<rtengine::InitialImage*> * );
+    bool imageLoaded(Thumbnail *thm,
+                     ProgressConnector<rtengine::InitialImage *> *);
 
-    bool handleShortcutKey (GdkEventKey* event);
-    void updateTPVScrollbar (bool hide);
+    bool handleShortcutKey(GdkEventKey *event);
+    void updateTPVScrollbar(bool hide);
 
     void showRightBox(bool yes);
 
@@ -85,24 +84,24 @@ public:
     RTWindow *getParent() { return parent; }
 
 private:
-    void on_NB_switch_page(Gtk::Widget* page, guint page_num);
+    void on_NB_switch_page(Gtk::Widget *page, guint page_num);
     void on_inspector_ready();
 
-    PlacesBrowser* placesBrowser;
-    RecentBrowser* recentBrowser;
+    PlacesBrowser *placesBrowser;
+    RecentBrowser *recentBrowser;
 
-    Inspector* inspectorPanel;
-    RTWindow* parent;
-    Gtk::Notebook* rightNotebook;
+    Inspector *inspectorPanel;
+    RTWindow *parent;
+    Gtk::Notebook *rightNotebook;
     sigc::connection rightNotebookSwitchConn;
 
     struct pendingLoad {
         bool complete;
-        ProgressConnector<rtengine::InitialImage*> *pc;
+        ProgressConnector<rtengine::InitialImage *> *pc;
         Thumbnail *thm;
     };
     MyMutex pendingLoadMutex;
-    std::vector<struct pendingLoad*> pendingLoads;
+    std::vector<struct pendingLoad *> pendingLoads;
 
     int error;
 

@@ -20,16 +20,16 @@
 
 #pragma once
 
-#include "noncopyable.h"
-#include "rtengine.h"
-#include "imageio.h"
-#include "procparams.h"
 #include "cache.h"
-#include <glibmm/ustring.h>
-#include <glib/gstdio.h>
-#include <unordered_map>
-#include <map>
+#include "imageio.h"
+#include "noncopyable.h"
+#include "procparams.h"
+#include "rtengine.h"
 #include <cctype>
+#include <glib/gstdio.h>
+#include <glibmm/ustring.h>
+#include <map>
+#include <unordered_map>
 
 namespace rtengine {
 
@@ -49,16 +49,21 @@ public:
         std::string extension;
         Glib::ustring label;
 
-        SaveFormatInfo(const std::string &ext="", const Glib::ustring &lbl=""):
-            extension(ext), label(lbl) {}
+        SaveFormatInfo(const std::string &ext = "",
+                       const Glib::ustring &lbl = "")
+            : extension(ext), label(lbl)
+        {
+        }
     };
 
     static ImageIOManager *getInstance();
 
     void init(const Glib::ustring &base_dir, const Glib::ustring &user_dir);
-    
-    bool load(const Glib::ustring &fileName, ProgressListener *plistener, ImageIO *&img, int maxw_hint, int maxh_hint);
-    bool save(IImagefloat *img, const std::string &ext, const Glib::ustring &fileName, ProgressListener *plistener);
+
+    bool load(const Glib::ustring &fileName, ProgressListener *plistener,
+              ImageIO *&img, int maxw_hint, int maxh_hint);
+    bool save(IImagefloat *img, const std::string &ext,
+              const Glib::ustring &fileName, ProgressListener *plistener);
     std::vector<std::pair<std::string, SaveFormatInfo>> getSaveFormats() const;
 
     bool canLoad(const std::string &ext) const
@@ -68,9 +73,11 @@ public:
 
     Format getFormat(const Glib::ustring &fileName);
 
-    const procparams::PartialProfile *getSaveProfile(const std::string &ext) const;
+    const procparams::PartialProfile *
+    getSaveProfile(const std::string &ext) const;
 
-    bool loadRaw(const Glib::ustring &fname, const std::string &make, const std::string &model, Glib::ustring &out_dng_name);
+    bool loadRaw(const Glib::ustring &fname, const std::string &make,
+                 const std::string &model, Glib::ustring &out_dng_name);
 
 private:
     typedef std::pair<Glib::ustring, Glib::ustring> Pair;
@@ -78,24 +85,27 @@ private:
     void do_init(const Glib::ustring &dir);
     static Glib::ustring get_ext(Format f);
 
-    bool do_loadRaw(const Pair &p, const Glib::ustring &fname, Glib::ustring &out_dng_name);
-    
+    bool do_loadRaw(const Pair &p, const Glib::ustring &fname,
+                    Glib::ustring &out_dng_name);
 
     Glib::ustring sysdir_;
     Glib::ustring usrdir_;
-    
+
     std::unordered_map<std::string, Pair> loaders_;
     std::unordered_map<std::string, Pair> savers_;
     std::unordered_map<std::string, Format> fmts_;
     std::map<std::string, SaveFormatInfo> savelbls_;
-    std::unordered_map<std::string, procparams::FilePartialProfile> saveprofiles_;
+    std::unordered_map<std::string, procparams::FilePartialProfile>
+        saveprofiles_;
     class RawKey {
     public:
         std::string ext;
         std::string make;
         std::string model;
 
-        RawKey(const std::string &e="", const std::string &ma="", const std::string &mo=""): ext(e), make(), model()
+        RawKey(const std::string &e = "", const std::string &ma = "",
+               const std::string &mo = "")
+            : ext(e), make(), model()
         {
             make.reserve(ma.size());
             for (auto &c : ma) {
@@ -124,20 +134,23 @@ private:
     std::map<RawKey, Pair> raw_loaders_;
 
     typedef Cache<Glib::ustring, Glib::ustring> RAWCache;
-    
+
     class Hook: public RAWCache::Hook {
     public:
-        void onDiscard(const Glib::ustring &key, const Glib::ustring &value) override
+        void onDiscard(const Glib::ustring &key,
+                       const Glib::ustring &value) override
         {
             rm(value);
         }
 
-        void onDisplace(const Glib::ustring &key, const Glib::ustring &value) override
+        void onDisplace(const Glib::ustring &key,
+                        const Glib::ustring &value) override
         {
             rm(value);
         }
 
-        void onRemove(const Glib::ustring &key, const Glib::ustring &value) override
+        void onRemove(const Glib::ustring &key,
+                      const Glib::ustring &value) override
         {
             rm(value);
         }

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,22 +19,28 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
-#include "maskspanel.h"
-#include "colorwheel.h"
-#include "colorprovider.h"
-#include "thresholdadjuster.h"
 #include "clutparamspanel.h"
+#include "colorprovider.h"
+#include "colorwheel.h"
+#include "maskspanel.h"
+#include "thresholdadjuster.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class ColorCorrection: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public PParamsChangeListener, public ThresholdAdjusterListener, public ColorProvider {
+class ColorCorrection: public ToolParamBlock,
+                       public AdjusterListener,
+                       public FoldableToolPanel,
+                       public PParamsChangeListener,
+                       public ThresholdAdjusterListener,
+                       public ColorProvider {
 public:
     ColorCorrection();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
     void adjusterChanged(Adjuster *a, double newval) override;
     void enabledChanged() override;
@@ -44,31 +50,51 @@ public:
     void setListener(ToolPanelListener *tpl) override;
 
     PParamsChangeListener *getPParamsChangeListener() override { return this; }
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr) override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
     void clearParamChanges() override {}
 
     void updateGeometry(int fullWidth, int fullHeight);
     void setAreaDrawListener(AreaDrawListener *l);
     void setDeltaEColorProvider(DeltaEColorProvider *p);
 
-    void adjusterChanged(ThresholdAdjuster *a, double newBottom, double newTop) override;
-    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft, double newTopLeft, double newBottomRight, double newTopRight) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottom, int newTop) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft, int newTopLeft, int newBottomRight, int newTopRight) override {}
-    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL, int newBottomR, int newTopR) override {}
+    void adjusterChanged(ThresholdAdjuster *a, double newBottom,
+                         double newTop) override;
+    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft,
+                         double newTopLeft, double newBottomRight,
+                         double newTopRight) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottom,
+                         int newTop) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft,
+                         int newTopLeft, int newBottomRight,
+                         int newTopRight) override
+    {
+    }
+    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL,
+                          int newBottomR, int newTopR) override
+    {
+    }
 
-    void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller *caller) override;
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 
     void toolReset(bool to_initial) override;
 
-    void drawCurve(bool rgb, Cairo::RefPtr<Cairo::Context> cr, Glib::RefPtr<Gtk::StyleContext> style, int W, int H);
+    void drawCurve(bool rgb, Cairo::RefPtr<Cairo::Context> cr,
+                   Glib::RefPtr<Gtk::StyleContext> style, int W, int H);
 
-    void setExternalMaskPath(const Glib::ustring &dir) { masks_->setExternalMaskPath(dir); }
-    
+    void setExternalMaskPath(const Glib::ustring &dir)
+    {
+        masks_->setExternalMaskPath(dir);
+    }
+
 private:
     void regionGet(int idx);
     void regionShow(int idx);
@@ -78,7 +104,7 @@ private:
     void hslWheelChanged(int c);
     void lutChanged();
     void lutParamsChanged();
-    
+
     rtengine::ProcEvent EvEnabled;
     rtengine::ProcEvent EvColorWheel;
     rtengine::ProcEvent EvInSaturation;
@@ -86,8 +112,8 @@ private:
     rtengine::ProcEvent EvLightness;
     rtengine::ProcEvent EvSlope;
     rtengine::ProcEvent EvOffset;
-    rtengine::ProcEvent EvPower;    
-    rtengine::ProcEvent EvPivot;    
+    rtengine::ProcEvent EvPower;
+    rtengine::ProcEvent EvPivot;
     rtengine::ProcEvent EvMode;
     rtengine::ProcEvent EvRgbLuminance;
     rtengine::ProcEvent EvHueShift;
@@ -116,7 +142,7 @@ private:
     friend class ColorCorrectionMasksContentProvider;
     std::unique_ptr<MasksContentProvider> masks_content_provider_;
     MasksPanel *masks_;
-    
+
     Gtk::VBox *box;
     MyComboBoxText *mode;
 
@@ -124,7 +150,7 @@ private:
     Gtk::VBox *box_rgb;
     Gtk::VBox *box_hsl;
     Gtk::VBox *box_lut;
-    
+
     ColorWheel *wheel;
     Adjuster *inSaturation;
     Adjuster *outSaturation;
@@ -135,7 +161,7 @@ private:
     MyFileChooserButton *lut_filename;
     CLUTParamsPanel *lut_params;
     Gtk::HBox *lut_filename_box;
-    
+
     Adjuster *slope;
     Adjuster *offset;
     Adjuster *power;
@@ -148,9 +174,9 @@ private:
     Adjuster *pivot_rgb[3];
     Adjuster *compression_rgb[3];
     Gtk::CheckButton *rgbluminance;
-    
+
     Gtk::CheckButton *sync_rgb_sliders;
-    
+
     Adjuster *lfactor[3];
     HueSatColorWheel *huesat[3];
     Adjuster *hsl_gamma;
@@ -160,4 +186,3 @@ private:
 
     rtengine::procparams::ColorCorrectionParams initial_params;
 };
-

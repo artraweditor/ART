@@ -19,23 +19,18 @@
 #ifndef _SENSORBAYER_H_
 #define _SENSORBAYER_H_
 
-#include <gtkmm.h>
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class SensorBayer : public ToolParamBlock, public FoldableToolPanel
-{
+class SensorBayer: public ToolParamBlock, public FoldableToolPanel {
 
 protected:
-    ToolParamBlock*     packBox;
+    ToolParamBlock *packBox;
 
 public:
+    SensorBayer();
 
-    SensorBayer ();
-
-    Gtk::Box* getPackBox ()
-    {
-        return packBox;
-    }
+    Gtk::Box *getPackBox() { return packBox; }
 };
 
 #endif

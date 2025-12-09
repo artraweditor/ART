@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,37 +19,34 @@
  */
 #pragma once
 
-#include <memory>
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "guiutils.h"
+#include <gtkmm.h>
+#include <memory>
 
-#include "toolpanel.h"
-#include "popupbutton.h"
 #include "../rtengine/imagedata.h"
+#include "popupbutton.h"
+#include "toolpanel.h"
 
-class ICMPanelListener
-{
+class ICMPanelListener {
 public:
     virtual ~ICMPanelListener() = default;
-    virtual void saveInputICCReference(const Glib::ustring& fname, bool apply_wb) = 0;
+    virtual void saveInputICCReference(const Glib::ustring &fname,
+                                       bool apply_wb) = 0;
 };
 
-class ICMPanel :
-    public ToolParamBlock,
-    public AdjusterListener,
-    public FoldableToolPanel
-{
+class ICMPanel: public ToolParamBlock,
+                public AdjusterListener,
+                public FoldableToolPanel {
 
 protected:
-    Gtk::Frame* dcpFrame;
-    Gtk::Frame* coipFrame;
+    Gtk::Frame *dcpFrame;
+    Gtk::Frame *coipFrame;
 
-    Gtk::Label* labmga;
-    Gtk::HBox* gabox;
+    Gtk::Label *labmga;
+    Gtk::HBox *gabox;
 
-
-    //bool freegamma;
+    // bool freegamma;
     sigc::connection tcurveconn;
     sigc::connection ltableconn;
     sigc::connection beoconn;
@@ -62,38 +59,38 @@ private:
     rtengine::ProcEvent EvUseCAT;
     rtengine::ProcEvent EvDCPApplyLookEarly;
 
-    Gtk::CheckButton* obpc;
-    Gtk::RadioButton* inone;
+    Gtk::CheckButton *obpc;
+    Gtk::RadioButton *inone;
 
-    Gtk::RadioButton* iembedded;
-    Gtk::RadioButton* icamera;
-    Gtk::RadioButton* icameraICC;
-    Gtk::RadioButton* ifromfile;
-    Gtk::Label* dcpIllLabel;
-    MyComboBoxText* dcpIll;
+    Gtk::RadioButton *iembedded;
+    Gtk::RadioButton *icamera;
+    Gtk::RadioButton *icameraICC;
+    Gtk::RadioButton *ifromfile;
+    Gtk::Label *dcpIllLabel;
+    MyComboBoxText *dcpIll;
     sigc::connection dcpillconn;
-    Gtk::CheckButton* ckbToneCurve;
-    Gtk::CheckButton* ckbApplyLookTable;
-    Gtk::CheckButton* ckbApplyBaselineExposureOffset;
-    Gtk::CheckButton* ckbApplyHueSatMap;
+    Gtk::CheckButton *ckbToneCurve;
+    Gtk::CheckButton *ckbApplyLookTable;
+    Gtk::CheckButton *ckbApplyBaselineExposureOffset;
+    Gtk::CheckButton *ckbApplyHueSatMap;
     MyComboBoxText *dcp_look_early_;
-    
-    MyComboBoxText* wProfNames;
+
+    MyComboBoxText *wProfNames;
     sigc::connection wprofnamesconn;
 
     std::vector<Glib::ustring> out_profiles_;
 
-    MyComboBoxText* oProfNames;
+    MyComboBoxText *oProfNames;
     sigc::connection oprofnamesconn;
     std::unique_ptr<PopUpButton> oRendIntent;
     sigc::connection orendintentconn;
-    Gtk::RadioButton* iunchanged;
-    MyFileChooserButton* ipDialog;
+    Gtk::RadioButton *iunchanged;
+    MyFileChooserButton *ipDialog;
     Gtk::RadioButton::Group opts;
-    Gtk::Button* saveRef;
+    Gtk::Button *saveRef;
     sigc::connection ipc;
     Glib::ustring oldip;
-    ICMPanelListener* icmplistener;
+    ICMPanelListener *icmplistener;
 
     double dcpTemperatures[2];
     Glib::ustring lastRefFilename;
@@ -101,17 +98,19 @@ private:
     Glib::ustring filename;
 
     Gtk::CheckButton *use_CAT_;
-    
+
     void updateDCP(int dcpIlluminant, Glib::ustring dcp_name);
     void updateRenderingIntent(const Glib::ustring &profile);
+
 public:
     ICMPanel();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
 
     void wpChanged();
     void wtrcinChanged();
@@ -126,14 +125,10 @@ public:
     void applyBaselineExposureOffsetChanged();
     void applyHueSatMapChanged();
 
-    void setRawMeta(bool raw, const rtengine::FramesData* pMeta);
+    void setRawMeta(bool raw, const rtengine::FramesData *pMeta);
     void saveReferencePressed();
 
-    void setICMPanelListener(ICMPanelListener* ipl)
-    {
-        icmplistener = ipl;
-    }
+    void setICMPanelListener(ICMPanelListener *ipl) { icmplistener = ipl; }
 
     void toolReset(bool to_initial) override;
 };
-

@@ -18,22 +18,23 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "improcfun.h"
-#include "curves.h"
 #include "color.h"
+#include "curves.h"
+#include "improcfun.h"
 
 namespace rtengine {
 
 namespace {
 
-void RGBCurve(const std::vector<double>& curvePoints, LUTf & outCurve, int skip)
+void RGBCurve(const std::vector<double> &curvePoints, LUTf &outCurve, int skip)
 {
 
     // create a curve if needed
     std::unique_ptr<DiagonalCurve> tcurve;
 
     if (!curvePoints.empty() && curvePoints[0] != 0) {
-        tcurve = std::unique_ptr<DiagonalCurve>(new DiagonalCurve(curvePoints, CURVES_MIN_POLY_POINTS / skip));
+        tcurve = std::unique_ptr<DiagonalCurve>(
+            new DiagonalCurve(curvePoints, CURVES_MIN_POLY_POINTS / skip));
     }
 
     if (tcurve && tcurve->isIdentity()) {
@@ -47,7 +48,8 @@ void RGBCurve(const std::vector<double>& curvePoints, LUTf & outCurve, int skip)
 
         for (int i = 0; i < 65536; i++) {
             // apply custom/parametric/NURBS curve, if any
-            // RGB curves are defined with sRGB gamma, but operate on linear data
+            // RGB curves are defined with sRGB gamma, but operate on linear
+            // data
             float val = Color::gamma2curve[i] / 65535.f;
             val = tcurve->getVal(val);
             outCurve[i] = Color::igammatab_srgb[val * 65535.f];
@@ -56,25 +58,27 @@ void RGBCurve(const std::vector<double>& curvePoints, LUTf & outCurve, int skip)
         outCurve.reset();
     }
 }
-   
-} // namespace
 
+} // namespace
 
 void ImProcFunctions::rgbCurves(Imagefloat *img)
 {
     PlanarWhateverData<float> *editWhatever = nullptr;
     EditUniqueID eid = pipetteBuffer ? pipetteBuffer->getEditID() : EUID_None;
-    if ((eid == EUID_RGB_R || eid == EUID_RGB_G || eid == EUID_RGB_B) && pipetteBuffer->getDataProvider()->getCurrSubscriber()->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
+    if ((eid == EUID_RGB_R || eid == EUID_RGB_G || eid == EUID_RGB_B) &&
+        pipetteBuffer->getDataProvider()
+                ->getCurrSubscriber()
+                ->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
         editWhatever = pipetteBuffer->getSinglePlaneBuffer();
     }
-    
+
     if (!params->rgbCurves.enabled) {
         if (editWhatever) {
             editWhatever->fill(0.f);
         }
         return;
     }
-    
+
     img->setMode(Imagefloat::Mode::RGB, multiThread);
 
     LUTf rCurve, gCurve, bCurve;
@@ -102,23 +106,24 @@ void ImProcFunctions::rgbCurves(Imagefloat *img)
         }
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
-                editWhatever->v(y, x) = LIM01(Color::gamma2curve[chan[y][x]] / 65535.f);
+                editWhatever->v(y, x) =
+                    LIM01(Color::gamma2curve[chan[y][x]] / 65535.f);
             }
         }
     }
 
     if (rCurve || gCurve || bCurve) { // if any of the RGB curves is engaged
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;
 #ifdef __SSE2__
-            for (; x < W-3; x += 4) {
+            for (; x < W - 3; x += 4) {
                 if (rCurve) {
                     STVF(img->r(y, x), rCurve[LVF(img->r(y, x))]);
                 }

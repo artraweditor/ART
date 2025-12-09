@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,19 +19,20 @@
  */
 #pragma once
 
-#include <glibmm.h>
 #include "../rtengine/rtengine.h"
 #include "threadutils.h"
 #include "thumbnail.h"
+#include <glibmm.h>
 
-#include <mutex>
-#include <future>
 #include <atomic>
+#include <future>
+#include <mutex>
 
 class BQEntryUpdateListener {
 public:
     virtual ~BQEntryUpdateListener() = default;
-    virtual void updateImage(guint8 *img, int w, int h, int origw, int origh, guint8 *newOPreview) = 0;
+    virtual void updateImage(guint8 *img, int w, int h, int origw, int origh,
+                             guint8 *newOPreview) = 0;
 };
 
 class BatchQueueEntryUpdater {
@@ -48,8 +49,11 @@ class BatchQueueEntryUpdater {
 public:
     BatchQueueEntryUpdater();
 
-    void process(guint8 *oimg, int ow, int oh, int newh, BQEntryUpdateListener *listener, rtengine::ProcParams *pparams=nullptr, Thumbnail *thumbnail=nullptr);
-    void removeJobs(BQEntryUpdateListener* listener);
+    void process(guint8 *oimg, int ow, int oh, int newh,
+                 BQEntryUpdateListener *listener,
+                 rtengine::ProcParams *pparams = nullptr,
+                 Thumbnail *thumbnail = nullptr);
+    void removeJobs(BQEntryUpdateListener *listener);
     void terminate();
 
 private:

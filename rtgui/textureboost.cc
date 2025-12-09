@@ -18,8 +18,8 @@
  */
 #include "textureboost.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -30,20 +30,11 @@ using namespace rtengine::procparams;
 
 class EPDMasksContentProvider: public MasksContentProvider {
 public:
-    EPDMasksContentProvider(TextureBoost *parent):
-        parent_(parent)
-    {
-    }
+    EPDMasksContentProvider(TextureBoost *parent): parent_(parent) {}
 
-    Glib::ustring getToolName() override
-    {
-        return "textureboost";
-    }
+    Glib::ustring getToolName() override { return "textureboost"; }
 
-    Gtk::Container *getContainer() override
-    {
-        return parent_->box;
-    }
+    Gtk::Container *getContainer() override { return parent_->box; }
 
     void getEvents(Events &events) override
     {
@@ -71,19 +62,14 @@ public:
         return nullptr;
     }
 
-    void selectionChanging(int idx) override
-    {
-        parent_->regionGet(idx);
-    }
+    void selectionChanging(int idx) override { parent_->regionGet(idx); }
 
-    void selectionChanged(int idx) override
-    {
-        parent_->regionShow(idx);
-    }
+    void selectionChanged(int idx) override { parent_->regionShow(idx); }
 
     bool addPressed(int idx) override
     {
-        parent_->data.insert(parent_->data.begin() + idx, TextureBoostParams::Region());
+        parent_->data.insert(parent_->data.begin() + idx,
+                             TextureBoostParams::Region());
         return true;
     }
 
@@ -92,20 +78,21 @@ public:
         parent_->data.erase(parent_->data.begin() + idx);
         return true;
     }
-    
+
     bool copyPressed(int idx) override
     {
-        parent_->data.insert(parent_->data.begin() + idx + 1, parent_->data[idx]);
+        parent_->data.insert(parent_->data.begin() + idx + 1,
+                             parent_->data[idx]);
         return true;
     }
 
     bool resetPressed(int idx) override
     {
         parent_->data[idx] = TextureBoostParams::Region();
-        //parent_->masks_->setMasks({ Mask() }, -1);
+        // parent_->masks_->setMasks({ Mask() }, -1);
         return true;
     }
-    
+
     bool moveUpPressed(int idx) override
     {
         auto r = parent_->data[idx];
@@ -114,7 +101,7 @@ public:
         parent_->data.insert(parent_->data.begin() + idx, r);
         return true;
     }
-    
+
     bool moveDownPressed(int idx) override
     {
         auto r = parent_->data[idx];
@@ -124,25 +111,23 @@ public:
         return true;
     }
 
-    int getColumnCount() override
-    {
-        return 1;
-    }
-    
+    int getColumnCount() override { return 1; }
+
     Glib::ustring getColumnHeader(int col) override
     {
         return M("TP_LABMASKS_PARAMETERS");
     }
-    
+
     Glib::ustring getColumnContent(int col, int row) override
     {
         auto &r = parent_->data[row];
 
-        return Glib::ustring::compose(
-            "%1 %2 %3", r.strength, r.detailThreshold, r.iterations); 
+        return Glib::ustring::compose("%1 %2 %3", r.strength, r.detailThreshold,
+                                      r.iterations);
     }
 
-    void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve, EditUniqueID &lcurve, EditUniqueID &deltaE) override
+    void getEditIDs(EditUniqueID &hcurve, EditUniqueID &ccurve,
+                    EditUniqueID &lcurve, EditUniqueID &deltaE) override
     {
         hcurve = EUID_Masks_H4;
         ccurve = EUID_Masks_C4;
@@ -154,12 +139,12 @@ private:
     TextureBoost *parent_;
 };
 
-
 //-----------------------------------------------------------------------------
 // EPD
 //-----------------------------------------------------------------------------
 
-TextureBoost::TextureBoost(): FoldableToolPanel(this, "epd", M("TP_EPD_LABEL"), true, true, true)
+TextureBoost::TextureBoost()
+    : FoldableToolPanel(this, "epd", M("TP_EPD_LABEL"), true, true, true)
 {
     auto m = ProcEventMapper::getInstance();
     auto EVENT = rtengine::LUMINANCECURVE;
@@ -174,7 +159,8 @@ TextureBoost::TextureBoost(): FoldableToolPanel(this, "epd", M("TP_EPD_LABEL"), 
     EvShowMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_SHOWMASK");
     EvAreaMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_AREAMASK");
     EvDeltaEMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_DELTAEMASK");
-    EvContrastThresholdMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_CONTRASTTHRESHOLDMASK");
+    EvContrastThresholdMask =
+        m->newEvent(EVENT, "HISTORY_MSG_EPD_CONTRASTTHRESHOLDMASK");
     EvDrawnMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_DRAWNMASK");
     EvMaskPostprocess = m->newEvent(EVENT, "HISTORY_MSG_EPD_MASK_POSTPROCESS");
     EvLinkedMask = m->newEvent(EVENT, "HISTORY_MSG_EPD_LINKEDMASK");
@@ -183,9 +169,11 @@ TextureBoost::TextureBoost(): FoldableToolPanel(this, "epd", M("TP_EPD_LABEL"), 
     EvToolEnabled.set_action(EVENT);
     EvToolReset.set_action(EVENT);
 
-    strength = Gtk::manage(new Adjuster (M("TP_EPD_STRENGTH"), -2.0, 2.0, 0.01, 0));
+    strength =
+        Gtk::manage(new Adjuster(M("TP_EPD_STRENGTH"), -2.0, 2.0, 0.01, 0));
     strength->setLogScale(2, 0, true);
-    detailThreshold = Gtk::manage(new Adjuster (M("TP_EPD_DETAIL_THRESHOLD"), 0.01, 100.0, 0.01, 0.2));
+    detailThreshold = Gtk::manage(
+        new Adjuster(M("TP_EPD_DETAIL_THRESHOLD"), 0.01, 100.0, 0.01, 0.2));
     detailThreshold->setLogScale(10, 1, true);
     iterations = Gtk::manage(new Adjuster(M("TP_EPD_ITERATIONS"), 1, 5, 1, 1));
 
@@ -205,7 +193,7 @@ TextureBoost::TextureBoost(): FoldableToolPanel(this, "epd", M("TP_EPD_LABEL"), 
 
     masks_content_provider_.reset(new EPDMasksContentProvider(this));
     masks_ = Gtk::manage(new MasksPanel(masks_content_provider_.get()));
-    pack_start(*masks_, Gtk::PACK_EXPAND_WIDGET, 4);   
+    pack_start(*masks_, Gtk::PACK_EXPAND_WIDGET, 4);
 
     show_all_children();
 }
@@ -221,7 +209,10 @@ void TextureBoost::read(const ProcParams *pp)
         data.emplace_back(rtengine::procparams::TextureBoostParams::Region());
         m.emplace_back(rtengine::procparams::Mask());
     }
-    masks_->setMasks(m, pp->textureBoost.selectedRegion, pp->textureBoost.showMask >= 0 && pp->textureBoost.showMask == pp->textureBoost.selectedRegion);
+    masks_->setMasks(m, pp->textureBoost.selectedRegion,
+                     pp->textureBoost.showMask >= 0 &&
+                         pp->textureBoost.showMask ==
+                             pp->textureBoost.selectedRegion);
 
     enableListener();
 }
@@ -243,40 +234,45 @@ void TextureBoost::write(ProcParams *pp)
 void TextureBoost::setDefaults(const ProcParams *defParams)
 {
     strength->setDefault(defParams->textureBoost.regions[0].strength);
-    detailThreshold->setDefault(defParams->textureBoost.regions[0].detailThreshold);
+    detailThreshold->setDefault(
+        defParams->textureBoost.regions[0].detailThreshold);
     iterations->setDefault(defParams->textureBoost.regions[0].iterations);
 
     initial_params = defParams->textureBoost;
 }
 
-void TextureBoost::adjusterChanged(Adjuster* a, double newval)
+void TextureBoost::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         masks_->setEdited(true);
 
-        if(a == strength) {
-            listener->panelChanged(EvEPDStrength, Glib::ustring::format(std::setw(2), std::fixed, std::setprecision(2), a->getValue()));
-        } else if(a == detailThreshold) {
-            listener->panelChanged(EvDetailThreshold, Glib::ustring::format(std::setw(2), std::fixed, std::setprecision(2), a->getValue()));
-        } else if(a == iterations) {
+        if (a == strength) {
+            listener->panelChanged(
+                EvEPDStrength,
+                Glib::ustring::format(std::setw(2), std::fixed,
+                                      std::setprecision(2), a->getValue()));
+        } else if (a == detailThreshold) {
+            listener->panelChanged(
+                EvDetailThreshold,
+                Glib::ustring::format(std::setw(2), std::fixed,
+                                      std::setprecision(2), a->getValue()));
+        } else if (a == iterations) {
             listener->panelChanged(EvIterations, a->getTextValue());
         }
     }
 }
 
-void TextureBoost::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void TextureBoost::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void TextureBoost::enabledChanged ()
+void TextureBoost::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
-            listener->panelChanged (EvEPDEnabled, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvEPDEnabled, M("GENERAL_UNCHANGED"));
         } else if (getEnabled()) {
-            listener->panelChanged (EvEPDEnabled, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvEPDEnabled, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvEPDEnabled, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvEPDEnabled, M("GENERAL_DISABLED"));
         }
     }
 
@@ -285,41 +281,35 @@ void TextureBoost::enabledChanged ()
     }
 }
 
-
 void TextureBoost::setEditProvider(EditDataProvider *provider)
 {
     masks_->setEditProvider(provider);
 }
 
-
 void TextureBoost::procParamsChanged(
-    const rtengine::procparams::ProcParams* params,
-    const rtengine::ProcEvent& ev,
-    const Glib::ustring& descr,
-    const ParamsEdited* paramsEdited)
+    const rtengine::procparams::ProcParams *params,
+    const rtengine::ProcEvent &ev, const Glib::ustring &descr,
+    const ParamsEdited *paramsEdited)
 {
     masks_->updateLinkedMaskList(params);
 }
-
 
 void TextureBoost::updateGeometry(int fw, int fh)
 {
     masks_->updateGeometry(fw, fh);
 }
 
-
 void TextureBoost::regionGet(int idx)
 {
     if (idx < 0 || size_t(idx) >= data.size()) {
         return;
     }
-    
+
     auto &r = data[idx];
     r.strength = strength->getValue();
     r.detailThreshold = detailThreshold->getValue();
     r.iterations = iterations->getValue();
 }
-
 
 void TextureBoost::regionShow(int idx)
 {
@@ -332,24 +322,21 @@ void TextureBoost::regionShow(int idx)
     strength->setValue(r.strength);
     detailThreshold->setValue(r.detailThreshold);
     iterations->setValue(r.iterations);
-    
+
     if (disable) {
         enableListener();
     }
 }
-
 
 void TextureBoost::setAreaDrawListener(AreaDrawListener *l)
 {
     masks_->setAreaDrawListener(l);
 }
 
-
 void TextureBoost::setDeltaEColorProvider(DeltaEColorProvider *p)
 {
     masks_->setDeltaEColorProvider(p);
 }
-
 
 void TextureBoost::toolReset(bool to_initial)
 {

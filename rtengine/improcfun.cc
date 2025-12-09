@@ -23,83 +23,67 @@
 #include <omp.h>
 #endif
 
+#include "../rtgui/guiutils.h"
+#include "../rtgui/ppversion.h"
+#include "StopWatch.h"
 #include "alignedbuffer.h"
-#include "rtengine.h"
-#include "improcfun.h"
+#include "calc_distort.h"
+#include "clutstore.h"
+#include "color.h"
 #include "curves.h"
-#include "mytime.h"
+#include "iccmatrices.h"
 #include "iccstore.h"
 #include "imagesource.h"
+#include "improccoordinator.h"
+#include "improcfun.h"
+#include "mytime.h"
+#include "refreshmap.h"
+#include "rt_math.h"
+#include "rtengine.h"
 #include "rtthumbnail.h"
 #include "utils.h"
-#include "iccmatrices.h"
-#include "color.h"
-#include "calc_distort.h"
-#include "rt_math.h"
-#include "improccoordinator.h"
-#include "clutstore.h"
-#include "StopWatch.h"
-#include "../rtgui/ppversion.h"
-#include "../rtgui/guiutils.h"
-#include "refreshmap.h"
 
 namespace rtengine {
 
 using namespace procparams;
 
-extern const Settings* settings;
+extern const Settings *settings;
 
-ImProcFunctions::ImProcFunctions(const ProcParams* iparams, bool imultiThread):
-    monitor(nullptr),
-    monitorTransform(nullptr),
-    params(iparams),
-    scale(1),
-    multiThread(imultiThread),
-    cur_pipeline(Pipeline::OUTPUT),
-    dcpProf(nullptr),
-    dcpApplyState(nullptr),
-    pipetteBuffer(nullptr),
-    lumimul{},
-    offset_x(0),
-    offset_y(0),
-    full_width(-1),
-    full_height(-1),
-    histToneCurve(nullptr),
-    histCCurve(nullptr),
-    histLCurve(nullptr),
-    show_sharpening_mask(false),
-    plistener(nullptr),
-    progress_step(0),
-    progress_end(1)
+ImProcFunctions::ImProcFunctions(const ProcParams *iparams, bool imultiThread)
+    : monitor(nullptr), monitorTransform(nullptr), params(iparams), scale(1),
+      multiThread(imultiThread), cur_pipeline(Pipeline::OUTPUT),
+      dcpProf(nullptr), dcpApplyState(nullptr), pipetteBuffer(nullptr),
+      lumimul{}, offset_x(0), offset_y(0), full_width(-1), full_height(-1),
+      histToneCurve(nullptr), histCCurve(nullptr), histLCurve(nullptr),
+      show_sharpening_mask(false), plistener(nullptr), progress_step(0),
+      progress_end(1)
 {
 }
 
-
-ImProcFunctions::~ImProcFunctions ()
+ImProcFunctions::~ImProcFunctions()
 {
     if (monitorTransform) {
-        cmsDeleteTransform (monitorTransform);
+        cmsDeleteTransform(monitorTransform);
     }
 }
 
-void ImProcFunctions::setScale (double iscale)
-{
-    scale = iscale;
-}
+void ImProcFunctions::setScale(double iscale) { scale = iscale; }
 
-
-void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, RenderingIntent monitorIntent, bool softProof, GamutCheck gamutCheck)
+void ImProcFunctions::updateColorProfiles(const Glib::ustring &monitorProfile,
+                                          RenderingIntent monitorIntent,
+                                          bool softProof, GamutCheck gamutCheck)
 {
     // set up monitor transform
     if (monitorTransform) {
-        cmsDeleteTransform (monitorTransform);
+        cmsDeleteTransform(monitorTransform);
     }
     gamutWarning.reset(nullptr);
 
     monitorTransform = nullptr;
     monitor = nullptr;
 
-    if (settings->color_mgmt_mode != Settings::ColorManagementMode::APPLICATION) {
+    if (settings->color_mgmt_mode !=
+        Settings::ColorManagementMode::APPLICATION) {
         monitor = ICCStore::getInstance()->getActiveMonitorProfile();
     } else {
         if (!monitorProfile.empty()) {
@@ -108,20 +92,23 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
     }
 
     if (monitor) {
-        MyMutex::MyLock lcmsLock (*lcmsMutex);
+        MyMutex::MyLock lcmsLock(*lcmsMutex);
 
         cmsUInt32Number flags;
-        //cmsHPROFILE iprof  = cmsCreateLab4Profile (nullptr);
+        // cmsHPROFILE iprof  = cmsCreateLab4Profile (nullptr);
         cmsHPROFILE iprof = nullptr;
-        if (params->icm.outputProfile == procparams::ColorManagementParams::NoProfileString) {
-            iprof = ICCStore::getInstance()->workingSpace(params->icm.workingProfile);
+        if (params->icm.outputProfile ==
+            procparams::ColorManagementParams::NoProfileString) {
+            iprof = ICCStore::getInstance()->workingSpace(
+                params->icm.workingProfile);
         } else {
-            iprof = ICCStore::getInstance()->getProfile(params->icm.outputProfile);
+            iprof =
+                ICCStore::getInstance()->getProfile(params->icm.outputProfile);
         }
         if (!iprof) {
             iprof = ICCStore::getInstance()->getsRGBProfile();
         }
-        
+
         cmsHPROFILE gamutprof = nullptr;
         cmsUInt32Number gamutbpc = 0;
         RenderingIntent gamutintent = RI_RELATIVE;
@@ -131,20 +118,23 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
         RenderingIntent outIntent;
 
         if (softProof) {
-            flags = cmsFLAGS_SOFTPROOFING | cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE;
+            flags =
+                cmsFLAGS_SOFTPROOFING | cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE;
 
             if (!settings->printerProfile.empty()) {
-                oprof = ICCStore::getInstance()->getProfile (settings->printerProfile);
+                oprof = ICCStore::getInstance()->getProfile(
+                    settings->printerProfile);
                 if (settings->printerBPC) {
                     flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
                 }
                 outIntent = settings->printerIntent;
-            // } else {
-            //     oprof = ICCStore::getInstance()->getProfile(params->icm.outputProfile);
-            //     if (params->icm.outputBPC) {
-            //         flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
-            //     }
-            //     outIntent = params->icm.outputIntent;
+                // } else {
+                //     oprof =
+                //     ICCStore::getInstance()->getProfile(params->icm.outputProfile);
+                //     if (params->icm.outputBPC) {
+                //         flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
+                //     }
+                //     outIntent = params->icm.outputIntent;
             }
 
             if (oprof) {
@@ -154,19 +144,22 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
                 //     flags |= cmsFLAGS_GAMUTCHECK;
                 // }
 
-                const auto make_gamma_table =
-                    [](cmsHPROFILE prof, cmsTagSignature tag) -> void
-                    {
-                        cmsToneCurve *tc = static_cast<cmsToneCurve *>(cmsReadTag(prof, tag));
-                        if (tc) {
-                            const cmsUInt16Number *table = cmsGetToneCurveEstimatedTable(tc);
-                            cmsToneCurve *tc16 = cmsBuildTabulatedToneCurve16(nullptr, cmsGetToneCurveEstimatedTableEntries(tc), table);
-                            if (tc16) {
-                                cmsWriteTag(prof, tag, tc16);
-                                cmsFreeToneCurve(tc16);
-                            }
+                const auto make_gamma_table = [](cmsHPROFILE prof,
+                                                 cmsTagSignature tag) -> void {
+                    cmsToneCurve *tc =
+                        static_cast<cmsToneCurve *>(cmsReadTag(prof, tag));
+                    if (tc) {
+                        const cmsUInt16Number *table =
+                            cmsGetToneCurveEstimatedTable(tc);
+                        cmsToneCurve *tc16 = cmsBuildTabulatedToneCurve16(
+                            nullptr, cmsGetToneCurveEstimatedTableEntries(tc),
+                            table);
+                        if (tc16) {
+                            cmsWriteTag(prof, tag, tc16);
+                            cmsFreeToneCurve(tc16);
                         }
-                    };
+                    }
+                };
 
                 cmsHPROFILE softproof = ProfileContent(oprof).toProfile();
                 if (softproof) {
@@ -175,13 +168,10 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
                     make_gamma_table(softproof, cmsSigBlueTRCTag);
                 }
 
-                monitorTransform = cmsCreateProofingTransform (
-                    iprof, TYPE_RGB_FLT, //TYPE_Lab_FLT,
-                                       monitor, TYPE_RGB_FLT,
-                                       softproof,
-                                       monitorIntent, outIntent,
-                                       flags
-                                   );
+                monitorTransform = cmsCreateProofingTransform(
+                    iprof, TYPE_RGB_FLT, // TYPE_Lab_FLT,
+                    monitor, TYPE_RGB_FLT, softproof, monitorIntent, outIntent,
+                    flags);
 
                 if (softproof) {
                     cmsCloseProfile(softproof);
@@ -209,7 +199,8 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
             gamutintent = monitorIntent;
         } else if (gamutCheck == GAMUT_CHECK_OUTPUT) {
             if (!oprof) {
-                oprof = ICCStore::getInstance()->getProfile(params->icm.outputProfile);
+                oprof = ICCStore::getInstance()->getProfile(
+                    params->icm.outputProfile);
                 if (params->icm.outputBPC) {
                     flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
                 }
@@ -229,22 +220,26 @@ void ImProcFunctions::updateColorProfiles (const Glib::ustring& monitorProfile, 
                 flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
             }
 
-            monitorTransform = cmsCreateTransform (iprof, TYPE_RGB_FLT, 
-                                                   monitor, TYPE_RGB_FLT, monitorIntent, flags);
+            monitorTransform =
+                cmsCreateTransform(iprof, TYPE_RGB_FLT, monitor, TYPE_RGB_FLT,
+                                   monitorIntent, flags);
         }
 
         if (gamutCheck && gamutprof) {
-            gamutWarning.reset(new GamutWarning(gamutprof, gamutintent, gamutbpc));
+            gamutWarning.reset(
+                new GamutWarning(gamutprof, gamutintent, gamutbpc));
         }
 
-//        cmsCloseProfile (iprof);
+        //        cmsCloseProfile (iprof);
     }
 }
 
-void ImProcFunctions::firstAnalysis (const Imagefloat* const original, const ProcParams &params, LUTu & histogram)
+void ImProcFunctions::firstAnalysis(const Imagefloat *const original,
+                                    const ProcParams &params, LUTu &histogram)
 {
 
-    TMatrix wprof = ICCStore::getInstance()->workingSpaceMatrix (params.icm.workingProfile);
+    TMatrix wprof =
+        ICCStore::getInstance()->workingSpaceMatrix(params.icm.workingProfile);
 
     lumimul[0] = wprof[1][0];
     lumimul[1] = wprof[1][1];
@@ -252,52 +247,56 @@ void ImProcFunctions::firstAnalysis (const Imagefloat* const original, const Pro
     int W = original->getWidth();
     int H = original->getHeight();
 
-    float lumimulf[3] = {static_cast<float> (lumimul[0]), static_cast<float> (lumimul[1]), static_cast<float> (lumimul[2])};
+    float lumimulf[3] = {static_cast<float>(lumimul[0]),
+                         static_cast<float>(lumimul[1]),
+                         static_cast<float>(lumimul[2])};
 
-    // calculate histogram of the y channel needed for contrast curve calculation in exposure adjustments
+    // calculate histogram of the y channel needed for contrast curve
+    // calculation in exposure adjustments
     histogram.clear();
 
     if (multiThread) {
 
 #ifdef _OPENMP
-        const int numThreads = min (max (W * H / (int)histogram.getSize(), 1), omp_get_num_procs());
-        #pragma omp parallel num_threads(numThreads) if(numThreads>1)
+        const int numThreads =
+            min(max(W * H / (int)histogram.getSize(), 1), omp_get_num_procs());
+#pragma omp parallel num_threads(numThreads) if (numThreads > 1)
 #endif
         {
-            LUTu hist (histogram.getSize());
+            LUTu hist(histogram.getSize());
             hist.clear();
 #ifdef _OPENMP
-            #pragma omp for nowait
+#pragma omp for nowait
 #endif
 
             for (int i = 0; i < H; i++) {
                 for (int j = 0; j < W; j++) {
 
-                    float r = original->r (i, j);
-                    float g = original->g (i, j);
-                    float b = original->b (i, j);
+                    float r = original->r(i, j);
+                    float g = original->g(i, j);
+                    float b = original->b(i, j);
 
-                    int y = (lumimulf[0] * r + lumimulf[1] * g + lumimulf[2] * b);
+                    int y =
+                        (lumimulf[0] * r + lumimulf[1] * g + lumimulf[2] * b);
                     hist[y]++;
                 }
             }
 
 #ifdef _OPENMP
-            #pragma omp critical
+#pragma omp critical
 #endif
             histogram += hist;
-
         }
 #ifdef _OPENMP
-        static_cast<void> (numThreads); // to silence cppcheck warning
+        static_cast<void>(numThreads); // to silence cppcheck warning
 #endif
     } else {
         for (int i = 0; i < H; i++) {
             for (int j = 0; j < W; j++) {
 
-                float r = original->r (i, j);
-                float g = original->g (i, j);
-                float b = original->b (i, j);
+                float r = original->r(i, j);
+                float g = original->g(i, j);
+                float b = original->b(i, j);
 
                 int y = (lumimulf[0] * r + lumimulf[1] * g + lumimulf[2] * b);
                 histogram[y]++;
@@ -305,7 +304,6 @@ void ImProcFunctions::firstAnalysis (const Imagefloat* const original, const Pro
         }
     }
 }
-
 
 namespace {
 
@@ -315,7 +313,7 @@ void proPhotoBlue(Imagefloat *rgb, bool multiThread)
     const int W = rgb->getWidth();
     const int H = rgb->getHeight();
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
@@ -326,15 +324,17 @@ void proPhotoBlue(Imagefloat *rgb, bool multiThread)
             vmask zeromask = vorm(vmaskf_eq(rv, ZEROV), vmaskf_eq(gv, ZEROV));
             if (_mm_movemask_ps((vfloat)zeromask)) {
                 for (int k = 0; k < 4; ++k) {
-                    float r = rgb->r(y, x+k);
-                    float g = rgb->g(y, x+k);
-                    float b = rgb->b(y, x+k);
-                    
-                    if ((r == 0.0f || g == 0.0f) && rtengine::min(r, g, b) >= 0.f) {
+                    float r = rgb->r(y, x + k);
+                    float g = rgb->g(y, x + k);
+                    float b = rgb->b(y, x + k);
+
+                    if ((r == 0.0f || g == 0.0f) &&
+                        rtengine::min(r, g, b) >= 0.f) {
                         float h, s, v;
                         Color::rgb2hsv(r, g, b, h, s, v);
                         s *= 0.99f;
-                        Color::hsv2rgb(h, s, v, rgb->r(y, x+k), rgb->g(y, x+k), rgb->b(y, x+k));
+                        Color::hsv2rgb(h, s, v, rgb->r(y, x + k),
+                                       rgb->g(y, x + k), rgb->b(y, x + k));
                     }
                 }
             }
@@ -349,22 +349,23 @@ void proPhotoBlue(Imagefloat *rgb, bool multiThread)
                 float h, s, v;
                 Color::rgb2hsv(r, g, b, h, s, v);
                 s *= 0.99f;
-                Color::hsv2rgb(h, s, v, rgb->r(y, x), rgb->g(y, x), rgb->b(y, x));
+                Color::hsv2rgb(h, s, v, rgb->r(y, x), rgb->g(y, x),
+                               rgb->b(y, x));
             }
         }
     }
 }
 
-
-void dcpProfile(Imagefloat *img, DCPProfile *dcp, const DCPProfile::ApplyState *as, bool multithread)
+void dcpProfile(Imagefloat *img, DCPProfile *dcp,
+                const DCPProfile::ApplyState *as, bool multithread)
 {
     if (dcp && as) {
         img->setMode(Imagefloat::Mode::RGB, multithread);
-        
+
         const int H = img->getHeight();
         const int W = img->getWidth();
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
         for (int y = 0; y < H; ++y) {
             float *r = img->r(y);
@@ -377,23 +378,25 @@ void dcpProfile(Imagefloat *img, DCPProfile *dcp, const DCPProfile::ApplyState *
 
 } // namespace
 
-
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-double ImProcFunctions::getAutoDistor  (const Glib::ustring &fname, int thumb_size)
+double ImProcFunctions::getAutoDistor(const Glib::ustring &fname,
+                                      int thumb_size)
 {
     if (fname != "") {
         int w_raw = -1, h_raw = thumb_size;
         int w_thumb = -1, h_thumb = thumb_size;
 
         eSensorType sensorType = rtengine::ST_NONE;
-        Thumbnail* thumb = rtengine::Thumbnail::loadQuickFromRaw (fname, sensorType, w_thumb, h_thumb, 1, FALSE);
+        Thumbnail *thumb = rtengine::Thumbnail::loadQuickFromRaw(
+            fname, sensorType, w_thumb, h_thumb, 1, FALSE);
 
         if (!thumb) {
             return 0.0;
         }
 
-        Thumbnail* raw =   rtengine::Thumbnail::loadFromRaw(fname, sensorType, w_raw, h_raw, 1, 1.0, FALSE);
+        Thumbnail *raw = rtengine::Thumbnail::loadFromRaw(
+            fname, sensorType, w_raw, h_raw, 1, 1.0, FALSE);
 
         if (!raw) {
             delete thumb;
@@ -414,10 +417,10 @@ double ImProcFunctions::getAutoDistor  (const Glib::ustring &fname, int thumb_si
             width = w_thumb;
         }
 
-        unsigned char* thumbGray;
-        unsigned char* rawGray;
-        thumbGray = thumb->getGrayscaleHistEQ (width);
-        rawGray = raw->getGrayscaleHistEQ (width);
+        unsigned char *thumbGray;
+        unsigned char *rawGray;
+        thumbGray = thumb->getGrayscaleHistEQ(width);
+        rawGray = raw->getGrayscaleHistEQ(width);
 
         if (!thumbGray || !rawGray) {
             if (thumbGray) {
@@ -434,10 +437,12 @@ double ImProcFunctions::getAutoDistor  (const Glib::ustring &fname, int thumb_si
         }
 
         double dist_amount;
-        int dist_result = calcDistortion (thumbGray, rawGray, width, h_thumb, 1, dist_amount);
+        int dist_result =
+            calcDistortion(thumbGray, rawGray, width, h_thumb, 1, dist_amount);
 
-        if (dist_result == -1) { // not enough features found, try increasing max. number of features by factor 4
-            calcDistortion (thumbGray, rawGray, width, h_thumb, 4, dist_amount);
+        if (dist_result == -1) { // not enough features found, try increasing
+                                 // max. number of features by factor 4
+            calcDistortion(thumbGray, rawGray, width, h_thumb, 4, dist_amount);
         }
 
         delete[] thumbGray;
@@ -450,23 +455,28 @@ double ImProcFunctions::getAutoDistor  (const Glib::ustring &fname, int thumb_si
     }
 }
 
-void ImProcFunctions::rgb2lab (Imagefloat &src, LabImage &dst, const Glib::ustring &workingSpace)
+void ImProcFunctions::rgb2lab(Imagefloat &src, LabImage &dst,
+                              const Glib::ustring &workingSpace)
 {
     src.assignColorSpace(workingSpace);
     src.toLab(dst, true);
 }
 
-void ImProcFunctions::lab2rgb (const LabImage &src, Imagefloat &dst, const Glib::ustring &workingSpace)
+void ImProcFunctions::lab2rgb(const LabImage &src, Imagefloat &dst,
+                              const Glib::ustring &workingSpace)
 {
     dst.assignColorSpace(workingSpace);
     dst.assignMode(Imagefloat::Mode::RGB);
-    
-    TMatrix wiprof = ICCStore::getInstance()->workingSpaceInverseMatrix ( workingSpace );
+
+    TMatrix wiprof =
+        ICCStore::getInstance()->workingSpaceInverseMatrix(workingSpace);
     const float wip[3][3] = {
-        {static_cast<float> (wiprof[0][0]), static_cast<float> (wiprof[0][1]), static_cast<float> (wiprof[0][2])},
-        {static_cast<float> (wiprof[1][0]), static_cast<float> (wiprof[1][1]), static_cast<float> (wiprof[1][2])},
-        {static_cast<float> (wiprof[2][0]), static_cast<float> (wiprof[2][1]), static_cast<float> (wiprof[2][2])}
-    };
+        {static_cast<float>(wiprof[0][0]), static_cast<float>(wiprof[0][1]),
+         static_cast<float>(wiprof[0][2])},
+        {static_cast<float>(wiprof[1][0]), static_cast<float>(wiprof[1][1]),
+         static_cast<float>(wiprof[1][2])},
+        {static_cast<float>(wiprof[2][0]), static_cast<float>(wiprof[2][1]),
+         static_cast<float>(wiprof[2][2])}};
 
     const int W = dst.getWidth();
     const int H = dst.getHeight();
@@ -475,14 +485,14 @@ void ImProcFunctions::lab2rgb (const LabImage &src, Imagefloat &dst, const Glib:
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            wipv[i][j] = F2V (wiprof[i][j]);
+            wipv[i][j] = F2V(wiprof[i][j]);
         }
     }
 
 #endif
 
 #ifdef _OPENMP
-    #pragma omp parallel for schedule(dynamic,16)
+#pragma omp parallel for schedule(dynamic, 16)
 #endif
 
     for (int i = 0; i < H; i++) {
@@ -492,25 +502,25 @@ void ImProcFunctions::lab2rgb (const LabImage &src, Imagefloat &dst, const Glib:
         for (; j < W - 3; j += 4) {
             vfloat X, Y, Z;
             vfloat R, G, B;
-            Color::Lab2XYZ (LVFU (src.L[i][j]), LVFU (src.a[i][j]), LVFU (src.b[i][j]), X, Y, Z);
-            Color::xyz2rgb (X, Y, Z, R, G, B, wipv);
-            STVFU (dst.r (i, j), R);
-            STVFU (dst.g (i, j), G);
-            STVFU (dst.b (i, j), B);
+            Color::Lab2XYZ(LVFU(src.L[i][j]), LVFU(src.a[i][j]),
+                           LVFU(src.b[i][j]), X, Y, Z);
+            Color::xyz2rgb(X, Y, Z, R, G, B, wipv);
+            STVFU(dst.r(i, j), R);
+            STVFU(dst.g(i, j), G);
+            STVFU(dst.b(i, j), B);
         }
 
 #endif
 
         for (; j < W; j++) {
             float X, Y, Z;
-            Color::Lab2XYZ (src.L[i][j], src.a[i][j], src.b[i][j], X, Y, Z);
-            Color::xyz2rgb (X, Y, Z, dst.r (i, j), dst.g (i, j), dst.b (i, j), wip);
+            Color::Lab2XYZ(src.L[i][j], src.a[i][j], src.b[i][j], X, Y, Z);
+            Color::xyz2rgb(X, Y, Z, dst.r(i, j), dst.g(i, j), dst.b(i, j), wip);
         }
     }
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 void ImProcFunctions::setViewport(int ox, int oy, int fw, int fh)
 {
@@ -520,20 +530,18 @@ void ImProcFunctions::setViewport(int ox, int oy, int fw, int fh)
     full_height = fh;
 }
 
-
-void ImProcFunctions::setOutputHistograms(LUTu *histToneCurve, LUTu *histCCurve, LUTu *histLCurve)
+void ImProcFunctions::setOutputHistograms(LUTu *histToneCurve, LUTu *histCCurve,
+                                          LUTu *histLCurve)
 {
     this->histToneCurve = histToneCurve;
     this->histCCurve = histCCurve;
     this->histLCurve = histLCurve;
 }
 
-
 void ImProcFunctions::setShowSharpeningMask(bool yes)
 {
     show_sharpening_mask = yes;
 }
-
 
 namespace {
 
@@ -541,7 +549,8 @@ constexpr int NUM_PIPELINE_STEPS = 23;
 
 } // namespace
 
-void ImProcFunctions::setProgressListener(ProgressListener *pl, int num_previews)
+void ImProcFunctions::setProgressListener(ProgressListener *pl,
+                                          int num_previews)
 {
     plistener = pl;
     progress_step = 0;
@@ -551,7 +560,6 @@ void ImProcFunctions::setProgressListener(ProgressListener *pl, int num_previews
         plistener->setProgress(0);
     }
 }
-
 
 template <class Ret, class Method>
 Ret ImProcFunctions::apply(Method op, Imagefloat *img)
@@ -563,7 +571,6 @@ Ret ImProcFunctions::apply(Method op, Imagefloat *img)
     return (this->*op)(img);
 }
 
-
 bool ImProcFunctions::process(Pipeline pipeline, Stage stage, Imagefloat *img)
 {
     bool stop = false;
@@ -571,7 +578,7 @@ bool ImProcFunctions::process(Pipeline pipeline, Stage stage, Imagefloat *img)
 
 #define STEP_(op) apply<void>(&ImProcFunctions::op, img)
 #define STEP_s_(op) apply<bool>(&ImProcFunctions::op, img)
-        
+
     switch (stage) {
     case Stage::STAGE_0:
         STEP_(dehaze);
@@ -604,7 +611,7 @@ bool ImProcFunctions::process(Pipeline pipeline, Stage stage, Imagefloat *img)
     case Stage::STAGE_3:
         STEP_(creativeGradients);
         stop = stop || STEP_s_(textureBoost);
-        if (!stop) { 
+        if (!stop) {
             STEP_(filmGrain);
             STEP_(logEncoding);
             STEP_(saturationVibrance);
@@ -640,7 +647,6 @@ bool ImProcFunctions::process(Pipeline pipeline, Stage stage, Imagefloat *img)
     return stop;
 }
 
-
 int ImProcFunctions::setDeltaEData(EditUniqueID id, double x, double y)
 {
     deltaE.ok = false;
@@ -663,6 +669,5 @@ int ImProcFunctions::setDeltaEData(EditUniqueID id, double x, double y)
         return 0;
     }
 }
-
 
 } // namespace rtengine

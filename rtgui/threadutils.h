@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,8 +19,8 @@
  */
 #pragma once
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 
 #include "../rtengine/noncopyable.h"
 
@@ -30,7 +30,6 @@ public:
     bool trylock() { return try_lock(); }
 };
 
-
 class MyMutex::MyLock: public std::unique_lock<MyMutex> {
 public:
     explicit MyLock(MyMutex &mutex): std::unique_lock<MyMutex>(mutex) {}
@@ -39,7 +38,6 @@ public:
     bool try_acquire() { return try_lock(); }
     void release() { unlock(); }
 };
-
 
 class MyRWMutex: public rtengine::NonCopyable {
 public:
@@ -54,10 +52,9 @@ private:
     std::size_t readerCount = 0;
 };
 
-
 class MyReaderLock: public rtengine::NonCopyable {
 public:
-    ~MyReaderLock ();
+    ~MyReaderLock();
 
     explicit MyReaderLock(MyRWMutex &mutex);
 
@@ -69,10 +66,9 @@ private:
     bool locked;
 };
 
-
 class MyWriterLock: public rtengine::NonCopyable {
 public:
-    ~MyWriterLock ();
+    ~MyWriterLock();
 
     explicit MyWriterLock(MyRWMutex &mutex);
 
@@ -84,17 +80,12 @@ private:
     bool locked;
 };
 
-
-inline MyReaderLock::MyReaderLock(MyRWMutex &mutex):
-    mutex(mutex),
-    locked(false)
+inline MyReaderLock::MyReaderLock(MyRWMutex &mutex): mutex(mutex), locked(false)
 {
     acquire();
 }
 
-inline MyWriterLock::MyWriterLock(MyRWMutex &mutex):
-    mutex(mutex),
-    locked(false)
+inline MyWriterLock::MyWriterLock(MyRWMutex &mutex): mutex(mutex), locked(false)
 {
     acquire();
 }
@@ -102,14 +93,14 @@ inline MyWriterLock::MyWriterLock(MyRWMutex &mutex):
 inline MyReaderLock::~MyReaderLock()
 {
     if (locked) {
-        release ();
+        release();
     }
 }
 
 inline MyWriterLock::~MyWriterLock()
 {
     if (locked) {
-        release ();
+        release();
     }
 }
 

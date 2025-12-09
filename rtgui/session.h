@@ -24,7 +24,8 @@
 #include <glibmm.h>
 #include <vector>
 
-namespace art { namespace session {
+namespace art {
+namespace session {
 
 bool check(const Glib::ustring &fname);
 Glib::ustring filename();
@@ -36,4 +37,5 @@ void add(const std::vector<Glib::ustring> &fnames);
 void remove(const std::vector<Glib::ustring> &fnames);
 std::vector<Glib::ustring> list();
 
-}} // namespace art::session
+} // namespace session
+} // namespace art

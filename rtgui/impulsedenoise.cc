@@ -18,79 +18,81 @@
  */
 #include "impulsedenoise.h"
 #include "../rtengine/refreshmap.h"
+#include "guiutils.h"
 #include <cmath>
 #include <iomanip>
-#include "guiutils.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-ImpulseDenoise::ImpulseDenoise () : FoldableToolPanel(this, "impulsedenoise", M("TP_IMPULSEDENOISE_LABEL"), false, true, true)
+ImpulseDenoise::ImpulseDenoise()
+    : FoldableToolPanel(this, "impulsedenoise", M("TP_IMPULSEDENOISE_LABEL"),
+                        false, true, true)
 {
     EvToolReset.set_action(rtengine::DETAIL);
-    
-    thresh = Gtk::manage (new Adjuster (M("TP_IMPULSEDENOISE_THRESH"), 0, 100, 1, 50));
 
-    pack_start (*thresh);
+    thresh =
+        Gtk::manage(new Adjuster(M("TP_IMPULSEDENOISE_THRESH"), 0, 100, 1, 50));
 
-    thresh->setAdjusterListener (this);
+    pack_start(*thresh);
 
-    show_all_children ();
+    thresh->setAdjusterListener(this);
+
+    show_all_children();
 }
 
-void ImpulseDenoise::read(const ProcParams* pp)
+void ImpulseDenoise::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
 
     setEnabled(pp->impulseDenoise.enabled);
-    thresh->setValue (pp->impulseDenoise.thresh);
+    thresh->setValue(pp->impulseDenoise.thresh);
 
-    enableListener ();
+    enableListener();
 }
 
-void ImpulseDenoise::write(ProcParams* pp)
+void ImpulseDenoise::write(ProcParams *pp)
 {
-    pp->impulseDenoise.thresh    = thresh->getValue ();
-    pp->impulseDenoise.enabled   = getEnabled();
+    pp->impulseDenoise.thresh = thresh->getValue();
+    pp->impulseDenoise.enabled = getEnabled();
 }
 
-void ImpulseDenoise::setDefaults(const ProcParams* defParams)
+void ImpulseDenoise::setDefaults(const ProcParams *defParams)
 {
     thresh->setDefault(defParams->impulseDenoise.thresh);
     initial_params = defParams->impulseDenoise;
 }
 
-void ImpulseDenoise::adjusterChanged(Adjuster* a, double newval)
+void ImpulseDenoise::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
-        listener->panelChanged (EvIDNThresh, Glib::ustring::format (std::setw(2), std::fixed, std::setprecision(1), a->getValue()));
+        listener->panelChanged(EvIDNThresh,
+                               Glib::ustring::format(std::setw(2), std::fixed,
+                                                     std::setprecision(1),
+                                                     a->getValue()));
     }
 }
 
-void ImpulseDenoise::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void ImpulseDenoise::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void ImpulseDenoise::enabledChanged ()
+void ImpulseDenoise::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
-            listener->panelChanged (EvIDNEnabled, M("GENERAL_UNCHANGED"));
+            listener->panelChanged(EvIDNEnabled, M("GENERAL_UNCHANGED"));
         } else if (getEnabled()) {
-            listener->panelChanged (EvIDNEnabled, M("GENERAL_ENABLED"));
+            listener->panelChanged(EvIDNEnabled, M("GENERAL_ENABLED"));
         } else {
-            listener->panelChanged (EvIDNEnabled, M("GENERAL_DISABLED"));
+            listener->panelChanged(EvIDNEnabled, M("GENERAL_DISABLED"));
         }
     }
 }
 
-
-void ImpulseDenoise::trimValues (rtengine::procparams::ProcParams* pp)
+void ImpulseDenoise::trimValues(rtengine::procparams::ProcParams *pp)
 {
 
     thresh->trimValue(pp->impulseDenoise.thresh);
 }
-
 
 void ImpulseDenoise::toolReset(bool to_initial)
 {

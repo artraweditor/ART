@@ -21,42 +21,41 @@
 #ifndef _POPUPCOMMON_
 #define _POPUPCOMMON_
 
-#include <vector>
 #include <glibmm/ustring.h>
+#include <gtkmm/enums.h>
 #include <sigc++/signal.h>
+#include <vector>
 
-namespace Gtk
-{
+namespace Gtk {
 class Grid;
 class Menu;
 class Button;
 class ImageMenuItem;
-}
+} // namespace Gtk
 
 typedef struct _GdkEventButton GdkEventButton;
 
 class RTImage;
 
-class PopUpCommon
-{
+class PopUpCommon {
 
 public:
     typedef sigc::signal<void, int> type_signal_changed;
     typedef sigc::signal<void, int> type_signal_item_selected;
     type_signal_changed signal_changed();
     type_signal_item_selected signal_item_selected();
-    Gtk::Grid* buttonGroup;    // this is the widget to be packed
+    Gtk::Grid *buttonGroup; // this is the widget to be packed
 
-    PopUpCommon (Gtk::Button* button, const Glib::ustring& label = "");
-    virtual ~PopUpCommon ();
-    bool addEntry (const Glib::ustring& fileName, const Glib::ustring& label);
-    int getEntryCount () const;
-    bool setSelected (int entryNum);
-    int  getSelected () const;
+    PopUpCommon(Gtk::Button *button, const Glib::ustring &label = "");
+    virtual ~PopUpCommon();
+    bool addEntry(const Glib::ustring &fileName, const Glib::ustring &label);
+    int getEntryCount() const;
+    bool setSelected(int entryNum);
+    int getSelected() const;
     void setButtonHint();
-    void show ();
-    void set_tooltip_text (const Glib::ustring &text);
-    void setItemSensitivity (int i, bool isSensitive);
+    void show();
+    void set_tooltip_text(const Glib::ustring &text);
+    void setItemSensitivity(int i, bool isSensitive);
 
     void setRelief(Gtk::ReliefStyle s);
 
@@ -65,44 +64,38 @@ private:
     type_signal_item_selected messageItemSelected;
 
     std::vector<Glib::ustring> imageFilenames;
-    std::vector<const RTImage*> images;
+    std::vector<const RTImage *> images;
     Glib::ustring buttonHint;
-    RTImage* buttonImage;
-    Gtk::Grid* imageContainer;
-    Gtk::Menu* menu;
-    Gtk::Button* button;
+    RTImage *buttonImage;
+    Gtk::Grid *imageContainer;
+    Gtk::Menu *menu;
+    Gtk::Button *button;
     Gtk::Button *arrowButton;
     int selected;
     bool hasMenu;
 
-    void showMenu(GdkEventButton* event);
+    void showMenu(GdkEventButton *event);
 
 protected:
     virtual int posToIndex(int p) const { return p; }
     virtual int indexToPos(int i) const { return i; }
-    
-    void entrySelected (int i);
 
+    void entrySelected(int i);
 };
 
-inline PopUpCommon::type_signal_changed PopUpCommon::signal_changed ()
+inline PopUpCommon::type_signal_changed PopUpCommon::signal_changed()
 {
     return messageChanged;
 }
 
-inline PopUpCommon::type_signal_item_selected PopUpCommon::signal_item_selected ()
+inline PopUpCommon::type_signal_item_selected
+PopUpCommon::signal_item_selected()
 {
     return messageItemSelected;
 }
 
-inline int PopUpCommon::getEntryCount () const
-{
-    return images.size();
-}
+inline int PopUpCommon::getEntryCount() const { return images.size(); }
 
-inline int PopUpCommon::getSelected () const
-{
-    return posToIndex(selected);
-}
+inline int PopUpCommon::getSelected() const { return posToIndex(selected); }
 
 #endif

@@ -17,71 +17,70 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "rawexposure.h"
+#include "../rtengine/refreshmap.h"
 #include "guiutils.h"
 #include <sstream>
-#include "../rtengine/refreshmap.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-RAWExposure::RAWExposure () : FoldableToolPanel(this, "rawexposure", M("TP_EXPOS_WHITEPOINT_LABEL"), false, true, true)
+RAWExposure::RAWExposure()
+    : FoldableToolPanel(this, "rawexposure", M("TP_EXPOS_WHITEPOINT_LABEL"),
+                        false, true, true)
 {
     EvToolEnabled.set_action(rtengine::DARKFRAME);
     EvToolReset.set_action(rtengine::DARKFRAME);
-    
-    PexPos = Gtk::manage(new Adjuster (M("TP_RAWEXPOS_LINEAR"), 0.1, 32.0, 0.01, 1));
-    PexPos->setAdjusterListener (this);
+
+    PexPos =
+        Gtk::manage(new Adjuster(M("TP_RAWEXPOS_LINEAR"), 0.1, 32.0, 0.01, 1));
+    PexPos->setAdjusterListener(this);
 
     if (PexPos->delay < options.adjusterMaxDelay) {
         PexPos->delay = options.adjusterMaxDelay;
     }
 
     PexPos->show();
-    pack_start( *PexPos, Gtk::PACK_SHRINK, 4);//exposi
+    pack_start(*PexPos, Gtk::PACK_SHRINK, 4); // exposi
     PexPos->setLogScale(100, 0);
 }
 
-void RAWExposure::read(const rtengine::procparams::ProcParams* pp)
+void RAWExposure::read(const rtengine::procparams::ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
     setEnabled(pp->raw.enable_whitepoint);
-    PexPos->setValue (pp->raw.expos);
-    enableListener ();
+    PexPos->setValue(pp->raw.expos);
+    enableListener();
 }
 
-void RAWExposure::write(rtengine::procparams::ProcParams* pp)
+void RAWExposure::write(rtengine::procparams::ProcParams *pp)
 {
     pp->raw.enable_whitepoint = getEnabled();
     pp->raw.expos = PexPos->getValue();
 }
 
-void RAWExposure::adjusterChanged(Adjuster* a, double newval)
+void RAWExposure::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         Glib::ustring value = a->getTextValue();
 
-        if (a == PexPos ) {
-            listener->panelChanged (EvPreProcessExpCorrLinear,  value );
+        if (a == PexPos) {
+            listener->panelChanged(EvPreProcessExpCorrLinear, value);
         }
     }
 }
 
-void RAWExposure::adjusterAutoToggled(Adjuster* a, bool newval)
+void RAWExposure::adjusterAutoToggled(Adjuster *a, bool newval) {}
+
+void RAWExposure::setDefaults(const rtengine::procparams::ProcParams *defParams)
 {
+    PexPos->setDefault(defParams->raw.expos);
 }
 
-
-void RAWExposure::setDefaults(const rtengine::procparams::ProcParams* defParams)
-{
-    PexPos->setDefault( defParams->raw.expos);
-}
-
-void RAWExposure::trimValues (rtengine::procparams::ProcParams* pp)
+void RAWExposure::trimValues(rtengine::procparams::ProcParams *pp)
 {
 
     PexPos->trimValue(pp->raw.expos);
 }
-
 
 void RAWExposure::toolReset(bool to_initial)
 {

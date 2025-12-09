@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,21 +19,24 @@
  */
 #include "logencoding.h"
 #include "eventmapper.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-LogEncoding::LogEncoding():
-    FoldableToolPanel(this, "log", M("TP_LOGENC_LABEL"), false, true, true)
+LogEncoding::LogEncoding()
+    : FoldableToolPanel(this, "log", M("TP_LOGENC_LABEL"), false, true, true)
 {
     auto m = ProcEventMapper::getInstance();
     const auto EVENT = rtengine::LUMINANCECURVE;
-    EvEnabled = m->newEvent(rtengine::RGBCURVE | rtengine::M_AUTOEXP, "HISTORY_MSG_LOGENC_ENABLED");
+    EvEnabled = m->newEvent(rtengine::RGBCURVE | rtengine::M_AUTOEXP,
+                            "HISTORY_MSG_LOGENC_ENABLED");
     EvAuto = m->newEvent(rtengine::AUTOEXP, "HISTORY_MSG_LOGENC_AUTO");
-    EvAutoGainOn = m->newEvent(rtengine::AUTOEXP, "HISTORY_MSG_LOGENC_AUTOGAIN");
-    EvAutoGainOff = m->newEvent(rtengine::M_VOID, "HISTORY_MSG_LOGENC_AUTOGAIN");
+    EvAutoGainOn =
+        m->newEvent(rtengine::AUTOEXP, "HISTORY_MSG_LOGENC_AUTOGAIN");
+    EvAutoGainOff =
+        m->newEvent(rtengine::M_VOID, "HISTORY_MSG_LOGENC_AUTOGAIN");
     EvAutoBatch = m->newEvent(rtengine::M_VOID, "HISTORY_MSG_LOGENC_AUTO");
     EvGain = m->newEvent(EVENT, "HISTORY_MSG_LOGENC_GAIN");
     EvGainAuto = m->newEvent(rtengine::AUTOEXP, "HISTORY_MSG_LOGENC_GAIN");
@@ -46,25 +49,34 @@ LogEncoding::LogEncoding():
     EvToolReset.set_action(EVENT);
 
     autocompute = Gtk::manage(new Gtk::ToggleButton(M("TP_LOGENC_AUTO")));
-    autoconn = autocompute->signal_toggled().connect(sigc::mem_fun(*this, &LogEncoding::autocomputeToggled));
-    
-    gain = Gtk::manage(new Adjuster(M("TP_LOGENC_GAIN"), -10.0, 10.0, 0.05, 0.0));
-    gain->addAutoButton();
-    targetGray = Gtk::manage(new Adjuster(M("TP_LOGENC_TARGET_GRAY"), 5.0, 80.0, 0.1, 18.0));
-    blackEv = Gtk::manage(new Adjuster(M("TP_LOGENC_BLACK_EV"), -16.0, 0.0, 0.01, -13.5));
-    whiteEv = Gtk::manage(new Adjuster(M("TP_LOGENC_WHITE_EV"), 1.0, 32.0, 0.01, 2.5));
-    regularization = Gtk::manage(new Adjuster(M("TP_LOGENC_REGULARIZATION"), 0, 100, 1, 65));
-    satcontrol = Gtk::manage(new Gtk::CheckButton(M("TP_TM_FATTAL_SATCONTROL")));
-    satcontrol->signal_toggled().connect(sigc::mem_fun(*this, &LogEncoding::satcontrolChanged), true);
+    autoconn = autocompute->signal_toggled().connect(
+        sigc::mem_fun(*this, &LogEncoding::autocomputeToggled));
 
-    highlightCompression = Gtk::manage(new Adjuster(M("TP_LOGENC_HLCOMPRESSION"), 0, 100, 1, 0));
-    
+    gain =
+        Gtk::manage(new Adjuster(M("TP_LOGENC_GAIN"), -10.0, 10.0, 0.05, 0.0));
+    gain->addAutoButton();
+    targetGray = Gtk::manage(
+        new Adjuster(M("TP_LOGENC_TARGET_GRAY"), 5.0, 80.0, 0.1, 18.0));
+    blackEv = Gtk::manage(
+        new Adjuster(M("TP_LOGENC_BLACK_EV"), -16.0, 0.0, 0.01, -13.5));
+    whiteEv = Gtk::manage(
+        new Adjuster(M("TP_LOGENC_WHITE_EV"), 1.0, 32.0, 0.01, 2.5));
+    regularization =
+        Gtk::manage(new Adjuster(M("TP_LOGENC_REGULARIZATION"), 0, 100, 1, 65));
+    satcontrol =
+        Gtk::manage(new Gtk::CheckButton(M("TP_TM_FATTAL_SATCONTROL")));
+    satcontrol->signal_toggled().connect(
+        sigc::mem_fun(*this, &LogEncoding::satcontrolChanged), true);
+
+    highlightCompression =
+        Gtk::manage(new Adjuster(M("TP_LOGENC_HLCOMPRESSION"), 0, 100, 1, 0));
+
     gain->delay = options.adjusterMaxDelay;
     blackEv->delay = options.adjusterMaxDelay;
     whiteEv->delay = options.adjusterMaxDelay;
     targetGray->delay = options.adjusterMaxDelay;
     highlightCompression->delay = options.adjusterMaxDelay;
-    
+
     whiteEv->setAdjusterListener(this);
     gain->setAdjusterListener(this);
     blackEv->setAdjusterListener(this);
@@ -83,7 +95,7 @@ LogEncoding::LogEncoding():
     satcontrol->show();
     highlightCompression->show();
 
-    //gain->setLogScale(10, 18, true);
+    // gain->setLogScale(10, 18, true);
     gain->setLogScale(64, 0, true);
     targetGray->setLogScale(10, 18, true);
 
@@ -97,7 +109,6 @@ LogEncoding::LogEncoding():
     pack_start(*autocompute);
 }
 
-
 void LogEncoding::read(const ProcParams *pp)
 {
     disableListener();
@@ -105,7 +116,7 @@ void LogEncoding::read(const ProcParams *pp)
 
     setEnabled(pp->logenc.enabled);
 
-    autocompute->set_active(pp->logenc.autocompute);    
+    autocompute->set_active(pp->logenc.autocompute);
     gain->setValue(pp->logenc.gain);
     gain->setAutoValue(pp->logenc.autogain);
     blackEv->setValue(pp->logenc.blackEv);
@@ -144,16 +155,18 @@ void LogEncoding::setDefaults(const ProcParams *defParams)
     initial_params = defParams->logenc;
 }
 
-void LogEncoding::adjusterChanged(Adjuster* a, double newval)
+void LogEncoding::adjusterChanged(Adjuster *a, double newval)
 {
     ConnectionBlocker cbl(autoconn);
     if (a != gain && a != targetGray) {
         autocompute->set_active(false);
     }
-    
+
     if (listener && getEnabled()) {
         if (a == gain) {
-            listener->panelChanged(autocompute->get_active() ? EvGainAuto : EvGain, a->getTextValue());
+            listener->panelChanged(autocompute->get_active() ? EvGainAuto
+                                                             : EvGain,
+                                   a->getTextValue());
         } else if (a == blackEv) {
             listener->panelChanged(EvBlackEv, a->getTextValue());
         } else if (a == whiteEv) {
@@ -168,17 +181,18 @@ void LogEncoding::adjusterChanged(Adjuster* a, double newval)
     }
 }
 
-void LogEncoding::adjusterAutoToggled(Adjuster* a, bool newval)
+void LogEncoding::adjusterAutoToggled(Adjuster *a, bool newval)
 {
     if (listener) {
         if (a == gain) {
             auto e = (!newval) ? EvAutoGainOff : EvAutoGainOn;
-            listener->panelChanged(e, newval ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+            listener->panelChanged(e, newval ? M("GENERAL_ENABLED")
+                                             : M("GENERAL_DISABLED"));
         }
     }
 }
 
-void LogEncoding::enabledChanged ()
+void LogEncoding::enabledChanged()
 {
     if (listener) {
         if (get_inconsistent()) {
@@ -191,7 +205,6 @@ void LogEncoding::enabledChanged ()
     }
 }
 
-
 void LogEncoding::autocomputeToggled()
 {
     if (listener) {
@@ -199,7 +212,7 @@ void LogEncoding::autocomputeToggled()
             listener->panelChanged(EvAuto, M("GENERAL_ENABLED"));
             blackEv->setEnabled(false);
             whiteEv->setEnabled(false);
-            //targetGray->setEnabled(false);
+            // targetGray->setEnabled(false);
         } else {
             listener->panelChanged(EvAuto, M("GENERAL_DISABLED"));
             // blackEv->setEnabled(true);
@@ -208,11 +221,10 @@ void LogEncoding::autocomputeToggled()
     }
 }
 
-
 void LogEncoding::logEncodingChanged(const LogEncodingParams &params)
 {
     GThreadLock lock;
-    
+
     disableListener();
     ConnectionBlocker cbl(autoconn);
 
@@ -220,24 +232,24 @@ void LogEncoding::logEncodingChanged(const LogEncodingParams &params)
     // whiteEv->setEnabled(!params.autocompute);
     blackEv->setEnabled(true);
     whiteEv->setEnabled(true);
-//    targetGray->setEnabled(true);
+    //    targetGray->setEnabled(true);
 
     gain->setValue(params.gain);
     blackEv->setValue(params.blackEv);
     whiteEv->setValue(params.whiteEv);
-//    targetGray->setValue(params.targetGray);
-    
+    //    targetGray->setValue(params.targetGray);
+
     enableListener();
 }
-
 
 void LogEncoding::satcontrolChanged()
 {
     if (listener && getEnabled()) {
-        listener->panelChanged(EvSatControl, satcontrol->get_active() ? M("GENERAL_ENABLED") : M("GENERAL_DISABLED"));
+        listener->panelChanged(EvSatControl, satcontrol->get_active()
+                                                 ? M("GENERAL_ENABLED")
+                                                 : M("GENERAL_DISABLED"));
     }
 }
-
 
 void LogEncoding::toolReset(bool to_initial)
 {
@@ -248,7 +260,6 @@ void LogEncoding::toolReset(bool to_initial)
     pp.logenc.enabled = getEnabled();
     read(&pp);
 }
-
 
 void LogEncoding::registerShortcuts(ToolShortcutManager *mgr)
 {

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -90,7 +90,7 @@ enum ProcEventCode {
     EvCrop = 63,
     EvCACorr = 64,
     EvHREnabled = 65,
-    obsolete_66 = 66, //obsolete
+    obsolete_66 = 66, // obsolete
     EvHRMethod = 67,
     EvWProfile = 68,
     EvOProfile = 69,
@@ -135,7 +135,7 @@ enum ProcEventCode {
     EvResizeBoundingBox = 108,
     EvResizeAppliesTo = 109,
     EvLAvoidColorShift = 110,
-    obsolete_111 = 111,    // obsolete
+    obsolete_111 = 111, // obsolete
     EvLRSTProtection = 112,
     EvDemosaicDCBIter = 113,
     EvDemosaicFalseColorIter = 114,
@@ -173,7 +173,8 @@ enum ProcEventCode {
     EvSharpenEdgeThreechannels = 146,
     EvSharpenMicroEnabled = 147,
     EvSharpenMicroMatrix = 148,
-    EvDemosaicALLEnhanced = 149,  // Disabled but not removed for now, may be reintroduced some day
+    EvDemosaicALLEnhanced =
+        149, // Disabled but not removed for now, may be reintroduced some day
     EvVibranceEnabled = 150,
     EvVibrancePastels = 151,
     EvVibranceSaturated = 152,
@@ -259,7 +260,7 @@ enum ProcEventCode {
     EvBWAfterCurve = 232,
     EvBWAfterCurveMode = 233,
     EvAutoch = 234,
-//  EvFixedch=235,   -- can be reused --
+    //  EvFixedch=235,   -- can be reused --
     EvNeutralBW = 236,
     EvGradientFeather = 237,
     EvGradientStrength = 238,
@@ -442,13 +443,14 @@ enum ProcEventCode {
     EvRetinexEnabled = 415,
     EvRetinexmedianmap = 416,
     EvLlimd = 417,
-    EvretinexColorSpace = 418, // 418 if we want a separate history entry "Retinex - Color space", 406 if we don't
+    EvretinexColorSpace = 418, // 418 if we want a separate history entry
+                               // "Retinex - Color space", 406 if we don't
     EvLCDHCurve = 419,
     Evretinexgamma = 420,
     EvLgam = 421,
     EvLslope = 422,
     EvLhighl = 423,
-//    EvLbaselog = 424,   -- can be reused --
+    //    EvLbaselog = 424,   -- can be reused --
     EvRetinexlhcurve = 425,
     EvOIntent = 426,
     EvMonitorTransform = 427,
@@ -469,31 +471,31 @@ enum ProcEventCode {
     EvOBPCompens = 442,
     EvWBtempBias = 443,
     EvRawImageNum = 444,
-//    EvPixelShiftMotion = 445,
-//    EvPixelShiftMotionCorrection = 446,
-//    EvPixelShiftStddevFactorGreen = 447,
+    //    EvPixelShiftMotion = 445,
+    //    EvPixelShiftMotionCorrection = 446,
+    //    EvPixelShiftStddevFactorGreen = 447,
     EvPixelShiftEperIso = 448,
-//    EvPixelShiftNreadIso = 449,
-//    EvPixelShiftPrnu = 450,
+    //    EvPixelShiftNreadIso = 449,
+    //    EvPixelShiftPrnu = 450,
     EvPixelshiftShowMotion = 451,
     EvPixelshiftShowMotionMaskOnly = 452,
-//    EvPixelShiftAutomatic = 453,
-//    EvPixelShiftNonGreenHorizontal = 454,
-//    EvPixelShiftNonGreenVertical = 455,
+    //    EvPixelShiftAutomatic = 453,
+    //    EvPixelShiftNonGreenHorizontal = 454,
+    //    EvPixelShiftNonGreenVertical = 455,
     EvPixelShiftNonGreenCross = 456,
-//    EvPixelShiftStddevFactorRed = 457,
-//    EvPixelShiftStddevFactorBlue = 458,
-//    EvPixelShiftGreenAmaze = 459,
-//    EvPixelShiftNonGreenAmaze = 460,
+    //    EvPixelShiftStddevFactorRed = 457,
+    //    EvPixelShiftStddevFactorBlue = 458,
+    //    EvPixelShiftGreenAmaze = 459,
+    //    EvPixelShiftNonGreenAmaze = 460,
     EvPixelShiftGreen = 461,
-//    EvPixelShiftRedBlueWeight = 462,
+    //    EvPixelShiftRedBlueWeight = 462,
     EvPixelShiftBlur = 463,
     EvPixelShiftSigma = 464,
-//    EvPixelShiftSum = 465,
-//    EvPixelShiftExp0 = 466,
+    //    EvPixelShiftSum = 465,
+    //    EvPixelShiftExp0 = 466,
     EvPixelShiftHoleFill = 467,
     EvPixelShiftMedian = 468,
-//    EvPixelShiftMedian3 = 469,
+    //    EvPixelShiftMedian3 = 469,
     EvPixelShiftMotionMethod = 470,
     EvPixelShiftSmooth = 471,
     EvPixelShiftLmmse = 472,
@@ -517,12 +519,11 @@ enum ProcEventCode {
     EvWBEnabled = 490,
     EvRGBEnabled = 491,
     EvLEnabled = 492,
-//    EvPixelShiftOneGreen = 493,   can be reused
+    //    EvPixelShiftOneGreen = 493,   can be reused
 
     NUMOFEVENTS
 
 };
-
 
 class ProcEvent {
 public:
@@ -541,14 +542,24 @@ private:
     const char *msg_;
 };
 
-
 inline bool operator==(ProcEvent a, ProcEvent b) { return int(a) == int(b); }
-inline bool operator==(ProcEvent a, ProcEventCode b) { return int(a) == int(b); }
-inline bool operator==(ProcEventCode a, ProcEvent b) { return int(a) == int(b); }
+inline bool operator==(ProcEvent a, ProcEventCode b)
+{
+    return int(a) == int(b);
+}
+inline bool operator==(ProcEventCode a, ProcEvent b)
+{
+    return int(a) == int(b);
+}
 inline bool operator!=(ProcEvent a, ProcEvent b) { return int(a) != int(b); }
-inline bool operator!=(ProcEvent a, ProcEventCode b) { return int(a) != int(b); }
-inline bool operator!=(ProcEventCode a, ProcEvent b) { return int(a) != int(b); }
+inline bool operator!=(ProcEvent a, ProcEventCode b)
+{
+    return int(a) != int(b);
+}
+inline bool operator!=(ProcEventCode a, ProcEvent b)
+{
+    return int(a) != int(b);
+}
 
 } // namespace rtengine
 #endif
-

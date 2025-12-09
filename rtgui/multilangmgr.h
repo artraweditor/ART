@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -29,8 +29,9 @@ class MultiLangMgr {
 public:
     MultiLangMgr();
 
-    void load(const Glib::ustring &language, const std::vector<Glib::ustring> &fnames);
-    Glib::ustring getStr(const std::string& key) const;
+    void load(const Glib::ustring &language,
+              const std::vector<Glib::ustring> &fnames);
+    Glib::ustring getStr(const std::string &key) const;
     static bool isOSLanguageDetectSupported();
     static Glib::ustring getOSUserLanguage();
 
@@ -40,7 +41,4 @@ private:
 
 extern MultiLangMgr langMgr;
 
-inline Glib::ustring M(const std::string& key)
-{
-    return langMgr.getStr(key);
-}
+inline Glib::ustring M(const std::string &key) { return langMgr.getStr(key); }

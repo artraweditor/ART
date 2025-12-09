@@ -19,38 +19,40 @@
  */
 
 #include "clutparamspanel.h"
-#include "guiutils.h"
-#include "multilangmgr.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
+#include "guiutils.h"
+#include "multilangmgr.h"
 #include <map>
 
 namespace {
 
 class CLUTParamsCurveEditorGroup: public CurveEditorGroup {
 public:
-    CLUTParamsCurveEditorGroup(Glib::ustring &curveDir, Glib::ustring groupLabel="", float curvesRatio=1.f):
-        CurveEditorGroup(curveDir, groupLabel, curvesRatio) {}
+    CLUTParamsCurveEditorGroup(Glib::ustring &curveDir,
+                               Glib::ustring groupLabel = "",
+                               float curvesRatio = 1.f)
+        : CurveEditorGroup(curveDir, groupLabel, curvesRatio)
+    {
+    }
 
-    const std::vector<CurveEditor *> getCurveEditors() const { return curveEditors; }
+    const std::vector<CurveEditor *> getCurveEditors() const
+    {
+        return curveEditors;
+    }
 };
 
 } // namespace
 
-
-CLUTParamsPanel::CLUTParamsPanel():
-    sig_blocked_(false),
-    presets_combo_(nullptr)
+CLUTParamsPanel::CLUTParamsPanel(): sig_blocked_(false), presets_combo_(nullptr)
 {
     set_orientation(Gtk::ORIENTATION_VERTICAL);
 }
-
 
 Gtk::SizeRequestMode CLUTParamsPanel::get_request_mode_vfunc() const
 {
     return Gtk::SIZE_REQUEST_HEIGHT_FOR_WIDTH;
 }
-
 
 void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
 {
@@ -66,40 +68,37 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
         return;
     }
 
-    const auto lbl =
-        [](const Glib::ustring &l) -> Glib::ustring
-        {
-            if (!l.empty() && l[0] == '$') {
-                auto pos = l.find(';');
-                if (pos != Glib::ustring::npos) {
-                    auto key = l.substr(1, pos-1);
-                    auto dflt = l.substr(pos+1);
-                    auto res = M(key);
-                    return (res == key) ? dflt : res;
-                } else {
-                    return M(l.c_str()+1);
-                }
+    const auto lbl = [](const Glib::ustring &l) -> Glib::ustring {
+        if (!l.empty() && l[0] == '$') {
+            auto pos = l.find(';');
+            if (pos != Glib::ustring::npos) {
+                auto key = l.substr(1, pos - 1);
+                auto dflt = l.substr(pos + 1);
+                auto res = M(key);
+                return (res == key) ? dflt : res;
             } else {
-                return l;
+                return M(l.c_str() + 1);
             }
-        };
+        } else {
+            return l;
+        }
+    };
 
     Gtk::VBox *vb = this;
 
     std::vector<std::pair<Glib::ustring, Gtk::Box *>> groups;
     std::map<Glib::ustring, int> group_is_curve;
 
-    const auto reset =
-        [this]() -> void
-        {
-            setValue({});
-            emit_signal();
-        };
+    const auto reset = [this]() -> void {
+        setValue({});
+        emit_signal();
+    };
     Gtk::Button *r = Gtk::manage(new Gtk::Button());
     r->set_tooltip_markup(M("ADJUSTER_RESET_TO_DEFAULT"));
     r->add(*Gtk::manage(new RTImage("undo-small.svg", "redo-small.svg")));
     r->signal_clicked().connect(sigc::slot<void>(reset));
-    setExpandAlignProperties(r, false, false, Gtk::ALIGN_END, Gtk::ALIGN_CENTER);
+    setExpandAlignProperties(r, false, false, Gtk::ALIGN_END,
+                             Gtk::ALIGN_CENTER);
     r->set_relief(Gtk::RELIEF_NONE);
     r->get_style_context()->add_class(GTK_STYLE_CLASS_FLAT);
     r->set_can_focus(false);
@@ -115,7 +114,9 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
     const auto &presets = params_.get_presets();
     if (!presets.empty()) {
         Gtk::HBox *b = Gtk::manage(new Gtk::HBox());
-        b->pack_start(*Gtk::manage(new Gtk::Label(M("TP_COLORCORRECTION_LUT_PRESET") + ": ")), Gtk::PACK_SHRINK);
+        b->pack_start(*Gtk::manage(new Gtk::Label(
+                          M("TP_COLORCORRECTION_LUT_PRESET") + ": ")),
+                      Gtk::PACK_SHRINK);
         presets_combo_ = Gtk::manage(new MyComboBoxText());
         presets_combo_->append("(" + M("GENERAL_NONE") + ")");
         for (auto &p : presets) {
@@ -123,7 +124,8 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
         }
         b->pack_start(*presets_combo_, Gtk::PACK_EXPAND_WIDGET);
         vb->pack_start(*b, Gtk::PACK_SHRINK, 4);
-        presets_conn_ = presets_combo_->signal_changed().connect(sigc::mem_fun(*this, &CLUTParamsPanel::apply_preset));
+        presets_conn_ = presets_combo_->signal_changed().connect(
+            sigc::mem_fun(*this, &CLUTParamsPanel::apply_preset));
     }
 
     for (auto &d : params) {
@@ -143,7 +145,7 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
             }
         }
     }
-    
+
     for (auto &d : params) {
         void *w = nullptr;
         Gtk::Box *box = nullptr;
@@ -170,28 +172,33 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
         bool tooltip_ok = true;
         switch (d.type) {
         case rtengine::CLUTParamType::PT_BOOL: {
-            Gtk::CheckButton *b = Gtk::manage(new Gtk::CheckButton(lbl(d.gui_name)));
-            b->signal_toggled().connect(sigc::mem_fun(*this, &CLUTParamsPanel::emit_signal));
+            Gtk::CheckButton *b =
+                Gtk::manage(new Gtk::CheckButton(lbl(d.gui_name)));
+            b->signal_toggled().connect(
+                sigc::mem_fun(*this, &CLUTParamsPanel::emit_signal));
             w = b;
             box->pack_start(*b);
-        }   break;
+        } break;
         case rtengine::CLUTParamType::PT_CHOICE: {
             MyComboBoxText *c = Gtk::manage(new MyComboBoxText());
             for (auto l : d.choices) {
                 c->append(lbl(l));
             }
             Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
-            hb->pack_start(*Gtk::manage(new Gtk::Label(lbl(d.gui_name) + ": ")), Gtk::PACK_SHRINK);
+            hb->pack_start(*Gtk::manage(new Gtk::Label(lbl(d.gui_name) + ": ")),
+                           Gtk::PACK_SHRINK);
             hb->pack_start(*c);
-            c->signal_changed().connect(sigc::mem_fun(*this, &CLUTParamsPanel::emit_signal));
+            c->signal_changed().connect(
+                sigc::mem_fun(*this, &CLUTParamsPanel::emit_signal));
             w = c;
             box->pack_start(*hb);
-        }   break;
+        } break;
         case rtengine::CLUTParamType::PT_CURVE:
         case rtengine::CLUTParamType::PT_FLATCURVE:
         case rtengine::CLUTParamType::PT_FLATCURVE_PERIODIC: {
             CLUTParamsCurveEditorGroup *grp = nullptr;
-            bool grp_shared = !d.gui_group.empty() && group_is_curve[d.gui_group];
+            bool grp_shared =
+                !d.gui_group.empty() && group_is_curve[d.gui_group];
             Glib::ustring label = "";
             Glib::ustring grp_label = lbl(d.gui_name);
             bool grp_pack = false;
@@ -200,13 +207,15 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
                 grp_label = lbl(d.gui_group);
                 for (auto &p : groups) {
                     if (p.first == d.gui_group) {
-                        grp = static_cast<CLUTParamsCurveEditorGroup *>(p.second);
+                        grp =
+                            static_cast<CLUTParamsCurveEditorGroup *>(p.second);
                         break;
                     }
                 }
             }
             if (!grp) {
-                grp = Gtk::manage(new CLUTParamsCurveEditorGroup(options.lastColorToningCurvesDir, grp_label));
+                grp = Gtk::manage(new CLUTParamsCurveEditorGroup(
+                    options.lastColorToningCurvesDir, grp_label));
                 grp_pack = true;
                 if (grp_shared) {
                     groups.emplace_back(d.gui_group, grp);
@@ -216,10 +225,14 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
             CurveEditor *ce = nullptr;
             if (d.type == rtengine::CLUTParamType::PT_CURVE) {
                 ce = grp->addCurve(CT_Diagonal, label);
-                static_cast<DiagonalCurveEditor *>(ce)->setResetCurve(DiagonalCurveType(d.value_default[0]), d.value_default);
+                static_cast<DiagonalCurveEditor *>(ce)->setResetCurve(
+                    DiagonalCurveType(d.value_default[0]), d.value_default);
             } else {
-                ce = grp->addCurve(CT_Flat, label, nullptr, false, d.type == rtengine::CLUTParamType::PT_FLATCURVE_PERIODIC);
-                static_cast<FlatCurveEditor *>(ce)->setResetCurve(FlatCurveType(d.value_default[0]), d.value_default);
+                ce = grp->addCurve(
+                    CT_Flat, label, nullptr, false,
+                    d.type == rtengine::CLUTParamType::PT_FLATCURVE_PERIODIC);
+                static_cast<FlatCurveEditor *>(ce)->setResetCurve(
+                    FlatCurveType(d.value_default[0]), d.value_default);
             }
             if (!d.gui_bottom_gradient.empty()) {
                 std::vector<GradientMilestone> ms;
@@ -235,7 +248,8 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
                 }
                 ce->setLeftBarBgGradient(ms);
             }
-            if (!grp_shared || int(grp->getCurveEditors().size()) == group_is_curve[d.gui_group]) {
+            if (!grp_shared || int(grp->getCurveEditors().size()) ==
+                                   group_is_curve[d.gui_group]) {
                 grp->curveListComplete();
             }
             if (grp_pack) {
@@ -246,37 +260,39 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
                 ce->setTooltip(lbl(d.gui_tooltip));
             }
             tooltip_ok = false;
-        }   break;
+        } break;
         case rtengine::CLUTParamType::PT_INT:
         case rtengine::CLUTParamType::PT_FLOAT:
         default: {
-            Adjuster *a = Gtk::manage(new Adjuster(lbl(d.gui_name), d.value_min, d.value_max, d.gui_step, d.value_default.empty() ? 0.0 : d.value_default[0]));
+            Adjuster *a = Gtk::manage(new Adjuster(
+                lbl(d.gui_name), d.value_min, d.value_max, d.gui_step,
+                d.value_default.empty() ? 0.0 : d.value_default[0]));
             a->setAdjusterListener(this);
             box->pack_start(*a);
             w = a;
-        }   break;
+        } break;
         }
         if (!d.gui_tooltip.empty() && tooltip_ok) {
-            static_cast<Gtk::Widget *>(w)->set_tooltip_markup(lbl(d.gui_tooltip));
+            static_cast<Gtk::Widget *>(w)->set_tooltip_markup(
+                lbl(d.gui_tooltip));
         }
         widgets_.push_back(w);
     }
     show_all_children();
 }
 
-
 rtengine::CLUTParamValueMap CLUTParamsPanel::getValue() const
 {
     rtengine::CLUTParamValueMap values;
-    
+
     for (size_t i = 0; i < params_.size(); ++i) {
         auto w = widgets_[i];
         auto &d = params_[i];
 
-        std::vector<double> v = { 0 };
-        
+        std::vector<double> v = {0};
+
         switch (d.type) {
-        case rtengine::CLUTParamType::PT_BOOL: 
+        case rtengine::CLUTParamType::PT_BOOL:
             v[0] = static_cast<Gtk::CheckButton *>(w)->get_active();
             break;
         case rtengine::CLUTParamType::PT_CHOICE:
@@ -300,23 +316,22 @@ rtengine::CLUTParamValueMap CLUTParamsPanel::getValue() const
     return values;
 }
 
-
 void CLUTParamsPanel::setValue(const rtengine::CLUTParamValueMap &val)
 {
     bool prev = sig_blocked_;
     sig_blocked_ = true;
 
     for (size_t j = params_.size(); j > 0; --j) {
-        size_t i = j-1;
+        size_t i = j - 1;
         auto w = widgets_[i];
         auto &d = params_[i];
 
         auto it = val.find(d.name);
         auto vv = it != val.end() ? it->second : d.value_default;
         auto v = vv.empty() ? 0.0 : vv[0];
-        
+
         switch (d.type) {
-        case rtengine::CLUTParamType::PT_BOOL: 
+        case rtengine::CLUTParamType::PT_BOOL:
             static_cast<Gtk::CheckButton *>(w)->set_active(bool(v));
             break;
         case rtengine::CLUTParamType::PT_CHOICE:
@@ -328,7 +343,7 @@ void CLUTParamsPanel::setValue(const rtengine::CLUTParamValueMap &val)
             CurveEditor *ce = static_cast<CurveEditor *>(w);
             ce->setCurve(vv);
             ce->openIfNonlinear();
-        }   break;
+        } break;
         case rtengine::CLUTParamType::PT_INT:
         case rtengine::CLUTParamType::PT_FLOAT:
         default:
@@ -353,15 +368,14 @@ void CLUTParamsPanel::setValue(const rtengine::CLUTParamValueMap &val)
                 }
             }
             if (found) {
-                presets_combo_->set_active(i+1);
+                presets_combo_->set_active(i + 1);
                 break;
             }
-        } 
+        }
     }
 
     sig_blocked_ = prev;
 }
-
 
 void CLUTParamsPanel::emit_signal()
 {
@@ -373,7 +387,7 @@ void CLUTParamsPanel::emit_signal()
             int idx = presets_combo_->get_active_row_number();
             if (idx > 0) {
                 rtengine::CLUTParamValueMap pv;
-                params_.apply_preset(presets[idx-1].first, pv);
+                params_.apply_preset(presets[idx - 1].first, pv);
                 auto val = getValue();
                 for (auto &p : pv) {
                     if (p.second != val[p.first]) {
@@ -381,11 +395,10 @@ void CLUTParamsPanel::emit_signal()
                         break;
                     }
                 }
-            }     
+            }
         }
     }
 }
-
 
 void CLUTParamsPanel::apply_preset()
 {
@@ -394,7 +407,7 @@ void CLUTParamsPanel::apply_preset()
         auto idx = presets_combo_->get_active_row_number();
         if (idx > 0) {
             auto val = getValue();
-            params_.apply_preset(presets[idx-1].first, val);
+            params_.apply_preset(presets[idx - 1].first, val);
             setValue(val);
             emit_signal();
         }

@@ -20,14 +20,13 @@
 
 #pragma once
 
-#include "procparams.h"
 #include "array2D.h"
-#include "labimage.h"
-#include "imagefloat.h"
 #include "cache.h"
+#include "imagefloat.h"
+#include "labimage.h"
+#include "procparams.h"
 #include <unordered_map>
 #include <unordered_set>
-
 
 namespace rtengine {
 
@@ -35,8 +34,12 @@ class LinkedMaskManager {
 public:
     LinkedMaskManager();
     void init(const rtengine::ProcParams &pparams);
-    bool store_mask(const Glib::ustring &toolname, const Glib::ustring &name, const array2D<float> *mask1, const array2D<float> *mask2, bool multithread);
-    bool apply_mask(const Glib::ustring &toolname, const Glib::ustring &name, bool inverted, array2D<float> *out1, array2D<float> *out2, bool multithread, ProgressListener *plistener);
+    bool store_mask(const Glib::ustring &toolname, const Glib::ustring &name,
+                    const array2D<float> *mask1, const array2D<float> *mask2,
+                    bool multithread);
+    bool apply_mask(const Glib::ustring &toolname, const Glib::ustring &name,
+                    bool inverted, array2D<float> *out1, array2D<float> *out2,
+                    bool multithread, ProgressListener *plistener);
     bool is_needed(const Glib::ustring &toolname, const Glib::ustring &name);
 
 private:
@@ -45,11 +48,14 @@ private:
     std::unordered_set<std::string> needed_;
 };
 
-
 class ExternalMaskManager: public NonCopyable {
 public:
     static ExternalMaskManager *getInstance();
-    bool apply_mask(const Glib::ustring &filename, bool inverted, double feather, int offset_x, int offset_y, int full_width, int full_height, const array2D<float> &guide, array2D<float> *out, bool multithread, ProgressListener *plistener);
+    bool apply_mask(const Glib::ustring &filename, bool inverted,
+                    double feather, int offset_x, int offset_y, int full_width,
+                    int full_height, const array2D<float> &guide,
+                    array2D<float> *out, bool multithread,
+                    ProgressListener *plistener);
 
     static void init();
     static void cleanup();
@@ -61,12 +67,20 @@ private:
     static std::unique_ptr<ExternalMaskManager> instance_;
 };
 
-
-bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname, LinkedMaskManager &mmgr, const std::vector<procparams::Mask> &masks, int offset_x, int offset_y, int full_width, int full_height, double scale, bool multithread, int show_mask_idx, std::vector<array2D<float>> *Lmask, std::vector<array2D<float>> *abmask, ProgressListener *pl);
+bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
+                   LinkedMaskManager &mmgr,
+                   const std::vector<procparams::Mask> &masks, int offset_x,
+                   int offset_y, int full_width, int full_height, double scale,
+                   bool multithread, int show_mask_idx,
+                   std::vector<array2D<float>> *Lmask,
+                   std::vector<array2D<float>> *abmask, ProgressListener *pl);
 
 enum class MasksEditID { H = 0, C, L };
-void fillPipetteMasks(Imagefloat *rgb, PlanarWhateverData<float> *editWhatever, MasksEditID id, bool multithread);
+void fillPipetteMasks(Imagefloat *rgb, PlanarWhateverData<float> *editWhatever,
+                      MasksEditID id, bool multithread);
 
-bool getDeltaEColor(Imagefloat *rgb, int x, int y, int offset_x, int offset_y, int full_width, int full_height, double scale, float &L, float &C, float &H);
+bool getDeltaEColor(Imagefloat *rgb, int x, int y, int offset_x, int offset_y,
+                    int full_width, int full_height, double scale, float &L,
+                    float &C, float &H);
 
 } // namespace rtengine

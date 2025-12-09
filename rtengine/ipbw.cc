@@ -20,15 +20,16 @@
 // extracted and datapted from ImProcFunctions::rgbProc (improcfun.cc) of
 // RawTherapee
 
+#include "color.h"
+#include "curves.h"
+#include "improcfun.h"
 #include <array>
 #include <unordered_map>
-#include "improcfun.h"
-#include "curves.h"
-#include "color.h"
 
 namespace rtengine {
 
-/** @brief Compute the B&W constants for the Black and White processing and its GUI
+/** @brief Compute the B&W constants for the Black and White processing and its
+ * GUI
  * @param setting main mode
  * @param filter string of the filter effect to use
  * @param algo choice between linear and special for OYCPM colors
@@ -42,15 +43,18 @@ namespace rtengine {
  * @param mixerMagenta magenta channel value of the channel mixer [-100 ; +200]
  * @param autoc automatic mode of the channel mixer
  * @param complement adjust complementary channel
- * @param kcorec in absolute mode, value to correct the mixer [1 ; 3], usually near 1 (return value)
+ * @param kcorec in absolute mode, value to correct the mixer [1 ; 3], usually
+ * near 1 (return value)
  * @param rrm red channel of the mixer (return value)
  * @param ggm green channel of the mixer (return value)
  * @param bbm blue channel of the mixer (return value)
  */
-void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &filter, const Glib::ustring &algo,
-                             float &filcor, float &mixerRed, float &mixerGreen,
-                             float &mixerBlue, 
-                             float &kcorec, double &rrm, double &ggm, double &bbm)
+void computeBWMixerConstants(const Glib::ustring &setting,
+                             const Glib::ustring &filter,
+                             const Glib::ustring &algo, float &filcor,
+                             float &mixerRed, float &mixerGreen,
+                             float &mixerBlue, float &kcorec, double &rrm,
+                             double &ggm, double &bbm)
 {
     float somm;
     float som = mixerRed + mixerGreen + mixerBlue;
@@ -63,19 +67,18 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
         som = -1.f;
     }
 
-    static const std::unordered_map<std::string, std::array<float, 3>> presets = {
-        {"NormalContrast", {43.f, 33.f, 30.f}},
-        {"Panchromatic", {33.3f, 33.3f, 33.3f}},
-        {"HyperPanchromatic", {41.f, 25.f, 34.f}},
-        {"LowSensitivity", {27.f, 27.f, 46.f}},
-        {"HighSensitivity", {30.f, 28.f, 42.f}},
-        {"Orthochromatic", {0.f, 42.f, 58.f}},
-        {"HighContrast", {40.f, 34.f, 60.f}},
-        {"Luminance", {30.f, 59.f, 11.f}},
-        {"Landscape", {66.f, 24.f, 10.f}},
-        {"Portrait", {54.f, 44.f, 12.f}},
-        {"InfraRed", {-40.f, 200.f, -17.f}}
-    };
+    static const std::unordered_map<std::string, std::array<float, 3>> presets =
+        {{"NormalContrast", {43.f, 33.f, 30.f}},
+         {"Panchromatic", {33.3f, 33.3f, 33.3f}},
+         {"HyperPanchromatic", {41.f, 25.f, 34.f}},
+         {"LowSensitivity", {27.f, 27.f, 46.f}},
+         {"HighSensitivity", {30.f, 28.f, 42.f}},
+         {"Orthochromatic", {0.f, 42.f, 58.f}},
+         {"HighContrast", {40.f, 34.f, 60.f}},
+         {"Luminance", {30.f, 59.f, 11.f}},
+         {"Landscape", {66.f, 24.f, 10.f}},
+         {"Portrait", {54.f, 44.f, 12.f}},
+         {"InfraRed", {-40.f, 200.f, -17.f}}};
 
     auto it = presets.find(setting);
     if (it != presets.end()) {
@@ -85,7 +88,7 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
     }
 
     // rM = mixerRed, gM = mixerGreen, bM = mixerBlue !
-    //presets
+    // presets
     if (setting == "RGB-Abs" || setting == "ROYGCBPM-Abs") {
         kcorec = som / 100.f;
     }
@@ -142,11 +145,11 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
 
     somm = mixerRed + mixerGreen + mixerBlue;
 
-    if(somm >= 0.f && somm < 1.f) {
+    if (somm >= 0.f && somm < 1.f) {
         somm = 1.f;
     }
 
-    if(somm < 0.f && somm > -1.f) {
+    if (somm < 0.f && somm > -1.f) {
         somm = -1.f;
     }
 
@@ -154,24 +157,23 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
     mixerGreen = mixerGreen / somm;
     mixerBlue = mixerBlue / somm;
 
-    //Color filters
+    // Color filters
     float filred, filgreen, filblue;
     filred = 1.f;
     filgreen = 1.f;
     filblue = 1.f;
     filcor = 1.f;
 
-    static const std::unordered_map<std::string, std::array<float, 4>> filters = {
-        {"None", {1.f, 1.f, 1.f, 1.f}},
-        {"Red", {1.f, 0.05f, 0.f, 1.08f}},
-        {"Orange", {1.f, 0.6f, 0.f, 1.35f}},
-        {"Yellow", {1.f, 1.f, 0.05f, 1.23f}},
-        {"YellowGreen", {0.6f, 1.f, 0.3f, 1.32f}},
-        {"Green", {0.2f, 1.f, 0.3f, 1.41f}},
-        {"Cyan", {0.05f, 1.f, 1.f, 1.23f}},
-        {"Blue", {0.f, 0.05f, 1.f, 1.20f}},
-        {"Purple", {1.f, 0.05f, 1.f, 1.23f}}
-    };
+    static const std::unordered_map<std::string, std::array<float, 4>> filters =
+        {{"None", {1.f, 1.f, 1.f, 1.f}},
+         {"Red", {1.f, 0.05f, 0.f, 1.08f}},
+         {"Orange", {1.f, 0.6f, 0.f, 1.35f}},
+         {"Yellow", {1.f, 1.f, 0.05f, 1.23f}},
+         {"YellowGreen", {0.6f, 1.f, 0.3f, 1.32f}},
+         {"Green", {0.2f, 1.f, 0.3f, 1.41f}},
+         {"Cyan", {0.05f, 1.f, 1.f, 1.23f}},
+         {"Blue", {0.f, 0.05f, 1.f, 1.20f}},
+         {"Purple", {1.f, 0.05f, 1.f, 1.23f}}};
 
     auto it2 = filters.find(filter);
     if (it2 != filters.end()) {
@@ -181,26 +183,26 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
         filcor = it2->second[3];
     }
 
-    mixerRed   = mixerRed * filred;
+    mixerRed = mixerRed * filred;
     mixerGreen = mixerGreen * filgreen;
-    mixerBlue  = mixerBlue  * filblue;
+    mixerBlue = mixerBlue * filblue;
 
-    if(mixerRed + mixerGreen + mixerBlue == 0) {
+    if (mixerRed + mixerGreen + mixerBlue == 0) {
         mixerRed += 1.f;
     }
 
-    mixerRed   = filcor * mixerRed   / (mixerRed + mixerGreen + mixerBlue);
+    mixerRed = filcor * mixerRed / (mixerRed + mixerGreen + mixerBlue);
     mixerGreen = filcor * mixerGreen / (mixerRed + mixerGreen + mixerBlue);
-    mixerBlue  = filcor * mixerBlue  / (mixerRed + mixerGreen + mixerBlue);
+    mixerBlue = filcor * mixerBlue / (mixerRed + mixerGreen + mixerBlue);
 
     if (filter != "None") {
         som = mixerRed + mixerGreen + mixerBlue;
 
-        if(som >= 0.f && som < 1.f) {
+        if (som >= 0.f && som < 1.f) {
             som = 1.f;
         }
 
-        if(som < 0.f && som > -1.f) {
+        if (som < 0.f && som > -1.f) {
             som = -1.f;
         }
 
@@ -209,7 +211,6 @@ void computeBWMixerConstants(const Glib::ustring &setting, const Glib::ustring &
         }
     }
 }
-
 
 void ImProcFunctions::blackAndWhite(Imagefloat *img)
 {
@@ -251,14 +252,16 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
         gammabwb = 1.f - bwbgam / gamvalb;
     }
     bool hasgammabw = gammabwr != 1.f || gammabwg != 1.f || gammabwb != 1.f;
-    
+
     const int W = img->getWidth();
     const int H = img->getHeight();
 
     float kcorec = 1.f;
     float filcor;
     double rrm, ggm, bbm;
-    computeBWMixerConstants(params->blackwhite.setting, params->blackwhite.filter, "", filcor, bwr, bwg, bwb, kcorec, rrm, ggm, bbm);
+    computeBWMixerConstants(params->blackwhite.setting,
+                            params->blackwhite.filter, "", filcor, bwr, bwg,
+                            bwb, kcorec, rrm, ggm, bbm);
 
     LUTf gamma_r, gamma_g, gamma_b;
     if (hasgammabw) {
@@ -280,12 +283,12 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
 #endif
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
 #ifdef __SSE2__
-        for (; x < W-3; x += 4) {
+        for (; x < W - 3; x += 4) {
             vfloat r = LVF(img->r(y, x));
             vfloat g = LVF(img->g(y, x));
             vfloat b = LVF(img->b(y, x));
@@ -310,14 +313,17 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
                 g = gamma_g[g];
                 b = gamma_b[b];
             }
-            img->r(y, x) = img->g(y, x) = img->b(y, x) = ((bwr * r + bwg * g + bwb * b) * kcorec);
+            img->r(y, x) = img->g(y, x) = img->b(y, x) =
+                ((bwr * r + bwg * g + bwb * b) * kcorec);
         }
     }
 
     if (params->blackwhite.colorCast.getBottom() > 0) {
         // apply color cast
-        float s = pow_F(float(params->blackwhite.colorCast.getBottom()) / 100.f, 3.f);
-        float h = float(params->blackwhite.colorCast.getTop()) / 180.f * rtengine::RT_PI;
+        float s =
+            pow_F(float(params->blackwhite.colorCast.getBottom()) / 100.f, 3.f);
+        float h = float(params->blackwhite.colorCast.getTop()) / 180.f *
+                  rtengine::RT_PI;
         float u, v;
         Color::hsl2yuv(h, s, u, v);
         img->setMode(Imagefloat::Mode::YUV, multiThread);
@@ -325,12 +331,8 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
         LUTf ulut(65536);
         LUTf vlut(65536);
         DiagonalCurve filmcurve(curves::filmcurve_def);
-        FlatCurve satcurve({
-                FCT_MinMaxCPoints,
-                0, 0, 0.35, 0,
-                0.5, 1, 0.35, 0.35,
-                1, 0, 0, 0.35
-            });
+        FlatCurve satcurve({FCT_MinMaxCPoints, 0, 0, 0.35, 0, 0.5, 1, 0.35,
+                            0.35, 1, 0, 0, 0.35});
         for (int i = 0; i < 65536; ++i) {
             float x = Color::gamma_srgbclipped(i) / 65535.f;
             float y = filmcurve.getVal(x) * 65535.f;
@@ -341,7 +343,7 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
         }
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;

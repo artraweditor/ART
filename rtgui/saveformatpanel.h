@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,18 +19,17 @@
  */
 #pragma once
 
-#include <gtkmm.h>
+#include "../rtengine/imgiomanager.h"
 #include "adjuster.h"
 #include "guiutils.h"
 #include "options.h"
-#include "../rtengine/imgiomanager.h"
+#include <gtkmm.h>
 
 class FormatChangeListener {
 public:
     virtual ~FormatChangeListener() = default;
-    virtual void formatChanged(const Glib::ustring& format) = 0;
+    virtual void formatChanged(const Glib::ustring &format) = 0;
 };
-
 
 class SaveFormatPanel: public Gtk::Grid, public AdjusterListener {
 protected:
@@ -43,15 +42,14 @@ protected:
     Gtk::Label *jpegSubSampLabel;
     FormatChangeListener *listener;
     Gtk::CheckButton *savesPP;
-    std::vector<std::pair<std::string, rtengine::ImageIOManager::SaveFormatInfo>> extrafmts_;
+    std::vector<
+        std::pair<std::string, rtengine::ImageIOManager::SaveFormatInfo>>
+        extrafmts_;
 
 public:
     SaveFormatPanel();
     ~SaveFormatPanel() override;
-    void setListener(FormatChangeListener *l)
-    {
-        listener = l;
-    }
+    void setListener(FormatChangeListener *l) { listener = l; }
 
     void init(SaveFormat &sf);
     SaveFormat getFormat();
@@ -62,4 +60,3 @@ public:
 
     Glib::ustring getExtension();
 };
-

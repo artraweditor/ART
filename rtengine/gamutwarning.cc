@@ -28,23 +28,40 @@
 
 namespace rtengine {
 
-GamutWarning::GamutWarning(cmsHPROFILE gamutprof, RenderingIntent intent, bool gamutbpc):
-    lab2ref(nullptr),
-    lab2softproof(nullptr),
-    softproof2ref(nullptr)
+GamutWarning::GamutWarning(cmsHPROFILE gamutprof, RenderingIntent intent,
+                           bool gamutbpc)
+    : lab2ref(nullptr), lab2softproof(nullptr), softproof2ref(nullptr)
 {
     cmsHPROFILE iprof = cmsCreateLab4Profile(nullptr);
-    if (cmsIsMatrixShaper(gamutprof) && !cmsIsCLUT(gamutprof, intent, LCMS_USED_AS_OUTPUT)) {
+    if (cmsIsMatrixShaper(gamutprof) &&
+        !cmsIsCLUT(gamutprof, intent, LCMS_USED_AS_OUTPUT)) {
         cmsHPROFILE aces = ICCStore::getInstance()->workingSpace("ACESp0");
         if (aces) {
-            lab2ref = cmsCreateTransform(iprof, TYPE_Lab_FLT, aces, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
-            lab2softproof = cmsCreateTransform(iprof, TYPE_Lab_FLT, gamutprof, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
-            softproof2ref = cmsCreateTransform(gamutprof, TYPE_RGB_FLT, aces, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE | (gamutbpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0));
+            lab2ref =
+                cmsCreateTransform(iprof, TYPE_Lab_FLT, aces, TYPE_RGB_FLT,
+                                   INTENT_ABSOLUTE_COLORIMETRIC,
+                                   cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
+            lab2softproof =
+                cmsCreateTransform(iprof, TYPE_Lab_FLT, gamutprof, TYPE_RGB_FLT,
+                                   INTENT_ABSOLUTE_COLORIMETRIC,
+                                   cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
+            softproof2ref = cmsCreateTransform(
+                gamutprof, TYPE_RGB_FLT, aces, TYPE_RGB_FLT,
+                INTENT_ABSOLUTE_COLORIMETRIC,
+                cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE |
+                    (gamutbpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0));
         }
     } else {
         lab2ref = nullptr;
-        lab2softproof = cmsCreateTransform(iprof, TYPE_Lab_FLT, gamutprof, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
-        softproof2ref = cmsCreateTransform(gamutprof, TYPE_RGB_FLT, iprof, TYPE_Lab_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE | (gamutbpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0));
+        lab2softproof =
+            cmsCreateTransform(iprof, TYPE_Lab_FLT, gamutprof, TYPE_RGB_FLT,
+                               INTENT_ABSOLUTE_COLORIMETRIC,
+                               cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
+        softproof2ref = cmsCreateTransform(
+            gamutprof, TYPE_RGB_FLT, iprof, TYPE_Lab_FLT,
+            INTENT_ABSOLUTE_COLORIMETRIC,
+            cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE |
+                (gamutbpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0));
     }
 
     if (!softproof2ref) {
@@ -61,7 +78,6 @@ GamutWarning::GamutWarning(cmsHPROFILE gamutprof, RenderingIntent intent, bool g
     cmsCloseProfile(iprof);
 }
 
-
 GamutWarning::~GamutWarning()
 {
     if (softproof2ref) {
@@ -75,12 +91,12 @@ GamutWarning::~GamutWarning()
     }
 }
 
-
-void GamutWarning::markLine(Image8 *image, int y, float *srcbuf, float *buf1, float *buf2)
+void GamutWarning::markLine(Image8 *image, int y, float *srcbuf, float *buf1,
+                            float *buf2)
 {
     if (softproof2ref) {
         const int width = image->getWidth();
-        
+
         float delta_max = lab2ref ? 0.0001f : 4.9999f;
         cmsDoTransform(lab2softproof, srcbuf, buf2, width);
         // since we are checking for out-of-gamut, we do want to clamp here!
@@ -88,17 +104,20 @@ void GamutWarning::markLine(Image8 *image, int y, float *srcbuf, float *buf1, fl
             buf2[i] = LIM01(buf2[i]);
         }
         cmsDoTransform(softproof2ref, buf2, buf1, width);
-        
+
         float *proofdata = buf1;
         float *refdata = srcbuf;
-        
+
         if (lab2ref) {
             cmsDoTransform(lab2ref, srcbuf, buf2, width);
             refdata = buf2;
 
             int iy = 0;
             for (int j = 0; j < width; ++j) {
-                float delta = max(std::abs(proofdata[iy] - refdata[iy]), std::abs(proofdata[iy+1] - refdata[iy+1]), std::abs(proofdata[iy+2] - refdata[iy+2]));
+                float delta =
+                    max(std::abs(proofdata[iy] - refdata[iy]),
+                        std::abs(proofdata[iy + 1] - refdata[iy + 1]),
+                        std::abs(proofdata[iy + 2] - refdata[iy + 2]));
                 iy += 3;
 
                 if (delta > delta_max) {
@@ -108,8 +127,10 @@ void GamutWarning::markLine(Image8 *image, int y, float *srcbuf, float *buf1, fl
         } else {
             int iy = 0;
             for (int j = 0; j < width; ++j) {
-                cmsCIELab lab1 = { proofdata[iy], proofdata[iy+1], proofdata[iy+2] };
-                cmsCIELab lab2 = { refdata[iy], refdata[iy+1], refdata[iy+2] };
+                cmsCIELab lab1 = {proofdata[iy], proofdata[iy + 1],
+                                  proofdata[iy + 2]};
+                cmsCIELab lab2 = {refdata[iy], refdata[iy + 1],
+                                  refdata[iy + 2]};
                 iy += 3;
                 float delta = cmsDeltaE(&lab1, &lab2);
                 if (delta > delta_max) {
@@ -120,13 +141,11 @@ void GamutWarning::markLine(Image8 *image, int y, float *srcbuf, float *buf1, fl
     }
 }
 
-
 inline void GamutWarning::mark(Image8 *image, int y, int x)
 {
     image->r(y, x) = 0;
     image->g(y, x) = 255;
     image->b(y, x) = 255;
 }
-
 
 } // namespace rtengine

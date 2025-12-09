@@ -18,12 +18,9 @@
  */
 #include "browserfilter.h"
 
-BrowserFilter::BrowserFilter () : 
-    showTrash (true),
-    showNotTrash (true),
-    showOriginal (false),
-    multiselect (false),
-    exifFilterEnabled (false)
+BrowserFilter::BrowserFilter()
+    : showTrash(true), showNotTrash(true), showOriginal(false),
+      multiselect(false), exifFilterEnabled(false)
 {
     for (int i = 0; i < 6; i++) {
         showRanked[i] = true;
@@ -35,4 +32,3 @@ BrowserFilter::BrowserFilter () :
         showRecentlySaved[i] = true;
     }
 }
-

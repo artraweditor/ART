@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,17 +20,15 @@
 #ifndef _FILTERPANEL_
 #define _FILTERPANEL_
 
-#include <gtkmm.h>
 #include "dateentry.h"
 #include "exiffiltersettings.h"
-
+#include <gtkmm.h>
 
 class FilterPanelListener {
 public:
     virtual ~FilterPanelListener() = default;
-    virtual void exifFilterChanged () = 0;
+    virtual void exifFilterChanged() = 0;
 };
-
 
 class FilterPanel: public Gtk::VBox {
 protected:
@@ -71,20 +69,14 @@ protected:
 public:
     FilterPanel();
 
-    void setFilterPanelListener(FilterPanelListener *l)
-    {
-        listener = l;
-    }
+    void setFilterPanelListener(FilterPanelListener *l) { listener = l; }
 
     void setFilter(ExifFilterSettings &defefs, bool update);
-    ExifFilterSettings getFilter(bool full_data=true);
+    ExifFilterSettings getFilter(bool full_data = true);
     bool isEnabled();
 
     void valueChanged();
-    void setEnabled(bool enabledState)
-    {
-        enabled->set_active(enabledState);
-    }
+    void setEnabled(bool enabledState) { enabled->set_active(enabledState); }
 };
 
 #endif

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2020 Lawrence Lee <billee@ucdavis.edu>
@@ -22,9 +22,9 @@
 #include <memory>
 
 #include "edit.h"
-typedef Rectangle EditRectangle; // workaround to compilation errors with exiv2 0.27.3 on windows
+typedef Rectangle EditRectangle; // workaround to compilation errors with exiv2
+                                 // 0.27.3 on windows
 #include "../rtengine/perspectivecorrection.h"
-
 
 struct ControlLine {
     static constexpr int OBJ_COUNT = 4;
@@ -36,7 +36,6 @@ struct ControlLine {
 
     ~ControlLine();
 };
-
 
 class ControlLineManager: public EditSubscriber {
 
@@ -54,8 +53,9 @@ protected:
     int prev_obj;
     int selected_object;
 
-    void addLine(rtengine::Coord begin, rtengine::Coord end,
-                 rtengine::ControlLine::Type type = rtengine::ControlLine::VERTICAL);
+    void
+    addLine(rtengine::Coord begin, rtengine::Coord end,
+            rtengine::ControlLine::Type type = rtengine::ControlLine::VERTICAL);
     /**
      * Set the line type of the line containing the object according to the
      * line's angle.
@@ -89,14 +89,14 @@ public:
     /** Set whether or not lines can be drawn and deleted. */
     void setDrawMode(bool draw);
     void setEdited(bool edited);
-    void setEditProvider(EditDataProvider* provider);
-    void setLines(const std::vector<rtengine::ControlLine>& lines);
+    void setEditProvider(EditDataProvider *provider);
+    void setLines(const std::vector<rtengine::ControlLine> &lines);
     /** Returns the number of lines. */
     size_t size(void) const;
     /**
      * Allocates a new array and populates it with copies of the control lines.
      */
-    void toControlLines(std::vector<rtengine::ControlLine>& converted) const;
+    void toControlLines(std::vector<rtengine::ControlLine> &converted) const;
 
     // EditSubscriber overrides
     bool button1Pressed(int modifierKey) override;

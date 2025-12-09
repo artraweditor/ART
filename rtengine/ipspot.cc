@@ -17,13 +17,13 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "improcfun.h"
 #include "alpha.h"
-#include "procparams.h"
-#include "imagesource.h"
-#include "imagefloat.h"
-#include "rt_math.h"
 #include "guidedfilter.h"
+#include "imagefloat.h"
+#include "imagesource.h"
+#include "improcfun.h"
+#include "procparams.h"
+#include "rt_math.h"
 #include <iostream>
 #include <set>
 
@@ -58,7 +58,6 @@ inline float feather_factor(float x, float radius, float sigma)
     return LIM01(xexpf((-SQR(std::max(x - radius, 0.f)) / sigma)));
 }
 
-
 //-----------------------------------------------------------------------------
 // adapted from gimpheal.c in GIMP
 /* GIMP - The GNU Image Manipulation Program
@@ -86,51 +85,47 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
 {
     const int width = img->getWidth();
     const int height = img->getHeight();
-    
+
     const int MAX_ITER = std::min(std::max(width, height) * 2, 1000);
 
     constexpr float w = 1.4f;
     constexpr float w1 = 1.f - w;
     constexpr float w2 = w / 4.f;
 
-    const auto next =
-        [&](float **chan, int x, int y) -> void
-        {
-            float &cur = chan[y][x];
-            float left = chan[y][x-1];
-            float top = chan[y-1][x];
-            float right = chan[y][x+1];
-            float bottom = chan[y+1][x];
-            float upd = cur * w1 + (left + top + right + bottom) * w2;
-            cur = upd;
-        };
+    const auto next = [&](float **chan, int x, int y) -> void {
+        float &cur = chan[y][x];
+        float left = chan[y][x - 1];
+        float top = chan[y - 1][x];
+        float right = chan[y][x + 1];
+        float bottom = chan[y + 1][x];
+        float upd = cur * w1 + (left + top + right + bottom) * w2;
+        cur = upd;
+    };
 
 #ifdef __SSE2__
     const vfloat w1v = F2V(w1);
     const vfloat w2v = F2V(w2);
     const vint iZEROv = vcast_vi_i(0);
-    
-    const auto vnext =
-        [&](float **chan, int x, int y) -> void
-        {
-            vfloat cur = LVFU(chan[y][x]);
-            vfloat left = LVFU(chan[y][x-1]);
-            vfloat top = LVFU(chan[y-1][x]);
-            vfloat right = LVFU(chan[y][x+1]);
-            vfloat bottom = LVFU(chan[y+1][x]);
-            vfloat upd = cur * w1v + (left + top + right + bottom) * w2v;
-            STVFU(chan[y][x], upd);
-        };
+
+    const auto vnext = [&](float **chan, int x, int y) -> void {
+        vfloat cur = LVFU(chan[y][x]);
+        vfloat left = LVFU(chan[y][x - 1]);
+        vfloat top = LVFU(chan[y - 1][x]);
+        vfloat right = LVFU(chan[y][x + 1]);
+        vfloat bottom = LVFU(chan[y + 1][x]);
+        vfloat upd = cur * w1v + (left + top + right + bottom) * w2v;
+        STVFU(chan[y][x], upd);
+    };
 #endif
 
     for (int iter = 0; iter < MAX_ITER; ++iter) {
 #ifdef _OPENMP
-#       pragma omp parallel for schedule(dynamic,16)
+#pragma omp parallel for schedule(dynamic, 16)
 #endif
-        for (int y = 1; y < height-1; ++y) {
+        for (int y = 1; y < height - 1; ++y) {
             int x = 1;
 #ifdef __SSE2__
-            for (; x < width-1-3; x+=4) {
+            for (; x < width - 1 - 3; x += 4) {
                 vint m = _mm_loadu_si128(reinterpret_cast<vint *>(&mask[y][x]));
                 if (vtest(vnotm(vmaski_eq(m, iZEROv)))) {
                     vnext(img->r.ptrs, x, y);
@@ -139,7 +134,7 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
                 }
             }
 #endif
-            for (; x < width-1; ++x) {
+            for (; x < width - 1; ++x) {
                 if (mask[y][x]) {
                     next(img->r.ptrs, x, y);
                     next(img->g.ptrs, x, y);
@@ -150,36 +145,33 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
     }
 }
 
-
-void heal(Imagefloat *src, Imagefloat *dst,
-          int src_x, int src_y, int dst_x, int dst_y,
-          int x1, int x2, int y1, int y2,
-          int center_x, int center_y,
+void heal(Imagefloat *src, Imagefloat *dst, int src_x, int src_y, int dst_x,
+          int dst_y, int x1, int x2, int y1, int y2, int center_x, int center_y,
           float radius, float featherRadius, float opacity, int detail)
 {
     BENCHFUN
-        
+
     const int W = x2 - x1 + 1;
     const int H = y2 - y1 + 1;
 
     Imagefloat diff(W, H);
     array2D<int32_t> mask(W, H);
     const float detail_exp = 0.125f * (detail + 1);
-    
+
 #ifdef _OPENMP
-#   pragma omp parallel for schedule(dynamic,16)
+#pragma omp parallel for schedule(dynamic, 16)
 #endif
     for (int y = 0; y < H; ++y) {
         int sy = src_y + y;
         int dy = dst_y + y;
-        float ry = float(y+y1 - center_y) - featherRadius;
-        
+        float ry = float(y + y1 - center_y) - featherRadius;
+
         for (int x = 0; x < W; ++x) {
-            float rx = float(x+x1 - center_x) - featherRadius;
+            float rx = float(x + x1 - center_x) - featherRadius;
             float r = sqrt(SQR(rx) + SQR(ry));
 
             mask[y][x] = (r <= featherRadius);
-            float w = 1.f - pow_F(LIM01(radius - r)/radius, detail_exp);
+            float w = 1.f - pow_F(LIM01(radius - r) / radius, detail_exp);
             int sx = src_x + x;
             int dx = dst_x + x;
             diff.r(y, x) = w * (dst->r(dy, dx) - src->r(sy, sx));
@@ -201,10 +193,12 @@ void heal(Imagefloat *src, Imagefloat *dst,
         for (int x = x1; x <= x2; ++x) {
             float rx = float(x - center_x) - featherRadius;
             float r = sqrt(SQR(rx) + SQR(ry));
-            float blend = opacity * (r <= radius ? 1.f : feather_factor(r, radius, sigma));
-            float dr = diff.r(y-y1, x-x1);
-            float dg = diff.g(y-y1, x-x1);
-            float db = diff.b(y-y1, x-x1);
+            float blend =
+                opacity *
+                (r <= radius ? 1.f : feather_factor(r, radius, sigma));
+            float dr = diff.r(y - y1, x - x1);
+            float dg = diff.g(y - y1, x - x1);
+            float db = diff.b(y - y1, x - x1);
             float res_r = src->r(sy, sx) + dr;
             float res_g = src->g(sy, sx) + dg;
             float res_b = src->b(sy, sx) + db;
@@ -212,7 +206,7 @@ void heal(Imagefloat *src, Imagefloat *dst,
             dst->r(dy, dx) = intp(blend, res_r, dst->r(dy, dx));
             dst->g(dy, dx) = intp(blend, res_g, dst->g(dy, dx));
             dst->b(dy, dx) = intp(blend, res_b, dst->b(dy, dx));
-            
+
             ++sx;
             ++dx;
         }
@@ -225,14 +219,9 @@ void heal(Imagefloat *src, Imagefloat *dst,
 
 } // namespace
 
-
 class SpotBox {
 public:
-    enum class Type {
-        SOURCE,
-        TARGET,
-        FINAL
-    };
+    enum class Type { SOURCE, TARGET, FINAL };
 
     struct Rectangle {
         int x1;
@@ -240,32 +229,29 @@ public:
         int x2;
         int y2;
 
-        Rectangle() : Rectangle(0, 0, 0, 0) {}
-        Rectangle(int X1, int Y1, int X2, int Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) {}
-
-        int getWidth() {
-            return x2 - x1 + 1;
+        Rectangle(): Rectangle(0, 0, 0, 0) {}
+        Rectangle(int X1, int Y1, int X2, int Y2)
+            : x1(X1), y1(Y1), x2(X2), y2(Y2)
+        {
         }
 
-        int getHeight() {
-            return y2 - y1 + 1;
+        int getWidth() { return x2 - x1 + 1; }
+
+        int getHeight() { return y2 - y1 + 1; }
+
+        bool intersects(const Rectangle &other) const
+        {
+            return (other.x1 <= x2 && other.x2 >= x1) &&
+                   (other.y1 <= y2 && other.y2 >= y1);
         }
 
-        bool intersects(const Rectangle &other) const {
-            return (other.x1 <= x2 && other.x2 >= x1)
-                && (other.y1 <= y2 && other.y2 >= y1);
-        }
-
-        bool getIntersection(const Rectangle &other, std::unique_ptr<Rectangle> &intersection) const {
+        bool getIntersection(const Rectangle &other,
+                             std::unique_ptr<Rectangle> &intersection) const
+        {
             if (intersects(other)) {
-                std::unique_ptr<Rectangle> intsec(
-                    new Rectangle(
-                        rtengine::max(x1, other.x1),
-                        rtengine::max(y1, other.y1),
-                        rtengine::min(x2, other.x2),
-                        rtengine::min(y2, other.y2)
-                    )
-                );
+                std::unique_ptr<Rectangle> intsec(new Rectangle(
+                    rtengine::max(x1, other.x1), rtengine::max(y1, other.y1),
+                    rtengine::min(x2, other.x2), rtengine::min(y2, other.y2)));
 
                 if (intsec->x1 > intsec->x2 || intsec->y1 > intsec->y2) {
                     return false;
@@ -281,7 +267,8 @@ public:
             return false;
         }
 
-        Rectangle& operator+=(const Coord &v) {
+        Rectangle &operator+=(const Coord &v)
+        {
             x1 += v.x;
             y1 += v.y;
             x2 += v.x;
@@ -289,7 +276,8 @@ public:
             return *this;
         }
 
-        Rectangle& operator-=(const Coord &v) {
+        Rectangle &operator-=(const Coord &v)
+        {
             x1 -= v.x;
             y1 -= v.y;
             x2 -= v.x;
@@ -297,7 +285,8 @@ public:
             return *this;
         }
 
-        Rectangle& operator/=(int v) {
+        Rectangle &operator/=(int v)
+        {
             if (v == 1) {
                 return *this;
             }
@@ -317,67 +306,71 @@ public:
 
 private:
     Type type;
-    Imagefloat* image;
+    Imagefloat *image;
 
 public:
-    // top/left and bottom/right coordinates of the spot in image space (at some point divided by scale factor)
+    // top/left and bottom/right coordinates of the spot in image space (at some
+    // point divided by scale factor)
     Rectangle spotArea;
-    // top/left and bottom/right coordinates of the spot in scaled image space (on borders, imgArea won't cover spotArea)
+    // top/left and bottom/right coordinates of the spot in scaled image space
+    // (on borders, imgArea won't cover spotArea)
     Rectangle imgArea;
-    // top/left and bottom/right coordinates of useful part of the image in scaled image space (rounding error workaround)
+    // top/left and bottom/right coordinates of useful part of the image in
+    // scaled image space (rounding error workaround)
     Rectangle intersectionArea;
     float radius;
     float featherRadius;
     float opacity;
     int detail;
 
-    SpotBox (int tl_x, int tl_y, int br_x, int br_y, int radius, int feather_radius, Imagefloat* image, Type type) :
-       type(type),
-       image(image),
-       spotArea(tl_x, tl_y, br_x, br_y),
-       imgArea(spotArea),
-       intersectionArea(),
-       radius(radius),
-       featherRadius(feather_radius),
-       opacity(1.f),
-       detail(0)
-    {}
-
-    SpotBox (int tl_x, int tl_y, int radius, int feather_radius, Imagefloat* image, Type type) :
-       type(type),
-       image(image),
-       spotArea(tl_x, tl_y, image ? tl_x + image->getWidth() - 1 : 0, image ? tl_y + image->getHeight() - 1 : 0),
-       imgArea(spotArea),
-       intersectionArea(),
-       radius(radius),
-       featherRadius(feather_radius),
-       opacity(1.f),
-       detail(0)
-    {}
-
-    SpotBox (SpotEntry &spot, Type type) :
-        type(type),
-        image(nullptr),
-        intersectionArea(),
-        radius(spot.radius),
-        featherRadius(int(spot.getFeatherRadius() + 0.5f)),  // rounding to int before resizing
-        opacity(spot.opacity),
-        detail(spot.detail)
+    SpotBox(int tl_x, int tl_y, int br_x, int br_y, int radius,
+            int feather_radius, Imagefloat *image, Type type)
+        : type(type), image(image), spotArea(tl_x, tl_y, br_x, br_y),
+          imgArea(spotArea), intersectionArea(), radius(radius),
+          featherRadius(feather_radius), opacity(1.f), detail(0)
     {
-        spotArea.x1 = int ((type == Type::SOURCE ? spot.sourcePos.x : spot.targetPos.x) - featherRadius);
-        spotArea.x2 = int ((type == Type::SOURCE ? spot.sourcePos.x : spot.targetPos.x) + featherRadius);
-        spotArea.y1 = int ((type == Type::SOURCE ? spot.sourcePos.y : spot.targetPos.y) - featherRadius);
-        spotArea.y2 = int ((type == Type::SOURCE ? spot.sourcePos.y : spot.targetPos.y) + featherRadius);
+    }
+
+    SpotBox(int tl_x, int tl_y, int radius, int feather_radius,
+            Imagefloat *image, Type type)
+        : type(type), image(image),
+          spotArea(tl_x, tl_y, image ? tl_x + image->getWidth() - 1 : 0,
+                   image ? tl_y + image->getHeight() - 1 : 0),
+          imgArea(spotArea), intersectionArea(), radius(radius),
+          featherRadius(feather_radius), opacity(1.f), detail(0)
+    {
+    }
+
+    SpotBox(SpotEntry &spot, Type type)
+        : type(type), image(nullptr), intersectionArea(), radius(spot.radius),
+          featherRadius(int(spot.getFeatherRadius() +
+                            0.5f)), // rounding to int before resizing
+          opacity(spot.opacity), detail(spot.detail)
+    {
+        spotArea.x1 =
+            int((type == Type::SOURCE ? spot.sourcePos.x : spot.targetPos.x) -
+                featherRadius);
+        spotArea.x2 =
+            int((type == Type::SOURCE ? spot.sourcePos.x : spot.targetPos.x) +
+                featherRadius);
+        spotArea.y1 =
+            int((type == Type::SOURCE ? spot.sourcePos.y : spot.targetPos.y) -
+                featherRadius);
+        spotArea.y2 =
+            int((type == Type::SOURCE ? spot.sourcePos.y : spot.targetPos.y) +
+                featherRadius);
         imgArea = spotArea;
     }
 
-    ~SpotBox() {
+    ~SpotBox()
+    {
         if (image && type != Type::FINAL) {
             delete image;
         }
     }
 
-    SpotBox& operator /=(int v) {
+    SpotBox &operator/=(int v)
+    {
         if (v == 1) {
             return *this;
         }
@@ -389,38 +382,29 @@ public:
         return *this;
     }
 
-    int getWidth() {
-        return spotArea.getWidth();
-    }
+    int getWidth() { return spotArea.getWidth(); }
 
-    int getHeight() {
-        return spotArea.getHeight();
-    }
+    int getHeight() { return spotArea.getHeight(); }
 
-    int getImageWidth() {
-        return imgArea.getWidth();
-    }
+    int getImageWidth() { return imgArea.getWidth(); }
 
-    int getImageHeight() {
-        return imgArea.getHeight();
-    }
+    int getImageHeight() { return imgArea.getHeight(); }
 
-    int getIntersectionWidth() {
-        return intersectionArea.getWidth();
-    }
+    int getIntersectionWidth() { return intersectionArea.getWidth(); }
 
-    int getIntersectionHeight() {
-        return intersectionArea.getHeight();
-    }
+    int getIntersectionHeight() { return intersectionArea.getHeight(); }
 
-    bool checkImageSize() {
-        if (!image || getImageWidth() != image->getWidth() || getImageHeight() != image->getHeight()) {
+    bool checkImageSize()
+    {
+        if (!image || getImageWidth() != image->getWidth() ||
+            getImageHeight() != image->getHeight()) {
             return false;
         }
         return true;
     }
 
-    void tuneImageSize() {
+    void tuneImageSize()
+    {
         if (!image) {
             return;
         }
@@ -432,15 +416,19 @@ public:
         }
     }
 
-    Imagefloat *getImage() {  // TODO: this should send back a const value, but getImage don't want it to be const...
+    Imagefloat *getImage()
+    { // TODO: this should send back a const value, but getImage don't want it
+      // to be const...
         return image;
     }
 
-    void allocImage() {
+    void allocImage()
+    {
         int newW = imgArea.x2 - imgArea.x1 + 1;
         int newH = imgArea.y2 - imgArea.y1 + 1;
 
-        if (image && type != Type::FINAL && (image->getWidth() != newW || image->getHeight() != newH)) {
+        if (image && type != Type::FINAL &&
+            (image->getWidth() != newW || image->getHeight() != newH)) {
             delete image;
             image = nullptr;
         }
@@ -449,17 +437,23 @@ public:
         }
     }
 
-    bool spotIntersects(const SpotBox &other) const {
+    bool spotIntersects(const SpotBox &other) const
+    {
         return spotArea.intersects(other.spotArea);
     }
 
-    bool getSpotIntersection(const SpotBox &other, std::unique_ptr<Rectangle> &intersection) const {
+    bool getSpotIntersection(const SpotBox &other,
+                             std::unique_ptr<Rectangle> &intersection) const
+    {
         return spotArea.getIntersection(other.spotArea, intersection);
     }
 
-    bool imageIntersects(const SpotBox &other, bool atDestLocation=false) const {
+    bool imageIntersects(const SpotBox &other,
+                         bool atDestLocation = false) const
+    {
         if (atDestLocation) {
-            Coord v(other.spotArea.x1 - spotArea.x1, other.spotArea.y1 - spotArea.y1);
+            Coord v(other.spotArea.x1 - spotArea.x1,
+                    other.spotArea.y1 - spotArea.y1);
             Rectangle imgArea2(imgArea.x1, imgArea.y1, imgArea.x2, imgArea.y2);
             imgArea2 += v;
             return imgArea2.intersects(other.imgArea);
@@ -467,8 +461,10 @@ public:
         return imgArea.intersects(other.imgArea);
     }
 
-    bool mutuallyClipImageArea(SpotBox &other) {
-        Coord v(other.spotArea.x1 - spotArea.x1, other.spotArea.y1 - spotArea.y1);
+    bool mutuallyClipImageArea(SpotBox &other)
+    {
+        Coord v(other.spotArea.x1 - spotArea.x1,
+                other.spotArea.y1 - spotArea.y1);
         Rectangle imgArea2 = imgArea;
         imgArea2 += v;
         std::unique_ptr<Rectangle> intersection;
@@ -482,7 +478,8 @@ public:
         return true;
     }
 
-    bool setIntersectionWith(const SpotBox &other) {
+    bool setIntersectionWith(const SpotBox &other)
+    {
         if (!spotIntersects(other)) {
             return false;
         }
@@ -496,11 +493,14 @@ public:
         return true;
     }
 
-    bool processIntersectionWith(SpotBox &destBox) {
+    bool processIntersectionWith(SpotBox &destBox)
+    {
         Imagefloat *dstImg = destBox.image;
 
         if (image == nullptr || dstImg == nullptr) {
-            std::cerr << "One of the source or destination SpotBox image is missing !" << std::endl;
+            std::cerr
+                << "One of the source or destination SpotBox image is missing !"
+                << std::endl;
             return false;
         }
 
@@ -510,10 +510,12 @@ public:
         const int dst_x = destBox.intersectionArea.x1 - destBox.imgArea.x1;
         const int x1 = intersectionArea.x1, x2 = intersectionArea.x2;
         const int y1 = intersectionArea.y1, y2 = intersectionArea.y2;
-        
+
         if (detail >= 2) {
             int center_x = spotArea.x1, center_y = spotArea.y1;
-            heal(image, dstImg, src_x, src_y, dst_x, dst_y, x1, x2, y1, y2, center_x, center_y, radius, featherRadius, opacity, detail - 2);
+            heal(image, dstImg, src_x, src_y, dst_x, dst_y, x1, x2, y1, y2,
+                 center_x, center_y, radius, featherRadius, opacity,
+                 detail - 2);
             return true;
         }
 
@@ -528,18 +530,18 @@ public:
             int H = y2 - y1 + 1;
             srcY(W, H);
             dstY(W, H);
-            
+
             constexpr float eps = 0.0005f;
             const int gr = radius * 0.2f;
 
             for (int y = 0; y < H; ++y) {
                 for (int x = 0; x < W; ++x) {
-                    srcY[y][x] = image->g(y+src_y, x+src_x) / 65535.f;
+                    srcY[y][x] = image->g(y + src_y, x + src_x) / 65535.f;
                 }
             }
             for (int y = 0; y < H; ++y) {
                 for (int x = 0; x < W; ++x) {
-                    dstY[y][x] = dstImg->g(y+dst_y, x+dst_x) / 65535.f;
+                    dstY[y][x] = dstImg->g(y + dst_y, x + dst_x) / 65535.f;
                 }
             }
 
@@ -563,7 +565,7 @@ public:
                     ++dstImgX;
                     continue;
                 }
-                
+
                 float blend = opacity;
                 if (r > radius) {
                     blend = LIM01(blend * feather_factor(r, radius, sigma));
@@ -576,9 +578,15 @@ public:
                 }
 
                 if (detail == 0) {
-                    dstImg->r(dstImgY, dstImgX) = intp(blend, image->r(srcImgY, srcImgX), dstImg->r(dstImgY, dstImgX));
-                    dstImg->g(dstImgY, dstImgX) = intp(blend, image->g(srcImgY, srcImgX), dstImg->g(dstImgY, dstImgX));
-                    dstImg->b(dstImgY, dstImgX) = intp(blend, image->b(srcImgY, srcImgX), dstImg->b(dstImgY, dstImgX));
+                    dstImg->r(dstImgY, dstImgX) =
+                        intp(blend, image->r(srcImgY, srcImgX),
+                             dstImg->r(dstImgY, dstImgX));
+                    dstImg->g(dstImgY, dstImgX) =
+                        intp(blend, image->g(srcImgY, srcImgX),
+                             dstImg->g(dstImgY, dstImgX));
+                    dstImg->b(dstImgY, dstImgX) =
+                        intp(blend, image->b(srcImgY, srcImgX),
+                             dstImg->b(dstImgY, dstImgX));
                 } else {
                     float &sr = image->r(srcImgY, srcImgX);
                     float &sg = image->g(srcImgY, srcImgX);
@@ -596,13 +604,14 @@ public:
                     float du = dY - db;
                     float dv = dr - dY;
 
-                    float sY_base = srcY[y-y1][x-x1] * 65535.f;
+                    float sY_base = srcY[y - y1][x - x1] * 65535.f;
                     float sY_detail = sY - sY_base;
 
-                    float dY_base = dstY[y-y1][x-x1] * 65535.f;
+                    float dY_base = dstY[y - y1][x - x1] * 65535.f;
                     float dY_detail = dY - dY_base;
 
-                    float res_Y = sY_base + intp(detail_blend, dY_detail, sY_detail);
+                    float res_Y =
+                        sY_base + intp(detail_blend, dY_detail, sY_detail);
                     dY = intp(blend, res_Y, dY);
                     du = intp(blend, su, du);
                     dv = intp(blend, sv, dv);
@@ -623,17 +632,21 @@ public:
     }
 
     // Copy the intersecting part
-    bool copyImgTo(SpotBox &destBox) {
+    bool copyImgTo(SpotBox &destBox)
+    {
         Imagefloat *destImg = destBox.image;
 
         if (image == nullptr || destImg == nullptr) {
-            std::cerr << "One of the source or destination SpotBox image is missing !" << std::endl;
+            std::cerr
+                << "One of the source or destination SpotBox image is missing !"
+                << std::endl;
             return false;
         }
 
         std::unique_ptr<Rectangle> intersection;
 
-        if (!intersectionArea.getIntersection(destBox.intersectionArea, intersection)) {
+        if (!intersectionArea.getIntersection(destBox.intersectionArea,
+                                              intersection)) {
             return false;
         }
 
@@ -661,50 +674,59 @@ public:
     }
 };
 
-void ImProcFunctions::removeSpots(rtengine::Imagefloat* img, ImageSource* imgsrc, const std::vector<SpotEntry> &entries, const PreviewProps &pp, const ColorTemp &currWB, const ColorManagementParams *cmp, int tr, DenoiseInfoStore *dnstore)
+void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
+                                  ImageSource *imgsrc,
+                                  const std::vector<SpotEntry> &entries,
+                                  const PreviewProps &pp,
+                                  const ColorTemp &currWB,
+                                  const ColorManagementParams *cmp, int tr,
+                                  DenoiseInfoStore *dnstore)
 {
-    //Get the clipped image areas (src & dst) from the source image
+    // Get the clipped image areas (src & dst) from the source image
 
-    std::vector< std::shared_ptr<SpotBox> > srcSpotBoxs;
-    std::vector< std::shared_ptr<SpotBox> > dstSpotBoxs;
+    std::vector<std::shared_ptr<SpotBox>> srcSpotBoxs;
+    std::vector<std::shared_ptr<SpotBox>> dstSpotBoxs;
     int fullImgWidth = 0;
     int fullImgHeight = 0;
     imgsrc->getFullSize(fullImgWidth, fullImgHeight, tr);
-    SpotBox fullImageBox(0, 0, fullImgWidth - 1, fullImgHeight - 1, 0, 0, nullptr, SpotBox::Type::FINAL);
-    SpotBox cropBox(pp.getX(), pp.getY(),
-                    pp.getX() + pp.getWidth() - 1, pp.getY() + pp.getHeight() - 1,
-                    0, 0, img, SpotBox::Type::FINAL);
+    SpotBox fullImageBox(0, 0, fullImgWidth - 1, fullImgHeight - 1, 0, 0,
+                         nullptr, SpotBox::Type::FINAL);
+    SpotBox cropBox(pp.getX(), pp.getY(), pp.getX() + pp.getWidth() - 1,
+                    pp.getY() + pp.getHeight() - 1, 0, 0, img,
+                    SpotBox::Type::FINAL);
 
-    std::set<int> visibleSpots;   // list of dest spots intersecting the preview's crop
+    std::set<int>
+        visibleSpots; // list of dest spots intersecting the preview's crop
     int i = 0;
 
-    const auto convert =
-        [&](Imagefloat *img) -> void
-        {
-            bool converted = false;            
-            if (params->filmNegative.colorSpace == FilmNegativeParams::ColorSpace::WORKING) {
-                converted = true;
-                imgsrc->convertColorSpace(img, *cmp, currWB);
-            }
-            if (params->filmNegative.enabled) {
-                auto fnp = params->filmNegative;
-                filmNegativeProcess(img, img, fnp, params->raw, imgsrc, currWB);
-            }
-            if (!converted) {
-                imgsrc->convertColorSpace(img, *cmp, currWB);
-            }
-            if (params->denoise.enabled && dnstore && std::max(img->getWidth(), img->getHeight()) > 16) {
-                denoise(imgsrc, currWB, img, *dnstore, params->denoise);
-            }
-        };
+    const auto convert = [&](Imagefloat *img) -> void {
+        bool converted = false;
+        if (params->filmNegative.colorSpace ==
+            FilmNegativeParams::ColorSpace::WORKING) {
+            converted = true;
+            imgsrc->convertColorSpace(img, *cmp, currWB);
+        }
+        if (params->filmNegative.enabled) {
+            auto fnp = params->filmNegative;
+            filmNegativeProcess(img, img, fnp, params->raw, imgsrc, currWB);
+        }
+        if (!converted) {
+            imgsrc->convertColorSpace(img, *cmp, currWB);
+        }
+        if (params->denoise.enabled && dnstore &&
+            std::max(img->getWidth(), img->getHeight()) > 16) {
+            denoise(imgsrc, currWB, img, *dnstore, params->denoise);
+        }
+    };
 
     for (auto entry : params->spot.entries) {
-        std::shared_ptr<SpotBox> srcSpotBox(new SpotBox(entry,  SpotBox::Type::SOURCE));
-        std::shared_ptr<SpotBox> dstSpotBox(new SpotBox(entry,  SpotBox::Type::TARGET));
-        if (   !srcSpotBox->setIntersectionWith(fullImageBox)
-            || !dstSpotBox->setIntersectionWith(fullImageBox)
-            || !srcSpotBox->imageIntersects(*dstSpotBox, true))
-        {
+        std::shared_ptr<SpotBox> srcSpotBox(
+            new SpotBox(entry, SpotBox::Type::SOURCE));
+        std::shared_ptr<SpotBox> dstSpotBox(
+            new SpotBox(entry, SpotBox::Type::TARGET));
+        if (!srcSpotBox->setIntersectionWith(fullImageBox) ||
+            !dstSpotBox->setIntersectionWith(fullImageBox) ||
+            !srcSpotBox->imageIntersects(*dstSpotBox, true)) {
             continue;
             ++i;
         }
@@ -717,7 +739,8 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat* img, ImageSource* imgsrc
 
         // Source area
         PreviewProps spp(srcSpotBox->imgArea.x1, srcSpotBox->imgArea.y1,
-                         srcSpotBox->getImageWidth(), srcSpotBox->getImageHeight(), pp.getSkip());
+                         srcSpotBox->getImageWidth(),
+                         srcSpotBox->getImageHeight(), pp.getSkip());
         int w = 0;
         int h = 0;
         imgsrc->getSize(spp, w, h);
@@ -725,20 +748,22 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat* img, ImageSource* imgsrc
         srcSpotBox->allocImage();
         Imagefloat *srcImage = srcSpotBox->getImage();
 
-        imgsrc->getImage(currWB, tr, srcSpotBox->getImage(), spp, params->exposure, params->raw);
+        imgsrc->getImage(currWB, tr, srcSpotBox->getImage(), spp,
+                         params->exposure, params->raw);
         if (cmp) {
             convert(srcImage);
         }
         assert(srcSpotBox->checkImageSize());
 
-
         // Destination area
-        spp.set(dstSpotBox->imgArea.x1, dstSpotBox->imgArea.y1, dstSpotBox->getImageWidth(),
-                dstSpotBox->getImageHeight(), pp.getSkip());
+        spp.set(dstSpotBox->imgArea.x1, dstSpotBox->imgArea.y1,
+                dstSpotBox->getImageWidth(), dstSpotBox->getImageHeight(),
+                pp.getSkip());
         *dstSpotBox /= pp.getSkip();
         dstSpotBox->allocImage();
         Imagefloat *dstImage = dstSpotBox->getImage();
-        imgsrc->getImage(currWB, tr, dstSpotBox->getImage(), spp, params->exposure, params->raw);
+        imgsrc->getImage(currWB, tr, dstSpotBox->getImage(), spp,
+                         params->exposure, params->raw);
         if (cmp) {
             convert(dstImage);
         }
@@ -749,18 +774,20 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat* img, ImageSource* imgsrc
             srcSpotBoxs.push_back(srcSpotBox);
             dstSpotBoxs.push_back(dstSpotBox);
         }
-
     }
 
     // Construct list of upstream dependancies
 
-    std::set<int> requiredSpots = visibleSpots;  // starting point, visible spots are necessarilly required spots
+    std::set<int> requiredSpots =
+        visibleSpots; // starting point, visible spots are necessarilly required
+                      // spots
     for (auto i = requiredSpots.rbegin(); i != requiredSpots.rend(); i++) {
         int spotNbr = *i;
         requiredSpots.insert(spotNbr);
         if (spotNbr > 0) {
             for (int j = spotNbr - 1; j >= 0; --j) {
-                if ((srcSpotBoxs.at(spotNbr))->imageIntersects(*dstSpotBoxs.at(j))) {
+                if ((srcSpotBoxs.at(spotNbr))
+                        ->imageIntersects(*dstSpotBoxs.at(j))) {
                     requiredSpots.insert(spotNbr);
                 }
             }
@@ -774,15 +801,17 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat* img, ImageSource* imgsrc
         srcSpotBoxs.at(*i)->processIntersectionWith(*dstSpotBoxs.at(*i));
 
         // Propagate
-        std::set<int> positiveSpots;  // For DEBUG purpose only !
+        std::set<int> positiveSpots; // For DEBUG purpose only !
         auto j = i;
         ++j;
         while (j != requiredSpots.end()) {
             bool intersectionFound = false;
             int i_ = *i;
             int j_ = *j;
-            intersectionFound |= dstSpotBoxs.at(i_)->copyImgTo(*srcSpotBoxs.at(j_));
-            intersectionFound |= dstSpotBoxs.at(i_)->copyImgTo(*dstSpotBoxs.at(j_));
+            intersectionFound |=
+                dstSpotBoxs.at(i_)->copyImgTo(*srcSpotBoxs.at(j_));
+            intersectionFound |=
+                dstSpotBoxs.at(i_)->copyImgTo(*dstSpotBoxs.at(j_));
             if (intersectionFound) {
                 positiveSpots.insert(j_);
             }

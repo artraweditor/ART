@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,28 +20,29 @@
 #ifndef _CACORRECTION_H_
 #define _CACORRECTION_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class CACorrection : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class CACorrection: public ToolParamBlock,
+                    public AdjusterListener,
+                    public FoldableToolPanel {
 
 protected:
-    Adjuster* red;
-    Adjuster* blue;
+    Adjuster *red;
+    Adjuster *blue;
     rtengine::procparams::CACorrParams initial_params;
 
 public:
+    CACorrection();
 
-    CACorrection ();
-
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 };

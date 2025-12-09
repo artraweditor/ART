@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,11 +19,11 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "guiutils.h"
-#include "../rtengine/coord.h"
-#include "histogrampanel.h"
 #include "../rtengine/cache.h"
+#include "../rtengine/coord.h"
+#include "guiutils.h"
+#include "histogrampanel.h"
+#include <gtkmm.h>
 
 class InspectorBuffer;
 class FileCatalog;
@@ -34,74 +34,88 @@ public:
     ~InspectorArea() override;
 
     /** @brief Mouse movement to a new position
-     * @param pos Location of the mouse, in percentage (i.e. [0;1] range) relative to the full size image ; -1,-1 == out of the image
+     * @param pos Location of the mouse, in percentage (i.e. [0;1] range)
+     * relative to the full size image ; -1,-1 == out of the image
      * @param transform H/V flip and coarse rotation transformation
      */
-    void mouseMove (rtengine::Coord2D pos, int transform);
+    void mouseMove(rtengine::Coord2D pos, int transform);
 
     /** @brief A new image is being flown over
-     * @param fullPath Full path of the image that is being hovered inspect, or an empty string if out of any image.
+     * @param fullPath Full path of the image that is being hovered inspect, or
+     * an empty string if out of any image.
      */
-    void switchImage(const Glib::ustring &fullPath, bool recenter=false, rtengine::Coord2D newcenter=rtengine::Coord2D(-1, -1));
+    void switchImage(const Glib::ustring &fullPath, bool recenter = false,
+                     rtengine::Coord2D newcenter = rtengine::Coord2D(-1, -1));
 
     /** @brief Set the new coarse rotation transformation
-     * @param transform A semi-bitfield coarse transformation using #defines from iimage.h
+     * @param transform A semi-bitfield coarse transformation using #defines
+     * from iimage.h
      */
     // void setTransformation (int transform);
 
-    /** @brief Use this method to flush all image buffer whenever the Inspector panel is hidden
+    /** @brief Use this method to flush all image buffer whenever the Inspector
+     * panel is hidden
      */
-    void flushBuffers ();
+    void flushBuffers();
 
     /** @brief Set the inspector on/off
-     * @param state true if to activate the Inspector, false to disable it and flush the buffers
+     * @param state true if to activate the Inspector, false to disable it and
+     * flush the buffers
      */
     void setActive(bool state);
 
     /** @brief Get the on/off state
      */
-    bool isActive() const
-    {
-        return active_;
-    }
+    bool isActive() const { return active_; }
 
     void setInfoText(const Glib::ustring &txt);
     void infoEnabled(bool yes);
-//    void setZoomFit(bool yes);
+    //    void setZoomFit(bool yes);
     void setFocusMask(bool yes);
 
-    Gtk::SizeRequestMode get_request_mode_vfunc () const override;
-    void get_preferred_height_vfunc (int& minimum_height, int& natural_height) const override;
-    void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
-    void get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const override;
-    void get_preferred_width_for_height_vfunc (int height, int &minimum_width, int &natural_width) const override;
+    Gtk::SizeRequestMode get_request_mode_vfunc() const override;
+    void get_preferred_height_vfunc(int &minimum_height,
+                                    int &natural_height) const override;
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void
+    get_preferred_height_for_width_vfunc(int width, int &minimum_height,
+                                         int &natural_height) const override;
+    void
+    get_preferred_width_for_height_vfunc(int height, int &minimum_width,
+                                         int &natural_width) const override;
 
     sigc::signal<void> signal_ready() { return sig_ready_; }
     sigc::signal<void> signal_active() { return sig_active_; }
     sigc::signal<void, rtengine::Coord2D> signal_moved() { return sig_moved_; }
-    sigc::signal<void, rtengine::Coord2D> signal_pressed() { return sig_pressed_; }
+    sigc::signal<void, rtengine::Coord2D> signal_pressed()
+    {
+        return sig_pressed_;
+    }
     sigc::signal<void> signal_released() { return sig_released_; }
 
     void setHighlight(bool yes) { highlight_ = yes; }
 
     void preloadImage(const Glib::ustring &fullPath);
-    
+
 private:
-    bool on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr) override;
+    bool on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr) override;
     bool onMouseMove(GdkEventMotion *evt);
     bool onMousePress(GdkEventButton *evt);
     bool onMouseRelease(GdkEventButton *evt);
-	
+
     void deleteBuffers();
     bool doSwitchImage(bool recenter, rtengine::Coord2D newcenter);
     void updateHistogram();
-    std::shared_ptr<InspectorBuffer> doCacheImage(const Glib::ustring &fullPath);
+    std::shared_ptr<InspectorBuffer>
+    doCacheImage(const Glib::ustring &fullPath);
 
     rtengine::Coord center;
-    rtengine::Cache<Glib::ustring, std::shared_ptr<InspectorBuffer>> cache_;//std::vector<InspectorBuffer*> images;
-    //InspectorBuffer* currImage;
+    rtengine::Cache<Glib::ustring, std::shared_ptr<InspectorBuffer>>
+        cache_; // std::vector<InspectorBuffer*> images;
+    // InspectorBuffer* currImage;
     std::shared_ptr<InspectorBuffer> cur_image_;
-    //double zoom;
+    // double zoom;
     bool active_;
     bool first_active_;
     bool highlight_;
@@ -122,7 +136,6 @@ private:
 
     HistogramArea hist_bb_;
 };
-
 
 class Inspector: public Gtk::VBox {
 public:
@@ -149,7 +162,7 @@ public:
     void setZoomFit(bool yes);
 
     bool handleShortcutKey(GdkEventKey *event);
-    
+
 private:
     Gtk::HBox *get_toolbar();
     Glib::ustring get_info_text(size_t i);
@@ -166,7 +179,8 @@ private:
     void on_moved(rtengine::Coord2D pos);
     void on_pressed(rtengine::Coord2D pos);
     void on_released();
-    void do_toggle_zoom(Gtk::ToggleButton *b, rtengine::Coord2D pos=rtengine::Coord2D(-1, -1));
+    void do_toggle_zoom(Gtk::ToggleButton *b,
+                        rtengine::Coord2D pos = rtengine::Coord2D(-1, -1));
 
     FileCatalog *filecatalog_;
 

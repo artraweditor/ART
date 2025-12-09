@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,37 +20,35 @@
 #ifndef _BLACKWHITE_H_
 #define _BLACKWHITE_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
-#include "guiutils.h"
+#include "colorprovider.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
+#include "guiutils.h"
 #include "mycurve.h"
-#include "colorprovider.h"
 #include "thresholdadjuster.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class BlackWhite final :
-    public ToolParamBlock,
-    public AdjusterListener,
-    public FoldableToolPanel,
-    public ColorProvider,
-    public ThresholdAdjusterListener
-{
+class BlackWhite final: public ToolParamBlock,
+                        public AdjusterListener,
+                        public FoldableToolPanel,
+                        public ColorProvider,
+                        public ThresholdAdjusterListener {
 public:
+    BlackWhite();
+    ~BlackWhite() override;
 
-    BlackWhite ();
-    ~BlackWhite () override;
-
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void neutral_pressed();
 
-    void updateRGBLabel(bool from_preset=true);
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled (Adjuster* a, bool newval) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void updateRGBLabel(bool from_preset = true);
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
     void enabledChanged() override;
     void filterChanged();
     void settingChanged();
@@ -58,23 +56,40 @@ public:
     Glib::ustring getSettingString();
     Glib::ustring getFilterString();
 
-    void adjusterChanged(ThresholdAdjuster *a, double newBottom, double newTop) override;
-    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft, double newTopLeft, double newBottomRight, double newTopRight) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottom, int newTop) override {}
-    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft, int newTopLeft, int newBottomRight, int newTopRight) override {}
-    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL, int newBottomR, int newTopR) override {}
+    void adjusterChanged(ThresholdAdjuster *a, double newBottom,
+                         double newTop) override;
+    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft,
+                         double newTopLeft, double newBottomRight,
+                         double newTopRight) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottom,
+                         int newTop) override
+    {
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft,
+                         int newTopLeft, int newBottomRight,
+                         int newTopRight) override
+    {
+    }
+    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL,
+                          int newBottomR, int newTopR) override
+    {
+    }
 
-    void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller *caller) override;
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 
     void toolReset(bool to_initial) override;
-    
+
 private:
     void showFilter();
     void hideFilter();
 
     rtengine::ProcEvent EvColorCast;
 
-    Gtk::Label*          RGBLabels;
+    Gtk::Label *RGBLabels;
 
     Adjuster *mixerRed;
     Adjuster *mixerGreen;
@@ -83,15 +98,15 @@ private:
     Adjuster *gammaGreen;
     Adjuster *gammaBlue;
     ThresholdAdjuster *colorCast;
-    Gtk::HBox*        filterHBox;
-    Gtk::HSeparator*  filterSep;
-    MyComboBoxText*   filter;
-    sigc::connection  filterconn;
-    Gtk::HBox*        settingHBox;
-    MyComboBoxText*   setting;
-    sigc::connection  settingconn;
-    Gtk::VBox * mixerVBox;
-    Gtk::Frame* gammaFrame;
+    Gtk::HBox *filterHBox;
+    Gtk::HSeparator *filterSep;
+    MyComboBoxText *filter;
+    sigc::connection filterconn;
+    Gtk::HBox *settingHBox;
+    MyComboBoxText *setting;
+    sigc::connection settingconn;
+    Gtk::VBox *mixerVBox;
+    Gtk::Frame *gammaFrame;
 
     Gtk::Image *imgIcon[11];
 

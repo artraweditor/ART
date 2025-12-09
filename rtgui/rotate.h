@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,38 +20,36 @@
 #ifndef _ROTATE_H_
 #define _ROTATE_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "lensgeomlistener.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class Rotate : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class Rotate: public ToolParamBlock,
+              public AdjusterListener,
+              public FoldableToolPanel {
 
 protected:
-    Adjuster*           degree;
-    Gtk::Button*        selectStraight;
-    LensGeomListener*   rlistener;
+    Adjuster *degree;
+    Gtk::Button *selectStraight;
+    LensGeomListener *rlistener;
 
     rtengine::procparams::RotateParams initial_params;
-    
-public:
 
+public:
     Rotate();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void straighten (double deg);
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void straighten(double deg);
 
-    void adjusterChanged        (Adjuster* a, double newval) override;
-    void adjusterAutoToggled    (Adjuster* a, bool newval) override;
-    void trimValues             (rtengine::procparams::ProcParams* pp) override;
-    void selectStraightPressed  ();
-    void setLensGeomListener    (LensGeomListener* l)
-    {
-        rlistener = l;
-    }
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
+    void selectStraightPressed();
+    void setLensGeomListener(LensGeomListener *l) { rlistener = l; }
 
     void toolReset(bool to_initial) override;
 };

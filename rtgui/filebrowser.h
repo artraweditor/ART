@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,40 +19,47 @@
  */
 #pragma once
 
+#include "browserfilter.h"
+#include "exiffiltersettings.h"
+#include "extprog.h"
+#include "filebrowserentry.h"
+#include "partialpastedlg.h"
+#include "pparamschangelistener.h"
+#include "profilestorecombobox.h"
+#include "thumbbrowserbase.h"
 #include <gtkmm.h>
 #include <map>
-#include "thumbbrowserbase.h"
-#include "exiffiltersettings.h"
-#include "filebrowserentry.h"
-#include "browserfilter.h"
-#include "pparamschangelistener.h"
-#include "partialpastedlg.h"
-#include "extprog.h"
-#include "profilestorecombobox.h"
 
 class ProfileStoreLabel;
 class FileBrowser;
 class FileBrowserEntry;
 
-class FileBrowserListener
-{
+class FileBrowserListener {
 public:
     virtual ~FileBrowserListener() = default;
     virtual void filterApplied() = 0;
-    virtual void openRequested(const std::vector<Thumbnail*>& tbe) = 0;
-    virtual void developRequested(const std::vector<FileBrowserEntry*>& tbe, bool fastmode) = 0;
-    //virtual void renameRequested(const std::vector<FileBrowserEntry*>& tbe) = 0;
-    virtual void deleteRequested(const std::vector<FileBrowserEntry*>& tbe, bool onlySelected) = 0;
-    virtual void copyMoveRequested(const std::vector<FileBrowserEntry*>& tbe, bool moveRequested) = 0;
-    virtual void selectionChanged(const std::vector<Thumbnail*>& tbe) = 0;
-    virtual void clearFromCacheRequested(const std::vector<FileBrowserEntry*>& tbe, bool leavenotrace) = 0;
+    virtual void openRequested(const std::vector<Thumbnail *> &tbe) = 0;
+    virtual void developRequested(const std::vector<FileBrowserEntry *> &tbe,
+                                  bool fastmode) = 0;
+    // virtual void renameRequested(const std::vector<FileBrowserEntry*>& tbe) =
+    // 0;
+    virtual void deleteRequested(const std::vector<FileBrowserEntry *> &tbe,
+                                 bool onlySelected) = 0;
+    virtual void copyMoveRequested(const std::vector<FileBrowserEntry *> &tbe,
+                                   bool moveRequested) = 0;
+    virtual void selectionChanged(const std::vector<Thumbnail *> &tbe) = 0;
+    virtual void
+    clearFromCacheRequested(const std::vector<FileBrowserEntry *> &tbe,
+                            bool leavenotrace) = 0;
     virtual bool isInTabMode() const = 0;
 };
 
 /*
  * Class handling actions common to all thumbnails of the file browser
  */
-class FileBrowser: public ThumbBrowserBase,  public LWButtonListener, public ProfileStoreListener {
+class FileBrowser: public ThumbBrowserBase,
+                   public LWButtonListener,
+                   public ProfileStoreListener {
 private:
     typedef sigc::signal<void> type_trash_changed;
 
@@ -60,74 +67,78 @@ private:
     unsigned int session_id_;
 
 protected:
-    Gtk::MenuItem* rank[6];
-    MyImageMenuItem* colorlabel[6];
-    Gtk::MenuItem* trash;
-    Gtk::MenuItem* untrash;
+    Gtk::MenuItem *rank[6];
+    MyImageMenuItem *colorlabel[6];
+    Gtk::MenuItem *trash;
+    Gtk::MenuItem *untrash;
     Gtk::MenuItem *add_to_session_;
-    Gtk::MenuItem* develop;
-    Gtk::MenuItem* developfast;
-    Gtk::MenuItem* rename;
-    Gtk::MenuItem* remove;
-    Gtk::MenuItem* open;
-    Gtk::MenuItem* selall;
-    Gtk::MenuItem* copyTo;
-    Gtk::MenuItem* moveTo;
+    Gtk::MenuItem *develop;
+    Gtk::MenuItem *developfast;
+    Gtk::MenuItem *rename;
+    Gtk::MenuItem *remove;
+    Gtk::MenuItem *open;
+    Gtk::MenuItem *selall;
+    Gtk::MenuItem *copyTo;
+    Gtk::MenuItem *moveTo;
 
-    Gtk::MenuItem* menuRank;
-    Gtk::MenuItem* menuLabel;
-    Gtk::MenuItem* menuFileOperations;
-    Gtk::MenuItem* menuProfileOperations;
+    Gtk::MenuItem *menuRank;
+    Gtk::MenuItem *menuLabel;
+    Gtk::MenuItem *menuFileOperations;
+    Gtk::MenuItem *menuProfileOperations;
     // Gtk::MenuItem* menuExtProg;
     // Gtk::MenuItem** amiExtProg;
     Gtk::MenuItem *mi_usercommands_;
     Gtk::SeparatorMenuItem *mi_usercommands_sep_;
-    std::vector<std::pair<std::unique_ptr<Gtk::MenuItem>, UserCommand>> usercommands_menu_;
+    std::vector<std::pair<std::unique_ptr<Gtk::MenuItem>, UserCommand>>
+        usercommands_menu_;
 
-    Gtk::MenuItem* menuDF;
-    Gtk::MenuItem* selectDF;
-    Gtk::MenuItem* thisIsDF;
-    Gtk::MenuItem* autoDF;
+    Gtk::MenuItem *menuDF;
+    Gtk::MenuItem *selectDF;
+    Gtk::MenuItem *thisIsDF;
+    Gtk::MenuItem *autoDF;
 
-    Gtk::MenuItem* menuFF;
-    Gtk::MenuItem* selectFF;
-    Gtk::MenuItem* thisIsFF;
-    Gtk::MenuItem* autoFF;
+    Gtk::MenuItem *menuFF;
+    Gtk::MenuItem *selectFF;
+    Gtk::MenuItem *thisIsFF;
+    Gtk::MenuItem *autoFF;
 
-    Gtk::MenuItem* copyprof;
-    Gtk::MenuItem* pasteprof;
-    Gtk::MenuItem* partpasteprof;
-    Gtk::MenuItem* applyprof;
-    Gtk::MenuItem* applypartprof;
-    Gtk::MenuItem* resetdefaultprof;
-    Gtk::MenuItem* clearprof;
-    Gtk::MenuItem* cachemenu;
-    Gtk::MenuItem* clearFromCache;
-    Gtk::MenuItem* clearFromCacheFull;
-    Gtk::Menu* pmenu;
+    Gtk::MenuItem *copyprof;
+    Gtk::MenuItem *pasteprof;
+    Gtk::MenuItem *partpasteprof;
+    Gtk::MenuItem *applyprof;
+    Gtk::MenuItem *applypartprof;
+    Gtk::MenuItem *resetdefaultprof;
+    Gtk::MenuItem *clearprof;
+    Gtk::MenuItem *cachemenu;
+    Gtk::MenuItem *clearFromCache;
+    Gtk::MenuItem *clearFromCacheFull;
+    Gtk::Menu *pmenu;
 
-    MyImageMenuItem* colorlabel_pop[6];
-    Gtk::Menu* pmenuColorLabels;
-    void* colorLabel_actionData;
-    void menuColorlabelActivated (Gtk::MenuItem* m); // use only when menu is invoked via FileBrowser::buttonPressed to pass actionData
+    MyImageMenuItem *colorlabel_pop[6];
+    Gtk::Menu *pmenuColorLabels;
+    void *colorLabel_actionData;
+    void menuColorlabelActivated(
+        Gtk::MenuItem *m); // use only when menu is invoked via
+                           // FileBrowser::buttonPressed to pass actionData
 
     Glib::RefPtr<Gtk::AccelGroup> pmaccelgroup;
 
-    FileBrowserListener* tbl;
+    FileBrowserListener *tbl;
     BrowserFilter filter;
     int numFiltered;
     Glib::ustring last_selected_fname_;
     std::unique_ptr<PartialPasteDlg> partial_paste_dlg_;
 
-    void toTrashRequested   (std::vector<FileBrowserEntry*> tbe);
-    void fromTrashRequested (std::vector<FileBrowserEntry*> tbe);
-    void addToSessionRequested(std::vector<FileBrowserEntry*> tbe);
-    void rankingRequested   (std::vector<FileBrowserEntry*> tbe, int rank);
-    void colorlabelRequested   (std::vector<FileBrowserEntry*> tbe, int colorlabel);
-    void requestRanking (int rank);
+    void toTrashRequested(std::vector<FileBrowserEntry *> tbe);
+    void fromTrashRequested(std::vector<FileBrowserEntry *> tbe);
+    void addToSessionRequested(std::vector<FileBrowserEntry *> tbe);
+    void rankingRequested(std::vector<FileBrowserEntry *> tbe, int rank);
+    void colorlabelRequested(std::vector<FileBrowserEntry *> tbe,
+                             int colorlabel);
+    void requestRanking(int rank);
     void requestColorLabel(int colorlabel);
-    void notifySelectionListener ();
-    void openRequested( std::vector<FileBrowserEntry*> mselected);
+    void notifySelectionListener();
+    void openRequested(std::vector<FileBrowserEntry *> mselected);
 
     type_trash_changed m_trash_changed;
 
@@ -135,57 +146,52 @@ protected:
     void refresh_usercommands_menu();
 
 public:
-    FileBrowser ();
-    ~FileBrowser () override;
+    FileBrowser();
+    ~FileBrowser() override;
 
-    void addEntry (FileBrowserEntry* entry); // can be called from any thread
-    void addEntry_ (FileBrowserEntry* entry); // this must be executed inside the gtk thread
-    FileBrowserEntry*  delEntry (const Glib::ustring& fname);    // return the entry if found here return NULL otherwise
-    void close ();
+    void addEntry(FileBrowserEntry *entry); // can be called from any thread
+    void addEntry_(
+        FileBrowserEntry *entry); // this must be executed inside the gtk thread
+    FileBrowserEntry *
+    delEntry(const Glib::ustring &
+                 fname); // return the entry if found here return NULL otherwise
+    void close();
 
     unsigned int session_id() const { return session_id_; }
 
-    void setFileBrowserListener (FileBrowserListener* l)
-    {
-        tbl = l;
-    }
+    void setFileBrowserListener(FileBrowserListener *l) { tbl = l; }
 
-    void menuItemActivated (Gtk::MenuItem* m);
-    void applyMenuItemActivated (ProfileStoreLabel *label);
-    void applyPartialMenuItemActivated (ProfileStoreLabel *label);
+    void menuItemActivated(Gtk::MenuItem *m);
+    void applyMenuItemActivated(ProfileStoreLabel *label);
+    void applyPartialMenuItemActivated(ProfileStoreLabel *label);
 
-    void applyFilter (const BrowserFilter& filter);
-    int getNumFiltered()
-    {
-        return numFiltered;
-    }
+    void applyFilter(const BrowserFilter &filter);
+    int getNumFiltered() { return numFiltered; }
 
-    void buttonPressed (LWButton* button, int actionCode, void* actionData) override;
-    void redrawNeeded  (LWButton* button) override;
-    bool checkFilter (ThumbBrowserEntryBase* entry) override;
-    void rightClicked (ThumbBrowserEntryBase* entry) override;
-    void doubleClicked (ThumbBrowserEntryBase* entry) override;
-    bool keyPressed (GdkEventKey* event) override;
+    void buttonPressed(LWButton *button, int actionCode,
+                       void *actionData) override;
+    void redrawNeeded(LWButton *button) override;
+    bool checkFilter(ThumbBrowserEntryBase *entry) override;
+    void rightClicked(ThumbBrowserEntryBase *entry) override;
+    void doubleClicked(ThumbBrowserEntryBase *entry) override;
+    bool keyPressed(GdkEventKey *event) override;
 
-    void saveThumbnailHeight (int height) override;
-    int  getThumbnailHeight () override;
+    void saveThumbnailHeight(int height) override;
+    int getThumbnailHeight() override;
 
-    bool isInTabMode() override
-    {
-        return tbl ? tbl->isInTabMode() : false;
-    }
+    bool isInTabMode() override { return tbl ? tbl->isInTabMode() : false; }
 
-    void openNextImage ();
-    void openPrevImage ();
-    void copyProfile ();
-    void pasteProfile ();
-    void partPasteProfile ();
+    void openNextImage();
+    void openPrevImage();
+    void copyProfile();
+    void pasteProfile();
+    void partPasteProfile();
     void selectImage(const Glib::ustring &fname);
-    void openNextPreviousEditorImage (Glib::ustring fname, eRTNav eNextPrevious);
+    void openNextPreviousEditorImage(Glib::ustring fname, eRTNav eNextPrevious);
 
-    void thumbRearrangementNeeded () override;
+    void thumbRearrangementNeeded() override;
 
-    void selectionChanged () override;
+    void selectionChanged() override;
 
     void storeCurrentValue() override;
     void updateProfileList() override;

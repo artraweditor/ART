@@ -19,11 +19,11 @@
 #include <cmath>
 #include <iostream>
 
+#include "imagefloat.h"
+#include "improccoordinator.h"
+#include "improcfun.h"
 #include "rawimage.h"
 #include "rawimagesource.h"
-#include "improcfun.h"
-#include "improccoordinator.h"
-#include "imagefloat.h"
 
 #include "coord.h"
 #include "opthelper.h"
@@ -32,35 +32,37 @@
 #include "rt_algo.h"
 #include "rtengine.h"
 #include "rtthumbnail.h"
-#include "sleef.h"
 #include "settings.h"
-//#define BENCHMARK
-//#include "StopWatch.h"
+#include "sleef.h"
+// #define BENCHMARK
+// #include "StopWatch.h"
+#include "color.h"
 #include "iccstore.h"
 #include "rt_math.h"
-#include "color.h"
 
-namespace rtengine { extern const Settings *settings; }
-
+namespace rtengine {
+extern const Settings *settings;
+}
 
 namespace {
-using rtengine::settings;
-using rtengine::Coord2D;
-using rtengine::ColorTemp;
-using rtengine::findMinMaxPercentile;
-using rtengine::ImageSource;
-using rtengine::Imagefloat;
-using rtengine::procparams::FilmNegativeParams;
-using rtengine::procparams::ColorManagementParams;
-using rtengine::procparams::RAWParams;
-using rtengine::ICCStore;
-using rtengine::MAXVALF;
 using rtengine::CLIP;
-using rtengine::TMatrix;
 using rtengine::Color;
+using rtengine::ColorTemp;
+using rtengine::Coord2D;
+using rtengine::findMinMaxPercentile;
+using rtengine::ICCStore;
+using rtengine::Imagefloat;
+using rtengine::ImageSource;
+using rtengine::MAXVALF;
+using rtengine::settings;
+using rtengine::TMatrix;
+using rtengine::procparams::ColorManagementParams;
+using rtengine::procparams::FilmNegativeParams;
+using rtengine::procparams::RAWParams;
 using RGB = rtengine::procparams::FilmNegativeParams::RGB;
 
-Coord2D translateCoord(rtengine::ImProcFunctions& ipf, int fw, int fh, int x, int y)
+Coord2D translateCoord(rtengine::ImProcFunctions &ipf, int fw, int fh, int x,
+                       int y)
 {
 
     const std::vector<Coord2D> points = {Coord2D(x, y)};
@@ -73,26 +75,27 @@ Coord2D translateCoord(rtengine::ImProcFunctions& ipf, int fw, int fh, int x, in
     return green[0];
 }
 
-
-void getSpotAvgMax(ImageSource *imgsrc, ColorTemp currWB, const rtengine::procparams::ProcParams &params, Coord2D p, int tr, int spotSize, RGB &avg, RGB &max)
+void getSpotAvgMax(ImageSource *imgsrc, ColorTemp currWB,
+                   const rtengine::procparams::ProcParams &params, Coord2D p,
+                   int tr, int spotSize, RGB &avg, RGB &max)
 {
     int x1 = MAX(0, (int)p.x - spotSize / 2);
     int y1 = MAX(0, (int)p.y - spotSize / 2);
     PreviewProps pp(x1, y1, spotSize, spotSize, 1);
 
     if (settings->verbose) {
-        printf("Spot: %d,%d   %d,%d\n", x1, y1, x1 + spotSize / 2, y1 + spotSize / 2);
+        printf("Spot: %d,%d   %d,%d\n", x1, y1, x1 + spotSize / 2,
+               y1 + spotSize / 2);
     }
 
     rtengine::Imagefloat spotImg(spotSize, spotSize);
     imgsrc->getImage(currWB, tr, &spotImg, pp, params.exposure, params.raw);
 
-    auto avgMax = [spotSize, &spotImg](RGB & avg, RGB & max) -> void {
+    auto avgMax = [spotSize, &spotImg](RGB &avg, RGB &max) -> void {
         avg = {};
         max = {};
 
-        for (int i = 0; i < spotSize; ++i)
-        {
+        for (int i = 0; i < spotSize; ++i) {
             for (int j = 0; j < spotSize; ++j) {
 
                 float r = spotImg.r(i, j);
@@ -113,7 +116,8 @@ void getSpotAvgMax(ImageSource *imgsrc, ColorTemp currWB, const rtengine::procpa
         avg.b /= (spotSize * spotSize);
     };
 
-    if (params.filmNegative.colorSpace == rtengine::FilmNegativeParams::ColorSpace::INPUT) {
+    if (params.filmNegative.colorSpace ==
+        rtengine::FilmNegativeParams::ColorSpace::INPUT) {
         avgMax(avg, max);
     } else {
         // Convert spot image to current working space
@@ -134,12 +138,8 @@ void getSpotAvgMax(ImageSource *imgsrc, ColorTemp currWB, const rtengine::procpa
     }
 }
 
-
-void calcMedians(
-    const rtengine::Imagefloat* input,
-    int x1, int y1, int x2, int y2,
-    float &rmed, float &gmed, float &bmed
-)
+void calcMedians(const rtengine::Imagefloat *input, int x1, int y1, int x2,
+                 int y2, float &rmed, float &gmed, float &bmed)
 {
     using rtengine::findMinMaxPercentile;
 
@@ -151,9 +151,8 @@ void calcMedians(
     gv.reserve(sz);
     bv.reserve(sz);
 
-
-    for (int ii = y1; ii < y2; ii ++) {
-        for (int jj = x1; jj < x2; jj ++) {
+    for (int ii = y1; ii < y2; ii++) {
+        for (int jj = x1; jj < x2; jj++) {
             rv.push_back(input->r(ii, jj));
             gv.push_back(input->g(ii, jj));
             bv.push_back(input->b(ii, jj));
@@ -166,28 +165,27 @@ void calcMedians(
     findMinMaxPercentile(bv.data(), bv.size(), 0.5f, bmed, 0.5f, bmed, true);
 }
 
-
-RGB getMedians(const rtengine::Imagefloat* input, int borderPercent)
+RGB getMedians(const rtengine::Imagefloat *input, int borderPercent)
 {
     float rmed, gmed, bmed;
-    // Cut 20% border from medians calculation. It will probably contain outlier values
-    // from the film holder, which will bias the median result.
+    // Cut 20% border from medians calculation. It will probably contain outlier
+    // values from the film holder, which will bias the median result.
     const int bW = input->getWidth() * borderPercent / 100;
     const int bH = input->getHeight() * borderPercent / 100;
-    calcMedians(input, bW, bH,
-                input->getWidth() - bW, input->getHeight() - bH,
+    calcMedians(input, bW, bH, input->getWidth() - bW, input->getHeight() - bH,
                 rmed, gmed, bmed);
 
     if (settings->verbose) {
         printf("Channel medians: R=%g, G=%g, B=%g\n", rmed, gmed, bmed);
     }
 
-    return { rmed, gmed, bmed };
+    return {rmed, gmed, bmed};
 }
 
 /*
 // TODO not needed for now
-void convertColorSpace(Imagefloat* input, const TMatrix &src2xyz, const TMatrix &xyz2dest)
+void convertColorSpace(Imagefloat* input, const TMatrix &src2xyz, const TMatrix
+&xyz2dest)
 {
 
 #ifdef _OPENMP
@@ -214,15 +212,15 @@ void convertColorSpace(Imagefloat* input, const TMatrix &src2xyz, const TMatrix 
 }
 */
 
-
 /**
  * Perform actual film negative inversion process.
- * Returns true if the input and output reference values are not set in params; refIn/refOut will be updated with median-based estimates.
- * Otherwise, use provided values in params and return false
+ * Returns true if the input and output reference values are not set in params;
+ * refIn/refOut will be updated with median-based estimates. Otherwise, use
+ * provided values in params and return false
  */
 bool doProcess(Imagefloat *input, Imagefloat *output,
-               const FilmNegativeParams &params, const ColorManagementParams &icmParams,
-               RGB &refIn, RGB &refOut)
+               const FilmNegativeParams &params,
+               const ColorManagementParams &icmParams, RGB &refIn, RGB &refOut)
 {
     bool refsUpdated = false;
 
@@ -230,8 +228,8 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
     float gexp = -params.greenExp;
     float bexp = -(params.greenExp * params.blueRatio);
 
-    // In case we are processing a thumbnail, reference values might not be set in params,
-    // so make an estimate on the fly, using channel medians
+    // In case we are processing a thumbnail, reference values might not be set
+    // in params, so make an estimate on the fly, using channel medians
     if (refIn.g <= 0.f) {
         // Calc medians, 20% border cut
         refIn = getMedians(input, 20);
@@ -242,18 +240,17 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
 
     if (refOut.g <= 0.f) {
         // Median will correspond to gray, 1/24th of max in the output
-        refOut = { MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f };
+        refOut = {MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f};
         refsUpdated = true;
     } else {
         refOut = params.refOutput;
     }
 
-    // Apply channel exponents to reference input values, and compute suitable multipliers
-    // in order to reach reference output values.
+    // Apply channel exponents to reference input values, and compute suitable
+    // multipliers in order to reach reference output values.
     float rmult = refOut.r / pow_F(rtengine::max(refIn.r, 1.f), rexp);
     float gmult = refOut.g / pow_F(rtengine::max(refIn.g, 1.f), gexp);
     float bmult = refOut.b / pow_F(rtengine::max(refIn.b, 1.f), bexp);
-
 
 #ifdef __SSE2__
     const vfloat clipv = F2V(MAXVALF);
@@ -279,9 +276,12 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
 #ifdef __SSE2__
 
         for (; j < rwidth - 3; j += 4) {
-            STVFU(rlineout[j], vminf(rmultv * pow_F(LVFU(rlinein[j]), rexpv), clipv));
-            STVFU(glineout[j], vminf(gmultv * pow_F(LVFU(glinein[j]), gexpv), clipv));
-            STVFU(blineout[j], vminf(bmultv * pow_F(LVFU(blinein[j]), bexpv), clipv));
+            STVFU(rlineout[j],
+                  vminf(rmultv * pow_F(LVFU(rlinein[j]), rexpv), clipv));
+            STVFU(glineout[j],
+                  vminf(gmultv * pow_F(LVFU(glinein[j]), gexpv), clipv));
+            STVFU(blineout[j],
+                  vminf(bmultv * pow_F(LVFU(blinein[j]), bexpv), clipv));
         }
 
 #endif
@@ -296,16 +296,16 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
     return refsUpdated;
 }
 
+} // namespace
 
-}
-
-
-
-bool rtengine::ImProcFunctions::filmNegativeProcess(
-    Imagefloat *input, Imagefloat *output, FilmNegativeParams &fnp,
-    const RAWParams &rawParams, const ImageSource* imgsrc, const ColorTemp &currWB)
+bool rtengine::ImProcFunctions::filmNegativeProcess(Imagefloat *input,
+                                                    Imagefloat *output,
+                                                    FilmNegativeParams &fnp,
+                                                    const RAWParams &rawParams,
+                                                    const ImageSource *imgsrc,
+                                                    const ColorTemp &currWB)
 {
-    //BENCHFUNMICRO
+    // BENCHFUNMICRO
 
     if (!fnp.enabled) {
         return false;
@@ -316,17 +316,18 @@ bool rtengine::ImProcFunctions::filmNegativeProcess(
     RGB &refIn = fnp.refInput;
     RGB &refOut = fnp.refOutput;
 
-    // If we're opening a profile from an older version, apply the proper multiplier
-    // compensations to make processing backwards compatible.
+    // If we're opening a profile from an older version, apply the proper
+    // multiplier compensations to make processing backwards compatible.
 
     if (fnp.backCompat == FilmNegativeParams::BackCompat::V1) {
         // Calc medians, no border cut, compensate currWB in+out
         refIn = getMedians(input, 0);
-        refOut = { MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f };
+        refOut = {MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f};
 
-        std::array<float, 4> scale_mul = { 1.f, 1.f, 1.f, 1.f };
+        std::array<float, 4> scale_mul = {1.f, 1.f, 1.f, 1.f};
         float autoGainComp, rm, gm, bm;
-        imgsrc->getWBMults(currWB, params->raw, scale_mul, autoGainComp, rm, gm, bm);
+        imgsrc->getWBMults(currWB, params->raw, scale_mul, autoGainComp, rm, gm,
+                           bm);
 
         refOut.r *= rm;
         refOut.g *= gm;
@@ -336,12 +337,14 @@ bool rtengine::ImProcFunctions::filmNegativeProcess(
 
     } else if (fnp.backCompat == FilmNegativeParams::BackCompat::V2) {
 
-        std::array<float, 4> scale_mul = { 1.f, 1.f, 1.f, 1.f };
+        std::array<float, 4> scale_mul = {1.f, 1.f, 1.f, 1.f};
         float autoGainComp, rm, gm, bm;
-        imgsrc->getWBMults(currWB, params->raw, scale_mul, autoGainComp, rm, gm, bm);
+        imgsrc->getWBMults(currWB, params->raw, scale_mul, autoGainComp, rm, gm,
+                           bm);
 
         float rm2, gm2, bm2;
-        imgsrc->getWBMults(rtengine::ColorTemp(3500., 1., 1., "Custom"), params->raw, scale_mul, autoGainComp, rm2, gm2, bm2);
+        imgsrc->getWBMults(rtengine::ColorTemp(3500., 1., 1., "Custom"),
+                           params->raw, scale_mul, autoGainComp, rm2, gm2, bm2);
         float mg = rtengine::max(rm2, gm2, bm2);
         rm2 /= mg;
         gm2 /= mg;
@@ -350,14 +353,15 @@ bool rtengine::ImProcFunctions::filmNegativeProcess(
         if (fnp.refInput.g == 0.f) {
             // Calc medians, 20% border cut
             refIn = getMedians(input, 20);
-            refOut = { MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f };
+            refOut = {MAXVALF / 24.f, MAXVALF / 24.f, MAXVALF / 24.f};
         } else if (fnp.refInput.g > 0.f) {
-            // Calc refInput + refOutput from base levels, compensate currWB in, 3500 out
+            // Calc refInput + refOutput from base levels, compensate currWB in,
+            // 3500 out
             refIn = fnp.refInput;
             refIn.r *= rm * scale_mul[0];
             refIn.g *= gm * scale_mul[1];
             refIn.b *= bm * scale_mul[2];
-            refOut = { MAXVALF / 512.f, MAXVALF / 512.f, MAXVALF / 512.f };
+            refOut = {MAXVALF / 512.f, MAXVALF / 512.f, MAXVALF / 512.f};
         }
 
         refOut.r *= rm * autoGainComp / rm2;
@@ -365,30 +369,34 @@ bool rtengine::ImProcFunctions::filmNegativeProcess(
         refOut.b *= bm * autoGainComp / bm2;
 
         paramsUpdated = true;
-
     }
 
-    if (settings->verbose > 1 && fnp.backCompat != FilmNegativeParams::BackCompat::CURRENT) {
-        printf("Film Negative - Upgraded from V%d - refIn: R=%g G=%g B=%g refOut: R=%g G=%g B=%g\n",
-               (int)fnp.backCompat,
-               static_cast<double>(refIn.r), static_cast<double>(refIn.g), static_cast<double>(refIn.b),
-               static_cast<double>(refOut.r), static_cast<double>(refOut.g), static_cast<double>(refOut.b));
+    if (settings->verbose > 1 &&
+        fnp.backCompat != FilmNegativeParams::BackCompat::CURRENT) {
+        printf("Film Negative - Upgraded from V%d - refIn: R=%g G=%g B=%g "
+               "refOut: R=%g G=%g B=%g\n",
+               (int)fnp.backCompat, static_cast<double>(refIn.r),
+               static_cast<double>(refIn.g), static_cast<double>(refIn.b),
+               static_cast<double>(refOut.r), static_cast<double>(refOut.g),
+               static_cast<double>(refOut.b));
     }
 
     // FilmNeg params are now upgraded to the latest version
     fnp.backCompat = FilmNegativeParams::BackCompat::CURRENT;
 
-    // Perform actual inversion. Return true if reference values are computed from medians
-    paramsUpdated |= doProcess(input, output, fnp, this->params->icm, refIn, refOut);
+    // Perform actual inversion. Return true if reference values are computed
+    // from medians
+    paramsUpdated |=
+        doProcess(input, output, fnp, this->params->icm, refIn, refOut);
 
     return paramsUpdated;
-
 }
 
-void rtengine::ImProcFunctions::filmNegativeProcess(rtengine::Imagefloat *input, rtengine::Imagefloat *output,
-        const procparams::FilmNegativeParams &params)
+void rtengine::ImProcFunctions::filmNegativeProcess(
+    rtengine::Imagefloat *input, rtengine::Imagefloat *output,
+    const procparams::FilmNegativeParams &params)
 {
-    //BENCHFUNMICRO
+    // BENCHFUNMICRO
 
     if (!params.enabled) {
         return;
@@ -397,11 +405,12 @@ void rtengine::ImProcFunctions::filmNegativeProcess(rtengine::Imagefloat *input,
     RGB refIn = params.refInput, refOut = params.refOutput;
 
     doProcess(input, output, params, this->params->icm, refIn, refOut);
-
 }
 
-
-bool rtengine::ImProcCoordinator::getFilmNegativeSpot(int x, int y, const int spotSize, RGB &refInput, RGB &refOutput)
+bool rtengine::ImProcCoordinator::getFilmNegativeSpot(int x, int y,
+                                                      const int spotSize,
+                                                      RGB &refInput,
+                                                      RGB &refOutput)
 {
     MyMutex::MyLock lock(mProcessing);
 
@@ -415,11 +424,18 @@ bool rtengine::ImProcCoordinator::getFilmNegativeSpot(int x, int y, const int sp
 
     float rexp = -(params.filmNegative.greenExp * params.filmNegative.redRatio);
     float gexp = -params.filmNegative.greenExp;
-    float bexp = -(params.filmNegative.greenExp * params.filmNegative.blueRatio);
+    float bexp =
+        -(params.filmNegative.greenExp * params.filmNegative.blueRatio);
 
-    float rmult = params.filmNegative.refOutput.r / pow_F(rtengine::max(params.filmNegative.refInput.r, 1.f), rexp);
-    float gmult = params.filmNegative.refOutput.g / pow_F(rtengine::max(params.filmNegative.refInput.g, 1.f), gexp);
-    float bmult = params.filmNegative.refOutput.b / pow_F(rtengine::max(params.filmNegative.refInput.b, 1.f), bexp);
+    float rmult =
+        params.filmNegative.refOutput.r /
+        pow_F(rtengine::max(params.filmNegative.refInput.r, 1.f), rexp);
+    float gmult =
+        params.filmNegative.refOutput.g /
+        pow_F(rtengine::max(params.filmNegative.refInput.g, 1.f), gexp);
+    float bmult =
+        params.filmNegative.refOutput.b /
+        pow_F(rtengine::max(params.filmNegative.refInput.b, 1.f), bexp);
 
     refInput = avg;
 
@@ -430,27 +446,20 @@ bool rtengine::ImProcCoordinator::getFilmNegativeSpot(int x, int y, const int sp
     return true;
 }
 
-
-
-
-
-
-
 // ---------- >>> legacy mode >>> ---------------
-
 
 // For backwards compatibility with profiles saved by RT 5.7 - 5.8
 void rtengine::Thumbnail::processFilmNegative(
-    const procparams::ProcParams &params,
-    const Imagefloat* baseImg,
-    const int rwidth, const int rheight
-)
+    const procparams::ProcParams &params, const Imagefloat *baseImg,
+    const int rwidth, const int rheight)
 {
 
     // Channel exponents
-    const float rexp = -params.filmNegative.redRatio * params.filmNegative.greenExp;
+    const float rexp =
+        -params.filmNegative.redRatio * params.filmNegative.greenExp;
     const float gexp = -params.filmNegative.greenExp;
-    const float bexp = -params.filmNegative.blueRatio * params.filmNegative.greenExp;
+    const float bexp =
+        -params.filmNegative.blueRatio * params.filmNegative.greenExp;
 
     const float MAX_OUT_VALUE = 65000.f;
 
@@ -461,7 +470,9 @@ void rtengine::Thumbnail::processFilmNegative(
     calcMedians(baseImg, 0, 0, rwidth, rheight, rmed, gmed, bmed);
 
     if (settings->verbose) {
-        printf("FilmNeg legacy V1 :: Thumbnail input channel medians: %g %g %g\n", rmed, gmed, bmed);
+        printf(
+            "FilmNeg legacy V1 :: Thumbnail input channel medians: %g %g %g\n",
+            rmed, gmed, bmed);
     }
 
     // Calculate output medians
@@ -469,7 +480,8 @@ void rtengine::Thumbnail::processFilmNegative(
     gmed = powf(gmed, gexp);
     bmed = powf(bmed, bexp);
 
-    // Calculate output multipliers so that the median value is 1/24 of the output range.
+    // Calculate output multipliers so that the median value is 1/24 of the
+    // output range.
     float rmult, gmult, bmult;
     rmult = (MAX_OUT_VALUE / 24.f) / rmed;
     gmult = (MAX_OUT_VALUE / 24.f) / gmed;
@@ -495,7 +507,10 @@ void rtengine::Thumbnail::processFilmNegative(
     bmult /= gavg / bavg;
 
     if (settings->verbose) {
-        printf("FilmNeg legacy V1 :: Thumbnail computed multipliers: %g %g %g\n", static_cast<double>(rmult), static_cast<double>(gmult), static_cast<double>(bmult));
+        printf(
+            "FilmNeg legacy V1 :: Thumbnail computed multipliers: %g %g %g\n",
+            static_cast<double>(rmult), static_cast<double>(gmult),
+            static_cast<double>(bmult));
     }
 
 #ifdef __SSE2__
@@ -516,9 +531,12 @@ void rtengine::Thumbnail::processFilmNegative(
 #ifdef __SSE2__
 
         for (; j < rwidth - 3; j += 4) {
-            STVFU(rline[j], vminf(rmultv * pow_F(LVFU(rline[j]), rexpv), clipv));
-            STVFU(gline[j], vminf(gmultv * pow_F(LVFU(gline[j]), gexpv), clipv));
-            STVFU(bline[j], vminf(bmultv * pow_F(LVFU(bline[j]), bexpv), clipv));
+            STVFU(rline[j],
+                  vminf(rmultv * pow_F(LVFU(rline[j]), rexpv), clipv));
+            STVFU(gline[j],
+                  vminf(gmultv * pow_F(LVFU(gline[j]), gexpv), clipv));
+            STVFU(bline[j],
+                  vminf(bmultv * pow_F(LVFU(bline[j]), bexpv), clipv));
         }
 
 #endif
@@ -531,26 +549,27 @@ void rtengine::Thumbnail::processFilmNegative(
     }
 }
 
-
-// For backwards compatibility with intermediate dev version (see filmneg_stable_mults branch)
+// For backwards compatibility with intermediate dev version (see
+// filmneg_stable_mults branch)
 void rtengine::Thumbnail::processFilmNegativeV2(
-    const procparams::ProcParams &params,
-    const Imagefloat* baseImg,
-    const int rwidth, const int rheight
-)
+    const procparams::ProcParams &params, const Imagefloat *baseImg,
+    const int rwidth, const int rheight)
 {
 
     // Channel exponents
-    const float rexp = -params.filmNegative.redRatio * params.filmNegative.greenExp;
+    const float rexp =
+        -params.filmNegative.redRatio * params.filmNegative.greenExp;
     const float gexp = -params.filmNegative.greenExp;
-    const float bexp = -params.filmNegative.blueRatio * params.filmNegative.greenExp;
+    const float bexp =
+        -params.filmNegative.blueRatio * params.filmNegative.greenExp;
 
     // Calculate output multipliers
     float rmult, gmult, bmult;
 
     const float MAX_OUT_VALUE = 65000.f;
 
-    // If the film base values are not set in params, estimate multipliers from each channel's median value.
+    // If the film base values are not set in params, estimate multipliers from
+    // each channel's median value.
     if (params.filmNegative.refInput.r <= 0.f) {
 
         // Channel medians
@@ -559,10 +578,13 @@ void rtengine::Thumbnail::processFilmNegativeV2(
         // The new method cuts out a 20% border from medians calculation.
         const int bW = rwidth * 20 / 100;
         const int bH = rheight * 20 / 100;
-        calcMedians(baseImg, bW, bH, rwidth - bW, rheight - bH, rmed, gmed, bmed);
+        calcMedians(baseImg, bW, bH, rwidth - bW, rheight - bH, rmed, gmed,
+                    bmed);
 
         if (settings->verbose) {
-            printf("FilmNeg legacy V2 :: Thumbnail input channel medians: %g %g %g\n", rmed, gmed, bmed);
+            printf("FilmNeg legacy V2 :: Thumbnail input channel medians: %g "
+                   "%g %g\n",
+                   rmed, gmed, bmed);
         }
 
         // Calculate output medians
@@ -570,7 +592,8 @@ void rtengine::Thumbnail::processFilmNegativeV2(
         gmed = powf(gmed, gexp);
         bmed = powf(bmed, bexp);
 
-        // Calculate output multipliers so that the median value is 1/24 of the output range.
+        // Calculate output multipliers so that the median value is 1/24 of the
+        // output range.
         rmult = (MAX_OUT_VALUE / 24.f) / rmed;
         gmult = (MAX_OUT_VALUE / 24.f) / gmed;
         bmult = (MAX_OUT_VALUE / 24.f) / bmed;
@@ -587,12 +610,14 @@ void rtengine::Thumbnail::processFilmNegativeV2(
         //   pre_mul[0] * scaleGain is scale_mul[0]
         // Apply channel scaling to raw (unscaled) input base values, to
         // match with actual (scaled) data in baseImg
-        rbase *= (redMultiplier / camwbRed)     * scaleGain;
+        rbase *= (redMultiplier / camwbRed) * scaleGain;
         gbase *= (greenMultiplier / camwbGreen) * scaleGain;
-        bbase *= (blueMultiplier / camwbBlue)   * scaleGain;
+        bbase *= (blueMultiplier / camwbBlue) * scaleGain;
 
         if (settings->verbose) {
-            printf("FilmNeg legacy V2 :: Thumbnail input film base values: %g %g %g\n", rbase, gbase, bbase);
+            printf("FilmNeg legacy V2 :: Thumbnail input film base values: %g "
+                   "%g %g\n",
+                   rbase, gbase, bbase);
         }
 
         // Apply exponents to get output film base values
@@ -600,23 +625,28 @@ void rtengine::Thumbnail::processFilmNegativeV2(
         gbase = powf(gbase, gexp);
         bbase = powf(bbase, bexp);
 
-        // Calculate multipliers so that film base value is 1/512th of the output range.
+        // Calculate multipliers so that film base value is 1/512th of the
+        // output range.
         rmult = (MAX_OUT_VALUE / 512.f) / rbase;
         gmult = (MAX_OUT_VALUE / 512.f) / gbase;
         bmult = (MAX_OUT_VALUE / 512.f) / bbase;
-
     }
 
-
-    // Get and un-apply multipliers to adapt the thumbnail to a known fixed WB setting,
-    // as in the main image processing.
+    // Get and un-apply multipliers to adapt the thumbnail to a known fixed WB
+    // setting, as in the main image processing.
 
     double r, g, b;
     ColorTemp(3500., 1., 1., "Custom").getMultipliers(r, g, b);
-    //iColorMatrix is cam_rgb
-    const double rm = camwbRed   / (iColorMatrix[0][0] * r + iColorMatrix[0][1] * g + iColorMatrix[0][2] * b);
-    const double gm = camwbGreen / (iColorMatrix[1][0] * r + iColorMatrix[1][1] * g + iColorMatrix[1][2] * b);
-    const double bm = camwbBlue  / (iColorMatrix[2][0] * r + iColorMatrix[2][1] * g + iColorMatrix[2][2] * b);
+    // iColorMatrix is cam_rgb
+    const double rm =
+        camwbRed / (iColorMatrix[0][0] * r + iColorMatrix[0][1] * g +
+                    iColorMatrix[0][2] * b);
+    const double gm =
+        camwbGreen / (iColorMatrix[1][0] * r + iColorMatrix[1][1] * g +
+                      iColorMatrix[1][2] * b);
+    const double bm =
+        camwbBlue / (iColorMatrix[2][0] * r + iColorMatrix[2][1] * g +
+                     iColorMatrix[2][2] * b);
 
     // Normalize max WB multiplier to 1.f
     const double m = max(rm, gm, bm);
@@ -624,11 +654,12 @@ void rtengine::Thumbnail::processFilmNegativeV2(
     gmult /= gm / m;
     bmult /= bm / m;
 
-
     if (settings->verbose) {
-        printf("FilmNeg legacy V2 :: Thumbnail computed multipliers: %g %g %g\n", static_cast<double>(rmult), static_cast<double>(gmult), static_cast<double>(bmult));
+        printf(
+            "FilmNeg legacy V2 :: Thumbnail computed multipliers: %g %g %g\n",
+            static_cast<double>(rmult), static_cast<double>(gmult),
+            static_cast<double>(bmult));
     }
-
 
 #ifdef __SSE2__
     const vfloat clipv = F2V(MAXVALF);
@@ -648,9 +679,12 @@ void rtengine::Thumbnail::processFilmNegativeV2(
 #ifdef __SSE2__
 
         for (; j < rwidth - 3; j += 4) {
-            STVFU(rline[j], vminf(rmultv * pow_F(LVFU(rline[j]), rexpv), clipv));
-            STVFU(gline[j], vminf(gmultv * pow_F(LVFU(gline[j]), gexpv), clipv));
-            STVFU(bline[j], vminf(bmultv * pow_F(LVFU(bline[j]), bexpv), clipv));
+            STVFU(rline[j],
+                  vminf(rmultv * pow_F(LVFU(rline[j]), rexpv), clipv));
+            STVFU(gline[j],
+                  vminf(gmultv * pow_F(LVFU(gline[j]), gexpv), clipv));
+            STVFU(bline[j],
+                  vminf(bmultv * pow_F(LVFU(bline[j]), bexpv), clipv));
         }
 
 #endif
@@ -664,5 +698,3 @@ void rtengine::Thumbnail::processFilmNegativeV2(
 }
 
 // ----------------- <<< legacy mode <<< ------------
-
-

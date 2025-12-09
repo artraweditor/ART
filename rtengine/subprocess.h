@@ -20,25 +20,21 @@
 
 #pragma once
 
-#include <string>
-#include <glibmm.h>
-#include <exception>
-#include <sstream>
 #include "noncopyable.h"
+#include <exception>
+#include <glibmm.h>
+#include <sstream>
+#include <string>
 
-namespace rtengine { namespace subprocess {
+namespace rtengine {
+namespace subprocess {
 
 class error: public std::exception {
 public:
     error() {}
-    error(const error &other):
-        buf_()
-    {
-        buf_ << other.buf_.str();
-    }
-    
-    template <class T>
-    error &operator<<(const T &t)
+    error(const error &other): buf_() { buf_ << other.buf_.str(); }
+
+    template <class T> error &operator<<(const T &t)
     {
         buf_ << t;
         return *this;
@@ -63,7 +59,9 @@ std::wstring quote(const std::wstring &s);
 
 std::vector<Glib::ustring> split_command_line(const Glib::ustring &cmdl);
 
-void exec_sync(const Glib::ustring &workdir, const std::vector<Glib::ustring> &argv, bool search_in_path, std::string *out, std::string *err);
+void exec_sync(const Glib::ustring &workdir,
+               const std::vector<Glib::ustring> &argv, bool search_in_path,
+               std::string *out, std::string *err);
 
 std::vector<std::string> get_env();
 
@@ -71,7 +69,7 @@ class SubprocessInfo: public NonCopyable {
 public:
     explicit SubprocessInfo(uintptr_t impl): impl_(impl) {}
     ~SubprocessInfo();
-    
+
     int read();
     bool write(const char *s, size_t n);
     bool flush();
@@ -86,6 +84,10 @@ private:
     uintptr_t impl_;
 };
 
-std::unique_ptr<SubprocessInfo> popen(const Glib::ustring &workdir, const std::vector<Glib::ustring> &argv, bool search_in_path, bool pipe_in, bool pipe_out);
+std::unique_ptr<SubprocessInfo> popen(const Glib::ustring &workdir,
+                                      const std::vector<Glib::ustring> &argv,
+                                      bool search_in_path, bool pipe_in,
+                                      bool pipe_out);
 
-}} // namespace rtengine::subprocess
+} // namespace subprocess
+} // namespace rtengine

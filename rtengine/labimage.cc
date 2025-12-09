@@ -22,25 +22,19 @@
 
 #include "labimage.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-LabImage::LabImage (int w, int h) : W(w), H(h)
-{
-    allocLab(w, h);
-}
+LabImage::LabImage(int w, int h): W(w), H(h) { allocLab(w, h); }
 
-LabImage::~LabImage ()
-{
-    deleteLab();
-}
+LabImage::~LabImage() { deleteLab(); }
 
 void LabImage::CopyFrom(LabImage *Img)
 {
     memcpy(data, Img->data, W * H * 3 * sizeof(float));
 }
 
-void LabImage::getPipetteData (float &v1, float &v2, float &v3, int posX, int posY, int squareSize)
+void LabImage::getPipetteData(float &v1, float &v2, float &v3, int posX,
+                              int posY, int squareSize)
 {
     float accumulator_L = 0.f;
     float accumulator_a = 0.f;
@@ -48,8 +42,10 @@ void LabImage::getPipetteData (float &v1, float &v2, float &v3, int posX, int po
     unsigned long int n = 0;
     int halfSquare = squareSize / 2;
 
-    for (int iy = posY - halfSquare; iy < posY - halfSquare + squareSize; ++iy) {
-        for (int ix = posX - halfSquare; ix < posX - halfSquare + squareSize; ++ix) {
+    for (int iy = posY - halfSquare; iy < posY - halfSquare + squareSize;
+         ++iy) {
+        for (int ix = posX - halfSquare; ix < posX - halfSquare + squareSize;
+             ++ix) {
             if (ix >= 0 && iy >= 0 && ix < W && iy < H) {
                 accumulator_L += L[iy][ix];
                 accumulator_a += a[iy][ix];
@@ -66,12 +62,12 @@ void LabImage::getPipetteData (float &v1, float &v2, float &v3, int posX, int po
 
 void LabImage::allocLab(size_t w, size_t h)
 {
-    L = new float*[h];
-    a = new float*[h];
-    b = new float*[h];
+    L = new float *[h];
+    a = new float *[h];
+    b = new float *[h];
 
-    data = new float [w * h * 3];
-    float * index = data;
+    data = new float[w * h * 3];
+    float *index = data;
 
     for (size_t i = 0; i < h; i++) {
         L[i] = index + i * w;
@@ -92,15 +88,12 @@ void LabImage::allocLab(size_t w, size_t h)
 
 void LabImage::deleteLab()
 {
-    delete [] L;
-    delete [] a;
-    delete [] b;
-    delete [] data;
+    delete[] L;
+    delete[] a;
+    delete[] b;
+    delete[] data;
 }
 
-void LabImage::reallocLab()
-{
-    allocLab(W, H);
-}
+void LabImage::reallocLab() { allocLab(W, H); }
 
-}
+} // namespace rtengine

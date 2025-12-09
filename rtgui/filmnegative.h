@@ -29,46 +29,45 @@
 
 #include "../rtengine/colortemp.h"
 
-namespace
-{
+namespace {
 using RGB = rtengine::procparams::FilmNegativeParams::RGB;
 using ColorSpace = rtengine::procparams::FilmNegativeParams::ColorSpace;
 using BackCompat = rtengine::procparams::FilmNegativeParams::BackCompat;
-}
+} // namespace
 
-class FilmNegProvider
-{
+class FilmNegProvider {
 public:
     virtual ~FilmNegProvider() = default;
 
-    virtual bool getFilmNegativeSpot(rtengine::Coord spot, int spotSize, RGB &refInput, RGB &refOutput) = 0;
+    virtual bool getFilmNegativeSpot(rtengine::Coord spot, int spotSize,
+                                     RGB &refInput, RGB &refOutput) = 0;
 };
 
-class FilmNegative final :
-    public ToolParamBlock,
-    public AdjusterListener,
-    public FoldableToolPanel,
-    public EditSubscriber,
-    public rtengine::FilmNegListener
-{
+class FilmNegative final: public ToolParamBlock,
+                          public AdjusterListener,
+                          public FoldableToolPanel,
+                          public EditSubscriber,
+                          public rtengine::FilmNegListener {
 public:
     FilmNegative();
     ~FilmNegative() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void toolReset(bool to_initial) override;
 
-    void adjusterChanged(Adjuster* a, double newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
     void enabledChanged() override;
     void colorSpaceChanged();
 
-    void filmRefValuesChanged(const RGB &refInput, const RGB &refOutput) override;
+    void filmRefValuesChanged(const RGB &refInput,
+                              const RGB &refOutput) override;
 
-    void setFilmNegProvider(FilmNegProvider* provider);
+    void setFilmNegProvider(FilmNegProvider *provider);
 
-    void setEditProvider(EditDataProvider* provider) override;
+    void setEditProvider(EditDataProvider *provider) override;
 
     // EditSubscriber interface
     CursorShape getCursor(int objectID) override;
@@ -85,7 +84,8 @@ private:
     void readOutputSliders(RGB &refOutput);
     void writeOutputSliders(const RGB &refOutput);
 
-    // ColorTemp value corresponding to neutral RGB multipliers (1,1,1). Should be around 6500K.
+    // ColorTemp value corresponding to neutral RGB multipliers (1,1,1). Should
+    // be around 6500K.
     const rtengine::ColorTemp NEUTRAL_TEMP;
 
     const rtengine::ProcEvent evFilmNegativeExponents;
@@ -93,41 +93,42 @@ private:
     const rtengine::ProcEvent evFilmNegativeRefSpot;
     const rtengine::ProcEvent evFilmNegativeBalance;
     const rtengine::ProcEvent evFilmNegativeColorSpace;
-    
+
     std::vector<rtengine::Coord> refSpotCoords;
 
     RGB refInputValues;
     bool paramsUpgraded;
 
     /**
-     * Luminance reference: these input RGB values must produce this output luminance.
-     * This allows keeping constant luminance when picking several white balance  spot
-     * samples in sequence; values are set on the initial white balance spot sampling,
-     * and reset every time params are read, or the output sliders are changed.
+     * Luminance reference: these input RGB values must produce this output
+     * luminance. This allows keeping constant luminance when picking several
+     * white balance  spot samples in sequence; values are set on the initial
+     * white balance spot sampling, and reset every time params are read, or the
+     * output sliders are changed.
      */
     struct {
         RGB input;
         float lum;
     } refLuminance;
 
-    FilmNegProvider* fnp;
+    FilmNegProvider *fnp;
 
-    MyComboBoxText* const colorSpace;
+    MyComboBoxText *const colorSpace;
 
-    Adjuster* const greenExp;
-    Adjuster* const redRatio;
-    Adjuster* const blueRatio;
+    Adjuster *const greenExp;
+    Adjuster *const redRatio;
+    Adjuster *const blueRatio;
 
-    Gtk::ToggleButton* const spotButton;
-    MyComboBoxText* spotsize;
+    Gtk::ToggleButton *const spotButton;
+    MyComboBoxText *spotsize;
 
-    Gtk::Label* const refInputLabel;
-    Gtk::ToggleButton* const refSpotButton;
-    MyComboBoxText* refspotsize;
+    Gtk::Label *const refInputLabel;
+    Gtk::ToggleButton *const refSpotButton;
+    MyComboBoxText *refspotsize;
 
-    Adjuster* const outputLevel;
-    Adjuster* const greenBalance;
-    Adjuster* const blueBalance;
+    Adjuster *const outputLevel;
+    Adjuster *const greenBalance;
+    Adjuster *const blueBalance;
 
     Gtk::Grid *csGrid;
 

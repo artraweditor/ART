@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,15 +19,15 @@
  */
 #pragma once
 
-#include "improccoordinator.h"
-#include "rtengine.h"
-#include "improcfun.h"
-#include "image8.h"
-#include "image16.h"
-#include "imagesource.h"
-#include "procevents.h"
-#include "pipettebuffer.h"
 #include "../rtgui/threadutils.h"
+#include "image16.h"
+#include "image8.h"
+#include "imagesource.h"
+#include "improccoordinator.h"
+#include "improcfun.h"
+#include "pipettebuffer.h"
+#include "procevents.h"
+#include "rtengine.h"
 
 namespace rtengine {
 
@@ -39,61 +39,76 @@ class Crop: public DetailedCrop, public PipetteBuffer {
 
 protected:
     // --- permanently allocated in RAM and only renewed on size changes
-    Imagefloat*  origCrop;   // "one chunk" allocation
-    Imagefloat*  spotCrop;   // "one chunk" allocation
+    Imagefloat *origCrop; // "one chunk" allocation
+    Imagefloat *spotCrop; // "one chunk" allocation
     Imagefloat *denoiseCrop;
     Imagefloat *bufs_[3];
     std::array<bool, 4> pipeline_stop_;
-    Image8*      cropImg;    // "one chunk" allocation ; displayed image in monitor color space, showing the output profile as well (soft-proofing enabled, which then correspond to workimg) or not
+    Image8
+        *cropImg; // "one chunk" allocation ; displayed image in monitor color
+                  // space, showing the output profile as well (soft-proofing
+                  // enabled, which then correspond to workimg) or not
 
-    // --- automatically allocated and deleted when necessary, and only renewed on size changes
-    Imagefloat*  transCrop;    // "one chunk" allocation, allocated if necessary
+    // --- automatically allocated and deleted when necessary, and only renewed
+    // on size changes
+    Imagefloat *transCrop; // "one chunk" allocation, allocated if necessary
     // -----------------------------------------------------------------
 
-    bool updating;         /// Flag telling if an updater thread is currently processing
-    bool newUpdatePending; /// Flag telling the updater thread that a new update is pending
+    bool updating; /// Flag telling if an updater thread is currently processing
+    bool newUpdatePending; /// Flag telling the updater thread that a new update
+                           /// is pending
     int skip;
-    int cropx, cropy, cropw, croph;         /// size of the detail crop image ('skip' taken into account), with border
-    int trafx, trafy, trafw, trafh;         /// the size and position to get from the imagesource that is transformed to the requested crop area
-    int rqcropx, rqcropy, rqcropw, rqcroph; /// size of the requested detail crop image (the image might be smaller) (without border)
-    const int borderRequested;              /// requested extra border size for image processing
-    int upperBorder, leftBorder;            /// extra border size really allocated for image processing
+    int cropx, cropy, cropw, croph; /// size of the detail crop image ('skip'
+                                    /// taken into account), with border
+    int trafx, trafy, trafw,
+        trafh; /// the size and position to get from the imagesource that is
+               /// transformed to the requested crop area
+    int rqcropx, rqcropy, rqcropw,
+        rqcroph; /// size of the requested detail crop image (the image might be
+                 /// smaller) (without border)
+    const int
+        borderRequested; /// requested extra border size for image processing
+    int upperBorder,
+        leftBorder; /// extra border size really allocated for image processing
 
     bool cropAllocated;
-    DetailedCropListener* cropImageListener;
+    DetailedCropListener *cropImageListener;
 
     MyMutex cropMutex;
-    ImProcCoordinator* const parent;
+    ImProcCoordinator *const parent;
     const bool isDetailWindow;
     EditUniqueID getCurrEditID();
-    bool setCropSizes (int cropX, int cropY, int cropW, int cropH, int skip, bool internal);
-    void freeAll ();
+    bool setCropSizes(int cropX, int cropY, int cropW, int cropH, int skip,
+                      bool internal);
+    void freeAll();
 
     friend class ImProcCoordinator;
     void update(int todo);
 
 public:
-    Crop(ImProcCoordinator* parent, EditDataProvider *editDataProvider, bool isDetailWindow);
+    Crop(ImProcCoordinator *parent, EditDataProvider *editDataProvider,
+         bool isDetailWindow);
     ~Crop() override;
 
-    void setEditSubscriber(EditSubscriber* newSubscriber);
+    void setEditSubscriber(EditSubscriber *newSubscriber);
     bool hasListener();
-    void setWindow   (int cropX, int cropY, int cropW, int cropH, int skip) override
+    void setWindow(int cropX, int cropY, int cropW, int cropH,
+                   int skip) override
     {
-        setCropSizes (cropX, cropY, cropW, cropH, skip, false);
+        setCropSizes(cropX, cropY, cropW, cropH, skip, false);
     }
 
     /** @brief Synchronously look out if a full update is necessary
      * First try, only make fullUpdate if this returns false
      */
-    bool tryUpdate   () override;
+    bool tryUpdate() override;
     /** @brief Asynchronously reprocess the detailed crop */
-    void fullUpdate  () override;  // called via thread
+    void fullUpdate() override; // called via thread
 
-    void setListener    (DetailedCropListener* il) override;
-    void destroy        () override {}
+    void setListener(DetailedCropListener *il) override;
+    void destroy() override {}
     int get_skip();
     int getLeftBorder();
     int getUpperBorder();
 };
-}
+} // namespace rtengine

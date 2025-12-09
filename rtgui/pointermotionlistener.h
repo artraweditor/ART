@@ -19,27 +19,41 @@
 #ifndef _POINTERMOTIONLISTENER_
 #define _POINTERMOTIONLISTENER_
 
-class PointerMotionListener
-{
+class PointerMotionListener {
 protected:
     sigc::signal<void> sig_cycle_rgb;
     sigc::signal<void> sig_cycle_lch;
 
 public:
     virtual ~PointerMotionListener() {}
-    virtual void pointerMoved (bool validPos, const Glib::ustring &profile, const Glib::ustring &profileW, int x, int y, int r, int g, int b, bool isRaw = false) = 0;
-    virtual void getRGBText (int r, int g, int b, Glib::ustring &sR, Glib::ustring &sG, Glib::ustring &sB, bool isRaw = false) { sR = "--"; sG = "--"; sB = "--"; }
-    virtual void getLCHText (float l, float c, float h, Glib::ustring &sL, Glib::ustring &sC, Glib::ustring &sH) { sL = "--"; sC = "--"; sH = "--"; }
-    virtual void getLABText (float l, float a, float b, Glib::ustring &sL, Glib::ustring &sA, Glib::ustring &sB) { sL = "--"; sA = "--"; sB = "--"; }
+    virtual void pointerMoved(bool validPos, const Glib::ustring &profile,
+                              const Glib::ustring &profileW, int x, int y,
+                              int r, int g, int b, bool isRaw = false) = 0;
+    virtual void getRGBText(int r, int g, int b, Glib::ustring &sR,
+                            Glib::ustring &sG, Glib::ustring &sB,
+                            bool isRaw = false)
+    {
+        sR = "--";
+        sG = "--";
+        sB = "--";
+    }
+    virtual void getLCHText(float l, float c, float h, Glib::ustring &sL,
+                            Glib::ustring &sC, Glib::ustring &sH)
+    {
+        sL = "--";
+        sC = "--";
+        sH = "--";
+    }
+    virtual void getLABText(float l, float a, float b, Glib::ustring &sL,
+                            Glib::ustring &sA, Glib::ustring &sB)
+    {
+        sL = "--";
+        sA = "--";
+        sB = "--";
+    }
 
-    sigc::signal<void> signal_cycle_rgb()
-    {
-        return sig_cycle_rgb;
-    }
-    sigc::signal<void> signal_cycle_lch()
-    {
-        return sig_cycle_lch;
-    }
+    sigc::signal<void> signal_cycle_rgb() { return sig_cycle_rgb; }
+    sigc::signal<void> signal_cycle_lch() { return sig_cycle_lch; }
 };
 
 #endif

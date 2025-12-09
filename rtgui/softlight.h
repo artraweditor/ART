@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,12 +19,13 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class SoftLight: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class SoftLight: public ToolParamBlock,
+                 public AdjusterListener,
+                 public FoldableToolPanel {
 private:
     Adjuster *strength;
 
@@ -32,19 +33,18 @@ private:
     rtengine::ProcEvent EvSoftLightStrength;
 
     rtengine::procparams::SoftLightParams initial_params;
-    
-public:
 
+public:
     SoftLight();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void adjusterChanged(Adjuster *a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void enabledChanged() override;
 
     void toolReset(bool to_initial) override;
     void registerShortcuts(ToolShortcutManager *mgr) override;
 };
-

@@ -20,10 +20,11 @@
 #include <cmath>
 #include <vector>
 
-namespace rtengine
-{
+namespace rtengine {
 
-FlatCurve::FlatCurve (const std::vector<double>& p, bool isPeriodic, int poly_pn) : kind(FCT_Empty), leftTangent(nullptr), rightTangent(nullptr), identityValue(0.5), periodic(isPeriodic)
+FlatCurve::FlatCurve(const std::vector<double> &p, bool isPeriodic, int poly_pn)
+    : kind(FCT_Empty), leftTangent(nullptr), rightTangent(nullptr),
+      identityValue(0.5), periodic(isPeriodic)
 {
 
     ppn = poly_pn > 65500 ? 65500 : poly_pn;
@@ -49,12 +50,14 @@ FlatCurve::FlatCurve (const std::vector<double>& p, bool isPeriodic, int poly_pn
                 leftTangent[i] = p[ix++];
                 rightTangent[i] = p[ix++];
 
-                if (y[i] >= identityValue + 1.e-7 || y[i] <= identityValue - 1.e-7) {
+                if (y[i] >= identityValue + 1.e-7 ||
+                    y[i] <= identityValue - 1.e-7) {
                     identity = false;
                 }
             }
 
-            // The first point is copied to the end of the point list, to handle the curve periodicity
+            // The first point is copied to the end of the point list, to handle
+            // the curve periodicity
             if (periodic) {
                 x[N] = p[1] + 1.0;
                 y[N] = p[2];
@@ -62,8 +65,8 @@ FlatCurve::FlatCurve (const std::vector<double>& p, bool isPeriodic, int poly_pn
                 rightTangent[N] = p[4];
             }
 
-            if (!identity && N > (periodic ? 1 : 0) ) {
-                CtrlPoints_set ();
+            if (!identity && N > (periodic ? 1 : 0)) {
+                CtrlPoints_set();
                 fillHash();
             }
         }
@@ -76,23 +79,24 @@ FlatCurve::FlatCurve (const std::vector<double>& p, bool isPeriodic, int poly_pn
     }
 }
 
-FlatCurve::~FlatCurve ()
+FlatCurve::~FlatCurve()
 {
 
-    delete [] x;
-    delete [] y;
-    delete [] leftTangent;
-    delete [] rightTangent;
-    delete [] ypp;
+    delete[] x;
+    delete[] y;
+    delete[] leftTangent;
+    delete[] rightTangent;
+    delete[] ypp;
     poly_x.clear();
     poly_y.clear();
 }
 
 /*
- * The nominal (identity) curve may not be 0.5, use this method to set it to whatever value in the 0.-1. range you want
- * Return true if the curve is nominal
+ * The nominal (identity) curve may not be 0.5, use this method to set it to
+ * whatever value in the 0.-1. range you want Return true if the curve is
+ * nominal
  */
-bool FlatCurve::setIdentityValue (double iVal)
+bool FlatCurve::setIdentityValue(double iVal)
 {
 
     if (identityValue == iVal) {
@@ -109,8 +113,8 @@ bool FlatCurve::setIdentityValue (double iVal)
         }
     }
 
-    if (!identity && N > (periodic ? 1 : 0) ) {
-        CtrlPoints_set ();
+    if (!identity && N > (periodic ? 1 : 0)) {
+        CtrlPoints_set();
         fillHash();
         kind = FCT_MinMaxCPoints;
     } else {
@@ -123,16 +127,20 @@ bool FlatCurve::setIdentityValue (double iVal)
     return kind == FCT_Empty;
 }
 
-void FlatCurve::CtrlPoints_set ()
+void FlatCurve::CtrlPoints_set()
 {
 
     int N_ = periodic ? N : N - 1;
     int nbSubCurvesPoints = N_ * 6;
 
-    std::vector<double> sc_x(nbSubCurvesPoints);  // X sub-curve points (  XP0,XP1,XP2,  XP2,XP3,XP4,  ...)
-    std::vector<double> sc_y(nbSubCurvesPoints);  // Y sub-curve points (  YP0,YP1,YP2,  YP2,YP3,YP4,  ...)
-    std::vector<double> sc_length(N_ * 2);         // Length of the subcurves
-    std::vector<bool> sc_isLinear(N_ * 2);         // true if the subcurve is linear
+    std::vector<double> sc_x(
+        nbSubCurvesPoints); // X sub-curve points (  XP0,XP1,XP2,  XP2,XP3,XP4,
+                            // ...)
+    std::vector<double> sc_y(
+        nbSubCurvesPoints); // Y sub-curve points (  YP0,YP1,YP2,  YP2,YP3,YP4,
+                            // ...)
+    std::vector<double> sc_length(N_ * 2); // Length of the subcurves
+    std::vector<bool> sc_isLinear(N_ * 2); // true if the subcurve is linear
     double total_length = 0.;
 
     // Create the list of Bezier sub-curves
@@ -147,14 +155,14 @@ void FlatCurve::CtrlPoints_set ()
         double dy;
         bool startLinear, endLinear;
 
-        startLinear = (rightTangent[i]   == 0.) || (y[i] == y[i + 1]);
-        endLinear   = (leftTangent [i + 1] == 0.) || (y[i] == y[i + 1]);
+        startLinear = (rightTangent[i] == 0.) || (y[i] == y[i + 1]);
+        endLinear = (leftTangent[i + 1] == 0.) || (y[i] == y[i + 1]);
 
         if (startLinear && endLinear) {
             // line shape
-            sc_x[j]   = x[i];
+            sc_x[j] = x[i];
             sc_y[j++] = y[i];
-            sc_x[j]   = x[i + 1];
+            sc_x[j] = x[i + 1];
             sc_y[j] = y[i + 1];
             sc_isLinear[k] = true;
             i++;
@@ -164,8 +172,8 @@ void FlatCurve::CtrlPoints_set ()
             length = sqrt(dx * dx + dy * dy);
             j++;
 
-            // Storing the length of all sub-curves and the total length (to have a better distribution
-            // of the points along the curve)
+            // Storing the length of all sub-curves and the total length (to
+            // have a better distribution of the points along the curve)
             sc_length[k++] = length;
             total_length += length;
         } else {
@@ -173,30 +181,31 @@ void FlatCurve::CtrlPoints_set ()
             if (startLinear) {
                 xp1 = x[i];
             } else {
-                //xp1 = (xp4 - xp0) * rightTangent0 + xp0;
+                // xp1 = (xp4 - xp0) * rightTangent0 + xp0;
                 xp1 = (x[i + 1] - x[i]) * rightTangent[i] + x[i];
             }
 
             if (endLinear) {
                 xp3 = x[i + 1];
             } else {
-                //xp3 = (xp0 - xp4]) * leftTangent4 + xp4;
+                // xp3 = (xp0 - xp4]) * leftTangent4 + xp4;
                 xp3 = (x[i] - x[i + 1]) * leftTangent[i + 1] + x[i + 1];
             }
 
             xp2 = (xp1 + xp3) / 2.0;
             yp2 = (y[i] + y[i + 1]) / 2.0;
 
-            if (rightTangent[i] + leftTangent[i + 1] > 1.0) { // also means that start and end are not linear
+            if (rightTangent[i] + leftTangent[i + 1] >
+                1.0) { // also means that start and end are not linear
                 xp1 = xp3 = xp2;
             }
 
             if (startLinear) {
                 // Point 0, 2
-                sc_x[j]   = x[i];
+                sc_x[j] = x[i];
                 sc_y[j++] = y[i];
-                sc_x[j]   = xp2;
-                sc_y[j]   = yp2;
+                sc_x[j] = xp2;
+                sc_y[j] = yp2;
                 sc_isLinear[k] = true;
 
                 dx = sc_x[j] - sc_x[j - 1];
@@ -204,16 +213,16 @@ void FlatCurve::CtrlPoints_set ()
                 length = sqrt(dx * dx + dy * dy);
                 j++;
 
-                // Storing the length of all sub-curves and the total length (to have a better distribution
-                // of the points along the curve)
+                // Storing the length of all sub-curves and the total length (to
+                // have a better distribution of the points along the curve)
                 sc_length[k++] = length;
                 total_length += length;
             } else {
                 // Point 0, 1, 2
-                sc_x[j]   = x[i];
+                sc_x[j] = x[i];
                 sc_y[j++] = y[i];
-                sc_x[j]   = xp1;
-                sc_y[j]   = y[i];
+                sc_x[j] = xp1;
+                sc_y[j] = y[i];
 
                 dx = sc_x[j] - sc_x[j - 1];
                 dy = sc_y[j] - sc_y[j - 1];
@@ -229,18 +238,18 @@ void FlatCurve::CtrlPoints_set ()
                 length += sqrt(dx * dx + dy * dy);
                 j++;
 
-                // Storing the length of all sub-curves and the total length (to have a better distribution
-                // of the points along the curve)
+                // Storing the length of all sub-curves and the total length (to
+                // have a better distribution of the points along the curve)
                 sc_length[k++] = length;
                 total_length += length;
             }
 
             if (endLinear) {
                 // Point 2, 4
-                sc_x[j]   = xp2;
+                sc_x[j] = xp2;
                 sc_y[j++] = yp2;
-                sc_x[j]   = x[i + 1];
-                sc_y[j]   = y[i + 1];
+                sc_x[j] = x[i + 1];
+                sc_y[j] = y[i + 1];
                 sc_isLinear[k] = true;
 
                 dx = sc_x[j] - sc_x[j - 1];
@@ -248,16 +257,16 @@ void FlatCurve::CtrlPoints_set ()
                 length = sqrt(dx * dx + dy * dy);
                 j++;
 
-                // Storing the length of all sub-curves and the total length (to have a better distribution
-                // of the points along the curve)
+                // Storing the length of all sub-curves and the total length (to
+                // have a better distribution of the points along the curve)
                 sc_length[k++] = length;
                 total_length += length;
             } else {
                 // Point 2, 3, 4
-                sc_x[j]   = xp2;
+                sc_x[j] = xp2;
                 sc_y[j++] = yp2;
-                sc_x[j]   = xp3;
-                sc_y[j]   = y[i + 1];
+                sc_x[j] = xp3;
+                sc_y[j] = y[i + 1];
 
                 dx = sc_x[j] - sc_x[j - 1];
                 dy = sc_y[j] - sc_y[j - 1];
@@ -273,8 +282,8 @@ void FlatCurve::CtrlPoints_set ()
                 length += sqrt(dx * dx + dy * dy);
                 j++;
 
-                // Storing the length of all sub-curves and the total length (to have a better distribution
-                // of the points along the curve)
+                // Storing the length of all sub-curves and the total length (to
+                // have a better distribution of the points along the curve)
                 sc_length[k++] = length;
                 total_length += length;
             }
@@ -299,21 +308,26 @@ void FlatCurve::CtrlPoints_set ()
 
     firstPointIncluded = false;
 
-    // create the polyline with the number of points adapted to the X range of the sub-curve
+    // create the polyline with the number of points adapted to the X range of
+    // the sub-curve
     for (unsigned int i = 0; i < k; i++) {
         if (sc_isLinear[i]) {
             j++; // skip the first point
             poly_x.push_back(sc_x[j]);
             poly_y.push_back(sc_y[j++]);
         } else {
-            nbr_points = (int)(((double)(ppn) * sc_length[i] ) / total_length);
+            nbr_points = (int)(((double)(ppn)*sc_length[i]) / total_length);
 
             if (nbr_points < 0) {
-                for(size_t it = 0; it < sc_x.size(); it += 3) {
+                for (size_t it = 0; it < sc_x.size(); it += 3) {
                     printf("sc_length[%zu/3]=%f \n", it, sc_length[it / 3]);
                 }
 
-                printf("Flat curve: error detected!\n i=%u k=%u periodic=%d nbr_points=%d ppn=%d N=%d sc_length[i/3]=%f total_length=%f\n", i, k, periodic, nbr_points, ppn, N, sc_length[i / 3], total_length);
+                printf("Flat curve: error detected!\n i=%u k=%u periodic=%d "
+                       "nbr_points=%d ppn=%d N=%d sc_length[i/3]=%f "
+                       "total_length=%f\n",
+                       i, k, periodic, nbr_points, ppn, N, sc_length[i / 3],
+                       total_length);
                 exit(0);
             }
 
@@ -325,25 +339,28 @@ void FlatCurve::CtrlPoints_set ()
             y2 = sc_y[j++];
             x3 = sc_x[j];
             y3 = sc_y[j++];
-            AddPolygons ();
+            AddPolygons();
         }
     }
 
     // adding the final horizontal segment, always (see under)
-    poly_x.push_back(3.0);      // 3.0 is a hack for optimization purpose of the getVal method (the last value has to be beyond the normal range)
+    poly_x.push_back(
+        3.0); // 3.0 is a hack for optimization purpose of the getVal method
+              // (the last value has to be beyond the normal range)
     poly_y.push_back(sc_y[j - 1]);
 
     fillDyByDx();
 }
 
-double FlatCurve::getVal (double t) const
+double FlatCurve::getVal(double t) const
 {
 
     switch (kind) {
 
-    case FCT_MinMaxCPoints : {
+    case FCT_MinMaxCPoints: {
 
-        // magic to handle curve periodicity : we look above the 1.0 bound for the value
+        // magic to handle curve periodicity : we look above the 1.0 bound for
+        // the value
         if (t < poly_x[0]) {
             t += 1.0;
         }
@@ -367,21 +384,23 @@ double FlatCurve::getVal (double t) const
     /*case Parametric : {
         break;
     }*/
-    case FCT_Empty :
-    case FCT_Linear :  // Linear doesn't exist yet and is then considered as identity
+    case FCT_Empty:
+    case FCT_Linear: // Linear doesn't exist yet and is then considered as
+                     // identity
     default:
         return identityValue;
     }
 }
 
-void FlatCurve::getVal (const std::vector<double>& t, std::vector<double>& res) const
+void FlatCurve::getVal(const std::vector<double> &t,
+                       std::vector<double> &res) const
 {
 
-    res.resize (t.size());
+    res.resize(t.size());
 
     for (unsigned int i = 0; i < t.size(); i++) {
         res[i] = getVal(t[i]);
     }
 }
 
-}
+} // namespace rtengine

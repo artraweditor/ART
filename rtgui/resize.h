@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,32 +19,27 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "guiutils.h"
 #include "toolpanel.h"
-#include "guiutils.h"
+#include <gtkmm.h>
 
-class Resize final :
-    public ToolParamBlock,
-    public AdjusterListener,
-    public FoldableToolPanel,
-    public rtengine::SizeListener
-{
+class Resize final: public ToolParamBlock,
+                    public AdjusterListener,
+                    public FoldableToolPanel,
+                    public rtengine::SizeListener {
 public:
     Resize();
     ~Resize() override;
 
-    Gtk::Box *getPackBox()
-    {
-        return packBox;
-    }
+    Gtk::Box *getPackBox() { return packBox; }
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void entryWChanged();
     void entryHChanged();
     void appliesToChanged();
@@ -56,7 +51,7 @@ public:
     void setDimensions();
     void enabledChanged() override;
 
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 
@@ -102,8 +97,8 @@ private:
     ToolParamBlock *packBox;
     IdleRegister idle_register;
 
-    static constexpr int MAX_SCALE = 16; // 16 to match the main preview max scale of 1600%
+    static constexpr int MAX_SCALE =
+        16; // 16 to match the main preview max scale of 1600%
 
     rtengine::procparams::ResizeParams initial_params;
 };
-

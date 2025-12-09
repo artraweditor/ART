@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,18 +19,20 @@
  */
 #pragma once
 
-#include <array>
-#include <vector>
-#include <map>
-#include <glibmm.h>
 #include "../rtengine/rtengine.h"
+#include <array>
+#include <glibmm.h>
+#include <map>
+#include <vector>
 
 struct WBPreset {
     Glib::ustring label;
     std::array<double, 3> mult;
 
-    WBPreset(const Glib::ustring &l="", const std::array<double, 3> &m={}):
-        label(l), mult(m) {}
+    WBPreset(const Glib::ustring &l = "", const std::array<double, 3> &m = {})
+        : label(l), mult(m)
+    {
+    }
 };
 
 class WBProvider {
@@ -39,8 +41,11 @@ public:
     virtual void getAutoWB(rtengine::ColorTemp &out, double equal) {}
     virtual void getCamWB(rtengine::ColorTemp &out) {}
     virtual void spotWBRequested(int size) {}
-    
-    virtual std::vector<WBPreset> getWBPresets() const { return std::vector<WBPreset>(); }
+
+    virtual std::vector<WBPreset> getWBPresets() const
+    {
+        return std::vector<WBPreset>();
+    }
     virtual void convertWBCam2Mul(double &rm, double &gm, double &bm) {}
     virtual void convertWBMul2Cam(double &rm, double &gm, double &bm) {}
 };
@@ -52,4 +57,3 @@ void init(const Glib::ustring &baseDir, const Glib::ustring &userSettingsDir);
 const std::map<std::string, std::vector<WBPreset>> &getPresets();
 
 } // namespace wb_presets
-

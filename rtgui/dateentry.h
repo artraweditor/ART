@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -20,7 +20,6 @@
 #pragma once
 
 #include <gtkmm.h>
-
 
 class DateEntry: public Gtk::HBox {
 public:

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2011 Jan Rinze Peterzon (janrinze@gmail.com)
@@ -42,26 +42,27 @@
  *
  *      Useful extra pointers
  *
- *          <type> ** my_array      gives access to the pointer for access with [][]
- *          <type> *  my_array      gives access to the flat stored data.
+ *          <type> ** my_array      gives access to the pointer for access with
+ * [][] <type> *  my_array      gives access to the flat stored data.
  *
  *      Advanced usage:
  *          array2D<float> my_array             ; // empty container.
  *          my_array(10,10)                     ; // resize to 10x10 array
- *          my_array(10,10,ARRAY2D_CLEAR_DATA)  ; // resize to 10x10 and clear data
- *          my_array(10,10,ARRAY2D_CLEAR_DATA|ARRAY2D_LOCK_DATA)  ; same but set a lock on changes
+ *          my_array(10,10,ARRAY2D_CLEAR_DATA)  ; // resize to 10x10 and clear
+ * data my_array(10,10,ARRAY2D_CLEAR_DATA|ARRAY2D_LOCK_DATA)  ; same but set a
+ * lock on changes
  *
  *          !! locked arrays cannot be resized and cannot be unlocked again !!
  */
 #pragma once
-#include <csignal>  // for raise()
-#include <cassert>
-#include <cstring>
-#include <cstdio>
 #include <algorithm>
+#include <cassert>
+#include <csignal> // for raise()
+#include <cstdio>
+#include <cstring>
 
-#include "noncopyable.h"
 #include "alignedbuffer.h"
+#include "noncopyable.h"
 
 namespace rtengine {
 
@@ -70,9 +71,7 @@ constexpr unsigned int ARRAY2D_CLEAR_DATA = 2;
 constexpr unsigned int ARRAY2D_BYREFERENCE = 4;
 constexpr unsigned int ARRAY2D_ALIGNED = 16;
 
-
-template <typename T>
-class array2D: public rtengine::NonCopyable {
+template <typename T> class array2D: public rtengine::NonCopyable {
 private:
     int width_;
     int height_;
@@ -80,8 +79,8 @@ private:
     bool owner_ : 1;
     T **ptr_;
     AlignedBuffer<T> buf_;
-    
-    void ar_realloc(int w, int h, int offset=0)
+
+    void ar_realloc(int w, int h, int offset = 0)
     {
         if (ptr_ && ((h > height_) || (4 * h < height_))) {
             delete[] ptr_;
@@ -106,12 +105,12 @@ private:
         }
 
         if (ptr_ == nullptr) {
-            ptr_ = new T*[h];
+            ptr_ = new T *[h];
         }
 
         width_ = w;
         height_ = h;
-        
+
         // for (int i = 0; i < h; ++i) {
         //     ptr_[i] = buf_.data + offset + w * i;
         // }
@@ -128,10 +127,12 @@ private:
 
     size_t rowstride(int w) const // in bytes
     {
-        return (flags_ & ARRAY2D_ALIGNED) ? ((w * sizeof(T) + 15) / 16 * 16) : w * sizeof(T);
+        return (flags_ & ARRAY2D_ALIGNED) ? ((w * sizeof(T) + 15) / 16 * 16)
+                                          : w * sizeof(T);
     }
 
-    void construct(int w, int h, int startx, int starty, T **source, unsigned int flgs)
+    void construct(int w, int h, int startx, int starty, T **source,
+                   unsigned int flgs)
     {
         flags_ = flgs;
         owner_ = !(flags_ & ARRAY2D_BYREFERENCE);
@@ -143,7 +144,7 @@ private:
 
         width_ = w;
         height_ = h;
-        ptr_ = new T*[h];
+        ptr_ = new T *[h];
 
         if (!owner_) {
             for (int i = 0; i < h; ++i) {
@@ -160,25 +161,24 @@ private:
             }
         }
     }
-    
-public:
 
+public:
     // use as empty declaration, resize before use!
     // very useful as a member object
-    array2D():
-        width_(0), height_(0), flags_(0), owner_(false), ptr_(nullptr), buf_()
+    array2D()
+        : width_(0), height_(0), flags_(0), owner_(false), ptr_(nullptr), buf_()
     {
     }
 
-    explicit array2D(unsigned int flgs):
-        width_(0), height_(0), flags_(flgs), owner_(false), ptr_(nullptr),
-        buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
+    explicit array2D(unsigned int flgs)
+        : width_(0), height_(0), flags_(flgs), owner_(false), ptr_(nullptr),
+          buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
     {
     }
 
     // creator type1
-    array2D(int w, int h, unsigned int flgs=0):
-        buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
+    array2D(int w, int h, unsigned int flgs = 0)
+        : buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
     {
         flags_ = flgs;
         owner_ = true;
@@ -187,13 +187,13 @@ public:
         buf_.resize(stride * h, 1);
         width_ = w;
         height_ = h;
-        ptr_ = new T*[h];
+        ptr_ = new T *[h];
 
         char *start = reinterpret_cast<char *>(buf_.data);
         for (int i = 0; i < h; ++i) {
             int k = i * stride;
             ptr_[i] = reinterpret_cast<T *>(start + k);
-        }        
+        }
 
         if (flags_ & ARRAY2D_CLEAR_DATA) {
             fill(0);
@@ -201,14 +201,16 @@ public:
     }
 
     // creator type 2
-    array2D(int w, int h, T **source, unsigned int flgs=0):
-        buf_(0, (flgs & ARRAY2D_ALIGNED) && !(flgs & ARRAY2D_BYREFERENCE) ? 16 : 0)
+    array2D(int w, int h, T **source, unsigned int flgs = 0)
+        : buf_(0, (flgs & ARRAY2D_ALIGNED) && !(flgs & ARRAY2D_BYREFERENCE) ? 16
+                                                                            : 0)
     {
         construct(w, h, 0, 0, source, flgs);
     }
 
     // creator type 3
-    array2D(int w, int h, int startx, int starty, T **source, unsigned int flgs=0)
+    array2D(int w, int h, int startx, int starty, T **source,
+            unsigned int flgs = 0)
     {
         construct(w, h, startx, starty, source, flgs);
     }
@@ -224,7 +226,7 @@ public:
     void fill(const T val)
     {
         for (int i = 0; i < height_; ++i) {
-            std::fill(ptr_[i], ptr_[i]+width_, val);
+            std::fill(ptr_[i], ptr_[i] + width_, val);
         }
     }
 
@@ -235,7 +237,7 @@ public:
         }
 
         if (ptr_) {
-            delete [] ptr_;
+            delete[] ptr_;
             ptr_ = nullptr;
         }
 
@@ -243,31 +245,27 @@ public:
     }
 
     // use with indices
-    T * operator[](int index) const
+    T *operator[](int index) const
     {
         assert((index >= 0) && (index < height_));
         return ptr_[index];
     }
 
     // use as pointer to T**
-    operator T**()
-    {
-        return ptr_;
-    }
+    operator T **() { return ptr_; }
 
     // use as pointer to data
-    operator T*()
+    operator T *()
     {
         // only if owner this will return a valid pointer
         return owner_ ? buf_.data : nullptr;
     }
 
-
     // useful within init of parent object
     // or use as resize of 2D array
-    void operator()(int w, int h, unsigned int flgs=0, int offset=0)
+    void operator()(int w, int h, unsigned int flgs = 0, int offset = 0)
     {
-        flags_ = flgs & ~(ARRAY2D_BYREFERENCE|ARRAY2D_ALIGNED);
+        flags_ = flgs & ~(ARRAY2D_BYREFERENCE | ARRAY2D_ALIGNED);
         ar_realloc(w, h, offset);
 
         if (flags_ & ARRAY2D_CLEAR_DATA) {
@@ -276,29 +274,23 @@ public:
     }
 
     // import from flat data
-    void operator()(int w, int h, T* copy, unsigned int flgs=0)
+    void operator()(int w, int h, T *copy, unsigned int flgs = 0)
     {
-        flags_ = flgs & ~(ARRAY2D_BYREFERENCE|ARRAY2D_ALIGNED);
+        flags_ = flgs & ~(ARRAY2D_BYREFERENCE | ARRAY2D_ALIGNED);
 
         ar_realloc(w, h);
         for (int y = 0; y < h; ++y) {
             std::copy(copy + y * w, copy + y * w + w, ptr_[y]);
         }
     }
-    
+
     int width() const { return width_; }
     int height() const { return height_; }
 
-    operator bool()
-    {
-        return (width_ > 0 && height_ > 0);
-    }
+    operator bool() { return (width_ > 0 && height_ > 0); }
 };
 
-
-
-template <typename T, const size_t num>
-class multi_array2D {
+template <typename T, const size_t num> class multi_array2D {
 private:
     array2D<T> list[num];
 
@@ -312,7 +304,7 @@ public:
 
     ~multi_array2D()
     {
-        //printf("trying to delete the list of array2D objects\n");
+        // printf("trying to delete the list of array2D objects\n");
     }
 
     array2D<T> &operator[](int index)

@@ -19,16 +19,15 @@
 #ifndef _THUMBIMAGEUPDATER_
 #define _THUMBIMAGEUPDATER_
 
-#include <glibmm.h>
 #include <glib.h>
+#include <glibmm.h>
 
-#include "../rtengine/rtengine.h"
 #include "../rtengine/noncopyable.h"
+#include "../rtengine/rtengine.h"
 
 #include "thumbbrowserentrybase.h"
 
-class ThumbImageUpdateListener
-{
+class ThumbImageUpdateListener {
 public:
     virtual ~ThumbImageUpdateListener() = default;
 
@@ -41,19 +40,19 @@ public:
      *
      * @note no locks are held when called back
      */
-    virtual void updateImage(rtengine::IImage8* img, double scale, const rtengine::procparams::CropParams& cropParams) = 0;
+    virtual void
+    updateImage(rtengine::IImage8 *img, double scale,
+                const rtengine::procparams::CropParams &cropParams) = 0;
 };
 
-class ThumbImageUpdater :
-    public rtengine::NonCopyable
-{
+class ThumbImageUpdater: public rtengine::NonCopyable {
 public:
     /**
      * @brief Singleton entry point.
      *
      * @return Pointer to thumbnail image updater.
      */
-    static ThumbImageUpdater* getInstance(void);
+    static ThumbImageUpdater *getInstance(void);
 
     /**
      * @brief Add an thumbnail image update request.
@@ -67,7 +66,8 @@ public:
      * @param priority if \c true then run as soon as possible
      * @param l listener waiting on update
      */
-    void add(ThumbBrowserEntryBase* tbe, bool* priority, bool upgrade, ThumbImageUpdateListener* l);
+    void add(ThumbBrowserEntryBase *tbe, bool *priority, bool upgrade,
+             ThumbImageUpdateListener *l);
 
     /**
      * @brief Remove jobs associated with listener \c l.
@@ -77,7 +77,7 @@ public:
      *
      * @param listener jobs associated with this will be stopped
      */
-    void removeJobs(ThumbImageUpdateListener* listener);
+    void removeJobs(ThumbImageUpdateListener *listener);
 
     /**
      * @brief Stop processing and remove all jobs.
@@ -87,12 +87,11 @@ public:
     void removeAllJobs(void);
 
 private:
-
     ThumbImageUpdater();
     ~ThumbImageUpdater();
 
     class Impl;
-    Impl* impl_;
+    Impl *impl_;
 };
 
 /**

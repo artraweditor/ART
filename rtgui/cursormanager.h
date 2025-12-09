@@ -50,8 +50,7 @@ enum CursorShape {
     CSWait
 };
 
-class CursorManager
-{
+class CursorManager {
 
 private:
     Glib::RefPtr<Gdk::Cursor> cAdd;
@@ -77,18 +76,19 @@ private:
     Glib::RefPtr<Gdk::Display> display;
     Glib::RefPtr<Gdk::Window> window;
 
-    void setCursor (CursorShape shape);
-    void setCursor (Glib::RefPtr<Gdk::Window> window, CursorShape shape);
+    void setCursor(CursorShape shape);
+    void setCursor(Glib::RefPtr<Gdk::Window> window, CursorShape shape);
 
 public:
-    void init                         (Glib::RefPtr<Gdk::Window> mainWindow);
-    void cleanup                      ();
-    static void setWidgetCursor       (Glib::RefPtr<Gdk::Window> window, CursorShape shape);
-    static void setCursorOfMainWindow (Glib::RefPtr<Gdk::Window> window, CursorShape shape);
+    void init(Glib::RefPtr<Gdk::Window> mainWindow);
+    void cleanup();
+    static void setWidgetCursor(Glib::RefPtr<Gdk::Window> window,
+                                CursorShape shape);
+    static void setCursorOfMainWindow(Glib::RefPtr<Gdk::Window> window,
+                                      CursorShape shape);
 };
 
 extern CursorManager mainWindowCursorManager;
 extern CursorManager editWindowCursorManager;
 
 #endif
-

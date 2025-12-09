@@ -26,18 +26,18 @@
 /*RT*/#include <omp.h>
 /*RT*/#endif
 
+#include "opthelper.h"
 #include <utility>
 #include <vector>
-#include "opthelper.h"
 //#define BENCHMARK
 #include "StopWatch.h"
 #include "halffloat.h"
 
-using rtengine::DNG_HalfToFloat_i;
 using rtengine::DNG_FP24ToFloat;
+using rtengine::DNG_HalfToFloat_i;
 
-#include <zlib.h>
 #include <stdint.h>
+#include <zlib.h>
 
 
 /*
@@ -73,7 +73,6 @@ using rtengine::DNG_FP24ToFloat;
 #define _USE_MATH_DEFINES
 #include <cctype>
 #include <cerrno>
-#include <fcntl.h>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -82,6 +81,7 @@ using rtengine::DNG_FP24ToFloat;
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <fcntl.h>
 #include <strings.h>
 #include <sys/types.h>
 
@@ -106,9 +106,9 @@ using rtengine::DNG_FP24ToFloat;
 typedef __int64 INT64;
 typedef unsigned __int64 UINT64;
 #else
+#include <netinet/in.h>
 #include <unistd.h>
 #include <utime.h>
-#include <netinet/in.h>
 typedef long long INT64;
 typedef unsigned long long UINT64;
 #endif

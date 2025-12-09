@@ -20,22 +20,25 @@
 #include "coloredbar.h"
 #include "../rtengine/utils.h"
 
-ColoredBar::ColoredBar (eRTOrientation orient)
+ColoredBar::ColoredBar(eRTOrientation orient)
 {
     orientation = orient;
     dirty = true;
     this->x = this->y = this->w = this->h = 0;
 }
 
-bool ColoredBar::setDrawRectangle(int newX, int newY, int newW, int newH, bool updateBackBufferSize)
+bool ColoredBar::setDrawRectangle(int newX, int newY, int newW, int newH,
+                                  bool updateBackBufferSize)
 {
-    return BackBuffer::setDrawRectangle(Cairo::FORMAT_ARGB32, newX, newY, newW, newH, updateBackBufferSize);
+    return BackBuffer::setDrawRectangle(Cairo::FORMAT_ARGB32, newX, newY, newW,
+                                        newH, updateBackBufferSize);
 }
 
 /*
  * Redraw the bar to a Cairo::ImageSurface
  */
-void ColoredBar::expose(Gtk::DrawingArea &drawingArea, Cairo::RefPtr<Cairo::ImageSurface> destSurface)
+void ColoredBar::expose(Gtk::DrawingArea &drawingArea,
+                        Cairo::RefPtr<Cairo::ImageSurface> destSurface)
 {
     // look out if the Surface has to be redrawn
     if (!surfaceCreated() || !destSurface) {
@@ -50,7 +53,8 @@ void ColoredBar::expose(Gtk::DrawingArea &drawingArea, Cairo::RefPtr<Cairo::Imag
 /*
  * Redraw the bar to a Gdk::Window
  */
-void ColoredBar::expose(Gtk::DrawingArea &drawingArea, Glib::RefPtr<Gdk::Window> destWindow)
+void ColoredBar::expose(Gtk::DrawingArea &drawingArea,
+                        Glib::RefPtr<Gdk::Window> destWindow)
 {
     // look out if the Surface has to be redrawn
     if (!surfaceCreated() || !destWindow) {
@@ -62,7 +66,8 @@ void ColoredBar::expose(Gtk::DrawingArea &drawingArea, Glib::RefPtr<Gdk::Window>
     copySurface(destWindow, &rect);
 }
 
-void ColoredBar::expose(Gtk::DrawingArea &drawingArea, const Cairo::RefPtr< Cairo::Context> &cr)
+void ColoredBar::expose(Gtk::DrawingArea &drawingArea,
+                        const Cairo::RefPtr<Cairo::Context> &cr)
 {
     // look out if the Surface has to be redrawn
     if (!surfaceCreated()) {
@@ -91,14 +96,13 @@ void ColoredBar::expose(Gtk::DrawingArea &drawingArea, BackBuffer *backBuffer)
 
 namespace {
 
-void poke_rgba(unsigned char*& dest, double r, double g, double b, double a)
+void poke_rgba(unsigned char *&dest, double r, double g, double b, double a)
 {
     getGUIColor(r, g, b);
     rtengine::poke01_d(dest, r, g, b, a);
 }
 
 } // namespace
-
 
 void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
 {
@@ -111,41 +115,47 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
             cr->set_line_width(0.);
 
             // gradient background
-            Cairo::RefPtr< Cairo::LinearGradient > bggradient;
+            Cairo::RefPtr<Cairo::LinearGradient> bggradient;
 
             switch (orientation) {
             case (RTO_Left2Right):
-                bggradient = Cairo::LinearGradient::create (0., 0., double(w), 0.);
+                bggradient =
+                    Cairo::LinearGradient::create(0., 0., double(w), 0.);
                 break;
 
             case (RTO_Right2Left):
-                bggradient = Cairo::LinearGradient::create (double(w), 0., 0., 0.);
+                bggradient =
+                    Cairo::LinearGradient::create(double(w), 0., 0., 0.);
                 break;
 
             case (RTO_Bottom2Top):
-                bggradient = Cairo::LinearGradient::create (0., double(h), 0., 0.);
+                bggradient =
+                    Cairo::LinearGradient::create(0., double(h), 0., 0.);
                 break;
 
             case (RTO_Top2Bottom):
             default:
-                bggradient = Cairo::LinearGradient::create (0., 0., 0., double(h));
+                bggradient =
+                    Cairo::LinearGradient::create(0., 0., 0., double(h));
                 break;
             }
 
-            for (std::vector<GradientMilestone>::iterator i = bgGradient.begin(); i != bgGradient.end(); ++i) {
+            for (std::vector<GradientMilestone>::iterator i =
+                     bgGradient.begin();
+                 i != bgGradient.end(); ++i) {
                 auto r = i->r, g = i->g, b = i->b;
                 getGUIColor(r, g, b);
                 bggradient->add_color_stop_rgb(i->position, r, g, b);
             }
 
-            cr->set_source (bggradient);
+            cr->set_source(bggradient);
             cr->rectangle(0, 0, w, h);
             cr->fill();
         } else {
             // ask the ColorProvider to provide colors :) for each pixels
             if (colorProvider) {
                 surface->flush();
-                
+
                 unsigned char *surfaceData = surface->get_data();
 
                 cr->set_antialias(Cairo::ANTIALIAS_NONE);
@@ -155,12 +165,14 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
                 case (RTO_Left2Right):
                     for (int py = 0; py < h; ++py) {
                         for (int px = 0; px < w; ++px) {
-                        	unsigned char *pixel = surfaceData + (py * w + px) * 4;
-                            double x_ = double(      px);
-                            //double y_ = double((h-1)-py);  unused
-                            double x01 = x_        / double(w - 1);
+                            unsigned char *pixel =
+                                surfaceData + (py * w + px) * 4;
+                            double x_ = double(px);
+                            // double y_ = double((h-1)-py);  unused
+                            double x01 = x_ / double(w - 1);
                             double y01 = double(py) / double(h - 1);
-                            colorProvider->colorForValue (x01, y01, CCET_BACKGROUND, colorCallerId, this);
+                            colorProvider->colorForValue(
+                                x01, y01, CCET_BACKGROUND, colorCallerId, this);
 
                             poke_rgba(pixel, ccRed, ccGreen, ccBlue, ccAlpha);
                         }
@@ -171,12 +183,14 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
                 case (RTO_Right2Left):
                     for (int py = 0; py < h; ++py) {
                         for (int px = 0; px < w; ++px) {
-                        	unsigned char *pixel = surfaceData + (py * w + px) * 4;
-                            //double x_ = double((w-1)-px);  unused
-                            //double y_ = double((h-1)-py);  unused
+                            unsigned char *pixel =
+                                surfaceData + (py * w + px) * 4;
+                            // double x_ = double((w-1)-px);  unused
+                            // double y_ = double((h-1)-py);  unused
                             double x01 = double(px) / double(w - 1);
                             double y01 = double(py) / double(h - 1);
-                            colorProvider->colorForValue (x01, y01, CCET_BACKGROUND, colorCallerId, this);
+                            colorProvider->colorForValue(
+                                x01, y01, CCET_BACKGROUND, colorCallerId, this);
 
                             poke_rgba(pixel, ccRed, ccGreen, ccBlue, ccAlpha);
                         }
@@ -187,12 +201,14 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
                 case (RTO_Bottom2Top):
                     for (int py = 0; py < h; ++py) {
                         for (int px = 0; px < w; ++px) {
-                        	unsigned char *pixel = surfaceData + (py * w + px) * 4;
-                            //double x_ = double((w-1)-px);  unused
-                            //double y_ = double((h-1)-py);  unused
+                            unsigned char *pixel =
+                                surfaceData + (py * w + px) * 4;
+                            // double x_ = double((w-1)-px);  unused
+                            // double y_ = double((h-1)-py);  unused
                             double x01 = double(px) / double(w - 1);
                             double y01 = double(py) / double(h - 1);
-                            colorProvider->colorForValue (y01, x01, CCET_BACKGROUND, colorCallerId, this);
+                            colorProvider->colorForValue(
+                                y01, x01, CCET_BACKGROUND, colorCallerId, this);
 
                             poke_rgba(pixel, ccRed, ccGreen, ccBlue, ccAlpha);
                         }
@@ -204,12 +220,14 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
                 default:
                     for (int py = 0; py < h; ++py) {
                         for (int px = 0; px < w; ++px) {
-                        	unsigned char *pixel = surfaceData + (py * w + px) * 4;
-                            double x_ = double(      px);
-                            double y_ = double(      py);
+                            unsigned char *pixel =
+                                surfaceData + (py * w + px) * 4;
+                            double x_ = double(px);
+                            double y_ = double(py);
                             double x01 = x_ / double(w - 1);
                             double y01 = y_ / double(h - 1);
-                            colorProvider->colorForValue (y01, x01, CCET_BACKGROUND, colorCallerId, this);
+                            colorProvider->colorForValue(
+                                y01, x01, CCET_BACKGROUND, colorCallerId, this);
 
                             poke_rgba(pixel, ccRed, ccGreen, ccBlue, ccAlpha);
                         }
@@ -222,18 +240,19 @@ void ColoredBar::updateBackBuffer(Gtk::DrawingArea &drawingArea)
             }
         }
 
-        // has it been updated or not, we assume that the Surface has been correctly set (we don't handle allocation error)
+        // has it been updated or not, we assume that the Surface has been
+        // correctly set (we don't handle allocation error)
         setDirty(false);
     }
 }
 
-void ColoredBar::setBgGradient (const std::vector<GradientMilestone> &milestones)
+void ColoredBar::setBgGradient(const std::vector<GradientMilestone> &milestones)
 {
     bgGradient = milestones;
     setDirty(true);
 }
 
-void ColoredBar::clearBgGradient ()
+void ColoredBar::clearBgGradient()
 {
     bgGradient.clear();
     setDirty(true);

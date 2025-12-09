@@ -20,14 +20,15 @@
 
 #pragma once
 
-#include "cachemanager.h"
+#include "../rtengine/compress.h"
 #include "../rtengine/iccstore.h"
 #include "../rtengine/procparams.h"
 #include "../rtengine/rtengine.h"
-#include "../rtengine/compress.h"
+#include "cachemanager.h"
 #include <glibmm.h>
 
-namespace art { namespace thumbimgcache {
+namespace art {
+namespace thumbimgcache {
 
 /******************************************************************************
  * file format:
@@ -40,8 +41,12 @@ namespace art { namespace thumbimgcache {
  * height
  * image data
  ******************************************************************************/
-rtengine::IImage8 *load(const Glib::ustring &cache_fname, const rtengine::procparams::ProcParams &pparams, int h);
+rtengine::IImage8 *load(const Glib::ustring &cache_fname,
+                        const rtengine::procparams::ProcParams &pparams, int h);
 
-bool store(const Glib::ustring &cache_fname, const rtengine::procparams::ProcParams &pparams, rtengine::IImage8 *img);
+bool store(const Glib::ustring &cache_fname,
+           const rtengine::procparams::ProcParams &pparams,
+           rtengine::IImage8 *img);
 
-}} // namespace art::thumbimgcache
+} // namespace thumbimgcache
+} // namespace art

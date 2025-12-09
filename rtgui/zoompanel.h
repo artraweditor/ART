@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -23,32 +23,28 @@
 #include <gtkmm.h>
 
 class ImageArea;
-class ZoomPanel : public Gtk::Grid
-{
+class ZoomPanel: public Gtk::Grid {
 
 protected:
-
-    Gtk::Button*    zoomOut;
-    Gtk::Button*    zoomIn;
-    Gtk::Button*    zoomFit;
-    //Gtk::Button*    zoomFitCrop;
-    Gtk::Button*    zoom11;
-    Gtk::Button*    newCrop;
-    Gtk::Label*     zoomLabel;
-    ImageArea*      iarea;
+    Gtk::Button *zoomOut;
+    Gtk::Button *zoomIn;
+    Gtk::Button *zoomFit;
+    // Gtk::Button*    zoomFitCrop;
+    Gtk::Button *zoom11;
+    Gtk::Button *newCrop;
+    Gtk::Label *zoomLabel;
+    ImageArea *iarea;
 
 public:
+    explicit ZoomPanel(ImageArea *iarea);
 
-    explicit ZoomPanel (ImageArea* iarea);
-
-    void zoomInClicked      ();
-    void zoomOutClicked     ();
-    void zoomFitClicked     ();
-    //void zoomFitCropClicked ();
-    void zoom11Clicked      ();
-    void newCropClicked     ();
-    void refreshZoomLabel   ();
+    void zoomInClicked();
+    void zoomOutClicked();
+    void zoomFitClicked();
+    // void zoomFitCropClicked ();
+    void zoom11Clicked();
+    void newCropClicked();
+    void refreshZoomLabel();
 };
 
 #endif
-

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,25 +20,25 @@
 #ifndef __TOOLBAR_H__
 #define __TOOLBAR_H__
 
-#include <gtkmm.h>
-#include "toolenum.h"
-#include "rtimage.h"
 #include "lockablecolorpicker.h"
+#include "rtimage.h"
+#include "toolenum.h"
+#include <gtkmm.h>
 
 class ToolBarListener {
 public:
     virtual ~ToolBarListener() = default;
     /// Callback when a tool is selected
     virtual void toolSelected(ToolMode tool) = 0;
-    /// Callback when a tool is deselected. WARNING: Not yet called for most tools.
+    /// Callback when a tool is deselected. WARNING: Not yet called for most
+    /// tools.
     virtual void toolDeselected(ToolMode tool) = 0;
 
     /// Callback when the Edit mode is stopped
     virtual void editModeSwitchedOff() = 0;
 };
 
-class ToolBar : public Gtk::HBox
-{
+class ToolBar: public Gtk::HBox {
 private:
     std::unique_ptr<RTImage> handimg;
     std::unique_ptr<RTImage> editinghandimg;
@@ -46,27 +46,28 @@ private:
     std::unique_ptr<RTImage> hidecolpickersimg;
     bool showColPickers;
 
-    void hand_pressed ();
-    void wb_pressed ();
-    void colPicker_pressed (GdkEventButton* event);
-    void crop_pressed ();
-    void stra_pressed ();
+    void hand_pressed();
+    void wb_pressed();
+    void colPicker_pressed(GdkEventButton *event);
+    void crop_pressed();
+    void stra_pressed();
     void persp_pressed();
     bool showColorPickers(bool showCP);
     void switchColorPickersVisibility();
 
 protected:
-    Gtk::ToggleButton* handTool;
-    Gtk::ToggleButton* wbTool;
-    Gtk::ToggleButton* colPickerTool;
-    Gtk::ToggleButton* cropTool;
-    Gtk::ToggleButton* straTool;
+    Gtk::ToggleButton *handTool;
+    Gtk::ToggleButton *wbTool;
+    Gtk::ToggleButton *colPickerTool;
+    Gtk::ToggleButton *cropTool;
+    Gtk::ToggleButton *straTool;
     Gtk::ToggleButton *perspTool;
-    ToolBarListener* listener;
-    LockablePickerToolListener* pickerListener;
+    ToolBarListener *listener;
+    LockablePickerToolListener *pickerListener;
     ToolMode current;
     bool allowNoTool;
-    bool editingMode;  // true if the cursor is being used to remotely edit tool's values
+    bool editingMode; // true if the cursor is being used to remotely edit
+                      // tool's values
     sigc::connection handConn;
     sigc::connection wbConn;
     sigc::connection cpConn;
@@ -75,24 +76,16 @@ protected:
     sigc::connection perspConn;
 
 public:
-    ToolBar ();
+    ToolBar();
 
-    void     setTool (ToolMode tool);
-    ToolMode getTool ()
-    {
-        return current == TMPerspective ? TMHand : current;
-    }
+    void setTool(ToolMode tool);
+    ToolMode getTool() { return current == TMPerspective ? TMHand : current; }
 
-    bool showColorPickers() {
-        return showColPickers;
-    }
+    bool showColorPickers() { return showColPickers; }
 
-    void setToolBarListener (ToolBarListener* tpl)
-    {
-        listener = tpl;
-    }
+    void setToolBarListener(ToolBarListener *tpl) { listener = tpl; }
 
-    void setLockablePickerToolListener (LockablePickerToolListener* lptl)
+    void setLockablePickerToolListener(LockablePickerToolListener *lptl)
     {
         pickerListener = lptl;
     }
@@ -100,7 +93,7 @@ public:
     void startEditMode();
     void stopEditMode();
 
-    bool handleShortcutKey (GdkEventKey* event);
+    bool handleShortcutKey(GdkEventKey *event);
 };
 
 #endif

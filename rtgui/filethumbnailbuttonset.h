@@ -21,14 +21,13 @@
 
 #include <array>
 
-#include "lwbuttonset.h"
-#include <gtkmm.h>
 #include "filebrowserentry.h"
+#include "lwbuttonset.h"
 #include "rtsurface.h"
+#include <gtkmm.h>
 
 class FileBrowserEntry;
-class FileThumbnailButtonSet : public LWButtonSet
-{
+class FileThumbnailButtonSet: public LWButtonSet {
 
     static bool iconsLoaded;
 
@@ -49,11 +48,10 @@ public:
     static Glib::ustring colorLabelToolTip;
     static std::array<Glib::ustring, 5> rankToolTip;
 
-    explicit FileThumbnailButtonSet (FileBrowserEntry* myEntry);
-    void    setRank (int stars);
-    void    setColorLabel (int colorlabel);
-    void    setInTrash (bool inTrash);
-
+    explicit FileThumbnailButtonSet(FileBrowserEntry *myEntry);
+    void setRank(int stars);
+    void setColorLabel(int colorlabel);
+    void setInTrash(bool inTrash);
 };
 
 #endif

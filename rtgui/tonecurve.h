@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,33 +19,36 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
+#include "colorprovider.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
-#include "mycurve.h"
 #include "guiutils.h"
-#include "colorprovider.h"
+#include "mycurve.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-
-class ToneCurve: public ToolParamBlock, public FoldableToolPanel, public CurveListener, public AdjusterListener, public ColorProvider {
+class ToneCurve: public ToolParamBlock,
+                 public FoldableToolPanel,
+                 public CurveListener,
+                 public AdjusterListener,
+                 public ColorProvider {
 private:
     IdleRegister idle_register;
 
 protected:
     Adjuster *contrast;
-    MyComboBoxText* toneCurveMode;
-    MyComboBoxText* toneCurveMode2;
+    MyComboBoxText *toneCurveMode;
+    MyComboBoxText *toneCurveMode2;
     Gtk::ToggleButton *histmatching;
     bool fromHistMatching;
 
     sigc::connection tcmodeconn, tcmode2conn;
     sigc::connection histmatchconn;
-    CurveEditorGroup* curveEditorG;
-    CurveEditorGroup* curveEditorG2;
-    DiagonalCurveEditor* shape;
-    DiagonalCurveEditor* shape2;
+    CurveEditorGroup *curveEditorG;
+    CurveEditorGroup *curveEditorG2;
+    DiagonalCurveEditor *shape;
+    DiagonalCurveEditor *shape2;
     CurveEditorGroup *satcurveG;
     FlatCurveEditor *satcurve;
     DiagonalCurveEditor *satcurve2_;
@@ -87,44 +90,42 @@ public:
     ToneCurve();
     ~ToneCurve() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
     void autoOpenCurve() override;
     void setEditProvider(EditDataProvider *provider) override;
 
-    float blendPipetteValues(CurveEditor *ce, float chan1, float chan2, float chan3) override;
+    float blendPipetteValues(CurveEditor *ce, float chan1, float chan2,
+                             float chan3) override;
 
-    void enableAll(bool yes=true);
-    void curveChanged (CurveEditor* ce) override;
-    void curveMode1Changed ();
-    bool curveMode1Changed_ ();
-    void curveMode2Changed ();
-    bool curveMode2Changed_ ();
-    void expandCurve (bool isExpanded);
-    bool isCurveExpanded ();
+    void enableAll(bool yes = true);
+    void curveChanged(CurveEditor *ce) override;
+    void curveMode1Changed();
+    bool curveMode1Changed_();
+    void curveMode2Changed();
+    bool curveMode2Changed_();
+    void expandCurve(bool isExpanded);
+    bool isCurveExpanded();
     void updateCurveBackgroundHistogram(
-        const LUTu& histToneCurve,
-        const LUTu& histLCurve,
-        const LUTu& histCCurve,
-        const LUTu& histLCAM,
-        const LUTu& histCCAM,
-        const LUTu& histRed,
-        const LUTu& histGreen,
-        const LUTu& histBlue,
-        const LUTu& histLuma,
-        const LUTu& histLRETI
-    );
+        const LUTu &histToneCurve, const LUTu &histLCurve,
+        const LUTu &histCCurve, const LUTu &histLCAM, const LUTu &histCCAM,
+        const LUTu &histRed, const LUTu &histGreen, const LUTu &histBlue,
+        const LUTu &histLuma, const LUTu &histLRETI);
 
     void histmatchingToggled();
-    void autoMatchedToneCurveChanged(const std::vector<double> &curve, const std::vector<double> &curve2);
-    void setRaw (bool raw);
+    void autoMatchedToneCurveChanged(const std::vector<double> &curve,
+                                     const std::vector<double> &curve2);
+    void setRaw(bool raw);
 
     void adjusterChanged(Adjuster *a, double newval) override;
 
     void toolReset(bool to_initial) override;
     void registerShortcuts(ToolShortcutManager *mgr) override;
 
-    void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller *caller) override;
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 };

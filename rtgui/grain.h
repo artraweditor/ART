@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,20 +19,23 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class FilmGrain: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel {
+class FilmGrain: public ToolParamBlock,
+                 public AdjusterListener,
+                 public FoldableToolPanel {
 public:
     FilmGrain();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void adjusterChanged(Adjuster *a, double newval) override;
     void enabledChanged() override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override {}
+    void adjusterAutoToggled(Adjuster *a, bool newval) override {}
     void colorChanged();
 
     void toolReset(bool to_initial) override;
@@ -49,4 +52,3 @@ private:
 
     rtengine::procparams::GrainParams initial_params;
 };
-

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,31 +19,30 @@
  */
 #pragma once
 
-#include <glibmm.h>
-#include "options.h"
-#include "../rtengine/rtengine.h"
 #include "../rtengine/imageformat.h"
+#include "../rtengine/rtengine.h"
+#include "options.h"
+#include <glibmm.h>
 
 class CacheImageData: public rtengine::FramesMetaData {
 public:
-
     // basic information
-    Glib::ustring  md5;
-    Glib::ustring  version;
-    bool  supported;
-    ThFileType  format;
-    bool  recentlySaved;
+    Glib::ustring md5;
+    Glib::ustring version;
+    bool supported;
+    ThFileType format;
+    bool recentlySaved;
 
     // time/date info
-    bool  timeValid;
+    bool timeValid;
     short year;
-    char  month;
-    char  day;
-    char  hour;
-    char  min;
-    char  sec;
+    char month;
+    char day;
+    char hour;
+    char min;
+    char sec;
     // exif info
-    bool  exifValid;
+    bool exifValid;
     unsigned short frameCount;
     double fnumber;
     double shutter;
@@ -64,37 +63,40 @@ public:
     int colorLabel;
     time_t timestamp;
 
-    // store a copy of the autoWB's multipliers computed in Thumbnail::_generateThumbnailImage
-    // they are not stored in the cache file by this class, but by rtengine::Thumbnail
-    // -1 = Unknown
+    // store a copy of the autoWB's multipliers computed in
+    // Thumbnail::_generateThumbnailImage they are not stored in the cache file
+    // by this class, but by rtengine::Thumbnail -1 = Unknown
     double redAWBMul, greenAWBMul, blueAWBMul;
 
     // additional info on raw images
-    int   rotate;
-    int   thumbImgType;
+    int rotate;
+    int thumbImgType;
 
     enum {
-        FULL_THUMBNAIL = 0,  // was the thumbnail generated from whole file
-        QUICK_THUMBNAIL = 1  // was the thumbnail generated from embedded jpeg
+        FULL_THUMBNAIL = 0, // was the thumbnail generated from whole file
+        QUICK_THUMBNAIL = 1 // was the thumbnail generated from embedded jpeg
     };
 
     int width;
     int height;
 
-    CacheImageData ();
+    CacheImageData();
 
-    int load (const Glib::ustring& fname);
-    int save (const Glib::ustring& fname);
+    int load(const Glib::ustring &fname);
+    int save(const Glib::ustring &fname);
 
     //-------------------------------------------------------------------------
     // FramesMetaData interface
     //-------------------------------------------------------------------------
 
     /* unsigned int getRootCount () const override { return -1; } */
-    unsigned int getFrameCount () const override { return frameCount; }
-    bool hasExif() const override  { return false; }
+    unsigned int getFrameCount() const override { return frameCount; }
+    bool hasExif() const override { return false; }
     tm getDateTime() const override { return tm{}; }
-    time_t getDateTimeAsTS() const override { return timeValid ? timestamp : time_t(-1); }
+    time_t getDateTimeAsTS() const override
+    {
+        return timeValid ? timestamp : time_t(-1);
+    }
     int getISOSpeed() const override { return iso; }
     double getFNumber() const override { return fnumber; }
     double getFocalLen() const override { return focalLen; }
@@ -108,15 +110,23 @@ public:
     std::string getOrientation() const override { return orientation; } // TODO
     std::string getOrientationFilter() const;
     Glib::ustring getFileName() const override { return ""; }
-    bool getPixelShift () const override { return isPixelShift; }
+    bool getPixelShift() const override { return isPixelShift; }
     bool getHDR() const override { return isHDR; }
-    std::string getImageType() const override { return isPixelShift ? "PS" : isHDR ? "HDR" : "STD"; }
-    rtengine::IIOSampleFormat getSampleFormat() const override { return sampleFormat; }
+    std::string getImageType() const override
+    {
+        return isPixelShift ? "PS" : isHDR ? "HDR" : "STD";
+    }
+    rtengine::IIOSampleFormat getSampleFormat() const override
+    {
+        return sampleFormat;
+    }
     std::string getSoftware() const override { return ""; }
     int getRating() const override { return rating; }
     int getColorLabel() const override { return colorLabel; }
     std::vector<rtengine::GainMap> getGainMaps() const override
-    { return std::vector<rtengine::GainMap>(); }
+    {
+        return std::vector<rtengine::GainMap>();
+    }
     void getDimensions(int &w, int &h) const override
     {
         w = width;

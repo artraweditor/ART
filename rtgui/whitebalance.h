@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,12 +19,12 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "toolpanel.h"
+#include "../rtengine/procparams.h"
 #include "adjuster.h"
 #include "guiutils.h"
+#include "toolpanel.h"
 #include "wbprovider.h"
-#include "../rtengine/procparams.h"
+#include <gtkmm.h>
 
 class SpotWBListener {
 public:
@@ -32,35 +32,32 @@ public:
     virtual void spotWBRequested(int size) = 0;
 };
 
-
-class WhiteBalance: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public rtengine::AutoWBListener {
+class WhiteBalance: public ToolParamBlock,
+                    public AdjusterListener,
+                    public FoldableToolPanel,
+                    public rtengine::AutoWBListener {
 public:
     WhiteBalance();
     ~WhiteBalance() override;
 
     static void init();
     static void cleanup();
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void methodChanged();
     void spotPressed();
     void spotSizeChanged();
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    int  getSize();
-    void setWBProvider(WBProvider* p)
-    {
-        wbp = p;
-    }
-    void setSpotWBListener(SpotWBListener* l)
-    {
-        wblistener = l;
-    }
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    int getSize();
+    void setWBProvider(WBProvider *p) { wbp = p; }
+    void setSpotWBListener(SpotWBListener *l) { wblistener = l; }
     void setWB(rtengine::ColorTemp ctemp);
     void WBChanged(rtengine::ColorTemp ctemp) override;
 
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
     void enabledChanged() override;
 
     void toolReset(bool to_initial) override;
@@ -71,10 +68,10 @@ private:
     int getActiveMethod();
     void syncSliders(bool from_mult);
     void updateMethodGui(bool check_temp);
-    
-    class MethodColumns : public Gtk::TreeModel::ColumnRecord {
+
+    class MethodColumns: public Gtk::TreeModel::ColumnRecord {
     public:
-        Gtk::TreeModelColumn< Glib::RefPtr<Gdk::Pixbuf> > colIcon;
+        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> colIcon;
         Gtk::TreeModelColumn<Glib::ustring> colLabel;
         Gtk::TreeModelColumn<int> colPreset;
         MethodColumns()
@@ -88,20 +85,20 @@ private:
     static std::vector<Glib::RefPtr<Gdk::Pixbuf>> wbPixbufs;
     Glib::RefPtr<Gtk::TreeStore> refTreeModel;
     MethodColumns methodColumns;
-    MyComboBox* method;
-    MyComboBoxText* spotsize;
-    Adjuster* temp;
-    Adjuster* green;
-    Adjuster* equal;
+    MyComboBox *method;
+    MyComboBoxText *spotsize;
+    Adjuster *temp;
+    Adjuster *green;
+    Adjuster *equal;
 
     std::array<Adjuster *, 3> mult;
     Gtk::VBox *tempBox;
     Gtk::VBox *multBox;
 
-    Gtk::Button* spotbutton;
+    Gtk::Button *spotbutton;
     int opt;
     WBProvider *wbp;
-    SpotWBListener* wblistener;
+    SpotWBListener *wblistener;
     sigc::connection methconn;
 
     IdleRegister idle_register;
@@ -113,4 +110,3 @@ private:
 
     Gtk::Box *temp_warning_;
 };
-

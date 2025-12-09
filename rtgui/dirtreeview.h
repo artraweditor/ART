@@ -18,23 +18,24 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <gtkmm.h>
 #include "extprog.h"
+#include <gtkmm.h>
 
-class DirTreeView : public Gtk::TreeView
-{
+class DirTreeView: public Gtk::TreeView {
 public:
     DirTreeView();
     virtual ~DirTreeView();
 
-    typedef sigc::signal<void, const UserCommand&> type_signal_menu_item_activated;
+    typedef sigc::signal<void, const UserCommand &>
+        type_signal_menu_item_activated;
     type_signal_menu_item_activated signal_menu_item_activated();
 
 protected:
-    bool on_button_press_event(GdkEventButton* button_event) override;
-    void on_menu_item_activate(Gtk::MenuItem* m);
+    bool on_button_press_event(GdkEventButton *button_event) override;
+    void on_menu_item_activate(Gtk::MenuItem *m);
 
     type_signal_menu_item_activated sig_menu_item_activated;
-    Gtk::Menu* pmenu;
-    std::vector<std::pair<std::unique_ptr<Gtk::MenuItem>, UserCommand>> menu_commands;
+    Gtk::Menu *pmenu;
+    std::vector<std::pair<std::unique_ptr<Gtk::MenuItem>, UserCommand>>
+        menu_commands;
 };

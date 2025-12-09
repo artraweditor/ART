@@ -22,37 +22,41 @@
 #include <omp.h>
 #endif
 
-#include "improcfun.h"
 #include "curves.h"
-#include "settings.h"
+#include "improcfun.h"
 #include "mytime.h"
+#include "settings.h"
 
 namespace rtengine {
 
-extern const Settings* settings;
+extern const Settings *settings;
 
 namespace {
 
-void fillCurveArray(DiagonalCurve* diagCurve, LUTf &outCurve, int skip, bool needed)
+void fillCurveArray(DiagonalCurve *diagCurve, LUTf &outCurve, int skip,
+                    bool needed)
 {
     if (needed) {
 
-        for (int i = 0; i <= 0xffff; i += i < 0xffff - skip ? skip : 1 ) {
+        for (int i = 0; i <= 0xffff; i += i < 0xffff - skip ? skip : 1) {
             // change to [0,1] range
             float val = (float)i / 65535.f;
             // apply custom/parametric/NURBS curve, if any
-            val = diagCurve->getVal (val);
+            val = diagCurve->getVal(val);
             // store result in a temporary array
             outCurve[i] = val;
         }
 
-        // if skip>1, let apply linear interpolation in the skipped points of the curve
+        // if skip>1, let apply linear interpolation in the skipped points of
+        // the curve
         if (skip > 1) {
-            float skipmul = 1.f / (float) skip;
+            float skipmul = 1.f / (float)skip;
 
             for (int i = 0; i <= 0x10000 - skip; i += skip) {
-                for(int j = 1; j < skip; j++) {
-                    outCurve[i + j] = ( outCurve[i] * (skip - j) + outCurve[i + skip] * j ) * skipmul;
+                for (int j = 1; j < skip; j++) {
+                    outCurve[i + j] =
+                        (outCurve[i] * (skip - j) + outCurve[i + skip] * j) *
+                        skipmul;
                 }
             }
         }
@@ -63,16 +67,21 @@ void fillCurveArray(DiagonalCurve* diagCurve, LUTf &outCurve, int skip, bool nee
     }
 }
 
-
-void get_L_curve(LUTf &out, int brightness, int contrast, const std::vector<double> &curve, const LUTu &histogram, int skip)
+void get_L_curve(LUTf &out, int brightness, int contrast,
+                 const std::vector<double> &curve, const LUTu &histogram,
+                 int skip)
 {
     if (brightness) {
         std::vector<double> pts = {
             DCT_NURBS,
-            0.0, 0.0, // black point
-            0.1, 0.1 + std::abs(brightness) / 150.0, // toe
-            0.7, std::min(1.0, 0.7 + std::abs(brightness) / 300.0), // shoulder
-            1.0, 1.0 // white point
+            0.0,
+            0.0, // black point
+            0.1,
+            0.1 + std::abs(brightness) / 150.0, // toe
+            0.7,
+            std::min(1.0, 0.7 + std::abs(brightness) / 300.0), // shoulder
+            1.0,
+            1.0 // white point
         };
         if (brightness < 0) {
             std::swap(pts[3], pts[4]);
@@ -81,7 +90,8 @@ void get_L_curve(LUTf &out, int brightness, int contrast, const std::vector<doub
 
         DiagonalCurve brightcurve(pts, CURVES_MIN_POLY_POINTS / skip);
 
-        for (int i = 0; i < 32768; i++) { // L values range up to 32767, higher values are for highlight overflow
+        for (int i = 0; i < 32768; i++) { // L values range up to 32767, higher
+                                          // values are for highlight overflow
             float val = (float)i / 32767.0;
             val = brightcurve.getVal(val);
             out[i] = LIM01(val);
@@ -104,25 +114,24 @@ void get_L_curve(LUTf &out, int brightness, int contrast, const std::vector<doub
 
         if (sum) {
             avg /= sum;
-            pts = {
-                DCT_NURBS,
-                0.0, 0.0,
-                
-                avg - avg * (0.6 - contrast / 250.0), // toe point
-                avg - avg * (0.6 + contrast / 250.0), // value at toe point
+            pts = {DCT_NURBS,
+                   0.0,
+                   0.0,
 
-                avg + (1 - avg) * (0.6 - contrast / 250.0), // shoulder point
-                avg + (1 - avg) * (0.6 + contrast / 250.0), // value at shoulder point
+                   avg - avg * (0.6 - contrast / 250.0), // toe point
+                   avg - avg * (0.6 + contrast / 250.0), // value at toe point
 
-                1.0, 1.0
-            };
+                   avg + (1 - avg) * (0.6 - contrast / 250.0), // shoulder point
+                   avg +
+                       (1 - avg) *
+                           (0.6 + contrast / 250.0), // value at shoulder point
+
+                   1.0,
+                   1.0};
         } else {
-            // sum has an invalid value (next to 0, producing a division by zero, so we create a fake contrast curve, producing a white image
-            pts = {
-                DCT_NURBS,
-                0.0, 1.0,
-                1.0, 1.0
-            };
+            // sum has an invalid value (next to 0, producing a division by
+            // zero, so we create a fake contrast curve, producing a white image
+            pts = {DCT_NURBS, 0.0, 1.0, 1.0, 1.0};
         }
 
         DiagonalCurve contrastcurve(pts, CURVES_MIN_POLY_POINTS / skip);
@@ -157,13 +166,15 @@ void get_L_curve(LUTf &out, int brightness, int contrast, const std::vector<doub
         out *= 32767.f;
     }
 
-    for (int i = 32768; i < 32770; i++) { // set last two elements of lut to 32768 and 32769 to allow linear interpolation
+    for (int i = 32768; i < 32770;
+         i++) { // set last two elements of lut to 32768 and 32769 to allow
+                // linear interpolation
         out[i] = (float)i;
     }
 }
 
-
-void get_ab_curves(LUTf &aout, LUTf &bout, const std::vector<double> &acurve, const std::vector<double> &bcurve, int skip)
+void get_ab_curves(LUTf &aout, LUTf &bout, const std::vector<double> &acurve,
+                   const std::vector<double> &bcurve, int skip)
 {
     std::unique_ptr<DiagonalCurve> dCurve;
 
@@ -181,24 +192,28 @@ void get_ab_curves(LUTf &aout, LUTf &bout, const std::vector<double> &acurve, co
     fillCurveArray(dCurve.get(), bout, skip, dCurve && !dCurve->isIdentity());
 }
 
-
-void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &acurve, LUTf &bcurve, LUTu *histLCurve, PipetteBuffer *pipetteBuffer)
+void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve,
+                     LUTf &acurve, LUTf &bcurve, LUTu *histLCurve,
+                     PipetteBuffer *pipetteBuffer)
 {
     const auto params = im.params;
     const auto multiThread = im.multiThread;
-    
+
     const int W = img->getWidth();
     const int H = img->getHeight();
 
-    PlanarWhateverData<float>* editWhatever = nullptr;
+    PlanarWhateverData<float> *editWhatever = nullptr;
     EditUniqueID editID = EUID_None;
     bool editPipette = false;
 
     if (pipetteBuffer) {
         editID = pipetteBuffer->getEditID();
 
-        if ((editID == EUID_Lab_LCurve || editID == EUID_Lab_aCurve || editID == EUID_Lab_bCurve) &&
-            pipetteBuffer->getDataProvider()->getCurrSubscriber()->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
+        if ((editID == EUID_Lab_LCurve || editID == EUID_Lab_aCurve ||
+             editID == EUID_Lab_bCurve) &&
+            pipetteBuffer->getDataProvider()
+                    ->getCurrSubscriber()
+                    ->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
             editPipette = true;
             editWhatever = pipetteBuffer->getSinglePlaneBuffer();
         }
@@ -214,7 +229,7 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &
 
     if (editPipette) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -224,10 +239,12 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &
                     val = img->g(y, x) / 32768.f;
                     break;
                 case EUID_Lab_aCurve:
-                    val = (img->r(y, x) + (32768.f * 1.28f)) / (65536.f * 1.28f);
+                    val =
+                        (img->r(y, x) + (32768.f * 1.28f)) / (65536.f * 1.28f);
                     break;
                 case EUID_Lab_bCurve:
-                    val = (img->b(y, x) + (32768.f * 1.28f)) / (65536.f * 1.28f);
+                    val =
+                        (img->b(y, x) + (32768.f * 1.28f)) / (65536.f * 1.28f);
                     break;
                 default:
                     break;
@@ -241,7 +258,7 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &
         histLCurve->clear();
         const int compression = log2(32768.f / histLCurve->getSize());
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -256,14 +273,14 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &
     const vfloat chromav = F2V(chroma);
     const vfloat v32768 = F2V(32768.f);
 #endif
-    
+
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
 #ifdef __SSE2__
-        for (; x < W-3; x += 4) {
+        for (; x < W - 3; x += 4) {
             vfloat L = LVF(img->g(y, x));
             vfloat a = LVF(img->r(y, x));
             vfloat b = LVF(img->b(y, x));
@@ -288,7 +305,6 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve, LUTf &
 
 } // namespace
 
-
 void ImProcFunctions::labAdjustments(Imagefloat *rgb)
 {
     if (!params->labCurve.enabled) {
@@ -296,51 +312,56 @@ void ImProcFunctions::labAdjustments(Imagefloat *rgb)
     }
 
     rgb->setMode(Imagefloat::Mode::LAB, multiThread);
-    
+
     LUTu hist16;
     LUTf lcurve;
     LUTf acurve;
     LUTf bcurve;
 
     hist16(65536);
-    lcurve(32770, 0); // lumacurve[32768] and lumacurve[32769] will be set to 32768 and 32769 later to allow linear interpolation
+    lcurve(32770, 0); // lumacurve[32768] and lumacurve[32769] will be set to
+                      // 32768 and 32769 later to allow linear interpolation
     acurve(65536);
     bcurve(65536);
 
-    if (params->labCurve.contrast != 0) { //only use hist16 for contrast
+    if (params->labCurve.contrast != 0) { // only use hist16 for contrast
         hist16.clear();
         int fh = rgb->getHeight();
         int fw = rgb->getWidth();
         float **lab_L = rgb->g.ptrs;
-        
+
 #ifdef _OPENMP
-#       pragma omp parallel if (multiThread)
+#pragma omp parallel if (multiThread)
 #endif
         {
-            LUTu hist16thr (hist16.getSize());  // one temporary lookup table per thread
+            LUTu hist16thr(
+                hist16.getSize()); // one temporary lookup table per thread
             hist16thr.clear();
 #ifdef _OPENMP
-#           pragma omp for schedule(static) nowait
+#pragma omp for schedule(static) nowait
 #endif
             for (int i = 0; i < fh; i++) {
                 for (int j = 0; j < fw; j++) {
                     hist16thr[(int)((lab_L[i][j]))]++;
                 }
             }
-            
+
 #ifdef _OPENMP
-#           pragma omp critical
+#pragma omp critical
 #endif
             {
                 hist16 += hist16thr;
             }
         }
-    }  
+    }
 
-    get_L_curve(lcurve, params->labCurve.brightness, params->labCurve.contrast, params->labCurve.lcurve, hist16, scale);
-    get_ab_curves(acurve, bcurve, params->labCurve.acurve, params->labCurve.bcurve, scale);
+    get_L_curve(lcurve, params->labCurve.brightness, params->labCurve.contrast,
+                params->labCurve.lcurve, hist16, scale);
+    get_ab_curves(acurve, bcurve, params->labCurve.acurve,
+                  params->labCurve.bcurve, scale);
 
-    lab_adjustments(ImProcData(params, scale, multiThread), rgb, lcurve, acurve, bcurve, histLCurve, pipetteBuffer);
+    lab_adjustments(ImProcData(params, scale, multiThread), rgb, lcurve, acurve,
+                    bcurve, histLCurve, pipetteBuffer);
 }
 
 } // namespace rtengine

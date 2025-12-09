@@ -17,15 +17,15 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "image16.h"
-#include "imagefloat.h"
 #include "image8.h"
-#include <cstdio>
+#include "imagefloat.h"
 #include "rtengine.h"
+#include <cstdio>
 
-namespace
-{
+namespace {
 
-void getScanline8(const uint16_t *red, const uint16_t *green, const uint16_t *blue, int width, unsigned char* buffer)
+void getScanline8(const uint16_t *red, const uint16_t *green,
+                  const uint16_t *blue, int width, unsigned char *buffer)
 {
     for (int i = 0, ix = 0; i < width; i++) {
         buffer[ix++] = rtengine::uint16ToUint8Rounded(red[i]);
@@ -34,7 +34,8 @@ void getScanline8(const uint16_t *red, const uint16_t *green, const uint16_t *bl
     }
 }
 
-void getScanline16(const uint16_t *red, const uint16_t *green, const uint16_t *blue, int width, unsigned short* buffer)
+void getScanline16(const uint16_t *red, const uint16_t *green,
+                   const uint16_t *blue, int width, unsigned short *buffer)
 {
     for (int i = 0, ix = 0; i < width; i++) {
         buffer[ix++] = red[i];
@@ -43,24 +44,18 @@ void getScanline16(const uint16_t *red, const uint16_t *green, const uint16_t *b
     }
 }
 
-}
+} // namespace
 
 using namespace rtengine;
 
-Image16::Image16()
-{
-}
+Image16::Image16() {}
 
-Image16::Image16(int w, int h)
-{
-    allocate(w, h);
-}
+Image16::Image16(int w, int h) { allocate(w, h); }
 
-Image16::~Image16()
-{
-}
+Image16::~Image16() {}
 
-void Image16::getScanline(int row, unsigned char* buffer, int bps, bool isFloat) const
+void Image16::getScanline(int row, unsigned char *buffer, int bps,
+                          bool isFloat) const
 {
 
     if (data == nullptr) {
@@ -68,13 +63,14 @@ void Image16::getScanline(int row, unsigned char* buffer, int bps, bool isFloat)
     }
 
     if (bps == 16) {
-        getScanline16(r(row), g(row), b(row), width, (unsigned short*)buffer);
+        getScanline16(r(row), g(row), b(row), width, (unsigned short *)buffer);
     } else if (bps == 8) {
         getScanline8(r(row), g(row), b(row), width, buffer);
     }
 }
 
-void Image16::setScanline(int row, unsigned char* buffer, int bps, unsigned int numSamples)
+void Image16::setScanline(int row, unsigned char *buffer, int bps,
+                          unsigned int numSamples)
 {
 
     if (data == nullptr) {
@@ -82,40 +78,41 @@ void Image16::setScanline(int row, unsigned char* buffer, int bps, unsigned int 
     }
 
     switch (sampleFormat) {
-        case (IIOSF_UNSIGNED_CHAR): {
-            int ix = 0;
+    case (IIOSF_UNSIGNED_CHAR): {
+        int ix = 0;
 
-            if (numSamples == 1) {
-                for (int i = 0; i < width; ++i) {
-                    r(row, i) = g(row, i) = b(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
-                }
-            } else {
-                for (int i = 0; i < width; ++i) {
-                    r(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
-                    g(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
-                    b(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
-                }
-            }
-
-            break;
-        }
-
-        case (IIOSF_UNSIGNED_SHORT): {
-            unsigned short* sbuffer = (unsigned short*) buffer;
-            int ix = 0;
-
+        if (numSamples == 1) {
             for (int i = 0; i < width; ++i) {
-                r(row, i) = sbuffer[ix++];
-                g(row, i) = sbuffer[ix++];
-                b(row, i) = sbuffer[ix++];
+                r(row, i) = g(row, i) = b(row, i) =
+                    static_cast<unsigned short>(buffer[ix++]) * 257;
             }
-
-            break;
+        } else {
+            for (int i = 0; i < width; ++i) {
+                r(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
+                g(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
+                b(row, i) = static_cast<unsigned short>(buffer[ix++]) * 257;
+            }
         }
 
-        default:
-            // Other types are ignored, but could be implemented if necessary
-            break;
+        break;
+    }
+
+    case (IIOSF_UNSIGNED_SHORT): {
+        unsigned short *sbuffer = (unsigned short *)buffer;
+        int ix = 0;
+
+        for (int i = 0; i < width; ++i) {
+            r(row, i) = sbuffer[ix++];
+            g(row, i) = sbuffer[ix++];
+            b(row, i) = sbuffer[ix++];
+        }
+
+        break;
+    }
+
+    default:
+        // Other types are ignored, but could be implemented if necessary
+        break;
     }
 
     /*
@@ -124,15 +121,16 @@ void Image16::setScanline(int row, unsigned char* buffer, int bps, unsigned int 
      */
 }
 
-Image16* Image16::copy() const
+Image16 *Image16::copy() const
 {
 
-    Image16* cp = new Image16(width, height);
+    Image16 *cp = new Image16(width, height);
     copyData(cp);
     return cp;
 }
 
-void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, PreviewProps pp) const
+void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat *image,
+                          PreviewProps pp) const
 {
 
     // compute channel multipliers
@@ -158,7 +156,7 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
 
     transform(pp, tran, sx1, sy1, sx2, sy2);
 
-    int imwidth = image->getWidth(); // Destination image
+    int imwidth = image->getWidth();   // Destination image
     int imheight = image->getHeight(); // Destination image
 
     if (((tran & TR_ROT) == TR_R90) || ((tran & TR_ROT) == TR_R270)) {
@@ -167,12 +165,13 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
         imheight = swap;
     }
 
-    int maxx = width; // Source image
+    int maxx = width;  // Source image
     int maxy = height; // Source image
     int mtran = tran & TR_ROT;
     int skip = pp.getSkip();
 
-    //if ((sx1 + skip*imwidth)>maxx) imwidth -- ; // we have a boundary condition that can cause errors
+    // if ((sx1 + skip*imwidth)>maxx) imwidth -- ; // we have a boundary
+    // condition that can cause errors
 
     // improve speed by integrating the area division into the multipliers
     // switched to using ints for the red/green/blue channel buffer.
@@ -185,21 +184,21 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
     gm /= area;
     bm /= area;
 
-#define GCLIP( x ) Color::gamma_srgb(CLIP(x))
+#define GCLIP(x) Color::gamma_srgb(CLIP(x))
 
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
     {
 #endif
         AlignedBuffer<float> abR(imwidth);
         AlignedBuffer<float> abG(imwidth);
         AlignedBuffer<float> abB(imwidth);
-        float *lineR  = abR.data;
-        float *lineG  = abG.data;
-        float *lineB =  abB.data;
+        float *lineR = abR.data;
+        float *lineG = abG.data;
+        float *lineB = abB.data;
 
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
         // Iterating all the rows of the destination image
@@ -214,7 +213,8 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x++) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x++) {
                     // overflow security check, not sure that it's necessary
                     if (src_x >= maxx) {
                         continue;
@@ -232,7 +232,8 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     continue;
                 }
 
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     if (src_x >= maxx) {
                         continue;
                     }
@@ -243,8 +244,10 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
                     float rtot, gtot, btot; // RGB accumulators
                     rtot = gtot = btot = 0.;
 
-                    for (int src_sub_y = 0; src_sub_y < src_sub_height; src_sub_y++)
-                        for (int src_sub_x = 0; src_sub_x < src_sub_width; src_sub_x++) {
+                    for (int src_sub_y = 0; src_sub_y < src_sub_height;
+                         src_sub_y++)
+                        for (int src_sub_x = 0; src_sub_x < src_sub_width;
+                             src_sub_x++) {
                             rtot += r(src_y + src_sub_y, src_x + src_sub_x);
                             gtot += g(src_y + src_sub_y, src_x + src_sub_x);
                             btot += b(src_y + src_sub_y, src_x + src_sub_x);
@@ -257,7 +260,8 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
                         lineG[dst_x] = CLIP(gm * gtot);
                         lineB[dst_x] = CLIP(bm * btot);
                     } else {
-                        // computing a special factor for this incomplete sub-region
+                        // computing a special factor for this incomplete
+                        // sub-region
                         float area = src_sub_width * src_sub_height;
                         lineR[dst_x] = CLIP(rm2 * rtot / area);
                         lineG[dst_x] = CLIP(gm2 * gtot / area);
@@ -267,22 +271,31 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
             }
 
             if (mtran == TR_NONE)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(iy, dst_x) = lineR[dst_x];
                     image->g(iy, dst_x) = lineG[dst_x];
                     image->b(iy, dst_x) = lineB[dst_x];
-                } else if (mtran == TR_R180)
+                }
+            else if (mtran == TR_R180)
                 for (int dst_x = 0; dst_x < imwidth; dst_x++) {
-                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) = lineR[dst_x];
-                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) = lineG[dst_x];
-                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) = lineB[dst_x];
-                } else if (mtran == TR_R90)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                    image->r(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineR[dst_x];
+                    image->g(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineG[dst_x];
+                    image->b(imheight - 1 - iy, imwidth - 1 - dst_x) =
+                        lineB[dst_x];
+                }
+            else if (mtran == TR_R90)
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(dst_x, imheight - 1 - iy) = lineR[dst_x];
                     image->g(dst_x, imheight - 1 - iy) = lineG[dst_x];
                     image->b(dst_x, imheight - 1 - iy) = lineB[dst_x];
-                } else if (mtran == TR_R270)
-                for (int dst_x = 0, src_x = sx1; dst_x < imwidth; dst_x++, src_x += skip) {
+                }
+            else if (mtran == TR_R270)
+                for (int dst_x = 0, src_x = sx1; dst_x < imwidth;
+                     dst_x++, src_x += skip) {
                     image->r(imwidth - 1 - dst_x, iy) = lineR[dst_x];
                     image->g(imwidth - 1 - dst_x, iy) = lineG[dst_x];
                     image->b(imwidth - 1 - dst_x, iy) = lineB[dst_x];
@@ -295,9 +308,9 @@ void Image16::getStdImage(const ColorTemp &ctemp, int tran, Imagefloat* image, P
 #undef GCLIP
 }
 
-Image8* Image16::to8() const
+Image8 *Image16::to8() const
 {
-    Image8* img8 = new Image8(width, height);
+    Image8 *img8 = new Image8(width, height);
 
     for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
@@ -313,22 +326,22 @@ Image8* Image16::to8() const
 // Parallelized transformation; create transform with cmsFLAGS_NOCACHE!
 void Image16::ExecCMSTransform(cmsHTRANSFORM hTransform)
 {
-    //cmsDoTransform(hTransform, data, data, planestride);
+    // cmsDoTransform(hTransform, data, data, planestride);
 
-    // LittleCMS cannot parallelize planar setups -- Hombre: LCMS2.4 can! But it we use this new feature, memory allocation have to be modified too
-    // so build temporary buffers to allow multi processor execution
+    // LittleCMS cannot parallelize planar setups -- Hombre: LCMS2.4 can! But it
+    // we use this new feature, memory allocation have to be modified too so
+    // build temporary buffers to allow multi processor execution
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
         AlignedBuffer<unsigned short> buffer(width * 3);
 
 #ifdef _OPENMP
-        #pragma omp for schedule(static)
+#pragma omp for schedule(static)
 #endif
 
-        for (int y = 0; y < height; y++)
-        {
+        for (int y = 0; y < height; y++) {
             unsigned short *p = buffer.data, *pR = r(y), *pG = g(y), *pB = b(y);
 
             for (int x = 0; x < width; x++) {
@@ -354,7 +367,8 @@ void Image16::ExecCMSTransform(cmsHTRANSFORM hTransform)
 }
 
 // // Parallelized transformation; create transform with cmsFLAGS_NOCACHE!
-// void Image16::ExecCMSTransform(cmsHTRANSFORM hTransform, const LabImage &labImage, int cx, int cy)
+// void Image16::ExecCMSTransform(cmsHTRANSFORM hTransform, const LabImage
+// &labImage, int cx, int cy)
 // {
 //     // LittleCMS cannot parallelize planar Lab float images
 //     // so build temporary buffers to allow multi processor execution
@@ -385,7 +399,8 @@ void Image16::ExecCMSTransform(cmsHTRANSFORM hTransform)
 //                 *(pLab++) = *(pb++)  / 327.68f;
 //             }
 
-//             cmsDoTransform (hTransform, bufferLab.data, bufferRGB.data, width);
+//             cmsDoTransform (hTransform, bufferLab.data, bufferRGB.data,
+//             width);
 
 //             pRGB = bufferRGB.data;
 //             pR = r(y - cy);

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,18 +19,22 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
 #include "maskspanel.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class LocalContrast: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public CurveListener, public PParamsChangeListener {
+class LocalContrast: public ToolParamBlock,
+                     public AdjusterListener,
+                     public FoldableToolPanel,
+                     public CurveListener,
+                     public PParamsChangeListener {
 private:
     void regionGet(int idx);
     void regionShow(int idx);
-    
+
     std::vector<rtengine::procparams::LocalContrastParams::Region> regionData;
 
     friend class LocalContrastMasksContentProvider;
@@ -41,11 +45,11 @@ private:
     Adjuster *contrast;
     CurveEditorGroup *cg;
     FlatCurveEditor *curve;
-    
+
     rtengine::ProcEvent EvLocalContrastEnabled;
     rtengine::ProcEvent EvLocalContrastContrast;
     rtengine::ProcEvent EvLocalContrastCurve;
-    
+
     rtengine::ProcEvent EvList;
     rtengine::ProcEvent EvParametricMask;
     rtengine::ProcEvent EvHueMask;
@@ -64,14 +68,14 @@ private:
     rtengine::procparams::LocalContrastParams initial_params;
 
 public:
-
     LocalContrast();
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
     void adjusterChanged(Adjuster *a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
     void enabledChanged() override;
     void curveChanged() override;
     void autoOpenCurve() override;
@@ -79,11 +83,10 @@ public:
     void setEditProvider(EditDataProvider *provider) override;
 
     PParamsChangeListener *getPParamsChangeListener() override { return this; }
-    void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr) override;
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited = nullptr) override;
     void clearParamChanges() override {}
 
     void updateGeometry(int fullWidth, int fullHeight);
@@ -92,6 +95,8 @@ public:
 
     void toolReset(bool to_initial) override;
 
-    void setExternalMaskPath(const Glib::ustring &dir) { masks_->setExternalMaskPath(dir); }
+    void setExternalMaskPath(const Glib::ustring &dir)
+    {
+        masks_->setExternalMaskPath(dir);
+    }
 };
-

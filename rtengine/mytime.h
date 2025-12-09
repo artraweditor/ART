@@ -27,8 +27,7 @@
 #include <ctime>
 #endif
 
-class MyTime
-{
+class MyTime {
 
 public:
 #ifndef WIN32
@@ -46,7 +45,7 @@ public:
     }
 #endif
 
-    void set ()
+    void set()
     {
 #ifdef WIN32
         LARGE_INTEGER ulf;
@@ -58,19 +57,19 @@ public:
         t.tv_sec = tv.tv_sec;
         t.tv_nsec = tv.tv_usec * 1000;
 #else
-        clock_gettime (CLOCK_REALTIME, &t);
+        clock_gettime(CLOCK_REALTIME, &t);
 #endif
     }
 
-    int etime (MyTime a)
+    int etime(MyTime a)
     {
 #ifndef WIN32
-        return (t.tv_sec - a.t.tv_sec) * 1000000 + (t.tv_nsec - a.t.tv_nsec) / 1000;
+        return (t.tv_sec - a.t.tv_sec) * 1000000 +
+               (t.tv_nsec - a.t.tv_nsec) / 1000;
 #else
         return (t - a.t) * 1000 / (baseFrequency / 1000);
 #endif
     }
 };
-
 
 #endif

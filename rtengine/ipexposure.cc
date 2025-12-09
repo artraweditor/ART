@@ -20,22 +20,23 @@
 // extracted and datapted from ImProcFunctions::rgbProc (improcfun.cc) of
 // RawTherapee
 
-#include "improcfun.h"
-#include "curves.h"
 #include "color.h"
+#include "curves.h"
+#include "improcfun.h"
 
 namespace rtengine {
 
-void ImProcFunctions::expcomp(Imagefloat *img, const procparams::ExposureParams *expparams)
+void ImProcFunctions::expcomp(Imagefloat *img,
+                              const procparams::ExposureParams *expparams)
 {
     if (!expparams) {
         expparams = &params->exposure;
     }
-    
+
     if (!expparams->enabled) {
         return;
     }
-    
+
     img->setMode(Imagefloat::Mode::RGB, multiThread);
 
     const float exp_scale = pow(2.f, expparams->expcomp);
@@ -48,10 +49,10 @@ void ImProcFunctions::expcomp(Imagefloat *img, const procparams::ExposureParams 
     const int W = img->getWidth();
     const int H = img->getHeight();
 
-    float **chan[3] = { img->r.ptrs, img->g.ptrs, img->b.ptrs };
-    
+    float **chan[3] = {img->r.ptrs, img->g.ptrs, img->b.ptrs};
+
 #ifdef _OPENMP
-#   pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
@@ -72,10 +73,6 @@ void ImProcFunctions::expcomp(Imagefloat *img, const procparams::ExposureParams 
     }
 }
 
-
-void ImProcFunctions::exposure(Imagefloat *img)
-{
-    expcomp(img, nullptr);
-}
+void ImProcFunctions::exposure(Imagefloat *img) { expcomp(img, nullptr); }
 
 } // namespace rtengine

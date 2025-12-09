@@ -19,8 +19,7 @@
 
 #pragma once
 
-class PreviewProps
-{
+class PreviewProps {
 public:
     PreviewProps(int _x, int _y, int _width, int _height, int _skip);
 
@@ -29,7 +28,7 @@ public:
     int getWidth() const;
     int getHeight() const;
     int getSkip() const;
-    void set (int x, int y, int w, int h, int skip);
+    void set(int x, int y, int w, int h, int skip);
 
 private:
     int x;
@@ -42,21 +41,15 @@ private:
 /*
  * Description of an image dimension, with getter
  */
-class ImageDimensions
-{
+class ImageDimensions {
 public:
     ImageDimensions();
 
-    int getWidth() const
-    {
-        return width;
-    }
-    int getHeight() const
-    {
-        return height;
-    }
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
 
-    void transform(const PreviewProps& pp, int tran, int& sx1, int& sy1, int& sx2, int& sy2) const;
+    void transform(const PreviewProps &pp, int tran, int &sx1, int &sy1,
+                   int &sx2, int &sy2) const;
 
 protected:
     int width;

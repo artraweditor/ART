@@ -18,16 +18,15 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sstream>
-#include <iostream>
 #include <exiv2/exiv2.hpp>
+#include <iostream>
+#include <sstream>
 
+#include "array2D.h"
 #include "gainmap.h"
 #include "rawimage.h"
 #include "rawimagesource.h"
 #include "rescale.h"
-#include "array2D.h"
-
 
 namespace rtengine {
 
@@ -39,44 +38,37 @@ struct OutOfBounds: public std::exception {
     const char *what() const throw() { return "out of bounds"; }
 };
 
-
 GainMap read_gain_map(const uint8_t *data, size_t limit, size_t idx)
 {
     GainMap ret;
 
-    const auto get_ulong =
-        [&]() -> uint32_t
-        {
-            if (idx + 4 > limit) {
-                throw OutOfBounds();
-            }
-            uint32_t ret = Exiv2::getULong(data+idx, Exiv2::bigEndian);
-            idx += 4;
-            return ret;
-        };
+    const auto get_ulong = [&]() -> uint32_t {
+        if (idx + 4 > limit) {
+            throw OutOfBounds();
+        }
+        uint32_t ret = Exiv2::getULong(data + idx, Exiv2::bigEndian);
+        idx += 4;
+        return ret;
+    };
 
-    const auto get_double =
-        [&]() -> double
-        {
-            if (idx + 8 > limit) {
-                throw OutOfBounds();
-            }
-            double ret = Exiv2::getDouble(data+idx, Exiv2::bigEndian);
-            idx += 8;
-            return ret;
-        };
+    const auto get_double = [&]() -> double {
+        if (idx + 8 > limit) {
+            throw OutOfBounds();
+        }
+        double ret = Exiv2::getDouble(data + idx, Exiv2::bigEndian);
+        idx += 8;
+        return ret;
+    };
 
-    const auto get_float =
-        [&]() -> float
-        {
-            if (idx + 4 > limit) {
-                throw OutOfBounds();
-            }
-            float ret = Exiv2::getFloat(data+idx, Exiv2::bigEndian);
-            idx += 4;
-            return ret;
-        };
-    
+    const auto get_float = [&]() -> float {
+        if (idx + 4 > limit) {
+            throw OutOfBounds();
+        }
+        float ret = Exiv2::getFloat(data + idx, Exiv2::bigEndian);
+        idx += 4;
+        return ret;
+    };
+
     ret.top = get_ulong();
     ret.left = get_ulong();
     ret.bottom = get_ulong();
@@ -92,7 +84,7 @@ GainMap read_gain_map(const uint8_t *data, size_t limit, size_t idx)
     ret.map_origin_v = get_double();
     ret.map_origin_h = get_double();
     ret.map_planes = get_ulong();
-    
+
     size_t n = ret.map_points_v * ret.map_points_h * ret.map_planes;
     ret.map_gain.reserve(n);
     for (size_t i = 0; i < n; ++i) {
@@ -101,22 +93,20 @@ GainMap read_gain_map(const uint8_t *data, size_t limit, size_t idx)
     return ret;
 }
 
-
-bool check_gain_map(const uint8_t *data, size_t limit,
-                    size_t &idx, size_t &size)
+bool check_gain_map(const uint8_t *data, size_t limit, size_t &idx,
+                    size_t &size)
 {
     if (idx + 16 > limit) {
         return false;
     }
-    uint32_t opid = Exiv2::getULong(data+idx, Exiv2::bigEndian);
+    uint32_t opid = Exiv2::getULong(data + idx, Exiv2::bigEndian);
     idx += 4;
     idx += 4; // version
     idx += 4; // flags
-    size = Exiv2::getULong(data+idx, Exiv2::bigEndian);
+    size = Exiv2::getULong(data + idx, Exiv2::bigEndian);
     idx += 4;
     return opid == 9;
 }
-
 
 std::vector<GainMap> extract_gain_maps(const std::vector<uint8_t> &buf)
 {
@@ -147,57 +137,54 @@ std::vector<GainMap> extract_gain_maps(const std::vector<uint8_t> &buf)
 
 } // namespace
 
-
 std::vector<GainMap> GainMap::read(const std::vector<uint8_t> &buf)
 {
     return extract_gain_maps(buf);
 }
 
-
 std::string GainMap::to_str() const
 {
     std::ostringstream buf;
-    buf << "[top=" << top
-        << ", left=" << left
-        << ", bottom=" << bottom
-        << ", right=" << right
-        << ", plane=" << plane
-        << ", planes=" << planes
-        << ", row_pitch=" << row_pitch
-        << ", col_pitch=" << col_pitch
+    buf << "[top=" << top << ", left=" << left << ", bottom=" << bottom
+        << ", right=" << right << ", plane=" << plane << ", planes=" << planes
+        << ", row_pitch=" << row_pitch << ", col_pitch=" << col_pitch
         << ", map_points_v=" << map_points_v
         << ", map_points_h=" << map_points_h
         << ", map_spacing_v=" << map_spacing_v
         << ", map_spacing_h=" << map_spacing_h
         << ", map_origin_v=" << map_origin_v
-        << ", map_origin_h=" << map_origin_h
-        << ", map_planes=" << map_planes << "]";
+        << ", map_origin_h=" << map_origin_h << ", map_planes=" << map_planes
+        << "]";
     return buf.str();
 }
 
-
-void RawImageSource::apply_gain_map(unsigned short black[4], std::vector<GainMap> &&maps, float scale_factor)
+void RawImageSource::apply_gain_map(unsigned short black[4],
+                                    std::vector<GainMap> &&maps,
+                                    float scale_factor)
 {
     if (maps.size() != 4) {
         if (settings->verbose) {
-            std::cout << "GAIN MAP: found " << maps.size() << " maps, but 4 expected. Skipping" << std::endl;
+            std::cout << "GAIN MAP: found " << maps.size()
+                      << " maps, but 4 expected. Skipping" << std::endl;
         }
         return;
     }
     for (auto &m : maps) {
         if (m.bottom + 1 < uint32_t(H) || m.right + 1 < uint32_t(W) ||
             m.plane != 0 || m.planes != 1 || m.map_planes != 1 ||
-            m.row_pitch != 2 || m.col_pitch != 2 ||
-            m.map_origin_v != 0 || m.map_origin_h != 0) {
+            m.row_pitch != 2 || m.col_pitch != 2 || m.map_origin_v != 0 ||
+            m.map_origin_h != 0) {
             if (settings->verbose) {
-                std::cout << "GAIN MAP: unable to handle this map: " << m.to_str() << std::endl;
+                std::cout << "GAIN MAP: unable to handle this map: "
+                          << m.to_str() << std::endl;
             }
             return; // not something we can handle yet
         }
     }
 
     if (settings->verbose) {
-        std::cout << "GAIN MAP: applying maps with " << maps[0].map_points_h << "x" << maps[0].map_points_v << " points " << std::endl;
+        std::cout << "GAIN MAP: applying maps with " << maps[0].map_points_h
+                  << "x" << maps[0].map_points_v << " points " << std::endl;
     }
 
     float fblack[4];
@@ -210,14 +197,14 @@ void RawImageSource::apply_gain_map(unsigned short black[4], std::vector<GainMap
     for (auto &m : maps) {
         mvals(m.map_points_h, m.map_points_v, &(m.map_gain[0]), 0);
 
-        const float col_scale = float(m.map_points_h-1) / float(W);
-        const float row_scale = float(m.map_points_v-1) / float(H);
+        const float col_scale = float(m.map_points_h - 1) / float(W);
+        const float row_scale = float(m.map_points_v - 1) / float(H);
 
         const unsigned yend = std::min(unsigned(H), m.bottom);
         const unsigned xend = std::min(unsigned(W), m.right);
-        
+
 #ifdef _OPENMP
-#       pragma omp parallel for
+#pragma omp parallel for
 #endif
         for (unsigned y = m.top; y < yend; y += m.row_pitch) {
             float ys = y * row_scale;

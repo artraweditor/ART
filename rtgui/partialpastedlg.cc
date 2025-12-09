@@ -17,24 +17,18 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "partialpastedlg.h"
+#include "guiutils.h"
 #include "multilangmgr.h"
 #include "paramsedited.h"
-#include "guiutils.h"
 
 namespace {
 
 const std::vector<std::string> groups = {
-    "PARTIALPASTE_EXPOSUREGROUP",
-    "PARTIALPASTE_DETAILGROUP",
-    "PARTIALPASTE_EFFECTSGROUP",
-    "PARTIALPASTE_COLORGROUP",
-    "PARTIALPASTE_LENSGROUP",
-    "PARTIALPASTE_COMPOSITIONGROUP",
-    "PARTIALPASTE_LOCALGROUP",
-    "PARTIALPASTE_RAWGROUP",
-    "PARTIALPASTE_METAGROUP"
-};
-
+    "PARTIALPASTE_EXPOSUREGROUP", "PARTIALPASTE_DETAILGROUP",
+    "PARTIALPASTE_EFFECTSGROUP",  "PARTIALPASTE_COLORGROUP",
+    "PARTIALPASTE_LENSGROUP",     "PARTIALPASTE_COMPOSITIONGROUP",
+    "PARTIALPASTE_LOCALGROUP",    "PARTIALPASTE_RAWGROUP",
+    "PARTIALPASTE_METAGROUP"};
 
 struct ToggleInfo {
     std::string label;
@@ -66,7 +60,7 @@ std::vector<ToggleInfo> get_toggles(ParamsEdited &pedited)
         {"PARTIALPASTE_DEHAZE", &pedited.dehaze, 2, nullptr},
         {"PARTIALPASTE_GRAIN", &pedited.grain, 2, nullptr},
         {"PARTIALPASTE_FILMNEGATIVE", &pedited.filmNegative, 2, nullptr},
-        
+
         {"PARTIALPASTE_WHITEBALANCE", &pedited.wb, 3, nullptr},
         {"PARTIALPASTE_ICMSETTINGS", &pedited.icm, 3, nullptr},
         {"PARTIALPASTE_SATURATION", &pedited.saturation, 3, nullptr},
@@ -86,8 +80,9 @@ std::vector<ToggleInfo> get_toggles(ParamsEdited &pedited)
         {"PARTIALPASTE_RESIZE", &pedited.resize, 5, nullptr},
         {"PARTIALPASTE_PRSHARPENING", &pedited.prsharpening, 5, nullptr},
         {"PARTIALPASTE_PERSPECTIVE", &pedited.perspective, 5, nullptr},
-        {"PARTIALPASTE_COMMONTRANSFORMPARAMS", &pedited.commonTrans, 5, nullptr},
-        
+        {"PARTIALPASTE_COMMONTRANSFORMPARAMS", &pedited.commonTrans, 5,
+         nullptr},
+
         {"PARTIALPASTE_COLORCORRECTION", nullptr, 6, &pedited.colorcorrection},
         {"PARTIALPASTE_SMOOTHING", nullptr, 6, &pedited.smoothing},
         {"PARTIALPASTE_LOCALCONTRAST", nullptr, 6, &pedited.localContrast},
@@ -96,30 +91,32 @@ std::vector<ToggleInfo> get_toggles(ParamsEdited &pedited)
         {"PARTIALPASTE_RAW_DEMOSAIC", &pedited.demosaic, 7, nullptr},
         {"PARTIALPASTE_RAW_BLACK", &pedited.rawBlack, 7, nullptr},
         {"PARTIALPASTE_RAW_WHITE", &pedited.rawWhite, 7, nullptr},
-        {"PARTIALPASTE_RAW_PREPROCESSING", &pedited.rawPreprocessing, 7, nullptr},
+        {"PARTIALPASTE_RAW_PREPROCESSING", &pedited.rawPreprocessing, 7,
+         nullptr},
         {"PARTIALPASTE_RAWCA", &pedited.rawCA, 7, nullptr},
-        {"PARTIALPASTE_HOT_DEAD_PIXEL_FILTER", &pedited.hotDeadPixelFilter, 7, nullptr},
+        {"PARTIALPASTE_HOT_DEAD_PIXEL_FILTER", &pedited.hotDeadPixelFilter, 7,
+         nullptr},
         {"PARTIALPASTE_DARKFRAME", &pedited.darkframe, 7, nullptr},
         {"PARTIALPASTE_FLATFIELD", &pedited.flatfield, 7, nullptr},
 
         {"PARTIALPASTE_METADATA", &pedited.metadata, 8, nullptr},
         {"PARTIALPASTE_EXIFCHANGES", &pedited.exif, 8, nullptr},
-        {"PARTIALPASTE_IPTCINFO", &pedited.iptc, 8, nullptr}
-    };
+        {"PARTIALPASTE_IPTCINFO", &pedited.iptc, 8, nullptr}};
 }
 
 } // namespace
 
-
-PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title, Gtk::Window *parent):
-    Gtk::Dialog(title, *parent, true),
-    allow_3way_(false)
+PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title,
+                                 Gtk::Window *parent)
+    : Gtk::Dialog(title, *parent, true), allow_3way_(false)
 {
     set_default_size(700, 600);
 
-    everything_ = Gtk::manage(new Gtk::CheckButton(M("PARTIALPASTE_EVERYTHING")));
+    everything_ =
+        Gtk::manage(new Gtk::CheckButton(M("PARTIALPASTE_EVERYTHING")));
     everything_->set_name("PartialPasteHeader");
-    everything_conn_ = everything_->signal_toggled().connect(sigc::bind(sigc::mem_fun(*this, &PartialPasteDlg::toggled), everything_));
+    everything_conn_ = everything_->signal_toggled().connect(sigc::bind(
+        sigc::mem_fun(*this, &PartialPasteDlg::toggled), everything_));
 
     Gtk::VBox *vboxes[9];
     Gtk::HSeparator *hseps[9];
@@ -155,15 +152,18 @@ PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title, Gtk::Window *parent
     Gtk::HBox *hbmain = Gtk::manage(new Gtk::HBox());
     hbmain->pack_start(*vbCol1);
     Gtk::VSeparator *vsep1 = Gtk::manage(new Gtk::VSeparator());
-    setExpandAlignProperties(vsep1, false, true, Gtk::ALIGN_CENTER, Gtk::ALIGN_FILL);
+    setExpandAlignProperties(vsep1, false, true, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_FILL);
     hbmain->pack_start(*vsep1);
     hbmain->pack_start(*vbCol2);
     Gtk::VSeparator *vsep2 = Gtk::manage(new Gtk::VSeparator());
-    setExpandAlignProperties(vsep2, false, true, Gtk::ALIGN_CENTER, Gtk::ALIGN_FILL);
+    setExpandAlignProperties(vsep2, false, true, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_FILL);
     hbmain->pack_start(*vsep2);
     hbmain->pack_start(*vbCol3);
 
-    Gtk::ScrolledWindow *scrolledwindow = Gtk::manage(new Gtk::ScrolledWindow());
+    Gtk::ScrolledWindow *scrolledwindow =
+        Gtk::manage(new Gtk::ScrolledWindow());
     scrolledwindow->set_name("PartialPaste");
     scrolledwindow->set_can_focus(true);
     scrolledwindow->set_shadow_type(Gtk::SHADOW_NONE);
@@ -172,7 +172,8 @@ PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title, Gtk::Window *parent
 
     scrolledwindow->add(*hbmain);
 
-    Gtk::Dialog::get_content_area()->pack_start(*scrolledwindow, Gtk::PACK_EXPAND_WIDGET, 2);
+    Gtk::Dialog::get_content_area()->pack_start(*scrolledwindow,
+                                                Gtk::PACK_EXPAND_WIDGET, 2);
 
     std::vector<Gtk::CheckButton *> gbtns;
     size_t i = 0;
@@ -184,20 +185,22 @@ PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title, Gtk::Window *parent
         vboxes[i]->pack_start(*hseps[i], Gtk::PACK_SHRINK, 2);
         ++i;
 
-        auto conn = b->signal_toggled().connect(sigc::bind(sigc::mem_fun(*this, &PartialPasteDlg::toggled), b));
-        buttons_[b] = { conn, {}, true, nullptr, nullptr };
+        auto conn = b->signal_toggled().connect(
+            sigc::bind(sigc::mem_fun(*this, &PartialPasteDlg::toggled), b));
+        buttons_[b] = {conn, {}, true, nullptr, nullptr};
     }
 
     for (const auto &t : get_toggles(pedited_)) {
         auto b = Gtk::manage(new Gtk::CheckButton(M(t.label)));
-        auto conn = b->signal_toggled().connect(sigc::bind(sigc::mem_fun(*this, &PartialPasteDlg::toggled), b));
+        auto conn = b->signal_toggled().connect(
+            sigc::bind(sigc::mem_fun(*this, &PartialPasteDlg::toggled), b));
         int i = t.index;
         auto master = gbtns[i];
         buttons_[b] = {conn, {master}, false, t.edited, t.edited3};
         buttons_[master].related.push_back(b);
         vboxes[i]->pack_start(*b, Gtk::PACK_SHRINK, 2);
     }
-    
+
     hbmain->show();
     scrolledwindow->show();
 
@@ -207,7 +210,6 @@ PartialPasteDlg::PartialPasteDlg(const Glib::ustring &title, Gtk::Window *parent
     set_default_response(Gtk::RESPONSE_OK);
     show_all_children();
 }
-
 
 void PartialPasteDlg::toggled(Gtk::CheckButton *which)
 {
@@ -244,14 +246,15 @@ void PartialPasteDlg::toggled(Gtk::CheckButton *which)
     }
 }
 
-
 ParamsEdited PartialPasteDlg::getParamsEdited()
 {
     for (auto &p : buttons_) {
         if (p.second.edited) {
             *p.second.edited = p.first->get_active();
         } else if (p.second.edited3) {
-            *p.second.edited3 = p.first->get_inconsistent() ? ParamsEdited::Undef : p.first->get_active();
+            *p.second.edited3 = p.first->get_inconsistent()
+                                    ? ParamsEdited::Undef
+                                    : p.first->get_active();
         }
     }
     return pedited_;

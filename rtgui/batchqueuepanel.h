@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -22,38 +22,37 @@
 
 #include <atomic>
 
-#include <gtkmm.h>
 #include "batchqueue.h"
-#include "saveformatpanel.h"
 #include "guiutils.h"
 #include "profilestorecombobox.h"
+#include "saveformatpanel.h"
+#include <gtkmm.h>
 
 class RTWindow;
 class FileCatalog;
 class Thumbnail;
-class BatchQueuePanel : public Gtk::VBox,
-    public BatchQueueListener,
-    public FormatChangeListener
-{
+class BatchQueuePanel: public Gtk::VBox,
+                       public BatchQueueListener,
+                       public FormatChangeListener {
 
-    Gtk::Button* zoomInButton;
-    Gtk::Button* zoomOutButton;
-    Gtk::Switch* qStartStop;
+    Gtk::Button *zoomInButton;
+    Gtk::Button *zoomOutButton;
+    Gtk::Switch *qStartStop;
     sigc::connection qStartStopConn;
-    Gtk::CheckButton* qAutoStart;
+    Gtk::CheckButton *qAutoStart;
 
-    Gtk::Entry* outdirTemplate;
-    MyFileChooserButton* outdirFolder;
-    Gtk::Button* outdirFolderButton;
-    Gtk::RadioButton* useTemplate;
-    Gtk::RadioButton* useFolder;
-    SaveFormatPanel* saveFormatPanel;
+    Gtk::Entry *outdirTemplate;
+    MyFileChooserButton *outdirFolder;
+    Gtk::Button *outdirFolderButton;
+    Gtk::RadioButton *useTemplate;
+    Gtk::RadioButton *useFolder;
+    SaveFormatPanel *saveFormatPanel;
     Gtk::Frame *fdir, *fformat;
 
-    RTWindow* parent;
-    BatchQueue* batchQueue;
-    Gtk::HBox* bottomBox;
-    Gtk::HBox* topBox;
+    RTWindow *parent;
+    BatchQueue *batchQueue;
+    Gtk::HBox *bottomBox;
+    Gtk::HBox *topBox;
 
     Gtk::CheckButton *apply_batch_profile_;
     ProfileStoreComboBox *profiles_cb_;
@@ -65,35 +64,39 @@ class BatchQueuePanel : public Gtk::VBox,
     IdleRegister idle_register;
 
 public:
-    explicit BatchQueuePanel (FileCatalog* aFileCatalog);
+    explicit BatchQueuePanel(FileCatalog *aFileCatalog);
     ~BatchQueuePanel() override;
 
-    void init (RTWindow* parent);
+    void init(RTWindow *parent);
 
-    void addBatchQueueJobs(const std::vector<BatchQueueEntry*>& entries , bool head = false);
-    void saveOptions ();
+    void addBatchQueueJobs(const std::vector<BatchQueueEntry *> &entries,
+                           bool head = false);
+    void saveOptions();
 
-    bool handleShortcutKey (GdkEventKey* event);
+    bool handleShortcutKey(GdkEventKey *event);
 
     // batchqueuelistener interface
-    void queueSizeChanged(int qsize, bool queueRunning, bool queueError, const Glib::ustring& queueErrorMessage) override;
+    void queueSizeChanged(int qsize, bool queueRunning, bool queueError,
+                          const Glib::ustring &queueErrorMessage) override;
     bool canStartNext() override;
 
     void refreshProfiles();
 
 private:
-    void startBatchProc ();
-    void stopBatchProc ();
+    void startBatchProc();
+    void stopBatchProc();
     void startOrStopBatchProc();
     void setGuiFromBatchState(bool queueRunning, int qsize);
 
-    void pathFolderChanged ();
-    void pathFolderButtonPressed ();
-    void formatChanged(const Glib::ustring& format) override;
-    void updateTab (int qsize, int forceOrientation = 0); // forceOrientation=0: base on options / 1: horizontal / 2: vertical
+    void pathFolderChanged();
+    void pathFolderButtonPressed();
+    void formatChanged(const Glib::ustring &format) override;
+    void
+    updateTab(int qsize,
+              int forceOrientation = 0); // forceOrientation=0: base on options
+                                         // / 1: horizontal / 2: vertical
     void applyBatchProfileToggled();
 
     rtengine::procparams::MultiPartialProfile bqprof_;
 };
 #endif
-

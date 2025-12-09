@@ -21,12 +21,10 @@
 
 class Thumbnail;
 
-class ThumbnailListener
-{
+class ThumbnailListener {
 public:
     virtual ~ThumbnailListener() = default;
-    virtual void procParamsChanged(Thumbnail* thm, int whoChangedIt) = 0;
+    virtual void procParamsChanged(Thumbnail *thm, int whoChangedIt) = 0;
 };
 
 #endif
-

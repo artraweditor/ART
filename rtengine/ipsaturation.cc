@@ -18,9 +18,9 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "improcfun.h"
-#include "curves.h"
 #include "color.h"
+#include "curves.h"
+#include "improcfun.h"
 #include "rt_math.h"
 
 namespace rtengine {
@@ -40,7 +40,6 @@ float apply_vibrance(float x, float vib)
 
 } // namespace
 
-
 void ImProcFunctions::saturationVibrance(Imagefloat *rgb)
 {
     if (params->saturation.enabled &&
@@ -50,12 +49,13 @@ void ImProcFunctions::saturationVibrance(Imagefloat *rgb)
         const int H = rgb->getHeight();
         const float saturation = 1.f + params->saturation.saturation / 100.f;
         const float vibrance = 1.f - params->saturation.vibrance / 1000.f;
-        TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
+        TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(
+            params->icm.workingProfile);
         const float noise = pow_F(2.f, -16.f);
         const bool vib = params->saturation.vibrance;
-        
+
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int i = 0; i < H; ++i) {
             for (int j = 0; j < W; ++j) {

@@ -22,19 +22,21 @@
 #include <omp.h>
 #endif
 
+#include "array2D.h"
+#include "gauss.h"
+#include "guidedfilter.h"
 #include "improcfun.h"
 #include "masks.h"
-#include "array2D.h"
-#include "guidedfilter.h"
 #include "rescale.h"
-#include "gauss.h"
 #include "rt_algo.h"
 
 namespace rtengine {
 
 namespace {
 
-void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostParams::Region &pp, double scale, bool multithread, bool high_detail)
+void texture_boost(array2D<float> &Y,
+                   const rtengine::procparams::TextureBoostParams::Region &pp,
+                   double scale, bool multithread, bool high_detail)
 {
     float full_radius = pp.detailThreshold * 3.5f;
     float fradius = full_radius / scale;
@@ -42,11 +44,12 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
     float delta = radius / fradius;
 
     float epsilon = 0.001f;
-    float s = pp.strength >= 0 ? pow_F(pp.strength / 2.f, 0.3f) * 2.f : pp.strength;
+    float s =
+        pp.strength >= 0 ? pow_F(pp.strength / 2.f, 0.3f) * 2.f : pp.strength;
     float strength = s >= 0 ? 1.f + s : 1.f / (1.f - s);
-    float strength2 = s >= 0 ? 1.f + s / 4.f: 1.f / (1.f - s / 2.f);
+    float strength2 = s >= 0 ? 1.f + s / 4.f : 1.f / (1.f - s / 2.f);
 
-    //bool isguided = fradius >= 1.f;
+    // bool isguided = fradius >= 1.f;
     bool isguided = full_radius >= 1.f;
 
     int W = Y.width();
@@ -61,7 +64,7 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
         rescaleBilinear(Y, tmpY, multithread);
         src = &tmpY;
     }
-    
+
     array2D<float> mid(W, H, ARRAY2D_ALIGNED);
     array2D<float> base(W, H, ARRAY2D_ALIGNED);
 
@@ -80,12 +83,12 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
 #endif
 
 #ifdef _OPENMP
-#   pragma omp parallel for reduction(min:minval) if (multithread)
+#pragma omp parallel for reduction(min : minval) if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
 #ifdef __SSE2__
-        for (; x < W-3; x += 4) {
+        for (; x < W - 3; x += 4) {
             vfloat v = LVFU((*src)[y][x]) / v65535;
             STVFU((*src)[y][x], v);
             STVFU(mid[y][x], vmaxf(vminf(v, vhi), vlo));
@@ -123,7 +126,7 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
                 (*gaussian_blur)(mid, mid);
             } else {
 #ifdef _OPENMP
-#               pragma omp parallel if (multithread)
+#pragma omp parallel if (multithread)
 #endif
                 gaussianBlur(mid, mid, W, H, fradius);
             }
@@ -131,7 +134,7 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
         guidedFilter(mid, mid, base, radius * 4, epsilon / 10.f, multithread);
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;
@@ -142,7 +145,8 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
                 vfloat vb = LVFU(base[y][x]);
                 vfloat d = (vy - vm) * vstrength;
                 vfloat d2 = (vm - vb) * vstrength2;
-                STVFU((*src)[y][x], vintpf(vblend, vmaxf(vb + d + d2, vminval), vy));
+                STVFU((*src)[y][x],
+                      vintpf(vblend, vmaxf(vb + d + d2, vminval), vy));
             }
 #endif
             for (; x < W; ++x) {
@@ -151,18 +155,19 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
                 d *= strength;
                 float d2 = mid[y][x] - base[y][x];
                 d2 *= strength2;
-                (*src)[y][x] = intp(blend, std::max(base[y][x] + d + d2, minval), v);
+                (*src)[y][x] =
+                    intp(blend, std::max(base[y][x] + d + d2, minval), v);
             }
         }
     }
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
 #ifdef __SSE2__
-        for (; x < W-3; x += 4) {
+        for (; x < W - 3; x += 4) {
             vfloat v = LVFU((*src)[y][x]);
             STVFU((*src)[y][x], v * v65535);
         }
@@ -179,35 +184,46 @@ void texture_boost(array2D<float> &Y, const rtengine::procparams::TextureBoostPa
 
 } // namespace
 
-
 bool ImProcFunctions::textureBoost(Imagefloat *rgb)
 {
     PlanarWhateverData<float> *editWhatever = nullptr;
     EditUniqueID eid = pipetteBuffer ? pipetteBuffer->getEditID() : EUID_None;
 
-    if ((eid == EUID_Masks_H4 || eid == EUID_Masks_C4 || eid == EUID_Masks_L4) && pipetteBuffer->getDataProvider()->getCurrSubscriber()->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
+    if ((eid == EUID_Masks_H4 || eid == EUID_Masks_C4 ||
+         eid == EUID_Masks_L4) &&
+        pipetteBuffer->getDataProvider()
+                ->getCurrSubscriber()
+                ->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
         editWhatever = pipetteBuffer->getSinglePlaneBuffer();
     }
-    
+
     if (eid == EUID_Masks_DE4) {
-        if (getDeltaEColor(rgb, deltaE.x, deltaE.y, offset_x, offset_y, full_width, full_height, scale, deltaE.L, deltaE.C, deltaE.H)) {
+        if (getDeltaEColor(rgb, deltaE.x, deltaE.y, offset_x, offset_y,
+                           full_width, full_height, scale, deltaE.L, deltaE.C,
+                           deltaE.H)) {
             deltaE.ok = true;
         }
     }
-    
+
     if (params->textureBoost.enabled) {
         if (editWhatever) {
             MasksEditID id = static_cast<MasksEditID>(int(eid) - EUID_Masks_H4);
             fillPipetteMasks(rgb, editWhatever, id, multiThread);
         }
-        
+
         int n = params->textureBoost.regions.size();
         int show_mask_idx = params->textureBoost.showMask;
-        if (show_mask_idx >= n || (cur_pipeline != Pipeline::PREVIEW /*&& cur_pipeline != Pipeline::OUTPUT*/)) {
+        if (show_mask_idx >= n ||
+            (cur_pipeline !=
+             Pipeline::PREVIEW /*&& cur_pipeline != Pipeline::OUTPUT*/)) {
             show_mask_idx = -1;
         }
         std::vector<array2D<float>> mask(n);
-        if (!generateMasks(rgb, "textureboost", linked_mask_mgr_, params->textureBoost.masks, offset_x, offset_y, full_width, full_height, scale, multiThread, show_mask_idx, &mask, nullptr, cur_pipeline == Pipeline::NAVIGATOR ? plistener : nullptr)) {
+        if (!generateMasks(
+                rgb, "textureboost", linked_mask_mgr_,
+                params->textureBoost.masks, offset_x, offset_y, full_width,
+                full_height, scale, multiThread, show_mask_idx, &mask, nullptr,
+                cur_pipeline == Pipeline::NAVIGATOR ? plistener : nullptr)) {
             return true; // show mask is active, nothing more to do
         }
 
@@ -222,14 +238,15 @@ bool ImProcFunctions::textureBoost(Imagefloat *rgb)
             if (!params->textureBoost.masks[i].enabled) {
                 continue;
             }
-            
+
             auto &r = params->textureBoost.regions[i];
             if (r.strength != 0) {
-                texture_boost(Y, r, scale, multiThread, scale == 1 || cur_pipeline == Pipeline::OUTPUT);
+                texture_boost(Y, r, scale, multiThread,
+                              scale == 1 || cur_pipeline == Pipeline::OUTPUT);
                 const auto &blend = mask[i];
 
 #ifdef _OPENMP
-#               pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
                 for (int y = 0; y < H; ++y) {
                     for (int x = 0; x < W; ++x) {

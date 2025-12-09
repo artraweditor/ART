@@ -19,8 +19,8 @@
  */
 
 #include "dirtreeview.h"
-#include "multilangmgr.h"
 #include "guiutils.h"
+#include "multilangmgr.h"
 #include <iostream>
 
 DirTreeView::DirTreeView()
@@ -28,22 +28,24 @@ DirTreeView::DirTreeView()
     auto commands = UserCommandStore::getInstance()->getAllCommands();
 
     pmenu = nullptr;
-    for (auto &cmd : commands)
-    {
-        if (cmd.filetype == UserCommand::DIRECTORY)
-        {
+    for (auto &cmd : commands) {
+        if (cmd.filetype == UserCommand::DIRECTORY) {
             if (!pmenu) {
                 pmenu = Gtk::manage(new Gtk::Menu());
                 auto lbl = Gtk::manage(new Gtk::Label());
-                setExpandAlignProperties(lbl, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
-                lbl->set_markup("<b><i>" + M("FILEBROWSER_EXTPROGMENU") + "</i></b>");
+                setExpandAlignProperties(lbl, false, false, Gtk::ALIGN_START,
+                                         Gtk::ALIGN_CENTER);
+                lbl->set_markup("<b><i>" + M("FILEBROWSER_EXTPROGMENU") +
+                                "</i></b>");
                 auto title = Gtk::manage(new Gtk::MenuItem(*lbl));
                 pmenu->append(*title);
                 title->set_name("MenuTitle");
                 pmenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
             }
             auto item = Gtk::make_managed<Gtk::MenuItem>(cmd.label, true);
-            item->signal_activate().connect(sigc::bind(sigc::mem_fun(*this, &DirTreeView::on_menu_item_activate), item));
+            item->signal_activate().connect(sigc::bind(
+                sigc::mem_fun(*this, &DirTreeView::on_menu_item_activate),
+                item));
             pmenu->append(*item);
             menu_commands.emplace_back();
             menu_commands.back().first.reset(item);
@@ -51,8 +53,7 @@ DirTreeView::DirTreeView()
         }
     }
 
-    if (pmenu)
-    {
+    if (pmenu) {
         pmenu->accelerate(*this);
         pmenu->show_all();
     }
@@ -60,33 +61,32 @@ DirTreeView::DirTreeView()
 
 DirTreeView::~DirTreeView()
 {
-//    delete pmenu;
+    //    delete pmenu;
 }
 
-DirTreeView::type_signal_menu_item_activated DirTreeView::signal_menu_item_activated()
+DirTreeView::type_signal_menu_item_activated
+DirTreeView::signal_menu_item_activated()
 {
     return sig_menu_item_activated;
 }
 
-bool DirTreeView::on_button_press_event(GdkEventButton* button_event)
+bool DirTreeView::on_button_press_event(GdkEventButton *button_event)
 {
     bool ret = false;
 
     ret = TreeView::on_button_press_event(button_event);
-    if ((pmenu) && (button_event->type == GDK_BUTTON_PRESS) && (button_event->button == 3))
-    {
-        pmenu->popup_at_pointer((GdkEvent*)button_event);
+    if ((pmenu) && (button_event->type == GDK_BUTTON_PRESS) &&
+        (button_event->button == 3)) {
+        pmenu->popup_at_pointer((GdkEvent *)button_event);
     }
 
     return ret;
 }
 
-void DirTreeView::on_menu_item_activate(Gtk::MenuItem* m)
+void DirTreeView::on_menu_item_activate(Gtk::MenuItem *m)
 {
-    for (size_t i = 0; i < menu_commands.size(); ++i)
-    {
-        if (m == menu_commands[i].first.get())
-        {
+    for (size_t i = 0; i < menu_commands.size(); ++i) {
+        if (m == menu_commands[i].first.get()) {
             const auto &cmd = menu_commands[i].second;
             sig_menu_item_activated.emit(cmd);
             return;

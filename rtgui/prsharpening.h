@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,64 +20,73 @@
 #ifndef _PRSHARPENING_H_
 #define _PRSHARPENING_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "thresholdadjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class PrSharpening : public ToolParamBlock, public ThresholdAdjusterListener, public AdjusterListener, public FoldableToolPanel
-{
+class PrSharpening: public ToolParamBlock,
+                    public ThresholdAdjusterListener,
+                    public AdjusterListener,
+                    public FoldableToolPanel {
 
 protected:
-    Adjuster* contrast;
-    MyComboBoxText* method;
-    Adjuster* dradius;
-    Adjuster* damount;
-    Gtk::VBox* usm;
-    Gtk::VBox* rld;
+    Adjuster *contrast;
+    MyComboBoxText *method;
+    Adjuster *dradius;
+    Adjuster *damount;
+    Gtk::VBox *usm;
+    Gtk::VBox *rld;
 
-    Adjuster* radius;
-    Adjuster* amount;
-    Adjuster* eradius;
-    Adjuster* etolerance;
-    Adjuster* hcamount;
-    Gtk::VBox* edgebin;
-    Gtk::VBox* hcbin;
-    Gtk::VBox* edgebox;
-    Gtk::VBox* hcbox;
-    ThresholdAdjuster* threshold;
-    Gtk::CheckButton* edgesonly;
+    Adjuster *radius;
+    Adjuster *amount;
+    Adjuster *eradius;
+    Adjuster *etolerance;
+    Adjuster *hcamount;
+    Gtk::VBox *edgebin;
+    Gtk::VBox *hcbin;
+    Gtk::VBox *edgebox;
+    Gtk::VBox *hcbox;
+    ThresholdAdjuster *threshold;
+    Gtk::CheckButton *edgesonly;
     bool lastEdgesOnly;
     sigc::connection eonlyConn;
-    Gtk::CheckButton* halocontrol;
+    Gtk::CheckButton *halocontrol;
     bool lastHaloControl;
     sigc::connection hcConn;
     rtengine::ProcEvent EvPrShrContrast;
 
     rtengine::procparams::SharpeningParams initial_params;
-    
-public:
 
+public:
     PrSharpening();
     ~PrSharpening() override;
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void enabledChanged  () override;
-    void edgesonly_toggled ();
-    void halocontrol_toggled ();
-    void method_changed ();
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void enabledChanged() override;
+    void edgesonly_toggled();
+    void halocontrol_toggled();
+    void method_changed();
 
-    void adjusterChanged(ThresholdAdjuster* a, double newBottom, double newTop) override;
-    void adjusterChanged(ThresholdAdjuster* a, double newBottomLeft, double newTopLeft, double newBottomRight, double newTopRight) override;
-    void adjusterChanged(ThresholdAdjuster* a, int newBottom, int newTop) override;
-    void adjusterChanged(ThresholdAdjuster* a, int newBottomLeft, int newTopLeft, int newBottomRight, int newTopRight) override;
-    void adjusterChanged2(ThresholdAdjuster* a, int newBottomL, int newTopL, int newBottomR, int newTopR) override;
+    void adjusterChanged(ThresholdAdjuster *a, double newBottom,
+                         double newTop) override;
+    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft,
+                         double newTopLeft, double newBottomRight,
+                         double newTopRight) override;
+    void adjusterChanged(ThresholdAdjuster *a, int newBottom,
+                         int newTop) override;
+    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft,
+                         int newTopLeft, int newBottomRight,
+                         int newTopRight) override;
+    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL,
+                          int newBottomR, int newTopR) override;
 
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 };

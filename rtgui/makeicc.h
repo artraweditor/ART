@@ -21,8 +21,8 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
 int ART_makeicc_main(std::ostream &out, const std::vector<std::string> &args);
 void ART_makeicc_help(std::ostream &out, int indent);

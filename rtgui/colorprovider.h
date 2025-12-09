@@ -26,13 +26,12 @@ class ColorProvider;
 /*
  * The ColorCaller is the class that will query the ColorProvider
  */
-class ColorCaller
-{
+class ColorCaller {
 protected:
     // a class can handle several ColorCaller;
     // colorCallerId will let the provider identify the caller
     int colorCallerId;
-    ColorProvider* colorProvider;
+    ColorProvider *colorProvider;
 
 public:
     enum ElemType {
@@ -46,8 +45,12 @@ public:
     double ccBlue;
     double ccAlpha;
 
-    ColorCaller() : colorCallerId(-1), colorProvider(nullptr), ccRed(0.), ccGreen(0.), ccBlue(0.), ccAlpha(0.) {}
-    void setColorProvider (ColorProvider* p, int id)
+    ColorCaller()
+        : colorCallerId(-1), colorProvider(nullptr), ccRed(0.), ccGreen(0.),
+          ccBlue(0.), ccAlpha(0.)
+    {
+    }
+    void setColorProvider(ColorProvider *p, int id)
     {
         colorProvider = p;
         colorCallerId = id;
@@ -55,17 +58,18 @@ public:
 };
 
 /*
- * Use it to let your widget feed a colored bar or graph lines with the wanted colors
- * If you doesn't need to dynamically feed a widget with colors (e.g. curve's graph),
- * you don't need to declare the instanciator class as BEING a ColorProvider, you'll
- * still be able to set gradients for e.g. ColoredBar(s)
+ * Use it to let your widget feed a colored bar or graph lines with the wanted
+ * colors If you doesn't need to dynamically feed a widget with colors (e.g.
+ * curve's graph), you don't need to declare the instanciator class as BEING a
+ * ColorProvider, you'll still be able to set gradients for e.g. ColoredBar(s)
  */
-class ColorProvider
-{
+class ColorProvider {
 
 public:
     virtual ~ColorProvider() {};
-    virtual void colorForValue (double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller* caller) {};
+    virtual void colorForValue(double valX, double valY,
+                               enum ColorCaller::ElemType elemType,
+                               int callerId, ColorCaller *caller) {};
 };
 
 #endif

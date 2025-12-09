@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,13 +20,13 @@
 #ifndef _THUMBPROCESSINGPARAMETERS_
 #define _THUMBPROCESSINGPARAMETERS_
 
+#include "../rtgui/threadutils.h"
+#include "image16.h"
+#include "image8.h"
+#include "imagefloat.h"
 #include "procparams.h"
 #include <glibmm.h>
 #include <lcms2.h>
-#include "image8.h"
-#include "image16.h"
-#include "imagefloat.h"
-#include "../rtgui/threadutils.h"
 
 namespace rtengine {
 
@@ -37,16 +37,18 @@ class Thumbnail {
     double iColorMatrix[3][3];
     double cam2xyz[3][3];
 
-    void transformPixel (int x, int y, int tran, int& tx, int& ty);
+    void transformPixel(int x, int y, int tran, int &tx, int &ty);
 
-    ImageIO* thumbImg;
+    ImageIO *thumbImg;
     double camwbRed;
     double camwbGreen;
     double camwbBlue;
-    double redAWBMul, greenAWBMul, blueAWBMul;  // multipliers for auto WB
-    //double autoWBTemp, autoWBGreen, wbEqual;    // autoWBTemp and autoWBGreen are updated each time autoWB is requested and if wbEqual has been modified
+    double redAWBMul, greenAWBMul, blueAWBMul; // multipliers for auto WB
+    // double autoWBTemp, autoWBGreen, wbEqual;    // autoWBTemp and autoWBGreen
+    // are updated each time autoWB is requested and if wbEqual has been
+    // modified
     int embProfileLength;
-    unsigned char* embProfileData;
+    unsigned char *embProfileData;
     cmsHPROFILE embProfile;
     double redMultiplier;
     double greenMultiplier;
@@ -57,69 +59,92 @@ class Thumbnail {
     bool gammaCorrected;
     double colorMatrix[3][3];
     double scaleGain;
-    
+
     SensorType sensorType;
 
-    void processFilmNegative(const procparams::ProcParams& params, const Imagefloat* baseImg, int rwidth, int rheight);
-    void processFilmNegativeV2(const procparams::ProcParams &params, const Imagefloat* baseImg, const int rwidth, const int rheight);
+    void processFilmNegative(const procparams::ProcParams &params,
+                             const Imagefloat *baseImg, int rwidth,
+                             int rheight);
+    void processFilmNegativeV2(const procparams::ProcParams &params,
+                               const Imagefloat *baseImg, const int rwidth,
+                               const int rheight);
 
 public:
-
     bool isRaw;
     int full_width;
     int full_height;
 
-    ~Thumbnail ();
-    Thumbnail ();
+    ~Thumbnail();
+    Thumbnail();
 
-    void init ();
+    void init();
 
-    IImage8* processImage   (const procparams::ProcParams& pparams, eSensorType sensorType, int rheight, TypeInterpolation interp, const FramesMetaData *metadata, double& scale, bool forMonitor=true, bool forHistogramMatching = false);
-    IImage8* quickProcessImage   (const procparams::ProcParams& pparams, int rheight, TypeInterpolation interp);
-    int      getImageWidth  (const procparams::ProcParams& pparams, int rheight, float &ratio);
-    void     getDimensions  (int& w, int& h, double& scaleFac);
+    IImage8 *processImage(const procparams::ProcParams &pparams,
+                          eSensorType sensorType, int rheight,
+                          TypeInterpolation interp,
+                          const FramesMetaData *metadata, double &scale,
+                          bool forMonitor = true,
+                          bool forHistogramMatching = false);
+    IImage8 *quickProcessImage(const procparams::ProcParams &pparams,
+                               int rheight, TypeInterpolation interp);
+    int getImageWidth(const procparams::ProcParams &pparams, int rheight,
+                      float &ratio);
+    void getDimensions(int &w, int &h, double &scaleFac);
 
-    static Thumbnail *loadQuickFromRaw(const Glib::ustring& fname, eSensorType &sensorType, int &w, int &h, int fixwh, bool rotate, bool forHistogramMatching = false);
-    static Thumbnail *loadFromRaw(const Glib::ustring& fname, eSensorType &sensorType, int &w, int &h, int fixwh, double wbEq, bool rotate, bool forHistogramMatching=false);
-    static Thumbnail *loadFromImage(const Glib::ustring& fname, int &w, int &h, int fixwh, double wbEq);
-    static Thumbnail *loadInfoFromRaw(const Glib::ustring &fname, eSensorType &sensorType, int &w, int &h, int fixwh);
+    static Thumbnail *loadQuickFromRaw(const Glib::ustring &fname,
+                                       eSensorType &sensorType, int &w, int &h,
+                                       int fixwh, bool rotate,
+                                       bool forHistogramMatching = false);
+    static Thumbnail *loadFromRaw(const Glib::ustring &fname,
+                                  eSensorType &sensorType, int &w, int &h,
+                                  int fixwh, double wbEq, bool rotate,
+                                  bool forHistogramMatching = false);
+    static Thumbnail *loadFromImage(const Glib::ustring &fname, int &w, int &h,
+                                    int fixwh, double wbEq);
+    static Thumbnail *loadInfoFromRaw(const Glib::ustring &fname,
+                                      eSensorType &sensorType, int &w, int &h,
+                                      int fixwh);
 
     void getCamWB(ColorTemp &out);
     void getAutoWB(ColorTemp &out, double equal);
-    void getAutoWBMultipliers (double& rm, double& gm, double& bm);
-    void getSpotWB(const procparams::ProcParams& params, int x, int y, int rect, ColorTemp &out);
+    void getAutoWBMultipliers(double &rm, double &gm, double &bm);
+    void getSpotWB(const procparams::ProcParams &params, int x, int y, int rect,
+                   ColorTemp &out);
 
-    unsigned char* getGrayscaleHistEQ (int trim_width);
-    bool writeImage (const Glib::ustring& fname);
-    bool readImage (const Glib::ustring& fname);
+    unsigned char *getGrayscaleHistEQ(int trim_width);
+    bool writeImage(const Glib::ustring &fname);
+    bool readImage(const Glib::ustring &fname);
 
-    bool readData  (const Glib::ustring& fname);
-    bool writeData  (const Glib::ustring& fname);
+    bool readData(const Glib::ustring &fname);
+    bool writeData(const Glib::ustring &fname);
 
-    bool readEmbProfile  (const Glib::ustring& fname);
-    bool writeEmbProfile (const Glib::ustring& fname);
+    bool readEmbProfile(const Glib::ustring &fname);
+    bool writeEmbProfile(const Glib::ustring &fname);
 
-    unsigned char* getImage8Data();  // accessor to the 8bit image if it is one, which should be the case for the "Inspector" mode.
+    unsigned char *
+    getImage8Data(); // accessor to the 8bit image if it is one, which should be
+                     // the case for the "Inspector" mode.
 
     // Hombre: ... let's hope that proper template can make this cleaner
 
-    static ImageIO* resizeToSameType(int nw, int nh, TypeInterpolation interp, ImageIO* srcImg)
+    static ImageIO *resizeToSameType(int nw, int nh, TypeInterpolation interp,
+                                     ImageIO *srcImg)
     {
-        ImageIO* imgPtr = nullptr;
+        ImageIO *imgPtr = nullptr;
 
         if (srcImg->getType() == sImage8) {
-            Image8* castedSrcImg = static_cast<Image8*>(srcImg);
-            Image8* img8 = new Image8 (nw, nh);
+            Image8 *castedSrcImg = static_cast<Image8 *>(srcImg);
+            Image8 *img8 = new Image8(nw, nh);
             castedSrcImg->resizeImgTo(nw, nh, interp, img8);
             imgPtr = img8;
         } else if (srcImg->getType() == sImage16) {
-            Image16* castedSrcImg = static_cast<Image16*>(srcImg);
-            Image16* img16 = new Image16 (nw, nh);
+            Image16 *castedSrcImg = static_cast<Image16 *>(srcImg);
+            Image16 *img16 = new Image16(nw, nh);
             castedSrcImg->resizeImgTo(nw, nh, interp, img16);
             imgPtr = img16;
         } else if (srcImg->getType() == sImagefloat) {
-            Imagefloat* castedSrcImg = static_cast<Imagefloat*>(srcImg);
-            Imagefloat* imgfloat = new Imagefloat (nw, nh);
+            Imagefloat *castedSrcImg = static_cast<Imagefloat *>(srcImg);
+            Imagefloat *imgfloat = new Imagefloat(nw, nh);
             castedSrcImg->resizeImgTo(nw, nh, interp, imgfloat);
             imgPtr = imgfloat;
         }
@@ -127,22 +152,23 @@ public:
         return imgPtr;
     }
 
-    template<class IC>
-    static IC* resizeTo(int nw, int nh, TypeInterpolation interp, ImageIO* srcImg)
+    template <class IC>
+    static IC *resizeTo(int nw, int nh, TypeInterpolation interp,
+                        ImageIO *srcImg)
     {
 
-        IC* imgPtr = new IC (nw, nh);
+        IC *imgPtr = new IC(nw, nh);
 
         // Hombre: ... let's hope that proper template can make this cleaner
 
         if (srcImg->getType() == sImage8) {
-            Image8* castedSrcImg = static_cast<Image8*>(srcImg);
+            Image8 *castedSrcImg = static_cast<Image8 *>(srcImg);
             castedSrcImg->resizeImgTo<>(nw, nh, interp, imgPtr);
         } else if (srcImg->getType() == sImage16) {
-            Image16* castedSrcImg = static_cast<Image16*>(srcImg);
+            Image16 *castedSrcImg = static_cast<Image16 *>(srcImg);
             castedSrcImg->resizeImgTo<>(nw, nh, interp, imgPtr);
         } else if (srcImg->getType() == sImagefloat) {
-            Imagefloat* castedSrcImg = static_cast<Imagefloat*>(srcImg);
+            Imagefloat *castedSrcImg = static_cast<Imagefloat *>(srcImg);
             castedSrcImg->resizeImgTo<>(nw, nh, interp, imgPtr);
         }
 
@@ -152,4 +178,3 @@ public:
 } // namespace rtengine
 
 #endif
-

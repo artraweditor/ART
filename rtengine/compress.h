@@ -20,13 +20,13 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
 #include <inttypes.h>
+#include <string>
+#include <vector>
 
 namespace rtengine {
 
-std::vector<uint8_t> compress(const std::string &src, int level=-1);
+std::vector<uint8_t> compress(const std::string &src, int level = -1);
 std::string decompress(const std::vector<uint8_t> &src);
 
 bool decompress_to(const std::string &src_fname, const std::string &dest_fname);

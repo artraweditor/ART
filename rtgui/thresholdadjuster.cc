@@ -17,21 +17,25 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "thresholdadjuster.h"
-#include <sigc++/slot.h>
-#include <cmath>
-#include "multilangmgr.h"
 #include "../rtengine/rtengine.h"
-#include "options.h"
 #include "guiutils.h"
+#include "multilangmgr.h"
+#include "options.h"
 #include "rtimage.h"
+#include <cmath>
+#include <sigc++/slot.h>
 
 #define MIN_RESET_BUTTON_HEIGHT 17
 
-ThresholdAdjuster::ThresholdAdjuster (Glib::ustring label,
-                                      double minValueBottom, double maxValueBottom, double defBottom, Glib::ustring labelBottom, unsigned int precisionBottom,
-                                      double minValueTop,    double maxValueTop,    double defTop,    Glib::ustring labelTop,    unsigned int precisionTop,
-                                      ThresholdCurveProvider* curveProvider, bool editedCheckBox, bool compact)
-    : tSelector(minValueBottom, maxValueBottom, defBottom, labelBottom, precisionBottom, minValueTop, maxValueTop, defTop, labelTop, precisionTop, curveProvider)
+ThresholdAdjuster::ThresholdAdjuster(
+    Glib::ustring label, double minValueBottom, double maxValueBottom,
+    double defBottom, Glib::ustring labelBottom, unsigned int precisionBottom,
+    double minValueTop, double maxValueTop, double defTop,
+    Glib::ustring labelTop, unsigned int precisionTop,
+    ThresholdCurveProvider *curveProvider, bool editedCheckBox, bool compact)
+    : tSelector(minValueBottom, maxValueBottom, defBottom, labelBottom,
+                precisionBottom, minValueTop, maxValueTop, defTop, labelTop,
+                precisionTop, curveProvider)
 
 {
     initialDefaultVal[ThresholdSelector::TS_BOTTOMLEFT] = defBottom;
@@ -39,11 +43,13 @@ ThresholdAdjuster::ThresholdAdjuster (Glib::ustring label,
     initialDefaultVal[ThresholdSelector::TS_BOTTOMRIGHT] = 0.; // unused
     initialDefaultVal[ThresholdSelector::TS_TOPRIGHT] = 0.;    // unused
 
-    initObject (label, editedCheckBox, compact);
+    initObject(label, editedCheckBox, compact);
 }
 
-ThresholdAdjuster::ThresholdAdjuster (Glib::ustring label, double minValue, double maxValue, double defBottom,
-                                      double defTop, unsigned int precision, bool startAtOne, bool editedCheckBox)
+ThresholdAdjuster::ThresholdAdjuster(Glib::ustring label, double minValue,
+                                     double maxValue, double defBottom,
+                                     double defTop, unsigned int precision,
+                                     bool startAtOne, bool editedCheckBox)
     : tSelector(minValue, maxValue, defBottom, defTop, precision, startAtOne)
 {
     initialDefaultVal[ThresholdSelector::TS_BOTTOMLEFT] = defBottom;
@@ -51,24 +57,27 @@ ThresholdAdjuster::ThresholdAdjuster (Glib::ustring label, double minValue, doub
     initialDefaultVal[ThresholdSelector::TS_BOTTOMRIGHT] = maxValue;
     initialDefaultVal[ThresholdSelector::TS_TOPRIGHT] = maxValue;
 
-    initObject (label, editedCheckBox);
+    initObject(label, editedCheckBox);
 }
 
-ThresholdAdjuster::ThresholdAdjuster (Glib::ustring label, double minValue, double maxValue,
-                                      double defBottomLeft, double defTopLeft, double defBottomRight, double defTopRight,
-                                      unsigned int precision, bool startAtOne, bool editedCheckBox)
-    : tSelector(minValue, maxValue, defBottomLeft, defTopLeft,
-                defBottomRight, defTopRight, precision, startAtOne)
+ThresholdAdjuster::ThresholdAdjuster(Glib::ustring label, double minValue,
+                                     double maxValue, double defBottomLeft,
+                                     double defTopLeft, double defBottomRight,
+                                     double defTopRight, unsigned int precision,
+                                     bool startAtOne, bool editedCheckBox)
+    : tSelector(minValue, maxValue, defBottomLeft, defTopLeft, defBottomRight,
+                defTopRight, precision, startAtOne)
 {
     initialDefaultVal[ThresholdSelector::TS_BOTTOMLEFT] = defBottomLeft;
     initialDefaultVal[ThresholdSelector::TS_TOPLEFT] = defTopLeft;
     initialDefaultVal[ThresholdSelector::TS_BOTTOMRIGHT] = defBottomRight;
     initialDefaultVal[ThresholdSelector::TS_TOPRIGHT] = defTopRight;
 
-    initObject (label, editedCheckBox);
+    initObject(label, editedCheckBox);
 }
 
-void ThresholdAdjuster::initObject (Glib::ustring label, bool editedcb, bool compact)
+void ThresholdAdjuster::initObject(Glib::ustring label, bool editedcb,
+                                   bool compact)
 {
 
     adjusterListener = nullptr;
@@ -81,22 +90,23 @@ void ThresholdAdjuster::initObject (Glib::ustring label, bool editedcb, bool com
 
     set_name("ThresholdAdjuster");
 
-    hbox = Gtk::manage (new Gtk::HBox ());
+    hbox = Gtk::manage(new Gtk::HBox());
 
-    this->label = Gtk::manage (new Gtk::Label (label, Gtk::ALIGN_START));
+    this->label = Gtk::manage(new Gtk::Label(label, Gtk::ALIGN_START));
 
     if (editedcb) {
-        editedCheckBox = Gtk::manage (new Gtk::CheckButton ());
-        editedChange = editedCheckBox->signal_toggled().connect( sigc::mem_fun(*this, &ThresholdAdjuster::editedToggled) );
-        hbox->pack_start (*editedCheckBox);
+        editedCheckBox = Gtk::manage(new Gtk::CheckButton());
+        editedChange = editedCheckBox->signal_toggled().connect(
+            sigc::mem_fun(*this, &ThresholdAdjuster::editedToggled));
+        hbox->pack_start(*editedCheckBox);
     } else {
         editedCheckBox = nullptr;
     }
 
-    reset = Gtk::manage (new Gtk::Button ());
-    reset->add (*Gtk::manage (new RTImage ("undo-small.svg", "redo-small.svg")));
-    reset->set_relief (Gtk::RELIEF_NONE);
-    reset->set_tooltip_markup (M("ADJUSTER_RESET_TO_DEFAULT"));
+    reset = Gtk::manage(new Gtk::Button());
+    reset->add(*Gtk::manage(new RTImage("undo-small.svg", "redo-small.svg")));
+    reset->set_relief(Gtk::RELIEF_NONE);
+    reset->set_tooltip_markup(M("ADJUSTER_RESET_TO_DEFAULT"));
 
     if (compact) {
         hbox->pack_start(*this->label, Gtk::PACK_SHRINK, 0);
@@ -104,24 +114,29 @@ void ThresholdAdjuster::initObject (Glib::ustring label, bool editedcb, bool com
         hbox->pack_end(*reset, Gtk::PACK_SHRINK, 0);
         pack_start(*hbox, false, false);
     } else {
-        hbox->pack_start (*this->label);
-        hbox->pack_end (*reset, Gtk::PACK_SHRINK, 0);
+        hbox->pack_start(*this->label);
+        hbox->pack_end(*reset, Gtk::PACK_SHRINK, 0);
 
-        pack_start (*hbox, false, false);
-        pack_start (tSelector, false, false);
+        pack_start(*hbox, false, false);
+        pack_start(tSelector, false, false);
     }
 
-    reset->set_size_request (-1, this->label->get_height() > MIN_RESET_BUTTON_HEIGHT ? this->label->get_height() : MIN_RESET_BUTTON_HEIGHT);
-    
+    reset->set_size_request(-1,
+                            this->label->get_height() > MIN_RESET_BUTTON_HEIGHT
+                                ? this->label->get_height()
+                                : MIN_RESET_BUTTON_HEIGHT);
+
     editedState = defEditedState = Irrelevant;
 
-    selectorChange = tSelector.signal_value_changed().connect( sigc::mem_fun(*this, &ThresholdAdjuster::selectorChanged) );
-    reset->signal_button_release_event().connect_notify( sigc::mem_fun(*this, &ThresholdAdjuster::resetPressed) );
+    selectorChange = tSelector.signal_value_changed().connect(
+        sigc::mem_fun(*this, &ThresholdAdjuster::selectorChanged));
+    reset->signal_button_release_event().connect_notify(
+        sigc::mem_fun(*this, &ThresholdAdjuster::resetPressed));
 
-    show_all ();
+    show_all();
 }
 
-ThresholdAdjuster::~ThresholdAdjuster ()
+ThresholdAdjuster::~ThresholdAdjuster()
 {
 
     selectorChange.disconnect();
@@ -129,140 +144,151 @@ ThresholdAdjuster::~ThresholdAdjuster ()
     adjusterListener = nullptr;
 }
 
-void ThresholdAdjuster::setDefault (double bottom, double top)
+void ThresholdAdjuster::setDefault(double bottom, double top)
 {
 
-    selectorChange.block (true);
+    selectorChange.block(true);
     tSelector.setPositions(shapeValue(bottom), shapeValue(top));
-    selectorChange.block (false);
+    selectorChange.block(false);
 }
 
-void ThresholdAdjuster::setDefault (double bottomLeft, double topLeft, double bottomRight, double topRight)
+void ThresholdAdjuster::setDefault(double bottomLeft, double topLeft,
+                                   double bottomRight, double topRight)
 {
 
-    selectorChange.block (true);
-    tSelector.setPositions(shapeValue(bottomLeft), shapeValue(topLeft), shapeValue(bottomRight), shapeValue(topRight));
-    selectorChange.block (false);
+    selectorChange.block(true);
+    tSelector.setPositions(shapeValue(bottomLeft), shapeValue(topLeft),
+                           shapeValue(bottomRight), shapeValue(topRight));
+    selectorChange.block(false);
 }
 
-void ThresholdAdjuster::setDefaultEditedState (EditedState eState)
+void ThresholdAdjuster::setDefaultEditedState(EditedState eState)
 {
 
     defEditedState = eState;
 }
 
-void ThresholdAdjuster::resetPressed (GdkEventButton* event)
+void ThresholdAdjuster::resetPressed(GdkEventButton *event)
 {
 
     if (editedState != Irrelevant) {
         editedState = defEditedState;
 
         if (editedCheckBox) {
-            editedChange.block (true);
-            editedCheckBox->set_active (defEditedState == Edited);
-            editedChange.block (false);
+            editedChange.block(true);
+            editedCheckBox->set_active(defEditedState == Edited);
+            editedChange.block(false);
         }
 
-        refreshLabelStyle ();
+        refreshLabelStyle();
     }
 
     afterReset = true;
 
-    if ((event != nullptr) && (event->state & GDK_CONTROL_MASK) && (event->button == 1))
-        // CTRL pressed : resetting to current default value
+    if ((event != nullptr) && (event->state & GDK_CONTROL_MASK) &&
+        (event->button == 1))
+    // CTRL pressed : resetting to current default value
     {
         tSelector.reset();
     } else
         // no modifier key or addMode=true : resetting to initial default value
-        tSelector.setPositions(initialDefaultVal[ThresholdSelector::TS_BOTTOMLEFT],
-                               initialDefaultVal[ThresholdSelector::TS_TOPLEFT],
-                               initialDefaultVal[ThresholdSelector::TS_BOTTOMRIGHT],
-                               initialDefaultVal[ThresholdSelector::TS_TOPRIGHT]);
+        tSelector.setPositions(
+            initialDefaultVal[ThresholdSelector::TS_BOTTOMLEFT],
+            initialDefaultVal[ThresholdSelector::TS_TOPLEFT],
+            initialDefaultVal[ThresholdSelector::TS_BOTTOMRIGHT],
+            initialDefaultVal[ThresholdSelector::TS_TOPRIGHT]);
 }
 
-double ThresholdAdjuster::shapeValue (double a)
+double ThresholdAdjuster::shapeValue(double a)
 {
 
     unsigned int digit = tSelector.getPrecision();
     return round(a * pow(double(10), digit)) / pow(double(10), digit);
 }
 
-void ThresholdAdjuster::selectorChanged ()
+void ThresholdAdjuster::selectorChanged()
 {
 
     if (delayConnection.connected()) {
-        delayConnection.disconnect ();
+        delayConnection.disconnect();
     }
 
     if (delay == 0) {
         if (adjusterListener && !blocked) {
-            sendToListener ();
+            sendToListener();
         }
     } else {
-        delayConnection = Glib::signal_timeout().connect (sigc::mem_fun(*this, &ThresholdAdjuster::notifyListener), delay);
+        delayConnection = Glib::signal_timeout().connect(
+            sigc::mem_fun(*this, &ThresholdAdjuster::notifyListener), delay);
     }
 
     if (!afterReset && editedState == UnEdited) {
         editedState = Edited;
 
         if (editedCheckBox) {
-            editedChange.block (true);
-            editedCheckBox->set_active (true);
-            editedChange.block (false);
+            editedChange.block(true);
+            editedCheckBox->set_active(true);
+            editedChange.block(false);
         }
 
-        refreshLabelStyle ();
+        refreshLabelStyle();
     }
 
     afterReset = false;
 }
 
-void ThresholdAdjuster::setValue (double bottom, double top)
+void ThresholdAdjuster::setValue(double bottom, double top)
 {
 
-    selectorChange.block (true);
+    selectorChange.block(true);
     tSelector.setPositions(bottom, top);
-    selectorChange.block (false);
+    selectorChange.block(false);
     afterReset = false;
 }
 
-void ThresholdAdjuster::setValue (double bottomLeft, double topLeft, double bottomRight, double topRight)
+void ThresholdAdjuster::setValue(double bottomLeft, double topLeft,
+                                 double bottomRight, double topRight)
 {
 
-    selectorChange.block (true);
+    selectorChange.block(true);
     tSelector.setPositions(bottomLeft, topLeft, bottomRight, topRight);
-    selectorChange.block (false);
+    selectorChange.block(false);
     afterReset = false;
 }
 
-void ThresholdAdjuster::getValue (double& bottom, double& top)
+void ThresholdAdjuster::getValue(double &bottom, double &top)
 {
-    tSelector.getPositions<double> (bottom, top);
+    tSelector.getPositions<double>(bottom, top);
 }
-void ThresholdAdjuster::getValue (double& bottomLeft, double& topLeft, double& bottomRight, double& topRight)
+void ThresholdAdjuster::getValue(double &bottomLeft, double &topLeft,
+                                 double &bottomRight, double &topRight)
 {
-    tSelector.getPositions<double> (bottomLeft, topLeft, bottomRight, topRight);
+    tSelector.getPositions<double>(bottomLeft, topLeft, bottomRight, topRight);
 }
-void ThresholdAdjuster::getValue (int& bottom, int& top)
+void ThresholdAdjuster::getValue(int &bottom, int &top)
 {
-    tSelector.getPositions<int> (bottom, top);
+    tSelector.getPositions<int>(bottom, top);
 }
-void ThresholdAdjuster::getValue (int& bottomLeft, int& topLeft, int& bottomRight, int& topRight)
+void ThresholdAdjuster::getValue(int &bottomLeft, int &topLeft,
+                                 int &bottomRight, int &topRight)
 {
-    tSelector.getPositions<int> (bottomLeft, topLeft, bottomRight, topRight);
-}
-
-void ThresholdAdjuster::getValue (Glib::ustring& bottom, Glib::ustring& top)
-{
-    tSelector.getPositions (bottom, top);
+    tSelector.getPositions<int>(bottomLeft, topLeft, bottomRight, topRight);
 }
 
-void ThresholdAdjuster::getValue (Glib::ustring& bottomLeft, Glib::ustring& topLeft, Glib::ustring& bottomRight, Glib::ustring& topRight)
+void ThresholdAdjuster::getValue(Glib::ustring &bottom, Glib::ustring &top)
 {
-    tSelector.getPositions (bottomLeft, topLeft, bottomRight, topRight);
+    tSelector.getPositions(bottom, top);
 }
 
-bool ThresholdAdjuster::notifyListener ()
+void ThresholdAdjuster::getValue(Glib::ustring &bottomLeft,
+                                 Glib::ustring &topLeft,
+                                 Glib::ustring &bottomRight,
+                                 Glib::ustring &topRight)
+{
+    tSelector.getPositions(bottomLeft, topLeft, bottomRight, topRight);
+}
+
+bool ThresholdAdjuster::notifyListener()
 {
 
     if (adjusterListener != nullptr && !blocked) {
@@ -273,123 +299,140 @@ bool ThresholdAdjuster::notifyListener ()
     return false;
 }
 
-void ThresholdAdjuster::setBgCurveProvider (ThresholdCurveProvider* provider)
+void ThresholdAdjuster::setBgCurveProvider(ThresholdCurveProvider *provider)
 {
     tSelector.setBgCurveProvider(provider);
 }
 
-
-void ThresholdAdjuster::setEnabled (bool enabled)
+void ThresholdAdjuster::setEnabled(bool enabled)
 {
 
-    tSelector.set_sensitive (enabled);
+    tSelector.set_sensitive(enabled);
 }
 
-void ThresholdAdjuster::setEditedState (EditedState eState)
+void ThresholdAdjuster::setEditedState(EditedState eState)
 {
 
     if (editedState != eState) {
         if (editedCheckBox) {
-            editedChange.block (true);
-            editedCheckBox->set_active (eState == Edited);
-            editedChange.block (false);
+            editedChange.block(true);
+            editedCheckBox->set_active(eState == Edited);
+            editedChange.block(false);
         }
 
         editedState = eState;
-        refreshLabelStyle ();
+        refreshLabelStyle();
     }
 }
 
-EditedState ThresholdAdjuster::getEditedState ()
+EditedState ThresholdAdjuster::getEditedState()
 {
 
     if (editedState != Irrelevant && editedCheckBox) {
-        editedState = editedCheckBox->get_active () ? Edited : UnEdited;
+        editedState = editedCheckBox->get_active() ? Edited : UnEdited;
     }
 
     return editedState;
 }
 
-void ThresholdAdjuster::showEditedCB ()
+void ThresholdAdjuster::showEditedCB()
 {
 
     if (!editedCheckBox) {
-        editedCheckBox =  Gtk::manage(new Gtk::CheckButton ());
-        hbox->pack_start (*editedCheckBox, Gtk::PACK_SHRINK, 2);
-        hbox->reorder_child (*editedCheckBox, 0);
-        editedChange = editedCheckBox->signal_toggled().connect( sigc::mem_fun(*this, &ThresholdAdjuster::editedToggled) );
+        editedCheckBox = Gtk::manage(new Gtk::CheckButton());
+        hbox->pack_start(*editedCheckBox, Gtk::PACK_SHRINK, 2);
+        hbox->reorder_child(*editedCheckBox, 0);
+        editedChange = editedCheckBox->signal_toggled().connect(
+            sigc::mem_fun(*this, &ThresholdAdjuster::editedToggled));
     }
 }
 
-void ThresholdAdjuster::refreshLabelStyle ()
+void ThresholdAdjuster::refreshLabelStyle()
 {
 
     /*  Glib::RefPtr<Gtk::StyleContext> style = label->get_style_context ();
         Pango::FontDescription fd = style->get_font ();
-        fd.set_weight (editedState==Edited ? Pango::WEIGHT_BOLD : Pango::WEIGHT_NORMAL);
-        style->set_font (fd);
-        label->set_style (style);
+        fd.set_weight (editedState==Edited ? Pango::WEIGHT_BOLD :
+       Pango::WEIGHT_NORMAL); style->set_font (fd); label->set_style (style);
         label->queue_draw ();*/
 }
 
-void ThresholdAdjuster::editedToggled ()
+void ThresholdAdjuster::editedToggled()
 {
 
     if (adjusterListener && !blocked) {
-        sendToListener ();
+        sendToListener();
     }
 }
 
-void ThresholdAdjuster::sendToListener ()
+void ThresholdAdjuster::sendToListener()
 {
     if (tSelector.getPrecision() > 0) {
-        // if precision is >0, then we assume that the listener is waiting for doubles
-        rtengine::procparams::Threshold<double> t = tSelector.getPositions<double>();
+        // if precision is >0, then we assume that the listener is waiting for
+        // doubles
+        rtengine::procparams::Threshold<double> t =
+            tSelector.getPositions<double>();
 
         if (tSelector.isDouble()) {
-            adjusterListener->adjusterChanged (this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(), t.getTopRight());
-            adjusterListener->adjusterChanged2 (this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(), t.getTopRight());
+            adjusterListener->adjusterChanged(
+                this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(),
+                t.getTopRight());
+            adjusterListener->adjusterChanged2(
+                this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(),
+                t.getTopRight());
         } else {
-            adjusterListener->adjusterChanged (this, t.getBottomLeft(), t.getTopLeft());
+            adjusterListener->adjusterChanged(this, t.getBottomLeft(),
+                                              t.getTopLeft());
         }
     } else {
-        // if precision is equal to 0, then we assume that the listener is waiting for integers
+        // if precision is equal to 0, then we assume that the listener is
+        // waiting for integers
         rtengine::procparams::Threshold<int> t = tSelector.getPositions<int>();
 
         if (tSelector.isDouble()) {
-            adjusterListener->adjusterChanged (this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(), t.getTopRight());
-            adjusterListener->adjusterChanged2 (this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(), t.getTopRight());
+            adjusterListener->adjusterChanged(
+                this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(),
+                t.getTopRight());
+            adjusterListener->adjusterChanged2(
+                this, t.getBottomLeft(), t.getTopLeft(), t.getBottomRight(),
+                t.getTopRight());
         } else {
-            adjusterListener->adjusterChanged (this, t.getBottomLeft(), t.getTopLeft());
+            adjusterListener->adjusterChanged(this, t.getBottomLeft(),
+                                              t.getTopLeft());
         }
     }
 }
 
-void ThresholdAdjuster::set_tooltip_markup(const Glib::ustring& markup)
+void ThresholdAdjuster::set_tooltip_markup(const Glib::ustring &markup)
 {
     tSelector.set_tooltip_markup(markup);
 }
 
-void ThresholdAdjuster::set_tooltip_text(const Glib::ustring& text)
+void ThresholdAdjuster::set_tooltip_text(const Glib::ustring &text)
 {
     tSelector.set_tooltip_text(text);
 }
 
-/* For better readability, this method create the history string of the parameter column,
- * so that the parameters list can be read in a more logical way (i.e. corresponding
- * to the startAtOne field)
+/* For better readability, this method create the history string of the
+ * parameter column, so that the parameters list can be read in a more logical
+ * way (i.e. corresponding to the startAtOne field)
  *
- * If separatedMode==true, the top slider is assumed to be the primary slider, then the bottom slider as the second one
+ * If separatedMode==true, the top slider is assumed to be the primary slider,
+ * then the bottom slider as the second one
  */
-Glib::ustring ThresholdAdjuster::getHistoryString ()
+Glib::ustring ThresholdAdjuster::getHistoryString()
 {
     if (tSelector.isDouble()) {
         Glib::ustring bl, tl, br, tr;
         tSelector.getPositions(bl, tl, br, tr);
-        return Glib::ustring::compose(tSelector.isStartAtOne() ? "%2, %1, %3, %4" : "%1, %2, %4, %3", bl, tl, br, tr);
+        return Glib::ustring::compose(
+            tSelector.isStartAtOne() ? "%2, %1, %3, %4" : "%1, %2, %4, %3", bl,
+            tl, br, tr);
     } else {
         Glib::ustring b, t;
         tSelector.getPositions(b, t);
-        return Glib::ustring::compose(tSelector.isStartAtOne() || separatedMode ? "%2, %1" : "%1, %2", b, t);
+        return Glib::ustring::compose(
+            tSelector.isStartAtOne() || separatedMode ? "%2, %1" : "%1, %2", b,
+            t);
     }
 }

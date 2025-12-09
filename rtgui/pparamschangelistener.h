@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -21,27 +21,26 @@
 #define _PPARAMSCHANGELISTENER_
 
 #include "../rtengine/rtengine.h"
-#include <glibmm.h>
 #include "paramsedited.h"
+#include <glibmm.h>
 
 class PParamsChangeListener {
 public:
     virtual ~PParamsChangeListener() = default;
-    virtual void procParamsChanged(
-        const rtengine::procparams::ProcParams* params,
-        const rtengine::ProcEvent& ev,
-        const Glib::ustring& descr,
-        const ParamsEdited* paramsEdited = nullptr
-    ) = 0;
+    virtual void
+    procParamsChanged(const rtengine::procparams::ProcParams *params,
+                      const rtengine::ProcEvent &ev, const Glib::ustring &descr,
+                      const ParamsEdited *paramsEdited = nullptr) = 0;
     virtual void clearParamChanges() = 0;
 };
-
 
 class PParamsSnapshotListener {
 public:
     virtual ~PParamsSnapshotListener() = default;
-    virtual void snapshotsChanged(const std::vector<std::pair<Glib::ustring, rtengine::procparams::ProcParams>> &snapshots) = 0;
+    virtual void
+    snapshotsChanged(const std::vector<
+                     std::pair<Glib::ustring, rtengine::procparams::ProcParams>>
+                         &snapshots) = 0;
 };
 
 #endif
-

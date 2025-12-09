@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -27,7 +27,6 @@ class RTWindow;
 class Adjuster;
 class FoldableToolPanel;
 
-
 class ToolShortcutManager {
 public:
     ToolShortcutManager(RTWindow *parent);
@@ -40,10 +39,11 @@ public:
     void showHelp();
 
 private:
-    void doit(int direction, int speed=1);
-    
+    void doit(int direction, int speed = 1);
+
     RTWindow *parent_;
-    std::unordered_map<guint, std::pair<FoldableToolPanel *, Adjuster *>> action_map_;
+    std::unordered_map<guint, std::pair<FoldableToolPanel *, Adjuster *>>
+        action_map_;
     guint cur_key_;
     FoldableToolPanel *cur_tool_;
     Adjuster *cur_adjuster_;

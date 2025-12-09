@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2019 Alberto Griggio <alberto.griggio@gmail.com>
@@ -21,6 +21,10 @@
 
 #include "../rtengine/rtengine.h"
 
-rtengine::ProcessingJob *create_processing_job(const Glib::ustring &fname, bool is_raw, rtengine::procparams::ProcParams pparams, bool fast);
+rtengine::ProcessingJob *
+create_processing_job(const Glib::ustring &fname, bool is_raw,
+                      rtengine::procparams::ProcParams pparams, bool fast);
 
-rtengine::ProcessingJob *create_processing_job(rtengine::InitialImage *initialImage, rtengine::procparams::ProcParams params, bool fast);
+rtengine::ProcessingJob *
+create_processing_job(rtengine::InitialImage *initialImage,
+                      rtengine::procparams::ProcParams params, bool fast);

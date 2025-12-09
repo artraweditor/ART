@@ -16,98 +16,104 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <iomanip>
 #include "rotate.h"
 #include "eventmapper.h"
 #include "guiutils.h"
 #include "rtimage.h"
+#include <iomanip>
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-Rotate::Rotate () : FoldableToolPanel(this, "rotate", M("TP_ROTATE_LABEL"), false, true, true)
+Rotate::Rotate()
+    : FoldableToolPanel(this, "rotate", M("TP_ROTATE_LABEL"), false, true, true)
 {
     rlistener = nullptr;
 
     EvToolEnabled.set_action(rtengine::TRANSFORM);
     EvToolReset.set_action(rtengine::TRANSFORM);
 
-    //TODO the action of the rotation slider is counter-intuitive
-    Gtk::Image* irotateL =   Gtk::manage (new RTImage ("rotate-right-small.svg"));
-    Gtk::Image* irotateR =   Gtk::manage (new RTImage ("rotate-left-small.svg"));
+    // TODO the action of the rotation slider is counter-intuitive
+    Gtk::Image *irotateL = Gtk::manage(new RTImage("rotate-right-small.svg"));
+    Gtk::Image *irotateR = Gtk::manage(new RTImage("rotate-left-small.svg"));
 
-    degree = Gtk::manage (new Adjuster (M("TP_ROTATE_DEGREE"), -45, 45, 0.01, 0, irotateL, irotateR));
-    degree->setAdjusterListener (this);
-    pack_start (*degree);
+    degree = Gtk::manage(new Adjuster(M("TP_ROTATE_DEGREE"), -45, 45, 0.01, 0,
+                                      irotateL, irotateR));
+    degree->setAdjusterListener(this);
+    pack_start(*degree);
 
-    selectStraight = Gtk::manage (new Gtk::Button (M("TP_ROTATE_SELECTLINE")));
-    selectStraight->set_image (*Gtk::manage (new RTImage ("rotate-straighten-small.svg")));
+    selectStraight = Gtk::manage(new Gtk::Button(M("TP_ROTATE_SELECTLINE")));
+    selectStraight->set_image(
+        *Gtk::manage(new RTImage("rotate-straighten-small.svg")));
     selectStraight->get_style_context()->add_class("independent");
-    pack_start (*selectStraight, Gtk::PACK_SHRINK, 2);
+    pack_start(*selectStraight, Gtk::PACK_SHRINK, 2);
 
-    selectStraight->signal_pressed().connect( sigc::mem_fun(*this, &Rotate::selectStraightPressed) );
+    selectStraight->signal_pressed().connect(
+        sigc::mem_fun(*this, &Rotate::selectStraightPressed));
 
     degree->setLogScale(2, 0);
 
-    show_all ();
+    show_all();
 }
 
-void Rotate::read(const ProcParams* pp)
+void Rotate::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
     setEnabled(pp->rotate.enabled);
-    degree->setValue (pp->rotate.degree);
-    enableListener ();
+    degree->setValue(pp->rotate.degree);
+    enableListener();
 }
 
-void Rotate::write(ProcParams* pp)
+void Rotate::write(ProcParams *pp)
 {
     pp->rotate.enabled = getEnabled();
-    pp->rotate.degree = degree->getValue ();
+    pp->rotate.degree = degree->getValue();
 }
 
-void Rotate::setDefaults(const ProcParams* defParams)
+void Rotate::setDefaults(const ProcParams *defParams)
 {
-    degree->setDefault (defParams->rotate.degree);
+    degree->setDefault(defParams->rotate.degree);
     initial_params = defParams->rotate;
 }
 
-void Rotate::adjusterChanged(Adjuster* a, double newval)
+void Rotate::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
-        listener->panelChanged(EvROTDegree, Glib::ustring::format (std::setw(3), std::fixed, std::setprecision(2), degree->getValue()));
+        listener->panelChanged(EvROTDegree,
+                               Glib::ustring::format(std::setw(3), std::fixed,
+                                                     std::setprecision(2),
+                                                     degree->getValue()));
     }
 }
 
-void Rotate::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void Rotate::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-void Rotate::straighten (double deg)
+void Rotate::straighten(double deg)
 {
     setEnabled(true);
-    degree->setValue (degree->getValue() + deg);
-    degree->setEditedState (Edited);
+    degree->setValue(degree->getValue() + deg);
+    degree->setEditedState(Edited);
 
     if (listener) {
-        listener->panelChanged (EvROTDegree, Glib::ustring::format (std::setw(3), std::fixed, std::setprecision(2), degree->getValue()));
+        listener->panelChanged(EvROTDegree,
+                               Glib::ustring::format(std::setw(3), std::fixed,
+                                                     std::setprecision(2),
+                                                     degree->getValue()));
     }
 }
 
-void Rotate::selectStraightPressed ()
+void Rotate::selectStraightPressed()
 {
 
     if (rlistener) {
-        rlistener->straightenRequested ();
+        rlistener->straightenRequested();
     }
 }
 
-
-void Rotate::trimValues (rtengine::procparams::ProcParams* pp)
+void Rotate::trimValues(rtengine::procparams::ProcParams *pp)
 {
     degree->trimValue(pp->rotate.degree);
 }
-
 
 void Rotate::toolReset(bool to_initial)
 {

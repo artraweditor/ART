@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2016 Ingo Weyrich <heckflosse67@gmx.de>
@@ -28,26 +28,19 @@ namespace rtengine {
 
 // These emulate a jagged array, but use only 2 allocations instead of 1 + H.
 
-template <typename T>
-class JaggedArray: private array2D<T> {
+template <typename T> class JaggedArray: private array2D<T> {
 public:
-    JaggedArray(std::size_t width, std::size_t height, bool init_zero=false):
-        array2D<T>(width, height, ARRAY2D_ALIGNED | (init_zero ? ARRAY2D_CLEAR_DATA : 0)) {}
-
-    operator T **()
+    JaggedArray(std::size_t width, std::size_t height, bool init_zero = false)
+        : array2D<T>(width, height,
+                     ARRAY2D_ALIGNED | (init_zero ? ARRAY2D_CLEAR_DATA : 0))
     {
-        return array2D<T>::operator T**();
     }
 
-    T *operator[](size_t index)
-    {
-        return array2D<T>::operator[](index);
-    }
+    operator T **() { return array2D<T>::operator T **(); }
 
-    T *operator[](int index)
-    {
-        return operator[](size_t(index));
-    }
+    T *operator[](size_t index) { return array2D<T>::operator[](index); }
+
+    T *operator[](int index) { return operator[](size_t(index)); }
 };
 
-} // rtengine
+} // namespace rtengine

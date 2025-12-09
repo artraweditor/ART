@@ -26,14 +26,14 @@
  *
  * using a guided filter for the "soft matting" of the transmission map
  *
- */  
+ */
 
-#include "improcfun.h"
 #include "guidedfilter.h"
-#include "rt_math.h"
-#include "rt_algo.h"
+#include "improcfun.h"
 #include "rescale.h"
-//#include "gauss.h"
+#include "rt_algo.h"
+#include "rt_math.h"
+// #include "gauss.h"
 #include "boxblur.h"
 #include <iostream>
 #include <queue>
@@ -45,21 +45,20 @@ namespace rtengine {
 namespace {
 
 #if 0
-#  define DEBUG_DUMP(arr)                                                 \
-    do {                                                                \
-        Imagefloat im(arr.width(), arr.height());                      \
-        const char *out = "/tmp/" #arr ".tif";                     \
-        for (int y = 0; y < im.getHeight(); ++y) {                      \
-            for (int x = 0; x < im.getWidth(); ++x) {                   \
-                im.r(y, x) = im.g(y, x) = im.b(y, x) = arr[y][x] * 65535.f; \
-            }                                                           \
-        }                                                               \
-        im.saveTIFF(out, 16);                                           \
+#define DEBUG_DUMP(arr)                                                        \
+    do {                                                                       \
+        Imagefloat im(arr.width(), arr.height());                              \
+        const char *out = "/tmp/" #arr ".tif";                                 \
+        for (int y = 0; y < im.getHeight(); ++y) {                             \
+            for (int x = 0; x < im.getWidth(); ++x) {                          \
+                im.r(y, x) = im.g(y, x) = im.b(y, x) = arr[y][x] * 65535.f;    \
+            }                                                                  \
+        }                                                                      \
+        im.saveTIFF(out, 16);                                                  \
     } while (false)
 #else
-#  define DEBUG_DUMP(arr)
+#define DEBUG_DUMP(arr)
 #endif
-
 
 float normalize(Imagefloat *rgb, bool multithread)
 {
@@ -67,7 +66,7 @@ float normalize(Imagefloat *rgb, bool multithread)
     const int W = rgb->getWidth();
     const int H = rgb->getHeight();
 #ifdef _OPENMP
-#   pragma omp parallel for reduction(max:maxval) if (multithread)
+#pragma omp parallel for reduction(max : maxval) if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -75,24 +74,25 @@ float normalize(Imagefloat *rgb, bool multithread)
         }
     }
     maxval = max(maxval * 2.f, 65535.f);
-    rgb->multiply(1.f/maxval, multithread);
+    rgb->multiply(1.f / maxval, multithread);
     return maxval;
 }
-
 
 void restore(Imagefloat *rgb, float maxval, bool multithread)
 {
     rgb->multiply(maxval, multithread);
 }
 
-
-int get_dark_channel(const array2D<float> &R, const array2D<float> &G, const array2D<float> &B, array2D<float> &dst, int patchsize, const float ambient[3], bool clip, bool multithread)
+int get_dark_channel(const array2D<float> &R, const array2D<float> &G,
+                     const array2D<float> &B, array2D<float> &dst,
+                     int patchsize, const float ambient[3], bool clip,
+                     bool multithread)
 {
     const int W = R.width();
     const int H = R.height();
 
 #ifdef _OPENMP
-    #pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; y += patchsize) {
         const int pH = min(y + patchsize, H);
@@ -121,31 +121,31 @@ int get_dark_channel(const array2D<float> &R, const array2D<float> &G, const arr
         }
     }
 
-    return (W / patchsize + ((W % patchsize) > 0)) * (H / patchsize + ((H % patchsize) > 0));
+    return (W / patchsize + ((W % patchsize) > 0)) *
+           (H / patchsize + ((H % patchsize) > 0));
 }
 
-
-float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G, const array2D<float> &B, const array2D<float> &dark, int patchsize, int npatches, float ambient[3])
+float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G,
+                             const array2D<float> &B,
+                             const array2D<float> &dark, int patchsize,
+                             int npatches, float ambient[3])
 {
     const int W = R.width();
     const int H = R.height();
 
-    const auto get_percentile =
-        [](std::priority_queue<float> &q, float prcnt) -> float
-        {
-            size_t n = LIM<size_t>(q.size() * prcnt, 1, q.size());
-            while (q.size() > n) {
-                q.pop();
-            }
-            return q.top();
-        };
+    const auto get_percentile = [](std::priority_queue<float> &q,
+                                   float prcnt) -> float {
+        size_t n = LIM<size_t>(q.size() * prcnt, 1, q.size());
+        while (q.size() > n) {
+            q.pop();
+        }
+        return q.top();
+    };
 
-    const auto OOG =
-        [](float val, float high) -> bool
-        {
-            return (val < 0.f) || (val > high);
-        };
-    
+    const auto OOG = [](float val, float high) -> bool {
+        return (val < 0.f) || (val > high);
+    };
+
     float darklim = RT_INFINITY_F;
     {
         std::priority_queue<float> p;
@@ -156,7 +156,7 @@ float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G, c
                 }
             }
         }
-        
+
         if (p.empty()) {
             return -1.f;
         }
@@ -182,11 +182,11 @@ float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G, c
     float bright_lim = RT_INFINITY_F;
     {
         std::priority_queue<float> l;
-        
+
         for (auto &p : patches) {
-            const int pW = min(p.first+patchsize, W);
-            const int pH = min(p.second+patchsize, H);
-            
+            const int pW = min(p.first + patchsize, W);
+            const int pH = min(p.second + patchsize, H);
+
             for (int y = p.second; y < pH; ++y) {
                 for (int x = p.first; x < pW; ++x) {
                     l.push(R[y][x] + G[y][x] + B[y][x]);
@@ -203,9 +203,9 @@ float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G, c
     double rr = 0, gg = 0, bb = 0;
     int n = 0;
     for (auto &p : patches) {
-        const int pW = min(p.first+patchsize, W);
-        const int pH = min(p.second+patchsize, H);
-            
+        const int pW = min(p.first + patchsize, W);
+        const int pH = min(p.second + patchsize, H);
+
         for (int y = p.second; y < pH; ++y) {
             for (int x = p.first; x < pW; ++x) {
                 float r = R[y][x];
@@ -226,11 +226,13 @@ float estimate_ambient_light(const array2D<float> &R, const array2D<float> &G, c
     ambient[2] = bb / n;
 
     // taken from darktable
-    return darklim > 0 ? -1.125f * std::log(darklim) : std::log(std::numeric_limits<float>::max()) / 2;
+    return darklim > 0 ? -1.125f * std::log(darklim)
+                       : std::log(std::numeric_limits<float>::max()) / 2;
 }
 
-
-void extract_channels(Imagefloat *img, array2D<float> &r, array2D<float> &g, array2D<float> &b, int radius, float epsilon, bool multithread)
+void extract_channels(Imagefloat *img, array2D<float> &r, array2D<float> &g,
+                      array2D<float> &b, int radius, float epsilon,
+                      bool multithread)
 {
     const int W = img->getWidth();
     const int H = img->getHeight();
@@ -245,31 +247,33 @@ void extract_channels(Imagefloat *img, array2D<float> &r, array2D<float> &g, arr
     rtengine::guidedFilter(imgB, imgB, b, radius, epsilon, multithread);
 }
 
-
 void subtract_black(Imagefloat *img, int percent, bool multithread)
 {
     const int W = img->getWidth();
     const int H = img->getHeight();
-    
+
     constexpr int sizecap = 200;
-    float r = float(W)/float(H);
+    float r = float(W) / float(H);
     int ww = r >= 1.f ? sizecap : float(sizecap) / r;
     int hh = r >= 1.f ? float(sizecap) / r : sizecap;
 
-    float black[3] = { RT_INFINITY_F, RT_INFINITY_F, RT_INFINITY_F };
+    float black[3] = {RT_INFINITY_F, RT_INFINITY_F, RT_INFINITY_F};
     {
         array2D<float> rr(ww, hh, ARRAY2D_ALIGNED);
         array2D<float> gg(ww, hh, ARRAY2D_ALIGNED);
         array2D<float> bb(ww, hh, ARRAY2D_ALIGNED);
-        rescaleNearest(img->r.ptrs, W, H, static_cast<float **>(rr), ww, hh, multithread);
-        rescaleNearest(img->g.ptrs, W, H, static_cast<float **>(gg), ww, hh, multithread);
-        rescaleNearest(img->b.ptrs, W, H, static_cast<float **>(bb), ww, hh, multithread);
+        rescaleNearest(img->r.ptrs, W, H, static_cast<float **>(rr), ww, hh,
+                       multithread);
+        rescaleNearest(img->g.ptrs, W, H, static_cast<float **>(gg), ww, hh,
+                       multithread);
+        rescaleNearest(img->b.ptrs, W, H, static_cast<float **>(bb), ww, hh,
+                       multithread);
 
         int radius = std::max(std::max(ww, hh) / 20, 1);
         boxblur(rr, rr, radius, ww, hh, multithread);
         boxblur(gg, gg, radius, ww, hh, multithread);
         boxblur(bb, bb, radius, ww, hh, multithread);
-    
+
         for (int y = 0; y < hh; ++y) {
             for (int x = 0; x < ww; ++x) {
                 black[0] = std::min(black[0], rr[y][x]);
@@ -285,11 +289,12 @@ void subtract_black(Imagefloat *img, int percent, bool multithread)
     }
 
     if (options.rtSettings.verbose) {
-        std::cout << "BLACK POINTS: " << black[0] << " " << black[1] << " " << black[2] << std::endl;
+        std::cout << "BLACK POINTS: " << black[0] << " " << black[1] << " "
+                  << black[2] << std::endl;
     }
 
 #ifdef _OPENMP
-#   pragma omp parallel for if (multithread)
+#pragma omp parallel for if (multithread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -302,13 +307,16 @@ void subtract_black(Imagefloat *img, int percent, bool multithread)
 
 } // namespace
 
-
 void ImProcFunctions::dehaze(Imagefloat *img)
 {
     PlanarWhateverData<float> *editWhatever = nullptr;
-    EditUniqueID editID = pipetteBuffer ? pipetteBuffer->getEditID() : EUID_None;
+    EditUniqueID editID =
+        pipetteBuffer ? pipetteBuffer->getEditID() : EUID_None;
 
-    if (editID == EUID_DehazeStrength && pipetteBuffer->getDataProvider()->getCurrSubscriber()->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
+    if (editID == EUID_DehazeStrength &&
+        pipetteBuffer->getDataProvider()
+                ->getCurrSubscriber()
+                ->getPipetteBufferType() == BT_SINGLEPLANE_FLOAT) {
         editWhatever = pipetteBuffer->getSinglePlaneBuffer();
     }
 
@@ -319,23 +327,25 @@ void ImProcFunctions::dehaze(Imagefloat *img)
         return;
     }
 
-    TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
-    
+    TMatrix ws =
+        ICCStore::getInstance()->workingSpaceMatrix(params->icm.workingProfile);
+
     img->setMode(Imagefloat::Mode::RGB, multiThread);
     const float maxchan = normalize(img, multiThread);
-    
+
     const int W = img->getWidth();
     const int H = img->getHeight();
 
     if (editWhatever) {
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < editWhatever->getHeight(); ++y) {
             int yy = y + offset_y;
             for (int x = 0; x < editWhatever->getWidth(); ++x) {
                 int xx = x + offset_x;
-                float r = img->r(yy, xx), g = img->g(yy, xx), b = img->b(yy, xx);
+                float r = img->r(yy, xx), g = img->g(yy, xx),
+                      b = img->b(yy, xx);
                 float Y = Color::rgbLuminance(r, g, b, ws) * maxchan;
                 float s = Color::gamma2curve[Y];
                 editWhatever->v(y, x) = LIM01(s / 65535.f);
@@ -346,9 +356,9 @@ void ImProcFunctions::dehaze(Imagefloat *img)
     if (params->dehaze.blackpoint) {
         subtract_black(img, params->dehaze.blackpoint, multiThread);
     }
-    
-    // const float strength = LIM01(float(std::abs(params->dehaze.strength)) / 100.f * 0.9f);
-    // const bool add_haze = params->dehaze.strength < 0;
+
+    // const float strength = LIM01(float(std::abs(params->dehaze.strength)) /
+    // 100.f * 0.9f); const bool add_haze = params->dehaze.strength < 0;
 
     // if (options.rtSettings.verbose) {
     //     std::cout << "dehaze: strength = " << strength << std::endl;
@@ -362,15 +372,17 @@ void ImProcFunctions::dehaze(Imagefloat *img)
     float max_t = 0.f;
 
     {
-        //array2D<float> R(W, H);
-        array2D<float> &R = dark; // R and dark can safely use the same buffer, which is faster and reduces memory allocations/deallocations
+        // array2D<float> R(W, H);
+        array2D<float> &R =
+            dark; // R and dark can safely use the same buffer, which is faster
+                  // and reduces memory allocations/deallocations
         array2D<float> G(W, H, ARRAY2D_ALIGNED);
         array2D<float> B(W, H, ARRAY2D_ALIGNED);
         extract_channels(img, R, G, B, patchsize, 1e-1, multiThread);
 
         {
             constexpr int sizecap = 200;
-            float r = float(W)/float(H);
+            float r = float(W) / float(H);
             int ww = r >= 1.f ? sizecap : float(sizecap) / r;
             int hh = r >= 1.f ? float(sizecap) / r : sizecap;
             array2D<float> RR(ww, hh, ARRAY2D_ALIGNED);
@@ -382,8 +394,10 @@ void ImProcFunctions::dehaze(Imagefloat *img)
             array2D<float> D(ww, hh);
 
             patchsize = 2;
-            int npatches = get_dark_channel(RR, GG, BB, D, patchsize, nullptr, false, multiThread);
-            max_t = estimate_ambient_light(RR, GG, BB, D, patchsize, npatches, ambient);
+            int npatches = get_dark_channel(RR, GG, BB, D, patchsize, nullptr,
+                                            false, multiThread);
+            max_t = estimate_ambient_light(RR, GG, BB, D, patchsize, npatches,
+                                           ambient);
             if (max_t < 0.f) {
                 if (options.rtSettings.verbose) {
                     std::cout << "dehaze: no haze detected" << std::endl;
@@ -392,13 +406,12 @@ void ImProcFunctions::dehaze(Imagefloat *img)
                 return; // probably no haze at all
             }
         }
-    
+
         patchsize = max(max(W, H) / 600, 2);
 
         if (options.rtSettings.verbose) {
-            std::cout << "dehaze: ambient light is "
-                      << ambient[0] << ", " << ambient[1] << ", " << ambient[2]
-                      << std::endl;
+            std::cout << "dehaze: ambient light is " << ambient[0] << ", "
+                      << ambient[1] << ", " << ambient[2] << std::endl;
         }
 
         get_dark_channel(R, G, B, dark, patchsize, ambient, true, multiThread);
@@ -420,15 +433,19 @@ void ImProcFunctions::dehaze(Imagefloat *img)
     strength_curve.setIdentityValue(0.5);
     LUTf strength(65536);
     for (int i = 0; i < 65536; ++i) {
-        strength[i] = (strength_curve.getVal(Color::gamma2curve[i] / 65535.f) - 0.5f) * 1.3f;
+        strength[i] =
+            (strength_curve.getVal(Color::gamma2curve[i] / 65535.f) - 0.5f) *
+            1.3f;
     }
 
 #ifdef _OPENMP
-    #pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
-            float Y = Color::rgbLuminance(img->r(y, x), img->g(y, x), img->b(y, x), ws) * maxchan;
+            float Y = Color::rgbLuminance(img->r(y, x), img->g(y, x),
+                                          img->b(y, x), ws) *
+                      maxchan;
             float s = strength[Y];
             add_haze[y][x] = s < 0;
             dark[y][x] = 1.f - std::abs(s) * dark[y][x];
@@ -441,9 +458,10 @@ void ImProcFunctions::dehaze(Imagefloat *img)
 
     {
         array2D<float> guideB(W, H, img->b.ptrs, ARRAY2D_BYREFERENCE);
-        rtengine::guidedFilter(guideB, t_tilde, t, radius, epsilon, multiThread);
+        rtengine::guidedFilter(guideB, t_tilde, t, radius, epsilon,
+                               multiThread);
     }
-        
+
     DEBUG_DUMP(t);
 
     if (options.rtSettings.verbose) {
@@ -454,16 +472,18 @@ void ImProcFunctions::dehaze(Imagefloat *img)
     const float teps = 1e-6f;
     const float t0 = max(teps, std::exp(depth * max_t));
     const bool luminance = params->dehaze.luminance;
-    const float ambientY = Color::rgbLuminance(ambient[0], ambient[1], ambient[2], ws);
+    const float ambientY =
+        Color::rgbLuminance(ambient[0], ambient[1], ambient[2], ws);
 #ifdef _OPENMP
-    #pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
             // ensure that the transmission is such that to avoid clipping...
-            float rgb[3] = { img->r(y, x), img->g(y, x), img->b(y, x) };
+            float rgb[3] = {img->r(y, x), img->g(y, x), img->b(y, x)};
             // ... t >= tl to avoid negative values
-            float tl = 1.f - min(rgb[0]/ambient[0], rgb[1]/ambient[1], rgb[2]/ambient[2]);
+            float tl = 1.f - min(rgb[0] / ambient[0], rgb[1] / ambient[1],
+                                 rgb[2] / ambient[2]);
             // // ... t >= tu to avoid values > 1
             // float tu = t0 - teps;
             // for (int c = 0; c < 3; ++c) {
@@ -474,8 +494,8 @@ void ImProcFunctions::dehaze(Imagefloat *img)
             float &ir = img->r(y, x);
             float &ig = img->g(y, x);
             float &ib = img->b(y, x);
-            
-            float mt = max(t[y][x], t0, tl + teps);//, tu + teps);
+
+            float mt = max(t[y][x], t0, tl + teps); //, tu + teps);
             if (params->dehaze.showDepthMap) {
                 img->r(y, x) = img->g(y, x) = img->b(y, x) = LIM01(1.f - mt);
             } else if (luminance) {
@@ -510,6 +530,5 @@ void ImProcFunctions::dehaze(Imagefloat *img)
 
     restore(img, maxchan, multiThread);
 }
-
 
 } // namespace rtengine

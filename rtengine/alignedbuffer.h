@@ -1,8 +1,9 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
-*  Copyright (c) 2004-2012 Gabor Horvath <hgabor@rawtherapee.com>, Oliver Duis <oduis@oliverduis.de>
+ *  Copyright (c) 2004-2012 Gabor Horvath <hgabor@rawtherapee.com>, Oliver Duis
+ * <oduis@oliverduis.de>
  *
  *  RawTherapee is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,9 +22,8 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <utility>
 #include <memory>
-
+#include <utility>
 
 namespace rtengine {
 
@@ -31,7 +31,7 @@ namespace rtengine {
 template <class T> class AlignedBuffer {
 
 private:
-    void *real ;
+    void *real;
     char alignment;
     size_t allocatedSize;
     int unitSize;
@@ -40,23 +40,22 @@ public:
     T *data;
 
     /** @brief Allocate aligned memory
-    * @param size Number of elements of size T to allocate, i.e. allocated size will be sizeof(T)*size ; set it to 0 if you want to defer the allocation
-    * @param align Expressed in bytes; SSE instructions need 128 bits alignment, which mean 16 bytes, which is the default value
-    *   align=0 means unaligned
-    */
-    AlignedBuffer(size_t size=0, size_t align=16):
-        real(nullptr),
-        alignment(align),
-        allocatedSize(0),
-        unitSize(0),
-        data(nullptr)
+     * @param size Number of elements of size T to allocate, i.e. allocated size
+     * will be sizeof(T)*size ; set it to 0 if you want to defer the allocation
+     * @param align Expressed in bytes; SSE instructions need 128 bits
+     * alignment, which mean 16 bytes, which is the default value align=0 means
+     * unaligned
+     */
+    AlignedBuffer(size_t size = 0, size_t align = 16)
+        : real(nullptr), alignment(align), allocatedSize(0), unitSize(0),
+          data(nullptr)
     {
         if (size) {
             resize(size);
         }
     }
 
-    ~AlignedBuffer ()
+    ~AlignedBuffer()
     {
         if (real) {
             free(real);
@@ -64,18 +63,18 @@ public:
     }
 
     /** @brief Return true if there's no memory allocated
-    */
-    bool isEmpty() const
-    {
-        return allocatedSize == 0;
-    }
+     */
+    bool isEmpty() const { return allocatedSize == 0; }
 
-    /** @brief Allocate the "size" amount of elements of "structSize" length each
-    * @param size number of elements to allocate
-    * @param structSize if non null, will let you override the default struct's size (unit: byte)
-    * @return True is everything went fine, including freeing memory when size==0, false if the allocation failed
-    */
-    bool resize(size_t size, int structSize=0)
+    /** @brief Allocate the "size" amount of elements of "structSize" length
+     * each
+     * @param size number of elements to allocate
+     * @param structSize if non null, will let you override the default struct's
+     * size (unit: byte)
+     * @return True is everything went fine, including freeing memory when
+     * size==0, false if the allocation failed
+     */
+    bool resize(size_t size, int structSize = 0)
     {
         if (size == 0) {
             if (real) {
@@ -87,7 +86,7 @@ public:
             unitSize = 0;
             return true;
         }
-           
+
         size_t elemsz = structSize ? structSize : sizeof(T);
         size_t amount = size * elemsz;
         if (amount != allocatedSize) {

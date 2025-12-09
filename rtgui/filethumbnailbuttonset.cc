@@ -18,8 +18,8 @@
  */
 #include "filethumbnailbuttonset.h"
 
-#include "rtimage.h"
 #include "multilangmgr.h"
+#include "rtimage.h"
 
 bool FileThumbnailButtonSet::iconsLoaded = false;
 
@@ -38,22 +38,32 @@ Glib::ustring FileThumbnailButtonSet::untrashToolTip;
 Glib::ustring FileThumbnailButtonSet::colorLabelToolTip;
 std::array<Glib::ustring, 5> FileThumbnailButtonSet::rankToolTip;
 
-FileThumbnailButtonSet::FileThumbnailButtonSet (FileBrowserEntry* myEntry)
+FileThumbnailButtonSet::FileThumbnailButtonSet(FileBrowserEntry *myEntry)
 {
 
     if (!iconsLoaded) {
-        unRankIcon  = Cairo::RefPtr<RTSurface>(new RTSurface("star-hollow-narrow.svg"));
-        rankIcon    = Cairo::RefPtr<RTSurface>(new RTSurface("star-gold-narrow.svg"));
-        gRankIcon   = Cairo::RefPtr<RTSurface>(new RTSurface("star-narrow.svg"));
-        trashIcon   = Cairo::RefPtr<RTSurface>(new RTSurface("trash-small.svg"));
-        unTrashIcon = Cairo::RefPtr<RTSurface>(new RTSurface("trash-remove-small.svg"));
-        processIcon = Cairo::RefPtr<RTSurface>(new RTSurface("gears-small.svg"));
-        colorLabelIcon[0] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-empty-gray-small.svg"));
-        colorLabelIcon[1] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-red-small.svg"));
-        colorLabelIcon[2] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-yellow-small.svg"));
-        colorLabelIcon[3] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-green-small.svg"));
-        colorLabelIcon[4] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-blue-small.svg"));
-        colorLabelIcon[5] = Cairo::RefPtr<RTSurface>(new RTSurface("circle-purple-small.svg"));
+        unRankIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("star-hollow-narrow.svg"));
+        rankIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("star-gold-narrow.svg"));
+        gRankIcon = Cairo::RefPtr<RTSurface>(new RTSurface("star-narrow.svg"));
+        trashIcon = Cairo::RefPtr<RTSurface>(new RTSurface("trash-small.svg"));
+        unTrashIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("trash-remove-small.svg"));
+        processIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("gears-small.svg"));
+        colorLabelIcon[0] = Cairo::RefPtr<RTSurface>(
+            new RTSurface("circle-empty-gray-small.svg"));
+        colorLabelIcon[1] =
+            Cairo::RefPtr<RTSurface>(new RTSurface("circle-red-small.svg"));
+        colorLabelIcon[2] =
+            Cairo::RefPtr<RTSurface>(new RTSurface("circle-yellow-small.svg"));
+        colorLabelIcon[3] =
+            Cairo::RefPtr<RTSurface>(new RTSurface("circle-green-small.svg"));
+        colorLabelIcon[4] =
+            Cairo::RefPtr<RTSurface>(new RTSurface("circle-blue-small.svg"));
+        colorLabelIcon[5] =
+            Cairo::RefPtr<RTSurface>(new RTSurface("circle-purple-small.svg"));
 
         processToolTip = M("FILEBROWSER_POPUPPROCESS");
         unrankToolTip = M("FILEBROWSER_UNRANK_TOOLTIP");
@@ -69,18 +79,23 @@ FileThumbnailButtonSet::FileThumbnailButtonSet (FileBrowserEntry* myEntry)
         iconsLoaded = true;
     }
 
-    add(new LWButton(processIcon, 6, myEntry, LWButton::Left, LWButton::Center, &processToolTip));
-    add(new LWButton(unRankIcon, 0, myEntry, LWButton::Left, LWButton::Center, &unrankToolTip));
+    add(new LWButton(processIcon, 6, myEntry, LWButton::Left, LWButton::Center,
+                     &processToolTip));
+    add(new LWButton(unRankIcon, 0, myEntry, LWButton::Left, LWButton::Center,
+                     &unrankToolTip));
 
     for (int i = 0; i < 5; i++) {
-        add(new LWButton(rankIcon, i + 1, myEntry, LWButton::Left, LWButton::Center, &rankToolTip[i]));
+        add(new LWButton(rankIcon, i + 1, myEntry, LWButton::Left,
+                         LWButton::Center, &rankToolTip[i]));
     }
 
-    add(new LWButton(trashIcon, 7, myEntry, LWButton::Right, LWButton::Center, &trashToolTip));
-    add(new LWButton(colorLabelIcon[0], 8, myEntry, LWButton::Right, LWButton::Center, &colorLabelToolTip));
+    add(new LWButton(trashIcon, 7, myEntry, LWButton::Right, LWButton::Center,
+                     &trashToolTip));
+    add(new LWButton(colorLabelIcon[0], 8, myEntry, LWButton::Right,
+                     LWButton::Center, &colorLabelToolTip));
 }
 
-void FileThumbnailButtonSet::setRank (int stars)
+void FileThumbnailButtonSet::setRank(int stars)
 {
 
     for (int i = 1; i <= 5; i++) {
@@ -88,7 +103,7 @@ void FileThumbnailButtonSet::setRank (int stars)
     }
 }
 
-void FileThumbnailButtonSet::setColorLabel (int colorLabel)
+void FileThumbnailButtonSet::setColorLabel(int colorLabel)
 {
 
     if (colorLabel >= 0 && colorLabel <= 5) {
@@ -96,7 +111,7 @@ void FileThumbnailButtonSet::setColorLabel (int colorLabel)
     }
 }
 
-void FileThumbnailButtonSet::setInTrash (bool inTrash)
+void FileThumbnailButtonSet::setInTrash(bool inTrash)
 {
 
     buttons[7]->setIcon(inTrash ? unTrashIcon : trashIcon);

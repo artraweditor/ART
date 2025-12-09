@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,34 +20,36 @@
 #ifndef _BAYERRAWEXPOSURE_H_
 #define _BAYERRAWEXPOSURE_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "checkbox.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class BayerRAWExposure : public ToolParamBlock, public AdjusterListener, public CheckBoxListener, public FoldableToolPanel
-{
+class BayerRAWExposure: public ToolParamBlock,
+                        public AdjusterListener,
+                        public CheckBoxListener,
+                        public FoldableToolPanel {
 
 protected:
-    Adjuster* PexBlack0;
-    Adjuster* PexBlack1;
-    Adjuster* PexBlack2;
-    Adjuster* PexBlack3;
-    CheckBox* PextwoGreen;
+    Adjuster *PexBlack0;
+    Adjuster *PexBlack1;
+    Adjuster *PexBlack2;
+    Adjuster *PexBlack3;
+    CheckBox *PextwoGreen;
 
     rtengine::procparams::RAWParams::BayerSensor initial_params;
 
 public:
+    BayerRAWExposure();
 
-    BayerRAWExposure ();
-
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged     (Adjuster* a, double newval) override;
-    void adjusterAutoToggled (Adjuster* a, bool newval) override;
-    void checkBoxToggled     (CheckBox* c, CheckValue newval) override;
-    void trimValues          (rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void checkBoxToggled(CheckBox *c, CheckValue newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
     void toolReset(bool to_initial) override;
 };

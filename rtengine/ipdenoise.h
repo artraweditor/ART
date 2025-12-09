@@ -22,14 +22,15 @@
 
 #pragma once
 
-#include "improcfun.h"
 #include "curves.h"
+#include "improcfun.h"
 
-namespace rtengine { namespace denoise {
+namespace rtengine {
+namespace denoise {
 
 class NoiseCurve {
 private:
-    LUTf lutNoiseCurve;  // 0xffff range
+    LUTf lutNoiseCurve; // 0xffff range
     float sum;
     void Set(const Curve &pCurve);
 
@@ -39,27 +40,22 @@ public:
     void Reset();
     void Set(const std::vector<double> &curvePoints);
 
-    float getSum() const
-    {
-        return sum;
-    }
-    float operator[](float index) const
-    {
-        return lutNoiseCurve[index];
-    }
-    operator bool (void) const
-    {
-        return lutNoiseCurve;
-    }
+    float getSum() const { return sum; }
+    float operator[](float index) const { return lutNoiseCurve[index]; }
+    operator bool(void) const { return lutNoiseCurve; }
 };
 
+void Tile_calc(int tilesize, int overlap, int kall, int imwidth, int imheight,
+               int &numtiles_W, int &numtiles_H, int &tilewidth,
+               int &tileheight, int &tileWskip, int &tileHskip);
 
-void Tile_calc(int tilesize, int overlap, int kall, int imwidth, int imheight, int &numtiles_W, int &numtiles_H, int &tilewidth, int &tileheight, int &tileWskip, int &tileHskip);
-    
 void denoiseGuidedSmoothing(ImProcData &im, Imagefloat *rgb);
 
-void RGB_denoise(ImProcData &im, int kall, Imagefloat * src, Imagefloat * dst, Imagefloat * calclum, float * ch_M, float *max_r, float *max_b, bool isRAW, const procparams::DenoiseParams & dnparams, const double expcomp, const NoiseCurve & noiseLCurve, const NoiseCurve & noiseCCurve, float &nresi, float &highresi);
-
+void RGB_denoise(ImProcData &im, int kall, Imagefloat *src, Imagefloat *dst,
+                 Imagefloat *calclum, float *ch_M, float *max_r, float *max_b,
+                 bool isRAW, const procparams::DenoiseParams &dnparams,
+                 const double expcomp, const NoiseCurve &noiseLCurve,
+                 const NoiseCurve &noiseCCurve, float &nresi, float &highresi);
 
 enum class Median {
     TYPE_3X3_SOFT,
@@ -70,21 +66,31 @@ enum class Median {
     TYPE_9X9
 };
 
-void Median_Denoise(float **src, float **dst, float upperBound, int width, int height, Median medianType, int iterations, int numThreads, float **buffer = nullptr);
+void Median_Denoise(float **src, float **dst, float upperBound, int width,
+                    int height, Median medianType, int iterations,
+                    int numThreads, float **buffer = nullptr);
 
-void Median_Denoise(float **src, float **dst, int width, int height, Median medianType, int iterations, int numThreads, float **buffer = nullptr);
+void Median_Denoise(float **src, float **dst, int width, int height,
+                    Median medianType, int iterations, int numThreads,
+                    float **buffer = nullptr);
 
-void WaveletDenoiseAll_info(int levwav, wavelet_decomposition &WaveletCoeffs_a,
-        wavelet_decomposition &WaveletCoeffs_b, float **noisevarlum, float **noisevarchrom, float **noisevarhue, float &chaut, int &Nb, float &redaut, float &blueaut, float &maxredaut, float &maxblueaut, float &minredaut, float &minblueaut, int schoice,
-                            float &chromina, float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc, float &nsknc, float &maxchred, float &maxchblue, float &minchred, float &minchblue, int &nb, float &chau, float &chred, float &chblue);
+void WaveletDenoiseAll_info(
+    int levwav, wavelet_decomposition &WaveletCoeffs_a,
+    wavelet_decomposition &WaveletCoeffs_b, float **noisevarlum,
+    float **noisevarchrom, float **noisevarhue, float &chaut, int &Nb,
+    float &redaut, float &blueaut, float &maxredaut, float &maxblueaut,
+    float &minredaut, float &minblueaut, int schoice, float &chromina,
+    float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc,
+    float &nsknc, float &maxchred, float &maxchblue, float &minchred,
+    float &minchblue, int &nb, float &chau, float &chred, float &chblue);
 
-enum class BlurType {
-    OFF,
-    BOX,
-    GAUSS
-};
-void detail_mask(const array2D<float> &src, array2D<float> &mask, float scaling, float threshold, float ceiling, float factor, BlurType blur, float blur_radius, bool multithread);
+enum class BlurType { OFF, BOX, GAUSS };
+void detail_mask(const array2D<float> &src, array2D<float> &mask, float scaling,
+                 float threshold, float ceiling, float factor, BlurType blur,
+                 float blur_radius, bool multithread);
 
-void NLMeans(array2D<float> &img, float normcoeff, int strength, int detail_thresh, float scale, bool multithread);
-    
-}} // namespace rtengine::denoise
+void NLMeans(array2D<float> &img, float normcoeff, int strength,
+             int detail_thresh, float scale, bool multithread);
+
+} // namespace denoise
+} // namespace rtengine

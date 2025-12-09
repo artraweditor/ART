@@ -19,15 +19,14 @@
 
 #include "alpha.h"
 
-namespace rtengine
-{
+namespace rtengine {
 
-Alpha::Alpha () {}
+Alpha::Alpha() {}
 
-Alpha::Alpha (int width, int height)
+Alpha::Alpha(int width, int height)
 {
     if (width > 0 && height > 0) {
-        surface = Cairo::ImageSurface::create (Cairo::FORMAT_A8, width, height);
+        surface = Cairo::ImageSurface::create(Cairo::FORMAT_A8, width, height);
     }
 }
 
@@ -37,18 +36,21 @@ Alpha::~Alpha () {
 }
 */
 
-void Alpha::setSize (int width, int height)
+void Alpha::setSize(int width, int height)
 {
     if (width > 0 && height > 0) {
         if (surface) {
             if (width != getWidth() && height != getHeight()) {
-                surface.clear();  // does this delete the referenced object? Unreferencing doesn't work, since Cairo expect to have a non null refCount in the destructor!
+                surface
+                    .clear(); // does this delete the referenced object?
+                              // Unreferencing doesn't work, since Cairo expect
+                              // to have a non null refCount in the destructor!
             } else {
                 return;
             }
         }
 
-        surface = Cairo::ImageSurface::create (Cairo::FORMAT_A8, width, height);
+        surface = Cairo::ImageSurface::create(Cairo::FORMAT_A8, width, height);
     } else if (surface) {
         surface.clear();
     }
@@ -72,25 +74,24 @@ int Alpha::getHeight() const
     return -1;
 }
 
-
-Cairo::RefPtr<Cairo::ImageSurface> Alpha::getSurface () const
+Cairo::RefPtr<Cairo::ImageSurface> Alpha::getSurface() const
 {
     return surface; // to be used in bitmap edition
 }
 
-unsigned char Alpha::operator () (unsigned row, unsigned col) const
+unsigned char Alpha::operator()(unsigned row, unsigned col) const
 {
-    return * (surface->get_data () + row * surface->get_width () + col);
+    return *(surface->get_data() + row * surface->get_width() + col);
 }
 
-unsigned char& Alpha::operator () (unsigned row, unsigned col)
+unsigned char &Alpha::operator()(unsigned row, unsigned col)
 {
-    return * (surface->get_data () + row * surface->get_width () + col);
+    return *(surface->get_data() + row * surface->get_width() + col);
 }
 
-unsigned char* Alpha::operator () (unsigned row) const
+unsigned char *Alpha::operator()(unsigned row) const
 {
-    return surface->get_data () + row * surface->get_width ();
+    return surface->get_data() + row * surface->get_width();
 }
 
-}
+} // namespace rtengine

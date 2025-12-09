@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,72 +20,93 @@
 #ifndef __REFRESHMAP__
 #define __REFRESHMAP__
 
-#include <unordered_map>
 #include "procevents.h"
+#include <unordered_map>
 
 namespace rtengine {
 
-// Use M_VOID if you wish to update the proc params without updating the preview at all !
-constexpr int M_VOID = (1<<17);
-// Use M_MINUPDATE if you wish to update the preview without modifying the image (think about it like a "refreshPreview")
-// Must NOT be used with other event (i.e. will be used for MINUPDATE only)
-constexpr int M_MINUPDATE = (1<<16);
+// Use M_VOID if you wish to update the proc params without updating the preview
+// at all !
+constexpr int M_VOID = (1 << 17);
+// Use M_MINUPDATE if you wish to update the preview without modifying the image
+// (think about it like a "refreshPreview") Must NOT be used with other event
+// (i.e. will be used for MINUPDATE only)
+constexpr int M_MINUPDATE = (1 << 16);
 // Force high quality
-constexpr int M_HIGHQUAL = (1<<15);
+constexpr int M_HIGHQUAL = (1 << 15);
 
 // Elementary functions that can be done to
 // the preview image when an event occurs
-constexpr int M_SPOT = (1<<19);
-constexpr int M_MONITOR = (1<<14);
-constexpr int M_WHITEBALANCE = (1<<13);
-constexpr int M_CROP = (1<<12);
-constexpr int M_PREPROC = (1<<11);
-constexpr int M_RAW = (1<<10);
-constexpr int M_INIT = (1<<9);
-constexpr int M_LINDENOISE = (1<<8);
-constexpr int M_HDR = (1<<7);
-constexpr int M_TRANSFORM = (1<<6);
-constexpr int M_BLURMAP = (1<<5);
-constexpr int M_AUTOEXP = (1<<4);
-constexpr int M_RGBCURVE = (1<<3);
-constexpr int M_LUMACURVE = (1<<2);
-constexpr int M_LUMINANCE = (1<<1);
-constexpr int M_COLOR = (1<<0);
+constexpr int M_SPOT = (1 << 19);
+constexpr int M_MONITOR = (1 << 14);
+constexpr int M_WHITEBALANCE = (1 << 13);
+constexpr int M_CROP = (1 << 12);
+constexpr int M_PREPROC = (1 << 11);
+constexpr int M_RAW = (1 << 10);
+constexpr int M_INIT = (1 << 9);
+constexpr int M_LINDENOISE = (1 << 8);
+constexpr int M_HDR = (1 << 7);
+constexpr int M_TRANSFORM = (1 << 6);
+constexpr int M_BLURMAP = (1 << 5);
+constexpr int M_AUTOEXP = (1 << 4);
+constexpr int M_RGBCURVE = (1 << 3);
+constexpr int M_LUMACURVE = (1 << 2);
+constexpr int M_LUMINANCE = (1 << 1);
+constexpr int M_COLOR = (1 << 0);
 
 // Bitfield of functions to do to the preview image when an event occurs
 // Use those or create new ones for your new events
-constexpr int FIRST = (M_PREPROC|M_RAW|M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR|M_MONITOR);  // without HIGHQUAL
-constexpr int ALL = (M_WHITEBALANCE|M_PREPROC|M_RAW|M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);  // without HIGHQUAL
-constexpr int DARKFRAME = (M_PREPROC|M_RAW|M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int FLATFIELD = (M_PREPROC|M_RAW|M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int DEMOSAIC = (M_RAW|M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int ALLNORAW = (M_INIT|M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int HDR = (M_SPOT|M_LINDENOISE|M_HDR|M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int SPOTADJUST = (M_SPOT|M_HDR|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int TRANSFORM = (M_TRANSFORM|M_BLURMAP|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int AUTOEXP = (M_SPOT|M_LINDENOISE|M_HDR|M_AUTOEXP|M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int RGBCURVE = (M_RGBCURVE|M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int LUMINANCECURVE = (M_LUMINANCE|M_COLOR);
-constexpr int SHARPENING = (M_LUMACURVE|M_LUMINANCE|M_COLOR);
-constexpr int IMPULSEDENOISE = (M_LUMINANCE|M_COLOR);
-constexpr int DEFRINGE = (M_LUMINANCE|M_COLOR);
-constexpr int DIRPYRDENOISE = (M_LUMINANCE|M_COLOR);
-constexpr int DIRPYREQUALIZER = (M_LUMINANCE|M_COLOR);
+constexpr int FIRST =
+    (M_PREPROC | M_RAW | M_INIT | M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM |
+     M_BLURMAP | M_AUTOEXP | M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR |
+     M_MONITOR); // without HIGHQUAL
+constexpr int ALL =
+    (M_WHITEBALANCE | M_PREPROC | M_RAW | M_INIT | M_SPOT | M_LINDENOISE |
+     M_HDR | M_TRANSFORM | M_BLURMAP | M_AUTOEXP | M_RGBCURVE | M_LUMACURVE |
+     M_LUMINANCE | M_COLOR); // without HIGHQUAL
+constexpr int DARKFRAME =
+    (M_PREPROC | M_RAW | M_INIT | M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM |
+     M_BLURMAP | M_AUTOEXP | M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int FLATFIELD =
+    (M_PREPROC | M_RAW | M_INIT | M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM |
+     M_BLURMAP | M_AUTOEXP | M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int DEMOSAIC =
+    (M_RAW | M_INIT | M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM | M_BLURMAP |
+     M_AUTOEXP | M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int ALLNORAW =
+    (M_INIT | M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM | M_BLURMAP |
+     M_AUTOEXP | M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int HDR =
+    (M_SPOT | M_LINDENOISE | M_HDR | M_TRANSFORM | M_BLURMAP | M_AUTOEXP |
+     M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int SPOTADJUST = (M_SPOT | M_HDR | M_BLURMAP | M_AUTOEXP |
+                            M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int TRANSFORM = (M_TRANSFORM | M_BLURMAP | M_AUTOEXP | M_RGBCURVE |
+                           M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int AUTOEXP = (M_SPOT | M_LINDENOISE | M_HDR | M_AUTOEXP |
+                         M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int RGBCURVE = (M_RGBCURVE | M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int LUMINANCECURVE = (M_LUMINANCE | M_COLOR);
+constexpr int SHARPENING = (M_LUMACURVE | M_LUMINANCE | M_COLOR);
+constexpr int IMPULSEDENOISE = (M_LUMINANCE | M_COLOR);
+constexpr int DEFRINGE = (M_LUMINANCE | M_COLOR);
+constexpr int DIRPYRDENOISE = (M_LUMINANCE | M_COLOR);
+constexpr int DIRPYREQUALIZER = (M_LUMINANCE | M_COLOR);
 constexpr int GAMMA = M_VOID;
 constexpr int CROP = M_CROP;
 constexpr int RESIZE = M_VOID;
 constexpr int EXIF = M_VOID;
 constexpr int IPTC = M_VOID;
 constexpr int MINUPDATE = M_MINUPDATE;
-constexpr int WHITEBALANCE = (M_WHITEBALANCE|ALLNORAW);
+constexpr int WHITEBALANCE = (M_WHITEBALANCE | ALLNORAW);
 constexpr int MONITORTRANSFORM = M_MONITOR;
 constexpr int OUTPUTPROFILE = M_MONITOR;
 
 constexpr int SCENE = RGBCURVE;
 constexpr int DETAIL = SHARPENING;
-constexpr int DISPLAY = (M_LUMINANCE|M_COLOR);
+constexpr int DISPLAY = (M_LUMINANCE | M_COLOR);
 
-constexpr int LINKEDMASK = M_LUMACURVE|M_LUMINANCE|M_COLOR;
+constexpr int LINKEDMASK = M_LUMACURVE | M_LUMINANCE | M_COLOR;
 constexpr int LINKEDMASK_FIRST = M_LUMACURVE;
 
 extern int refreshmap[];
@@ -97,7 +118,7 @@ public:
     void mapEvent(ProcEvent &event, int action);
     int getAction(const ProcEvent &event) const;
     void setAction(ProcEvent &event, int action);
-    
+
 private:
     RefreshMapper();
 

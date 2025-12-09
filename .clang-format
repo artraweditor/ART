@@ -1,0 +1,11 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+BreakBeforeBraces: WebKit
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+ColumnLimit: 80
+SpaceBeforeCtorInitializerColon: false
+AccessModifierOffset: -4
+SpaceBeforeParens: ControlStatementsExceptControlMacros
+SpaceBeforeInheritanceColon: false

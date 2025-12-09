@@ -24,11 +24,11 @@
 
 #include <cmath>
 
-#include "rtengine.h"
 #include "rawimagesource.h"
 #include "rt_math.h"
+#include "rtengine.h"
 
-#define TS 224      // Tile size of 224 instead of 512 speeds up processing
+#define TS 224 // Tile size of 224 instead of 512 speeds up processing
 
 #define CLASS
 
@@ -38,38 +38,47 @@ using namespace rtengine;
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertical, const CFALineDenoiseRowBlender &rowblender)
+void RawImageSource::CLASS
+cfa_linedn(float noise, bool horizontal, bool vertical,
+           const CFALineDenoiseRowBlender &rowblender)
 {
     // local variables
     int height = H, width = W;
 
     const float clip_pt = 0.8 * initialGain * 65535.0;
 
-    const float eps = 1e-5;       //tolerance to avoid dividing by zero
+    const float eps = 1e-5; // tolerance to avoid dividing by zero
 
-    const float gauss[5] = {0.20416368871516755, 0.18017382291138087, 0.1238315368057753, 0.0662822452863612, 0.02763055063889883};
-    const float rolloff[8] = {0, 0.135335, 0.249352, 0.411112, 0.606531, 0.800737, 0.945959, 1}; //gaussian with sigma=3
-    const float window[8] = {0, .25, .75, 1, 1, .75, .25, 0}; //sine squared
+    const float gauss[5] = {0.20416368871516755, 0.18017382291138087,
+                            0.1238315368057753, 0.0662822452863612,
+                            0.02763055063889883};
+    const float rolloff[8] = {0,        0.135335, 0.249352, 0.411112, 0.606531,
+                              0.800737, 0.945959, 1}; // gaussian with sigma=3
+    const float window[8] = {0, .25, .75, 1, 1, .75, .25, 0}; // sine squared
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if (plistener) {
-        plistener->setProgressStr ("Line Denoise...");
-        plistener->setProgress (0.0);
+        plistener->setProgressStr("Line Denoise...");
+        plistener->setProgress(0.0);
     }
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    float noisevar = SQR(3 * noise * 65535); // _noise_ (as a fraction of saturation) is input to the algorithm
+    float noisevar =
+        SQR(3 * noise * 65535); // _noise_ (as a fraction of saturation) is
+                                // input to the algorithm
     float noisevarm4 = 4.0f * noisevar;
     volatile double progress = 0.0;
-    float* RawDataTmp = (float*)malloc( width * height * sizeof(float));
+    float *RawDataTmp = (float *)malloc(width * height * sizeof(float));
 #ifdef _OPENMP
-    #pragma omp parallel
+#pragma omp parallel
 #endif
     {
 
-        // allocate memory and assure the arrays don't have same 64 byte boundary to avoid L1 conflict misses
-        float *cfain = (float*)malloc(3 * TS * TS * sizeof(float) + 2 * 16 * sizeof(float));
+        // allocate memory and assure the arrays don't have same 64 byte
+        // boundary to avoid L1 conflict misses
+        float *cfain = (float *)malloc(3 * TS * TS * sizeof(float) +
+                                       2 * 16 * sizeof(float));
         float *cfadiff = (cfain + (1 * TS * TS) + 1 * 16);
         float *cfadn = (cfain + (2 * TS * TS) + 2 * 16);
         float cfablur[TS];
@@ -78,42 +87,45 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
         float dctblock[4][8][8];
 
 #ifdef _OPENMP
-        #pragma omp for
+#pragma omp for
 #endif
 
-        for(int i = 0; i < height; i++)
-            for(int j = 0; j < width; j++) {
+        for (int i = 0; i < height; i++)
+            for (int j = 0; j < width; j++) {
                 RawDataTmp[i * width + j] = rawData[i][j];
             }
 
         // Main algorithm: Tile loop
 #ifdef _OPENMP
-        #pragma omp for schedule(dynamic) collapse(2)
+#pragma omp for schedule(dynamic) collapse(2)
 #endif
 
         for (int top = 0; top < height - 16; top += TS - 32)
             for (int left = 0; left < width - 16; left += TS - 32) {
 
                 int bottom = min(top + TS, height);
-                int right  = min(left + TS, width);
+                int right = min(left + TS, width);
                 int numrows = bottom - top;
                 int numcols = right - left;
                 int indx1;
 
-                // load CFA data; data should be in linear gamma space, before white balance multipliers are applied
+                // load CFA data; data should be in linear gamma space, before
+                // white balance multipliers are applied
                 for (int rr = top; rr < top + numrows; rr++)
-                    for (int cc = left, indx = (rr - top) * TS; cc < left + numcols; cc++, indx++) {
+                    for (int cc = left, indx = (rr - top) * TS;
+                         cc < left + numcols; cc++, indx++) {
                         cfain[indx] = rawData[rr][cc];
                     }
 
-                //pad the block to a multiple of 16 on both sides
+                // pad the block to a multiple of 16 on both sides
 
                 if (numcols < TS) {
                     indx1 = numcols % 16;
 
                     for (int i = 0; i < (16 - indx1); i++)
                         for (int rr = 0; rr < numrows; rr++) {
-                            cfain[(rr)*TS + numcols + i] = cfain[(rr) * TS + numcols - i - 1];
+                            cfain[(rr)*TS + numcols + i] =
+                                cfain[(rr)*TS + numcols - i - 1];
                         }
 
                     numcols += 16 - indx1;
@@ -124,106 +136,176 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
 
                     for (int i = 0; i < (16 - indx1); i++)
                         for (int cc = 0; cc < numcols; cc++) {
-                            cfain[(numrows + i)*TS + cc] = cfain[(numrows - i - 1) * TS + cc];
+                            cfain[(numrows + i) * TS + cc] =
+                                cfain[(numrows - i - 1) * TS + cc];
                         }
 
                     numrows += 16 - indx1;
                 }
 
-                //The cleaning algorithm starts here
+                // The cleaning algorithm starts here
 
-                //gaussian blur of CFA data
+                // gaussian blur of CFA data
                 for (int rr = 8; rr < numrows - 8; rr++) {
-                    for (int indx = rr * TS, indxb = 0; indx < rr * TS + numcols; indx++, indxb++) {
+                    for (int indx = rr * TS, indxb = 0;
+                         indx < rr * TS + numcols; indx++, indxb++) {
                         cfablur[indxb] = gauss[0] * cfain[indx];
 
                         for (int i = 1; i < 5; i++) {
-                            cfablur[indxb] += gauss[i] * (cfain[indx - (2 * i) * TS] + cfain[indx + (2 * i) * TS]);
+                            cfablur[indxb] +=
+                                gauss[i] * (cfain[indx - (2 * i) * TS] +
+                                            cfain[indx + (2 * i) * TS]);
                         }
                     }
 
-                    for (int indx = rr * TS + 8, indxb = 8; indx < rr * TS + numcols - 8; indx++, indxb++) {
+                    for (int indx = rr * TS + 8, indxb = 8;
+                         indx < rr * TS + numcols - 8; indx++, indxb++) {
                         cfadn[indx] = gauss[0] * cfablur[indxb];
 
                         for (int i = 1; i < 5; i++) {
-                            cfadn[indx] += gauss[i] * (cfablur[indxb - 2 * i] + cfablur[indxb + 2 * i]);
+                            cfadn[indx] += gauss[i] * (cfablur[indxb - 2 * i] +
+                                                       cfablur[indxb + 2 * i]);
                         }
 
-                        cfadiff[indx] = cfain[indx] - cfadn[indx]; // hipass cfa data
+                        cfadiff[indx] =
+                            cfain[indx] - cfadn[indx]; // hipass cfa data
                     }
                 }
 
-                //begin block DCT
-                for (int rr = 8; rr < numrows - 22; rr += 8) // (rr,cc) shift by 8 to overlap blocks
+                // begin block DCT
+                for (int rr = 8; rr < numrows - 22;
+                     rr += 8) // (rr,cc) shift by 8 to overlap blocks
                     for (int cc = 8; cc < numcols - 22; cc += 8) {
-                        for (int ey = 0; ey < 2; ey++) // (ex,ey) specify RGGB subarray
+                        for (int ey = 0; ey < 2;
+                             ey++) // (ex,ey) specify RGGB subarray
                             for (int ex = 0; ex < 2; ex++) {
-                                //grab an 8x8 block of a given RGGB channel
+                                // grab an 8x8 block of a given RGGB channel
                                 for (int i = 0; i < 8; i++)
                                     for (int j = 0; j < 8; j++) {
-                                        dctblock[2 * ey + ex][i][j] = cfadiff[(rr + 2 * i + ey) * TS + cc + 2 * j + ex];
+                                        dctblock[2 * ey + ex][i][j] =
+                                            cfadiff[(rr + 2 * i + ey) * TS +
+                                                    cc + 2 * j + ex];
                                     }
 
-                                ddct8x8s(-1, dctblock[2 * ey + ex]); //forward DCT
+                                ddct8x8s(-1,
+                                         dctblock[2 * ey + ex]); // forward DCT
                             }
 
-                        for (int ey = 0; ey < 2; ey++) // (ex,ey) specify RGGB subarray
+                        for (int ey = 0; ey < 2;
+                             ey++) // (ex,ey) specify RGGB subarray
                             for (int ex = 0; ex < 2; ex++) {
-                                linehvar[2 * ey + ex] = linevvar[2 * ey + ex] = 0;
+                                linehvar[2 * ey + ex] = linevvar[2 * ey + ex] =
+                                    0;
 
                                 for (int i = 4; i < 8; i++) {
-                                    linehvar[2 * ey + ex] += SQR(dctblock[2 * ey + ex][0][i]);
-                                    linevvar[2 * ey + ex] += SQR(dctblock[2 * ey + ex][i][0]);
+                                    linehvar[2 * ey + ex] +=
+                                        SQR(dctblock[2 * ey + ex][0][i]);
+                                    linevvar[2 * ey + ex] +=
+                                        SQR(dctblock[2 * ey + ex][i][0]);
                                 }
 
-                                //Wiener filter for line denoising; roll off low frequencies
+                                // Wiener filter for line denoising; roll off
+                                // low frequencies
                                 for (int i = 1; i < 8; i++) {
-                                    coeffsq = SQR(dctblock[2 * ey + ex][i][0]); //vertical
-                                    noisefactor[2 * ey + ex][i][0] = coeffsq / (coeffsq + rolloff[i] * noisevar + eps);
-                                    coeffsq = SQR(dctblock[2 * ey + ex][0][i]); //horizontal
-                                    noisefactor[2 * ey + ex][i][1] = coeffsq / (coeffsq + rolloff[i] * noisevar + eps);
-                                    // noisefactor labels are [RGGB subarray][row/col position][0=vert,1=hor]
+                                    coeffsq = SQR(dctblock[2 * ey + ex][i]
+                                                          [0]); // vertical
+                                    noisefactor[2 * ey + ex][i][0] =
+                                        coeffsq /
+                                        (coeffsq + rolloff[i] * noisevar + eps);
+                                    coeffsq = SQR(dctblock[2 * ey + ex][0]
+                                                          [i]); // horizontal
+                                    noisefactor[2 * ey + ex][i][1] =
+                                        coeffsq /
+                                        (coeffsq + rolloff[i] * noisevar + eps);
+                                    // noisefactor labels are [RGGB
+                                    // subarray][row/col position][0=vert,1=hor]
                                 }
                             }
 
-                        //horizontal lines
-                        if (horizontal && noisevarm4 > (linehvar[0] + linehvar[1])) { //horizontal lines
+                        // horizontal lines
+                        if (horizontal &&
+                            noisevarm4 > (linehvar[0] +
+                                          linehvar[1])) { // horizontal lines
                             for (int i = 1; i < 8; i++) {
-                                dctblock[0][0][i] *= 0.5f * (noisefactor[0][i][1] + noisefactor[1][i][1]); //or should we use MIN???
-                                dctblock[1][0][i] *= 0.5f * (noisefactor[0][i][1] + noisefactor[1][i][1]); //or should we use MIN???
+                                dctblock[0][0][i] *=
+                                    0.5f *
+                                    (noisefactor[0][i][1] +
+                                     noisefactor[1][i]
+                                                [1]); // or should we use MIN???
+                                dctblock[1][0][i] *=
+                                    0.5f *
+                                    (noisefactor[0][i][1] +
+                                     noisefactor[1][i]
+                                                [1]); // or should we use MIN???
                             }
                         }
 
-                        if (horizontal && noisevarm4 > (linehvar[2] + linehvar[3])) { //horizontal lines
+                        if (horizontal &&
+                            noisevarm4 > (linehvar[2] +
+                                          linehvar[3])) { // horizontal lines
                             for (int i = 1; i < 8; i++) {
-                                dctblock[2][0][i] *= 0.5f * (noisefactor[2][i][1] + noisefactor[3][i][1]); //or should we use MIN???
-                                dctblock[3][0][i] *= 0.5f * (noisefactor[2][i][1] + noisefactor[3][i][1]); //or should we use MIN???
+                                dctblock[2][0][i] *=
+                                    0.5f *
+                                    (noisefactor[2][i][1] +
+                                     noisefactor[3][i]
+                                                [1]); // or should we use MIN???
+                                dctblock[3][0][i] *=
+                                    0.5f *
+                                    (noisefactor[2][i][1] +
+                                     noisefactor[3][i]
+                                                [1]); // or should we use MIN???
                             }
                         }
 
-                        //vertical lines
-                        if (vertical && noisevarm4 > (linevvar[0] + linevvar[2])) { //vertical lines
+                        // vertical lines
+                        if (vertical &&
+                            noisevarm4 >
+                                (linevvar[0] + linevvar[2])) { // vertical lines
                             for (int i = 1; i < 8; i++) {
-                                dctblock[0][i][0] *= 0.5f * (noisefactor[0][i][0] + noisefactor[2][i][0]); //or should we use MIN???
-                                dctblock[2][i][0] *= 0.5f * (noisefactor[0][i][0] + noisefactor[2][i][0]); //or should we use MIN???
+                                dctblock[0][i][0] *=
+                                    0.5f *
+                                    (noisefactor[0][i][0] +
+                                     noisefactor[2][i]
+                                                [0]); // or should we use MIN???
+                                dctblock[2][i][0] *=
+                                    0.5f *
+                                    (noisefactor[0][i][0] +
+                                     noisefactor[2][i]
+                                                [0]); // or should we use MIN???
                             }
                         }
 
-                        if (vertical && noisevarm4 > (linevvar[1] + linevvar[3])) { //vertical lines
+                        if (vertical &&
+                            noisevarm4 >
+                                (linevvar[1] + linevvar[3])) { // vertical lines
                             for (int i = 1; i < 8; i++) {
-                                dctblock[1][i][0] *= 0.5f * (noisefactor[1][i][0] + noisefactor[3][i][0]); //or should we use MIN???
-                                dctblock[3][i][0] *= 0.5f * (noisefactor[1][i][0] + noisefactor[3][i][0]); //or should we use MIN???
+                                dctblock[1][i][0] *=
+                                    0.5f *
+                                    (noisefactor[1][i][0] +
+                                     noisefactor[3][i]
+                                                [0]); // or should we use MIN???
+                                dctblock[3][i][0] *=
+                                    0.5f *
+                                    (noisefactor[1][i][0] +
+                                     noisefactor[3][i]
+                                                [0]); // or should we use MIN???
                             }
                         }
 
-                        for (int ey = 0; ey < 2; ey++) // (ex,ey) specify RGGB subarray
+                        for (int ey = 0; ey < 2;
+                             ey++) // (ex,ey) specify RGGB subarray
                             for (int ex = 0; ex < 2; ex++) {
-                                ddct8x8s(1, dctblock[2 * ey + ex]); //inverse DCT
+                                ddct8x8s(1,
+                                         dctblock[2 * ey + ex]); // inverse DCT
 
-                                //multiply by window fn and add to output (cfadn)
+                                // multiply by window fn and add to output
+                                // (cfadn)
                                 for (int i = 0; i < 8; i++)
                                     for (int j = 0; j < 8; j++) {
-                                        cfadn[(rr + 2 * i + ey)*TS + cc + 2 * j + ex] += window[i] * window[j] * dctblock[2 * ey + ex][i][j];
+                                        cfadn[(rr + 2 * i + ey) * TS + cc +
+                                              2 * j + ex] +=
+                                            window[i] * window[j] *
+                                            dctblock[2 * ey + ex][i][j];
                                     }
                             }
                     }
@@ -233,15 +315,18 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
                 for (int rr = 16; rr < numrows - 16; rr++) {
                     int row = rr + top;
 
-                    for (int col = 16 + left, indx = rr * TS + 16; indx < rr * TS + numcols - 16; indx++, col++) {
-                        if (rawData[row][col] < clip_pt && cfadn[indx] < clip_pt) {
+                    for (int col = 16 + left, indx = rr * TS + 16;
+                         indx < rr * TS + numcols - 16; indx++, col++) {
+                        if (rawData[row][col] < clip_pt &&
+                            cfadn[indx] < clip_pt) {
                             RawDataTmp[row * width + col] = CLIP(cfadn[indx]);
                         }
                     }
                 }
 
-                if(plistener) {
-                    progress += (double)((TS - 32) * (TS - 32)) / (height * width);
+                if (plistener) {
+                    progress +=
+                        (double)((TS - 32) * (TS - 32)) / (height * width);
 
                     if (progress > 1.0) {
                         progress = 1.0;
@@ -249,7 +334,6 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
 
                     plistener->setProgress(progress);
                 }
-
             }
 
         // clean up
@@ -257,15 +341,16 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
 
 // copy temporary buffer back to image matrix
 #ifdef _OPENMP
-        #pragma omp for schedule(dynamic,16)
+#pragma omp for schedule(dynamic, 16)
 #endif
 
-        for(int i = 0; i < height; i++) {
+        for (int i = 0; i < height; i++) {
             float f = rowblender(i);
             if (f > 0.f) {
                 float f2 = 1.f - f;
-                for(int j = 0; j < width; j++) {
-                    rawData[i][j] = f * RawDataTmp[i * width + j] + f2 * rawData[i][j];
+                for (int j = 0; j < width; j++) {
+                    rawData[i][j] =
+                        f * RawDataTmp[i * width + j] + f2 * rawData[i][j];
                 }
             }
         }
@@ -276,7 +361,6 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
 }
 #undef TS
 
-
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /*
  Discrete Cosine Transform Code
@@ -285,7 +369,6 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
  You may use, copy, modify this code for any purpose and
  without fee. You may distribute this ORIGINAL package.
  */
-
 
 /*
  Short Discrete Cosine Transform
@@ -296,7 +379,6 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
  function prototypes
  void ddct8x8s(int isgn, float **a);
  */
-
 
 /*
  -------- 8x8 DCT (Discrete Cosine Transform) / Inverse of DCT --------
@@ -324,20 +406,18 @@ void RawImageSource::CLASS cfa_linedn(float noise, bool horizontal, bool vertica
  a[k1][k2] = C[k1][k2], 0<=k1<8, 0<=k2<8
  */
 
-
 /* Cn_kR = sqrt(2.0/n) * cos(pi/2*k/n) */
 /* Cn_kI = sqrt(2.0/n) * sin(pi/2*k/n) */
 /* Wn_kR = cos(pi/2*k/n) */
 /* Wn_kI = sin(pi/2*k/n) */
-#define C8_1R   0.49039264020161522456f
-#define C8_1I   0.09754516100806413392f
-#define C8_2R   0.46193976625564337806f
-#define C8_2I   0.19134171618254488586f
-#define C8_3R   0.41573480615127261854f
-#define C8_3I   0.27778511650980111237f
-#define C8_4R   0.35355339059327376220f
-#define W8_4R   0.70710678118654752440f
-
+#define C8_1R 0.49039264020161522456f
+#define C8_1I 0.09754516100806413392f
+#define C8_2R 0.46193976625564337806f
+#define C8_2I 0.19134171618254488586f
+#define C8_3R 0.41573480615127261854f
+#define C8_3I 0.27778511650980111237f
+#define C8_4R 0.35355339059327376220f
+#define W8_4R 0.70710678118654752440f
 
 void RawImageSource::ddct8x8s(int isgn, float a[8][8])
 {
@@ -463,4 +543,3 @@ void RawImageSource::ddct8x8s(int isgn, float a[8][8])
         }
     }
 }
-

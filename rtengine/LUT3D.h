@@ -19,10 +19,9 @@
  */
 #pragma once
 
-#include "rt_math.h"
 #include "alignedbuffer.h"
+#include "rt_math.h"
 #include <vector>
-
 
 namespace rtengine {
 
@@ -33,11 +32,11 @@ public:
         virtual ~initializer();
         virtual void operator()(float &r, float &g, float &b) = 0;
     };
-    
+
     LUT3D();
     ~LUT3D();
 
-    void init(int dim, initializer &f, bool input_is_01=true);
+    void init(int dim, initializer &f, bool input_is_01 = true);
     bool operator()(float &r, float &g, float &b);
 
     int dimension() const { return dim_; }

@@ -16,18 +16,17 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "controllines.h"
 #include "perspective.h"
-#include "rtimage.h"
+#include "controllines.h"
 #include "eventmapper.h"
+#include "rtimage.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-
 namespace {
 
-void controlLinesToValues(const std::vector<rtengine::ControlLine>& lines,
+void controlLinesToValues(const std::vector<rtengine::ControlLine> &lines,
                           std::vector<int> &values)
 {
     values.clear();
@@ -35,12 +34,12 @@ void controlLinesToValues(const std::vector<rtengine::ControlLine>& lines,
     for (auto &&line : lines) {
         int type = -1;
         switch (line.type) {
-            case rtengine::ControlLine::VERTICAL:
-                type = 0;
-                break;
-            case rtengine::ControlLine::HORIZONTAL:
-                type = 1;
-                break;
+        case rtengine::ControlLine::VERTICAL:
+            type = 0;
+            break;
+        case rtengine::ControlLine::HORIZONTAL:
+            type = 1;
+            break;
         }
         values.push_back(type);
 
@@ -51,7 +50,8 @@ void controlLinesToValues(const std::vector<rtengine::ControlLine>& lines,
     }
 }
 
-std::vector<rtengine::ControlLine> valuesToControlLines(const std::vector<int> &values)
+std::vector<rtengine::ControlLine>
+valuesToControlLines(const std::vector<int> &values)
 {
     auto line_count = values.size() / 5;
     std::vector<rtengine::ControlLine> lines(line_count);
@@ -59,14 +59,14 @@ std::vector<rtengine::ControlLine> valuesToControlLines(const std::vector<int> &
     auto values_iter = values.begin();
     for (auto &&line : lines) {
         switch (*(values_iter++)) {
-            case 0:
-                line.type = rtengine::ControlLine::VERTICAL;
-                break;
-            case 1:
-                line.type = rtengine::ControlLine::HORIZONTAL;
-                break;
+        case 0:
+            line.type = rtengine::ControlLine::VERTICAL;
+            break;
+        case 1:
+            line.type = rtengine::ControlLine::HORIZONTAL;
+            break;
         }
-        
+
         line.x1 = *(values_iter++);
         line.y1 = *(values_iter++);
         line.x2 = *(values_iter++);
@@ -75,7 +75,6 @@ std::vector<rtengine::ControlLine> valuesToControlLines(const std::vector<int> &
 
     return lines;
 }
-
 
 class LinesCallbacks: public ControlLineManager::Callbacks {
 protected:
@@ -90,7 +89,7 @@ public:
             tool->lineChanged();
         }
     }
-    
+
     void switchOffEditMode() override
     {
         if (tool) {
@@ -101,43 +100,61 @@ public:
 
 } // namespace
 
-
-PerspCorrection::PerspCorrection() : FoldableToolPanel(this, "perspective", M("TP_PERSPECTIVE_LABEL"), false, true, true)
+PerspCorrection::PerspCorrection()
+    : FoldableToolPanel(this, "perspective", M("TP_PERSPECTIVE_LABEL"), false,
+                        true, true)
 {
     EvToolEnabled.set_action(rtengine::TRANSFORM);
     EvToolReset.set_action(rtengine::TRANSFORM);
-    
+
     auto m = ProcEventMapper::getInstance();
-    EvPerspCorrLens = m->newEvent(rtengine::TRANSFORM, "HISTORY_MSG_PERSPECTIVE_LENS");
-    EvPerspControlLines = m->newEvent(rtengine::M_VOID, "HISTORY_MSG_PERSPECTIVE_CTRL_LINE");
+    EvPerspCorrLens =
+        m->newEvent(rtengine::TRANSFORM, "HISTORY_MSG_PERSPECTIVE_LENS");
+    EvPerspControlLines =
+        m->newEvent(rtengine::M_VOID, "HISTORY_MSG_PERSPECTIVE_CTRL_LINE");
     EvPerspRender = m->newAnonEvent(rtengine::TRANSFORM);
-    
+
     lgl = nullptr;
     panel_listener = nullptr;
     metadata = nullptr;
 
-    Gtk::Image *ipersHL = Gtk::manage(new RTImage("perspective-horizontal-left-small.svg"));
-    Gtk::Image *ipersHR = Gtk::manage(new RTImage("perspective-horizontal-right-small.svg"));
-    Gtk::Image *ipersVL = Gtk::manage(new RTImage("perspective-vertical-bottom-small.svg"));
-    Gtk::Image *ipersVR = Gtk::manage(new RTImage("perspective-vertical-top-small.svg"));
-    Gtk::Image *ipersSL = Gtk::manage(new RTImage("perspective-shear-left-small.svg"));
-    Gtk::Image *ipersSR = Gtk::manage(new RTImage("perspective-shear-right-small.svg"));
+    Gtk::Image *ipersHL =
+        Gtk::manage(new RTImage("perspective-horizontal-left-small.svg"));
+    Gtk::Image *ipersHR =
+        Gtk::manage(new RTImage("perspective-horizontal-right-small.svg"));
+    Gtk::Image *ipersVL =
+        Gtk::manage(new RTImage("perspective-vertical-bottom-small.svg"));
+    Gtk::Image *ipersVR =
+        Gtk::manage(new RTImage("perspective-vertical-top-small.svg"));
+    Gtk::Image *ipersSL =
+        Gtk::manage(new RTImage("perspective-shear-left-small.svg"));
+    Gtk::Image *ipersSR =
+        Gtk::manage(new RTImage("perspective-shear-right-small.svg"));
     Gtk::Image *irotateL = Gtk::manage(new RTImage("rotate-right-small.svg"));
     Gtk::Image *irotateR = Gtk::manage(new RTImage("rotate-left-small.svg"));
-    Gtk::Image *iaspectL = Gtk::manage(new RTImage("perspective-aspect-vertical-small.svg"));
-    Gtk::Image *iaspectR = Gtk::manage(new RTImage("perspective-aspect-horizontal-small.svg"));
+    Gtk::Image *iaspectL =
+        Gtk::manage(new RTImage("perspective-aspect-vertical-small.svg"));
+    Gtk::Image *iaspectR =
+        Gtk::manage(new RTImage("perspective-aspect-horizontal-small.svg"));
 
-    horiz = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_HORIZONTAL"), -200, 200, 0.1, 0, ipersHL, ipersHR));
+    horiz = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_HORIZONTAL"), -200, 200,
+                                     0.1, 0, ipersHL, ipersHR));
     horiz->setAdjusterListener(this);
 
-    vert = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_VERTICAL"), -200, 200, 0.1, 0, ipersVL, ipersVR));
+    vert = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_VERTICAL"), -200, 200,
+                                    0.1, 0, ipersVL, ipersVR));
     vert->setAdjusterListener(this);
 
-    angle = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_ANGLE"), -20, 20, 0.01, 0, irotateL, irotateR));
-    shear = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_SHEAR"), -50, 50, 0.1, 0, ipersSL, ipersSR));
-    flength = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_FLENGTH"), 1, 1200, 0.1, 28));
-    cropfactor = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_CROPFACTOR"), 0.1, 10, 0.01, 1));
-    aspect = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_ASPECT"), 0.5, 2, 0.001, 1, iaspectL, iaspectR));
+    angle = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_ANGLE"), -20, 20, 0.01,
+                                     0, irotateL, irotateR));
+    shear = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_SHEAR"), -50, 50, 0.1, 0,
+                                     ipersSL, ipersSR));
+    flength = Gtk::manage(
+        new Adjuster(M("TP_PERSPECTIVE_FLENGTH"), 1, 1200, 0.1, 28));
+    cropfactor = Gtk::manage(
+        new Adjuster(M("TP_PERSPECTIVE_CROPFACTOR"), 0.1, 10, 0.01, 1));
+    aspect = Gtk::manage(new Adjuster(M("TP_PERSPECTIVE_ASPECT"), 0.5, 2, 0.001,
+                                      1, iaspectL, iaspectR));
     angle->setAdjusterListener(this);
     shear->setAdjusterListener(this);
     flength->setAdjusterListener(this);
@@ -162,30 +179,35 @@ PerspCorrection::PerspCorrection() : FoldableToolPanel(this, "perspective", M("T
     Gtk::Image *ipers_draw = Gtk::manage(new RTImage("edit.svg"));
     Gtk::Image *ipers_trash = Gtk::manage(new RTImage("trash-empty.svg"));
     Gtk::Image *ipers_apply = Gtk::manage(new RTImage("tick.svg"));
-    
+
     lines_button_apply = Gtk::manage(new Gtk::Button());
     lines_button_apply->set_image(*ipers_apply);
     lines_button_apply->set_tooltip_text(M("GENERAL_APPLY"));
     lines_button_apply->set_sensitive(false);
-    lines_button_apply->signal_pressed().connect(sigc::mem_fun(*this, &PerspCorrection::linesApplyButtonPressed));
+    lines_button_apply->signal_pressed().connect(
+        sigc::mem_fun(*this, &PerspCorrection::linesApplyButtonPressed));
 
-    lines_button_edit = Gtk::manage (new Gtk::ToggleButton());
+    lines_button_edit = Gtk::manage(new Gtk::ToggleButton());
     lines_button_edit->set_image(*ipers_draw);
     lines_button_edit->set_tooltip_text(M("GENERAL_EDIT"));
-    lines_button_edit->signal_toggled().connect(sigc::mem_fun(*this, &PerspCorrection::linesEditButtonPressed));
+    lines_button_edit->signal_toggled().connect(
+        sigc::mem_fun(*this, &PerspCorrection::linesEditButtonPressed));
 
-    lines_button_erase = Gtk::manage (new Gtk::Button());
+    lines_button_erase = Gtk::manage(new Gtk::Button());
     lines_button_erase->set_image(*ipers_trash);
     lines_button_erase->set_tooltip_text(M("GENERAL_DELETE_ALL"));
     lines_button_erase->set_sensitive(false);
-    lines_button_erase->signal_pressed().connect(sigc::mem_fun(*this, &PerspCorrection::linesEraseButtonPressed));
+    lines_button_erase->signal_pressed().connect(
+        sigc::mem_fun(*this, &PerspCorrection::linesEraseButtonPressed));
 
     lines.reset(new ControlLineManager());
     lines->callbacks = std::make_shared<LinesCallbacks>(this);
 
     Gtk::HBox *control_lines_box = Gtk::manage(new Gtk::HBox());
-    Gtk::Label *control_lines_label = Gtk::manage(new Gtk::Label(M("TP_PERSPECTIVE_CONTROL_LINES") + ": "));
-    control_lines_label->set_tooltip_markup(M("TP_PERSPECTIVE_CONTROL_LINES_TOOLTIP") );
+    Gtk::Label *control_lines_label =
+        Gtk::manage(new Gtk::Label(M("TP_PERSPECTIVE_CONTROL_LINES") + ": "));
+    control_lines_label->set_tooltip_markup(
+        M("TP_PERSPECTIVE_CONTROL_LINES_TOOLTIP"));
     control_lines_box->pack_start(*control_lines_label, Gtk::PACK_SHRINK);
     control_lines_box->pack_start(*lines_button_edit);
     control_lines_box->pack_start(*lines_button_apply);
@@ -193,7 +215,8 @@ PerspCorrection::PerspCorrection() : FoldableToolPanel(this, "perspective", M("T
     // End control lines interface.
 
     auto_horiz = Gtk::manage(new Gtk::Button());
-    auto_horiz->add(*Gtk::manage(new RTImage("perspective-horizontal-left.svg")));
+    auto_horiz->add(
+        *Gtk::manage(new RTImage("perspective-horizontal-left.svg")));
     auto_horiz->get_style_context()->add_class("independent");
     auto_horiz->set_tooltip_markup(M("TP_PERSPECTIVE_AUTO_HORIZONTAL_TOOLTIP"));
 
@@ -203,12 +226,15 @@ PerspCorrection::PerspCorrection() : FoldableToolPanel(this, "perspective", M("T
     auto_vert->set_tooltip_markup(M("TP_PERSPECTIVE_AUTO_VERTICAL_TOOLTIP"));
 
     auto_both = Gtk::manage(new Gtk::Button());
-    auto_both->add(*Gtk::manage(new RTImage("perspective-horizontal-vertical.svg")));
+    auto_both->add(
+        *Gtk::manage(new RTImage("perspective-horizontal-vertical.svg")));
     auto_both->get_style_context()->add_class("independent");
     auto_both->set_tooltip_markup(M("TP_PERSPECTIVE_AUTO_BOTH_TOOLTIP"));
 
     Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
-    hb->pack_start(*Gtk::manage(new Gtk::Label(M("TP_PERSPECTIVE_AUTO") + ": ")), Gtk::PACK_SHRINK, 4);
+    hb->pack_start(
+        *Gtk::manage(new Gtk::Label(M("TP_PERSPECTIVE_AUTO") + ": ")),
+        Gtk::PACK_SHRINK, 4);
     hb->pack_start(*auto_horiz, Gtk::PACK_EXPAND_WIDGET, 2);
     hb->pack_start(*auto_vert, Gtk::PACK_EXPAND_WIDGET, 2);
     hb->pack_start(*auto_both, Gtk::PACK_EXPAND_WIDGET, 2);
@@ -216,25 +242,28 @@ PerspCorrection::PerspCorrection() : FoldableToolPanel(this, "perspective", M("T
     auto_vert->show();
     auto_both->show();
 
-    auto_horiz->signal_pressed().connect(sigc::bind(sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_horiz));
-    auto_vert->signal_pressed().connect(sigc::bind(sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_vert));
-    auto_both->signal_pressed().connect(sigc::bind(sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_both));
+    auto_horiz->signal_pressed().connect(sigc::bind(
+        sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_horiz));
+    auto_vert->signal_pressed().connect(sigc::bind(
+        sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_vert));
+    auto_both->signal_pressed().connect(sigc::bind(
+        sigc::mem_fun(*this, &PerspCorrection::autoPressed), auto_both));
 
-    pack_start(*Gtk::manage (new  Gtk::HSeparator()));
+    pack_start(*Gtk::manage(new Gtk::HSeparator()));
     pack_start(*control_lines_box);
-    pack_start(*Gtk::manage (new  Gtk::HSeparator()));
+    pack_start(*Gtk::manage(new Gtk::HSeparator()));
     pack_start(*hb, Gtk::PACK_EXPAND_WIDGET, 4);
     hb->show();
-    
+
     show_all();
 }
 
-void PerspCorrection::read(const ProcParams* pp)
+void PerspCorrection::read(const ProcParams *pp)
 {
-    disableListener ();
+    disableListener();
 
-    horiz->setValue (pp->perspective.horizontal);
-    vert->setValue (pp->perspective.vertical);
+    horiz->setValue(pp->perspective.horizontal);
+    vert->setValue(pp->perspective.vertical);
     angle->setValue(pp->perspective.angle);
     shear->setValue(pp->perspective.shear);
     aspect->setValue(pp->perspective.aspect);
@@ -250,14 +279,14 @@ void PerspCorrection::read(const ProcParams* pp)
     lines->setLines(valuesToControlLines(pp->perspective.control_lines));
     setEnabled(pp->perspective.enabled);
 
-    enableListener ();
+    enableListener();
 }
 
-void PerspCorrection::write(ProcParams* pp)
+void PerspCorrection::write(ProcParams *pp)
 {
     pp->perspective.enabled = getEnabled();
-    pp->perspective.horizontal  = horiz->getValue ();
-    pp->perspective.vertical = vert->getValue ();
+    pp->perspective.horizontal = horiz->getValue();
+    pp->perspective.vertical = vert->getValue();
     pp->perspective.angle = angle->getValue();
     pp->perspective.shear = shear->getValue();
     pp->perspective.flength = flength->getValue();
@@ -268,10 +297,10 @@ void PerspCorrection::write(ProcParams* pp)
     controlLinesToValues(control_lines, pp->perspective.control_lines);
 }
 
-void PerspCorrection::setDefaults(const ProcParams* defParams)
+void PerspCorrection::setDefaults(const ProcParams *defParams)
 {
-    horiz->setDefault (defParams->perspective.horizontal);
-    vert->setDefault (defParams->perspective.vertical);
+    horiz->setDefault(defParams->perspective.horizontal);
+    vert->setDefault(defParams->perspective.vertical);
     angle->setDefault(defParams->perspective.angle);
     shear->setDefault(defParams->perspective.shear);
     flength->setDefault(defParams->perspective.flength);
@@ -281,23 +310,33 @@ void PerspCorrection::setDefaults(const ProcParams* defParams)
     initial_params = defParams->perspective;
 }
 
-void PerspCorrection::adjusterChanged(Adjuster* a, double newval)
+void PerspCorrection::adjusterChanged(Adjuster *a, double newval)
 {
     if (listener && getEnabled()) {
         if (a == flength || a == cropfactor || a == aspect) {
-            listener->panelChanged(EvPerspCorrLens, Glib::ustring::compose("%1=%2  %3=%4\n%5=%6", M("TP_PERSPECTIVE_FLENGTH"), flength->getValue(), M("TP_PERSPECTIVE_CROPFACTOR"), cropfactor->getValue(), M("TP_PERSPECTIVE_ASPECT"), aspect->getValue()));
+            listener->panelChanged(
+                EvPerspCorrLens,
+                Glib::ustring::compose(
+                    "%1=%2  %3=%4\n%5=%6", M("TP_PERSPECTIVE_FLENGTH"),
+                    flength->getValue(), M("TP_PERSPECTIVE_CROPFACTOR"),
+                    cropfactor->getValue(), M("TP_PERSPECTIVE_ASPECT"),
+                    aspect->getValue()));
         } else {
-            listener->panelChanged(EvPerspCorr, Glib::ustring::compose ("%1=%2  %3=%4\n%5=%6  %7=%8", M("TP_PERSPECTIVE_HORIZONTAL"), horiz->getValue(), M("TP_PERSPECTIVE_VERTICAL"), vert->getValue(), M("TP_PERSPECTIVE_ANGLE"), angle->getValue(), M("TP_PERSPECTIVE_SHEAR"), shear->getValue()));
+            listener->panelChanged(
+                EvPerspCorr,
+                Glib::ustring::compose(
+                    "%1=%2  %3=%4\n%5=%6  %7=%8",
+                    M("TP_PERSPECTIVE_HORIZONTAL"), horiz->getValue(),
+                    M("TP_PERSPECTIVE_VERTICAL"), vert->getValue(),
+                    M("TP_PERSPECTIVE_ANGLE"), angle->getValue(),
+                    M("TP_PERSPECTIVE_SHEAR"), shear->getValue()));
         }
     }
 }
 
-void PerspCorrection::adjusterAutoToggled(Adjuster* a, bool newval)
-{
-}
+void PerspCorrection::adjusterAutoToggled(Adjuster *a, bool newval) {}
 
-
-void PerspCorrection::trimValues (rtengine::procparams::ProcParams* pp)
+void PerspCorrection::trimValues(rtengine::procparams::ProcParams *pp)
 {
     horiz->trimValue(pp->perspective.horizontal);
     vert->trimValue(pp->perspective.vertical);
@@ -308,13 +347,12 @@ void PerspCorrection::trimValues (rtengine::procparams::ProcParams* pp)
     aspect->trimValue(pp->perspective.aspect);
 }
 
-
 void PerspCorrection::autoPressed(Gtk::Button *which)
 {
     if (!lgl) {
         return;
     }
-    
+
     double a, h, v, s;
     bool hh = false;
     bool vv = false;
@@ -341,7 +379,6 @@ void PerspCorrection::autoPressed(Gtk::Button *which)
     adjusterChanged(nullptr, 0);
 }
 
-
 void PerspCorrection::applyControlLines()
 {
     if (!lgl) {
@@ -364,7 +401,8 @@ void PerspCorrection::applyControlLines()
             v_count++;
         }
     }
-    lgl->autoPerspectiveRequested(h_count > 1, v_count > 1, a, h, v, s, &control_lines);
+    lgl->autoPerspectiveRequested(h_count > 1, v_count > 1, a, h, v, s,
+                                  &control_lines);
 
     disableListener();
     setEnabled(true);
@@ -376,7 +414,6 @@ void PerspCorrection::applyControlLines()
 
     adjusterChanged(nullptr, 0);
 }
-
 
 void PerspCorrection::do_set_metadata(const rtengine::FramesMetaData *meta)
 {
@@ -396,14 +433,12 @@ void PerspCorrection::do_set_metadata(const rtengine::FramesMetaData *meta)
     }
 }
 
-
 void PerspCorrection::setRawMeta(bool raw, const rtengine::FramesMetaData *meta)
 {
     disableListener();
     do_set_metadata(meta);
     enableListener();
 }
-
 
 void PerspCorrection::toolReset(bool to_initial)
 {
@@ -415,13 +450,12 @@ void PerspCorrection::toolReset(bool to_initial)
     read(&pp);
 }
 
-
 void PerspCorrection::switchOffEditMode()
 {
     lines_button_edit->set_active(false);
 }
 
-void PerspCorrection::setEditProvider(EditDataProvider*provider)
+void PerspCorrection::setEditProvider(EditDataProvider *provider)
 {
     lines->setEditProvider(provider);
 }
@@ -449,12 +483,12 @@ void PerspCorrection::linesEditButtonPressed()
         }
         lines_button_apply->set_sensitive(true);
         lines_button_erase->set_sensitive(true);
-        //setCamBasedEventsActive(false);
+        // setCamBasedEventsActive(false);
         if (panel_listener) {
             panel_listener->controlLineEditModeChanged(true);
         }
     } else { // Leave edit mode.
-        //setCamBasedEventsActive(true);
+        // setCamBasedEventsActive(true);
         lines_button_apply->set_sensitive(false);
         lines_button_erase->set_sensitive(false);
         if (lgl) {
@@ -468,11 +502,7 @@ void PerspCorrection::linesEditButtonPressed()
     }
 }
 
-void PerspCorrection::linesEraseButtonPressed()
-{
-    lines->removeAll();
-}
-
+void PerspCorrection::linesEraseButtonPressed() { lines->removeAll(); }
 
 void PerspCorrection::requestApplyControlLines()
 {
@@ -480,7 +510,6 @@ void PerspCorrection::requestApplyControlLines()
         linesApplyButtonPressed();
     }
 }
-
 
 void PerspCorrection::setControlLineEditMode(bool active)
 {

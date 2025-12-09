@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,21 +19,22 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "toolpanel.h"
 #include "exifpanel.h"
 #include "iptcpanel.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
 class MetaDataPanel: public Gtk::VBox, public ToolPanel {
 public:
     MetaDataPanel();
     ~MetaDataPanel() override;
-    
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
 
-    void setImageData(const rtengine::FramesMetaData* id);
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+
+    void setImageData(const rtengine::FramesMetaData *id);
     void setListener(ToolPanelListener *tpl) override;
 
     void setProgressListener(rtengine::ProgressListener *pl);
@@ -41,7 +42,7 @@ public:
 private:
     rtengine::ProcEvent EvMetaDataMode;
     rtengine::ProcEvent EvNotes;
-    
+
     MyComboBoxText *metadataMode;
     Gtk::Notebook *tagsNotebook;
     ExifPanel *exifpanel;
@@ -51,4 +52,3 @@ private:
 
     void metaDataModeChanged();
 };
-

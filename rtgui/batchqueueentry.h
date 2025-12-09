@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,33 +20,32 @@
 #ifndef _BATCHQUEUEENTRY_
 #define _BATCHQUEUEENTRY_
 
-#include <gtkmm.h>
 #include "../rtengine/rtengine.h"
+#include "bqentryupdater.h"
 #include "thumbbrowserentrybase.h"
 #include "thumbnail.h"
-#include "bqentryupdater.h"
+#include <gtkmm.h>
 
 class BatchQueueEntry;
 struct BatchQueueEntryIdleHelper {
-    BatchQueueEntry* bqentry;
+    BatchQueueEntry *bqentry;
     bool destroyed;
     int pending;
 };
 
-class BatchQueueEntry : public ThumbBrowserEntryBase, public BQEntryUpdateListener
-{
+class BatchQueueEntry: public ThumbBrowserEntryBase,
+                       public BQEntryUpdateListener {
     int origpw, origph;
-    BatchQueueEntryIdleHelper* bqih;
+    BatchQueueEntryIdleHelper *bqih;
     static bool iconsLoaded;
- 
-    void customBackBufferUpdate(Cairo::RefPtr<Cairo::Context> c) override;
-   
-public:
 
+    void customBackBufferUpdate(Cairo::RefPtr<Cairo::Context> c) override;
+
+public:
     static Glib::RefPtr<Gdk::Pixbuf> savedAsIcon;
     static Glib::RefPtr<Gdk::Pixbuf> fastExportIcon;
 
-    rtengine::ProcessingJob* job;
+    rtengine::ProcessingJob *job;
     rtengine::procparams::ProcParams params;
     Glib::ustring savedParamsFile;
     double progress;
@@ -57,25 +56,29 @@ public:
     bool fast_pipeline;
     bool use_batch_profile;
 
-    BatchQueueEntry (rtengine::ProcessingJob* job, const rtengine::procparams::ProcParams& pparams, Glib::ustring fname, int prevw, int prevh, Thumbnail* thm = nullptr);
-    ~BatchQueueEntry () override;
+    BatchQueueEntry(rtengine::ProcessingJob *job,
+                    const rtengine::procparams::ProcParams &pparams,
+                    Glib::ustring fname, int prevw, int prevh,
+                    Thumbnail *thm = nullptr);
+    ~BatchQueueEntry() override;
 
-    void refreshThumbnailImage () override;
-    void calcThumbnailSize () override;
+    void refreshThumbnailImage() override;
+    void calcThumbnailSize() override;
 
-    void drawProgressBar (Glib::RefPtr<Gdk::Window> win, const Gdk::RGBA& foregr, const Gdk::RGBA& backgr, int x, int w, int y, int h) override;
+    void drawProgressBar(Glib::RefPtr<Gdk::Window> win, const Gdk::RGBA &foregr,
+                         const Gdk::RGBA &backgr, int x, int w, int y,
+                         int h) override;
 
-    void removeButtonSet ();
+    void removeButtonSet();
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea () override;
-    void getIconSize (int& w, int& h) const override;
-    Glib::ustring getToolTip (int x, int y) const override;
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea() override;
+    void getIconSize(int &w, int &h) const override;
+    Glib::ustring getToolTip(int x, int y) const override;
 
     // bqentryupdatelistener interface
-    void updateImage (guint8* img, int w, int h, int origw, int origh, guint8* newOPreview) override;
-    void _updateImage (guint8* img, int w, int h); // inside gtk thread
+    void updateImage(guint8 *img, int w, int h, int origw, int origh,
+                     guint8 *newOPreview) override;
+    void _updateImage(guint8 *img, int w, int h); // inside gtk thread
 };
-
-
 
 #endif

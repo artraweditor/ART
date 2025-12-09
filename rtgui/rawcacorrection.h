@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,20 +20,22 @@
 #ifndef _RAWCACORRECTION_H_
 #define _RAWCACORRECTION_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "checkbox.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class RAWCACorr : public ToolParamBlock, public AdjusterListener, public CheckBoxListener, public FoldableToolPanel
-{
+class RAWCACorr: public ToolParamBlock,
+                 public AdjusterListener,
+                 public CheckBoxListener,
+                 public FoldableToolPanel {
 
 protected:
-    CheckBox* caAutocorrect;
-    Adjuster* caAutoiterations;
-    Adjuster* caRed;
-    Adjuster* caBlue;
-    CheckBox* caAvoidcolourshift;
+    CheckBox *caAutocorrect;
+    Adjuster *caAutoiterations;
+    Adjuster *caRed;
+    Adjuster *caBlue;
+    CheckBox *caAvoidcolourshift;
 
     rtengine::ProcEvent EvPreProcessCAAutoiterations;
     rtengine::ProcEvent EvPreProcessCAColourshift;
@@ -42,17 +44,17 @@ protected:
     rtengine::procparams::RAWParams initial_params;
 
 public:
-
     RAWCACorr();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void trimValues          (rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
-    void adjusterChanged     (Adjuster* a, double newval) override;
-    void adjusterAutoToggled (Adjuster* a, bool newval) override;
-    void checkBoxToggled     (CheckBox* c, CheckValue newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void checkBoxToggled(CheckBox *c, CheckValue newval) override;
 
     void toolReset(bool to_initial) override;
 };

@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
@@ -20,15 +20,14 @@
 
 #include "eventmapper.h"
 
-
 ProcEventMapper::ProcEventMapper()
 {
     for (int event = 0; event < rtengine::NUMOFEVENTS; ++event) {
-        auto it = history_msgs_.insert("HISTORY_MSG_" + std::to_string(event + 1));
+        auto it =
+            history_msgs_.insert("HISTORY_MSG_" + std::to_string(event + 1));
         msgmap_[event] = it.first->c_str();
     }
 }
-
 
 ProcEventMapper *ProcEventMapper::getInstance()
 {
@@ -36,34 +35,34 @@ ProcEventMapper *ProcEventMapper::getInstance()
     return &instance;
 }
 
-
-rtengine::ProcEvent ProcEventMapper::newEvent(int action, const std::string &history_msg)
+rtengine::ProcEvent ProcEventMapper::newEvent(int action,
+                                              const std::string &history_msg)
 {
     auto event = rtengine::RefreshMapper::getInstance()->newEvent();
-    rtengine::RefreshMapper::getInstance()->mapEvent(event, action);    
+    rtengine::RefreshMapper::getInstance()->mapEvent(event, action);
 
-    auto it = history_msg.empty() ? 
-        history_msgs_.insert("HISTORY_MSG_" + std::to_string(event + 1)) :
-        history_msgs_.insert(history_msg);
+    auto it =
+        history_msg.empty()
+            ? history_msgs_.insert("HISTORY_MSG_" + std::to_string(event + 1))
+            : history_msgs_.insert(history_msg);
     event.set_message(it.first->c_str());
-    
+
     return event;
 }
-
 
 rtengine::ProcEvent ProcEventMapper::newAnonEvent(int action)
 {
     auto event = rtengine::RefreshMapper::getInstance()->newEvent();
-    rtengine::RefreshMapper::getInstance()->mapEvent(event, action);    
+    rtengine::RefreshMapper::getInstance()->mapEvent(event, action);
 
     auto it = history_msgs_.insert("");
     event.set_message(it.first->c_str());
-    
+
     return event;
 }
 
-
-std::string ProcEventMapper::getHistoryMsg(const rtengine::ProcEvent &event) const
+std::string
+ProcEventMapper::getHistoryMsg(const rtengine::ProcEvent &event) const
 {
     static std::string empty;
     auto msg = event.get_message();

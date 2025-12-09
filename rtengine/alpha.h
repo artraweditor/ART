@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,38 +20,36 @@
 #ifndef _ALPHA_H_
 #define _ALPHA_H_
 
-#include <gtkmm.h>
 #include <assert.h>
+#include <gtkmm.h>
 
-namespace rtengine
-{
+namespace rtengine {
 
 /// Alpha channel class (8 bits)
-class Alpha
-{
+class Alpha {
 protected:
     Cairo::RefPtr<Cairo::ImageSurface> surface;
 
 public:
-    Alpha ();
-    Alpha (int width, int height);
+    Alpha();
+    Alpha(int width, int height);
     //~Alpha ();
 
-    void setSize (int width, int height);
+    void setSize(int width, int height);
     int getWidth() const;
     int getHeight() const;
 
-    Cairo::RefPtr<Cairo::ImageSurface> getSurface () const;
+    Cairo::RefPtr<Cairo::ImageSurface> getSurface() const;
 
     // TODO: to make the editing faster, we should add an iterator class
 
     // Will send back the start of a row
-    unsigned char* operator () (unsigned row) const;
+    unsigned char *operator()(unsigned row) const;
     // Will send back a value at a given row, col position
-    unsigned char& operator () (unsigned row, unsigned col);
-    unsigned char operator () (unsigned row, unsigned col) const;
+    unsigned char &operator()(unsigned row, unsigned col);
+    unsigned char operator()(unsigned row, unsigned col) const;
 };
 
-}
+} // namespace rtengine
 
 #endif

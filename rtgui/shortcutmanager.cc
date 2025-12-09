@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of ART.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,25 +19,20 @@
  */
 
 #include "shortcutmanager.h"
+#include "multilangmgr.h"
+#include "options.h"
 #include "rtwindow.h"
 #include "toolpanel.h"
-#include "options.h"
-#include "multilangmgr.h"
 
 #include <map>
 #include <vector>
 
 extern Options options;
 
-
-ToolShortcutManager::ToolShortcutManager(RTWindow *parent):
-    parent_(parent),
-    cur_key_(0),
-    cur_tool_(nullptr),
-    cur_adjuster_(nullptr)
+ToolShortcutManager::ToolShortcutManager(RTWindow *parent)
+    : parent_(parent), cur_key_(0), cur_tool_(nullptr), cur_adjuster_(nullptr)
 {
 }
-
 
 void ToolShortcutManager::reset(bool clear)
 {
@@ -52,21 +47,20 @@ void ToolShortcutManager::reset(bool clear)
     }
 }
 
-
-void ToolShortcutManager::addShortcut(guint keyval, FoldableToolPanel *tool, Adjuster *adjuster)
+void ToolShortcutManager::addShortcut(guint keyval, FoldableToolPanel *tool,
+                                      Adjuster *adjuster)
 {
     action_map_[keyval] = std::make_pair(tool, adjuster);
 }
-
 
 namespace {
 
 bool has_modifiers(GdkEventKey *event)
 {
 #if defined(__APPLE__)
-    return event->state & (GDK_CONTROL_MASK|GDK_MOD1_MASK|GDK_MOD2_MASK);
+    return event->state & (GDK_CONTROL_MASK | GDK_MOD1_MASK | GDK_MOD2_MASK);
 #else
-    return event->state & (GDK_CONTROL_MASK|GDK_MOD1_MASK);
+    return event->state & (GDK_CONTROL_MASK | GDK_MOD1_MASK);
 #endif
 }
 
@@ -78,7 +72,6 @@ enum {
 };
 
 } // namespace
-
 
 bool ToolShortcutManager::keyPressed(GdkEventKey *event)
 {
@@ -112,7 +105,7 @@ bool ToolShortcutManager::keyPressed(GdkEventKey *event)
             break;
         }
     }
-    
+
     if (has_modifiers(event)) {
         return false;
     }
@@ -131,7 +124,6 @@ bool ToolShortcutManager::keyPressed(GdkEventKey *event)
         return keyReleased(event);
     }
 }
-
 
 bool ToolShortcutManager::keyReleased(GdkEventKey *event)
 {
@@ -159,7 +151,6 @@ bool ToolShortcutManager::keyReleased(GdkEventKey *event)
     return false;
 }
 
-
 bool ToolShortcutManager::scrollPressed(GdkEventScroll *event)
 {
     if (shouldHandleScroll()) {
@@ -167,19 +158,18 @@ bool ToolShortcutManager::scrollPressed(GdkEventScroll *event)
             conn_.disconnect();
         }
 
-        int dir = event->direction == GDK_SCROLL_DOWN ? DIRECTION_DOWN : DIRECTION_UP;
+        int dir =
+            event->direction == GDK_SCROLL_DOWN ? DIRECTION_DOWN : DIRECTION_UP;
         doit(dir, options.adjuster_shortcut_scrollwheel_factor);
         return true;
     }
     return false;
 }
 
-
 bool ToolShortcutManager::shouldHandleScroll() const
 {
     return (cur_key_ != 0 && cur_tool_ != nullptr && cur_adjuster_ != nullptr);
 }
-
 
 void ToolShortcutManager::doit(int direction, int speed)
 {
@@ -190,23 +180,25 @@ void ToolShortcutManager::doit(int direction, int speed)
     } else if (direction == DIRECTION_INITIAL) {
         cur_adjuster_->resetValue(true);
     } else {
-        cur_adjuster_->setValue(cur_adjuster_->getValue() + direction * cur_adjuster_->getStepValue() * speed);
+        cur_adjuster_->setValue(cur_adjuster_->getValue() +
+                                direction * cur_adjuster_->getStepValue() *
+                                    speed);
     }
-    Glib::ustring msg = cur_tool_->getUILabel() + ": " + cur_adjuster_->getLabel() + " = " + cur_adjuster_->getTextValue();
+    Glib::ustring msg = cur_tool_->getUILabel() + ": " +
+                        cur_adjuster_->getLabel() + " = " +
+                        cur_adjuster_->getTextValue();
     parent_->showInfo(msg, 0.0);
 
     FoldableToolPanel *tool = cur_tool_;
-    Adjuster *adjuster = cur_adjuster_;        
-    const auto doit =
-        [tool,adjuster]() -> bool
-        {
-            tool->enableListener();
-            adjuster->forceNotifyListener();
-            return false;
-        };
-    conn_ = Glib::signal_timeout().connect(sigc::slot<bool>(doit), options.adjusterMaxDelay);    
+    Adjuster *adjuster = cur_adjuster_;
+    const auto doit = [tool, adjuster]() -> bool {
+        tool->enableListener();
+        adjuster->forceNotifyListener();
+        return false;
+    };
+    conn_ = Glib::signal_timeout().connect(sigc::slot<bool>(doit),
+                                           options.adjusterMaxDelay);
 }
-
 
 void ToolShortcutManager::showHelp()
 {
@@ -214,7 +206,8 @@ void ToolShortcutManager::showHelp()
     std::map<Glib::ustring, std::vector<Glib::ustring>> helpmap;
     for (auto &p : action_map_) {
         auto header = p.second.first->getUILabel();
-        auto value = Glib::ustring(1, char(p.first)) + ": " + p.second.second->getLabel();
+        auto value = Glib::ustring(1, char(p.first)) + ": " +
+                     p.second.second->getLabel();
         helpmap[header].push_back(value);
     }
 
@@ -222,7 +215,7 @@ void ToolShortcutManager::showHelp()
     for (auto &p : helpmap) {
         msg += "\n";
         msg += p.first;
-        Glib::ustring headpad(p.first.size()+2, ' ');
+        Glib::ustring headpad(p.first.size() + 2, ' ');
         auto &v = p.second;
         std::sort(v.begin(), v.end());
         for (size_t i = 0; i < v.size(); ++i) {

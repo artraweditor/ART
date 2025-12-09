@@ -19,16 +19,17 @@
  */
 
 #include "compress.h"
-#include <glibmm.h>
 #include <giomm.h>
 #include <glib/gstdio.h>
+#include <glibmm.h>
 
 namespace rtengine {
 
 std::vector<uint8_t> compress(const std::string &src, int level)
 {
     auto s = Gio::MemoryOutputStream::create(nullptr, 0, g_realloc, g_free);
-    auto c = Gio::ZlibCompressor::create(Gio::ZLIB_COMPRESSOR_FORMAT_RAW, level);
+    auto c =
+        Gio::ZlibCompressor::create(Gio::ZLIB_COMPRESSOR_FORMAT_RAW, level);
     std::vector<uint8_t> res;
     {
         auto stream = Gio::ConverterOutputStream::create(s, c);
@@ -44,7 +45,6 @@ std::vector<uint8_t> compress(const std::string &src, int level)
     }
     return res;
 }
-
 
 std::string decompress(const std::vector<uint8_t> &src)
 {
@@ -67,7 +67,7 @@ std::string decompress(const std::vector<uint8_t> &src)
             i += n;
         }
     }
-    char *data = static_cast<char *>(s->get_data());    
+    char *data = static_cast<char *>(s->get_data());
     for (size_t i = 0, n = s->get_data_size(); i < n; ++i) {
         res.push_back(data[i]);
     }
@@ -75,10 +75,10 @@ std::string decompress(const std::vector<uint8_t> &src)
     return std::string(&(res[0]));
 }
 
-
 namespace {
 
-bool convert_to(const std::string &src_fname, const std::string &dest_fname, bool compress)
+bool convert_to(const std::string &src_fname, const std::string &dest_fname,
+                bool compress)
 {
     bool ok = true;
     auto f = Gio::File::create_for_path(dest_fname);
@@ -117,17 +117,14 @@ bool convert_to(const std::string &src_fname, const std::string &dest_fname, boo
 
 } // namespace
 
-
 bool decompress_to(const std::string &src_fname, const std::string &dest_fname)
 {
     return convert_to(src_fname, dest_fname, false);
 }
 
-
 bool compress_to(const std::string &src_fname, const std::string &dest_fname)
 {
     return convert_to(src_fname, dest_fname, true);
 }
-
 
 } // namespace rtengine

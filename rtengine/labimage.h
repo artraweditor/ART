@@ -19,30 +19,29 @@
 #ifndef _LABIMAGE_H_
 #define _LABIMAGE_H_
 
-namespace rtengine
-{
+namespace rtengine {
 
-class LabImage
-{
+class LabImage {
 private:
     void allocLab(size_t w, size_t h);
 
 public:
     int W, H;
-    float * data;
-    float** L;
-    float** a;
-    float** b;
+    float *data;
+    float **L;
+    float **a;
+    float **b;
 
-    LabImage (int w, int h);
-    ~LabImage ();
+    LabImage(int w, int h);
+    ~LabImage();
 
-    //Copies image data in Img into this instance.
+    // Copies image data in Img into this instance.
     void CopyFrom(LabImage *Img);
-    void getPipetteData (float &L, float &a, float &b, int posX, int posY, int squareSize);
+    void getPipetteData(float &L, float &a, float &b, int posX, int posY,
+                        int squareSize);
     void deleteLab();
     void reallocLab();
 };
 
-}
+} // namespace rtengine
 #endif

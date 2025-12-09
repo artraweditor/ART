@@ -24,8 +24,7 @@
 #include <gtkmm.h>
 
 class BatchQueueEntry;
-class BatchQueueButtonSet : public LWButtonSet
-{
+class BatchQueueButtonSet: public LWButtonSet {
 
     static bool iconsLoaded;
 
@@ -38,7 +37,7 @@ public:
     static Glib::ustring moveEndToolTip;
     static Glib::ustring cancelJobToolTip;
 
-    explicit BatchQueueButtonSet (BatchQueueEntry* myEntry);
+    explicit BatchQueueButtonSet(BatchQueueEntry *myEntry);
 };
 
 #endif

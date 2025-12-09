@@ -22,33 +22,20 @@
 #include "linalgebra.h"
 #include "opthelper.h"
 
-
 namespace rtengine {
 
-LUT3D::initializer::~initializer()
-{
-}
+LUT3D::initializer::~initializer() {}
 
+LUT3D::LUT3D(): input_is_01_(true), dim_(0), dim_minus_one_(0) {}
 
-LUT3D::LUT3D():
-    input_is_01_(true),
-    dim_(0),
-    dim_minus_one_(0)
-{
-}
-
-
-LUT3D::~LUT3D()
-{
-}
-
+LUT3D::~LUT3D() {}
 
 void LUT3D::init(int dim, initializer &f, bool input_is_01)
 {
     dim_ = dim;
     dim_minus_one_ = dim - 1;
     input_is_01_ = input_is_01;
-    
+
     lut_.resize(SQR(dim_) * dim_ * 3);
     size_t index = 0;
     float r, g, b;
@@ -67,7 +54,6 @@ void LUT3D::init(int dim, initializer &f, bool input_is_01)
     }
 }
 
-
 bool LUT3D::operator()(float &r, float &g, float &b)
 {
     if (!input_is_01_) {
@@ -75,7 +61,7 @@ bool LUT3D::operator()(float &r, float &g, float &b)
         g /= 65535.f;
         b /= 65535.f;
     }
-    
+
     if (!lut_.isEmpty()) {
         apply_tetra(r, g, b);
         return true;
@@ -83,22 +69,18 @@ bool LUT3D::operator()(float &r, float &g, float &b)
     return false;
 }
 
-
-LUT3D::operator bool() const
-{
-    return !lut_.isEmpty();
-}
-
+LUT3D::operator bool() const { return !lut_.isEmpty(); }
 
 // Tetrahedral interpolation, adapted from OpenColorIO
 //  https://github.com/AcademySoftwareFoundation/OpenColorIO
-//  
+//
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
 //
 namespace {
 
-inline int GetLut3DIndexBlueFast(int indexR, int indexG, int indexB, int dim, int components)
+inline int GetLut3DIndexBlueFast(int indexR, int indexG, int indexB, int dim,
+                                 int components)
 {
     return components * (indexB + dim * (indexG + dim * indexR));
 }
@@ -143,153 +125,92 @@ inline void LUT3D::apply_tetra(float &r, float &g, float &b)
     float fz = idx[2] - static_cast<float>(indexLow[2]);
 
     // Compute index into LUT for surrounding corners
-    const int n000 =
-        GetLut3DIndexBlueFast(indexLow[0], indexLow[1], indexLow[2],
-                              m_dim, m_components);
-    const int n100 =
-        GetLut3DIndexBlueFast(indexHigh[0], indexLow[1], indexLow[2],
-                              m_dim, m_components);
-    const int n010 =
-        GetLut3DIndexBlueFast(indexLow[0], indexHigh[1], indexLow[2],
-                              m_dim, m_components);
-    const int n001 =
-        GetLut3DIndexBlueFast(indexLow[0], indexLow[1], indexHigh[2],
-                              m_dim, m_components);
-    const int n110 =
-        GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1], indexLow[2],
-                              m_dim, m_components);
-    const int n101 =
-        GetLut3DIndexBlueFast(indexHigh[0], indexLow[1], indexHigh[2],
-                              m_dim, m_components);
-    const int n011 =
-        GetLut3DIndexBlueFast(indexLow[0], indexHigh[1], indexHigh[2],
-                              m_dim, m_components);
-    const int n111 =
-        GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1], indexHigh[2],
-                              m_dim, m_components);
+    const int n000 = GetLut3DIndexBlueFast(indexLow[0], indexLow[1],
+                                           indexLow[2], m_dim, m_components);
+    const int n100 = GetLut3DIndexBlueFast(indexHigh[0], indexLow[1],
+                                           indexLow[2], m_dim, m_components);
+    const int n010 = GetLut3DIndexBlueFast(indexLow[0], indexHigh[1],
+                                           indexLow[2], m_dim, m_components);
+    const int n001 = GetLut3DIndexBlueFast(indexLow[0], indexLow[1],
+                                           indexHigh[2], m_dim, m_components);
+    const int n110 = GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1],
+                                           indexLow[2], m_dim, m_components);
+    const int n101 = GetLut3DIndexBlueFast(indexHigh[0], indexLow[1],
+                                           indexHigh[2], m_dim, m_components);
+    const int n011 = GetLut3DIndexBlueFast(indexLow[0], indexHigh[1],
+                                           indexHigh[2], m_dim, m_components);
+    const int n111 = GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1],
+                                           indexHigh[2], m_dim, m_components);
 
     if (fx > fy) {
         if (fy > fz) {
-            out[0] =
-                (1 - fx)  * m_optLut[n000] +
-                (fx - fy) * m_optLut[n100] +
-                (fy - fz) * m_optLut[n110] +
-                (fz)      * m_optLut[n111];
+            out[0] = (1 - fx) * m_optLut[n000] + (fx - fy) * m_optLut[n100] +
+                     (fy - fz) * m_optLut[n110] + (fz)*m_optLut[n111];
 
-            out[1] =
-                (1 - fx)  * m_optLut[n000 + 1] +
-                (fx - fy) * m_optLut[n100 + 1] +
-                (fy - fz) * m_optLut[n110 + 1] +
-                (fz)      * m_optLut[n111 + 1];
+            out[1] = (1 - fx) * m_optLut[n000 + 1] +
+                     (fx - fy) * m_optLut[n100 + 1] +
+                     (fy - fz) * m_optLut[n110 + 1] + (fz)*m_optLut[n111 + 1];
 
-            out[2] =
-                (1 - fx)  * m_optLut[n000 + 2] +
-                (fx - fy) * m_optLut[n100 + 2] +
-                (fy - fz) * m_optLut[n110 + 2] +
-                (fz)      * m_optLut[n111 + 2];
+            out[2] = (1 - fx) * m_optLut[n000 + 2] +
+                     (fx - fy) * m_optLut[n100 + 2] +
+                     (fy - fz) * m_optLut[n110 + 2] + (fz)*m_optLut[n111 + 2];
+        } else if (fx > fz) {
+            out[0] = (1 - fx) * m_optLut[n000] + (fx - fz) * m_optLut[n100] +
+                     (fz - fy) * m_optLut[n101] + (fy)*m_optLut[n111];
+
+            out[1] = (1 - fx) * m_optLut[n000 + 1] +
+                     (fx - fz) * m_optLut[n100 + 1] +
+                     (fz - fy) * m_optLut[n101 + 1] + (fy)*m_optLut[n111 + 1];
+
+            out[2] = (1 - fx) * m_optLut[n000 + 2] +
+                     (fx - fz) * m_optLut[n100 + 2] +
+                     (fz - fy) * m_optLut[n101 + 2] + (fy)*m_optLut[n111 + 2];
+        } else {
+            out[0] = (1 - fz) * m_optLut[n000] + (fz - fx) * m_optLut[n001] +
+                     (fx - fy) * m_optLut[n101] + (fy)*m_optLut[n111];
+
+            out[1] = (1 - fz) * m_optLut[n000 + 1] +
+                     (fz - fx) * m_optLut[n001 + 1] +
+                     (fx - fy) * m_optLut[n101 + 1] + (fy)*m_optLut[n111 + 1];
+
+            out[2] = (1 - fz) * m_optLut[n000 + 2] +
+                     (fz - fx) * m_optLut[n001 + 2] +
+                     (fx - fy) * m_optLut[n101 + 2] + (fy)*m_optLut[n111 + 2];
         }
-        else if (fx > fz)
-        {
-            out[0] =
-                (1 - fx)  * m_optLut[n000] +
-                (fx - fz) * m_optLut[n100] +
-                (fz - fy) * m_optLut[n101] +
-                (fy)      * m_optLut[n111];
+    } else {
+        if (fz > fy) {
+            out[0] = (1 - fz) * m_optLut[n000] + (fz - fy) * m_optLut[n001] +
+                     (fy - fx) * m_optLut[n011] + (fx)*m_optLut[n111];
 
-            out[1] =
-                (1 - fx)  * m_optLut[n000 + 1] +
-                (fx - fz) * m_optLut[n100 + 1] +
-                (fz - fy) * m_optLut[n101 + 1] +
-                (fy)      * m_optLut[n111 + 1];
+            out[1] = (1 - fz) * m_optLut[n000 + 1] +
+                     (fz - fy) * m_optLut[n001 + 1] +
+                     (fy - fx) * m_optLut[n011 + 1] + (fx)*m_optLut[n111 + 1];
 
-            out[2] =
-                (1 - fx)  * m_optLut[n000 + 2] +
-                (fx - fz) * m_optLut[n100 + 2] +
-                (fz - fy) * m_optLut[n101 + 2] +
-                (fy)      * m_optLut[n111 + 2];
-        }
-        else
-        {
-            out[0] =
-                (1 - fz)  * m_optLut[n000] +
-                (fz - fx) * m_optLut[n001] +
-                (fx - fy) * m_optLut[n101] +
-                (fy)      * m_optLut[n111];
+            out[2] = (1 - fz) * m_optLut[n000 + 2] +
+                     (fz - fy) * m_optLut[n001 + 2] +
+                     (fy - fx) * m_optLut[n011 + 2] + (fx)*m_optLut[n111 + 2];
+        } else if (fz > fx) {
+            out[0] = (1 - fy) * m_optLut[n000] + (fy - fz) * m_optLut[n010] +
+                     (fz - fx) * m_optLut[n011] + (fx)*m_optLut[n111];
 
-            out[1] =
-                (1 - fz)  * m_optLut[n000 + 1] +
-                (fz - fx) * m_optLut[n001 + 1] +
-                (fx - fy) * m_optLut[n101 + 1] +
-                (fy)      * m_optLut[n111 + 1];
+            out[1] = (1 - fy) * m_optLut[n000 + 1] +
+                     (fy - fz) * m_optLut[n010 + 1] +
+                     (fz - fx) * m_optLut[n011 + 1] + (fx)*m_optLut[n111 + 1];
 
-            out[2] =
-                (1 - fz)  * m_optLut[n000 + 2] +
-                (fz - fx) * m_optLut[n001 + 2] +
-                (fx - fy) * m_optLut[n101 + 2] +
-                (fy)      * m_optLut[n111 + 2];
-        }
-    }
-    else
-    {
-        if (fz > fy)
-        {
-            out[0] =
-                (1 - fz)  * m_optLut[n000] +
-                (fz - fy) * m_optLut[n001] +
-                (fy - fx) * m_optLut[n011] +
-                (fx)      * m_optLut[n111];
+            out[2] = (1 - fy) * m_optLut[n000 + 2] +
+                     (fy - fz) * m_optLut[n010 + 2] +
+                     (fz - fx) * m_optLut[n011 + 2] + (fx)*m_optLut[n111 + 2];
+        } else {
+            out[0] = (1 - fy) * m_optLut[n000] + (fy - fx) * m_optLut[n010] +
+                     (fx - fz) * m_optLut[n110] + (fz)*m_optLut[n111];
 
-            out[1] =
-                (1 - fz)  * m_optLut[n000 + 1] +
-                (fz - fy) * m_optLut[n001 + 1] +
-                (fy - fx) * m_optLut[n011 + 1] +
-                (fx)      * m_optLut[n111 + 1];
+            out[1] = (1 - fy) * m_optLut[n000 + 1] +
+                     (fy - fx) * m_optLut[n010 + 1] +
+                     (fx - fz) * m_optLut[n110 + 1] + (fz)*m_optLut[n111 + 1];
 
-            out[2] =
-                (1 - fz)  * m_optLut[n000 + 2] +
-                (fz - fy) * m_optLut[n001 + 2] +
-                (fy - fx) * m_optLut[n011 + 2] +
-                (fx)      * m_optLut[n111 + 2];
-        }
-        else if (fz > fx)
-        {
-            out[0] =
-                (1 - fy)  * m_optLut[n000] +
-                (fy - fz) * m_optLut[n010] +
-                (fz - fx) * m_optLut[n011] +
-                (fx)      * m_optLut[n111];
-
-            out[1] =
-                (1 - fy)  * m_optLut[n000 + 1] +
-                (fy - fz) * m_optLut[n010 + 1] +
-                (fz - fx) * m_optLut[n011 + 1] +
-                (fx)      * m_optLut[n111 + 1];
-
-            out[2] =
-                (1 - fy)  * m_optLut[n000 + 2] +
-                (fy - fz) * m_optLut[n010 + 2] +
-                (fz - fx) * m_optLut[n011 + 2] +
-                (fx)      * m_optLut[n111 + 2];
-        }
-        else
-        {
-            out[0] =
-                (1 - fy)  * m_optLut[n000] +
-                (fy - fx) * m_optLut[n010] +
-                (fx - fz) * m_optLut[n110] +
-                (fz)      * m_optLut[n111];
-
-            out[1] =
-                (1 - fy)  * m_optLut[n000 + 1] +
-                (fy - fx) * m_optLut[n010 + 1] +
-                (fx - fz) * m_optLut[n110 + 1] +
-                (fz)      * m_optLut[n111 + 1];
-
-            out[2] =
-                (1 - fy)  * m_optLut[n000 + 2] +
-                (fy - fx) * m_optLut[n010 + 2] +
-                (fx - fz) * m_optLut[n110 + 2] +
-                (fz)      * m_optLut[n111 + 2];
+            out[2] = (1 - fy) * m_optLut[n000 + 2] +
+                     (fy - fx) * m_optLut[n010 + 2] +
+                     (fx - fz) * m_optLut[n110 + 2] + (fz)*m_optLut[n111 + 2];
         }
     }
 

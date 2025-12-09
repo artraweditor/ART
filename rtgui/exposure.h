@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,15 +19,17 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "adjuster.h"
-#include "toolpanel.h"
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
-#include "mycurve.h"
 #include "guiutils.h"
+#include "mycurve.h"
+#include "toolpanel.h"
+#include <gtkmm.h>
 
-class Exposure: public ToolParamBlock, public AdjusterListener, public FoldableToolPanel {
+class Exposure: public ToolParamBlock,
+                public AdjusterListener,
+                public FoldableToolPanel {
 protected:
     MyComboBoxText *hrmode;
     rtengine::ProcEvent EvBlack;
@@ -45,13 +47,14 @@ protected:
 public:
     Exposure();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
 
-    void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
 
     void setRaw(bool raw);
 
@@ -60,4 +63,3 @@ public:
     void toolReset(bool to_initial) override;
     void registerShortcuts(ToolShortcutManager *mgr) override;
 };
-

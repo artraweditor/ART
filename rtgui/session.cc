@@ -19,14 +19,15 @@
  */
 
 #include "session.h"
+#include <algorithm>
 #include <giomm.h>
+#include <glib/gstdio.h>
+#include <iostream>
 #include <sstream>
 #include <unordered_set>
-#include <algorithm>
-#include <iostream>
-#include <glib/gstdio.h>
 
-namespace art { namespace session {
+namespace art {
+namespace session {
 
 namespace {
 
@@ -53,20 +54,20 @@ std::unordered_set<std::string> get_file_list(const Glib::ustring &fname)
         while (src && std::getline(sbuf, line)) {
             Glib::ustring name = line;
             // handle crlf files
-            if (name.size() && name[name.size()-1] == '\r') {
-                name.resize(name.size()-1);
+            if (name.size() && name[name.size() - 1] == '\r') {
+                name.resize(name.size() - 1);
             }
             if (Glib::file_test(name, Glib::FILE_TEST_EXISTS)) {
                 res.insert(name);
             }
         }
     }
-    
+
     return res;
 }
 
-
-void save(const Glib::ustring &fname, const std::unordered_set<std::string> &names)
+void save(const Glib::ustring &fname,
+          const std::unordered_set<std::string> &names)
 {
     std::vector<std::string> l(names.begin(), names.end());
     std::sort(l.begin(), l.end());
@@ -80,18 +81,15 @@ void save(const Glib::ustring &fname, const std::unordered_set<std::string> &nam
 
 } // namespace
 
-
 bool check(const Glib::ustring &fname)
 {
     return fname == Options::SESSION_PATH;
 }
 
-
 Glib::ustring filename()
 {
     return Glib::build_filename(options.user_config_dir, "session");
 }
-
 
 void load(const Glib::ustring &fname)
 {
@@ -100,7 +98,6 @@ void load(const Glib::ustring &fname)
     save(fn, cur);
 }
 
-
 void save(const Glib::ustring &fname)
 {
     auto fn = filename();
@@ -108,13 +105,11 @@ void save(const Glib::ustring &fname)
     save(fname, cur);
 }
 
-
 void clear()
 {
     std::unordered_set<std::string> empty;
     save(filename(), empty);
 }
-
 
 void add(const std::vector<Glib::ustring> &fnames)
 {
@@ -126,7 +121,6 @@ void add(const std::vector<Glib::ustring> &fnames)
     save(fn, prev);
 }
 
-
 void remove(const std::vector<Glib::ustring> &fnames)
 {
     auto fn = filename();
@@ -137,7 +131,6 @@ void remove(const std::vector<Glib::ustring> &fnames)
     save(fn, prev);
 }
 
-
 std::vector<Glib::ustring> list()
 {
     auto prev = get_file_list(filename());
@@ -146,10 +139,7 @@ std::vector<Glib::ustring> list()
     return ret;
 }
 
+Glib::ustring path() { return Options::SESSION_PATH; }
 
-Glib::ustring path()
-{
-    return Options::SESSION_PATH;
-}
-
-}} // namespace art::session
+} // namespace session
+} // namespace art

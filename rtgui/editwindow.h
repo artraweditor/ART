@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  RawTherapee is free software: you can redistribute it and/or modify
@@ -18,26 +18,26 @@
 #ifndef _EDITWINDOW_
 #define _EDITWINDOW_
 
-#include <gtkmm.h>
-#include "filepanel.h"
 #include "editorpanel.h"
+#include "filepanel.h"
 #include "rtwindow.h"
+#include <gtkmm.h>
 #include <set>
 
 class EditWindow: public MessageWindow {
 
 private:
     double resolution;
-    RTWindow* parent;
+    RTWindow *parent;
     RTImage appIcon;
 
-    Gtk::Notebook* mainNB;
+    Gtk::Notebook *mainNB;
     std::set<Glib::ustring> filesEdited;
-    std::map<Glib::ustring, EditorPanel*> epanels;
+    std::map<Glib::ustring, EditorPanel *> epanels;
 
     bool isFullscreen;
     bool isClosed;
-    void toggleFullscreen ();
+    void toggleFullscreen();
     void restoreWindow();
     bool updateResolution();
     void setAppIcon();
@@ -47,13 +47,13 @@ public:
     static bool isMultiDisplayEnabled();
 
     // Should only be created once, auto-creates window on correct display
-    static EditWindow* getInstance(RTWindow* p, bool restore = true);
+    static EditWindow *getInstance(RTWindow *p, bool restore = true);
 
-    explicit EditWindow (RTWindow* p);
+    explicit EditWindow(RTWindow *p);
 
     void writeOptions();
-    void addEditorPanel (EditorPanel* ep, const std::string &name);
-    void remEditorPanel (EditorPanel* ep);
+    void addEditorPanel(EditorPanel *ep, const std::string &name);
+    void remEditorPanel(EditorPanel *ep);
     bool selectEditorPanel(const std::string &name);
     bool closeOpenEditors();
     bool isProcessing();
@@ -63,12 +63,12 @@ public:
     bool keyPressedBefore(GdkEventKey *event);
     bool keyReleased(GdkEventKey *event);
     bool scrollPressed(GdkEventScroll *event);
-    bool on_configure_event(GdkEventConfigure* event) override;
-    bool on_delete_event(GdkEventAny* event) override;
-    //bool on_window_state_event(GdkEventWindowState* event);
-    void on_mainNB_switch_page(Gtk::Widget* page, guint page_num);
+    bool on_configure_event(GdkEventConfigure *event) override;
+    bool on_delete_event(GdkEventAny *event) override;
+    // bool on_window_state_event(GdkEventWindowState* event);
+    void on_mainNB_switch_page(Gtk::Widget *page, guint page_num);
     void set_title_decorated(Glib::ustring fname);
-    void on_realize () override;
+    void on_realize() override;
 };
 
 #endif

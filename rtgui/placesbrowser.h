@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,21 +19,21 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include <giomm.h>
 #include "multilangmgr.h"
+#include <giomm.h>
+#include <gtkmm.h>
 
 class PlacesBrowser: public Gtk::VBox {
 public:
-    typedef sigc::slot<void, const Glib::ustring&> DirSelectionSlot;
+    typedef sigc::slot<void, const Glib::ustring &> DirSelectionSlot;
 
 private:
     enum class PlaceType : uint8_t {
-      MOUNT,
-      VOLUME,
-      DRIVE,
-      DEFAULT_DIR_OR_SESSION,
-      FAVARITE_DIR
+        MOUNT,
+        VOLUME,
+        DRIVE,
+        DEFAULT_DIR_OR_SESSION,
+        FAVARITE_DIR
     };
     class PlacesColumns: public Gtk::TreeModel::ColumnRecord {
     public:
@@ -63,36 +63,39 @@ private:
     sigc::connection selection_conn_;
     Glib::RefPtr<Gio::FileMonitor> session_monitor_;
 
-    void on_session_changed(const Glib::RefPtr<Gio::File>& file, const Glib::RefPtr<Gio::File>& other_file, Gio::FileMonitorEvent event_type);
+    void on_session_changed(const Glib::RefPtr<Gio::File> &file,
+                            const Glib::RefPtr<Gio::File> &other_file,
+                            Gio::FileMonitorEvent event_type);
 
     void setRow(Gtk::TreeModel::Row row, Glib::RefPtr<Gio::Icon> icon,
                 Glib::ustring label, Glib::ustring root, PlaceType type,
                 bool rowSeparator);
-    
-public:
 
+public:
     PlacesBrowser();
     ~PlacesBrowser();
 
-    void setDirSelector(const DirSelectionSlot& selectDir);
-    void dirSelected(const Glib::ustring& dirname, const Glib::ustring& openfile);
+    void setDirSelector(const DirSelectionSlot &selectDir);
+    void dirSelected(const Glib::ustring &dirname,
+                     const Glib::ustring &openfile);
 
     void refreshPlacesList();
-    void mountChanged(const Glib::RefPtr<Gio::Mount>& m);
-    void volumeChanged(const Glib::RefPtr<Gio::Volume>& v);
-    void driveChanged(const Glib::RefPtr<Gio::Drive>& d);
-    bool rowSeparatorFunc(const Glib::RefPtr<Gtk::TreeModel>& model, const Gtk::TreeModel::iterator& iter);
+    void mountChanged(const Glib::RefPtr<Gio::Mount> &m);
+    void volumeChanged(const Glib::RefPtr<Gio::Volume> &v);
+    void driveChanged(const Glib::RefPtr<Gio::Drive> &d);
+    bool rowSeparatorFunc(const Glib::RefPtr<Gtk::TreeModel> &model,
+                          const Gtk::TreeModel::iterator &iter);
     void selectionChanged();
     void addPressed();
     void delPressed();
 
 public:
-
     static Glib::ustring userHomeDir();
     static Glib::ustring userPicturesDir();
 };
 
-inline void PlacesBrowser::setDirSelector(const PlacesBrowser::DirSelectionSlot& selectDir)
+inline void
+PlacesBrowser::setDirSelector(const PlacesBrowser::DirSelectionSlot &selectDir)
 {
     this->selectDir = selectDir;
 }

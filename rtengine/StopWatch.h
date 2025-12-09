@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -22,27 +22,26 @@
 
 #pragma once
 
-#include <iostream>
 #include "mytime.h"
 #include "settings.h"
+#include <iostream>
 
 namespace rtengine {
 
 extern const Settings *settings;
 
 #ifdef BENCHMARK
-    #define BENCHFUN StopWatch StopFun(__func__);
-    #define BENCHFUNMICRO StopWatch StopFun(__func__, true);
+#define BENCHFUN StopWatch StopFun(__func__);
+#define BENCHFUNMICRO StopWatch StopFun(__func__, true);
 #else
-    #define BENCHFUN
-    #define BENCHFUNMICRO
+#define BENCHFUN
+#define BENCHFUNMICRO
 #endif
 
-class StopWatch
-{
+class StopWatch {
 public:
-
-    explicit StopWatch( const char* msg, bool microseconds = false ) : microseconds(microseconds)
+    explicit StopWatch(const char *msg, bool microseconds = false)
+        : microseconds(microseconds)
     {
         message = msg;
         start();
@@ -50,24 +49,23 @@ public:
     }
     ~StopWatch()
     {
-        if(!stopped) {
+        if (!stopped) {
             stop();
         }
     }
-    void start()
-    {
-        startTime.set();
-    };
+    void start() { startTime.set(); };
     void stop()
     {
         stopTime.set();
         if (settings->verbose > 1) {
-            if(!microseconds) {
+            if (!microseconds) {
                 long elapsedTime = stopTime.etime(startTime) / 1000;
-                std::cout << message << " took " << elapsedTime << " ms" << std::endl;
+                std::cout << message << " took " << elapsedTime << " ms"
+                          << std::endl;
             } else {
                 long elapsedTime = stopTime.etime(startTime);
-                std::cout << message << " took " << elapsedTime << " us" << std::endl;
+                std::cout << message << " took " << elapsedTime << " us"
+                          << std::endl;
             }
         }
         stopped = true;
@@ -77,6 +75,7 @@ public:
         message = msg;
         stop();
     };
+
 private:
     bool microseconds;
     MyTime startTime;

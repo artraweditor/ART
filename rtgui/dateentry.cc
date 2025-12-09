@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2020 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,13 +19,12 @@
  */
 
 #include "dateentry.h"
-#include "rtimage.h"
 #include "options.h"
-#include <time.h>
-#include <iostream>
+#include "rtimage.h"
 #include <iomanip>
+#include <iostream>
 #include <sstream>
-
+#include <time.h>
 
 DateEntry::DateEntry(): Gtk::HBox()
 {
@@ -37,19 +36,19 @@ DateEntry::DateEntry(): Gtk::HBox()
     pack_start(*Gtk::manage(button_ = new Gtk::Button()), 0, 0);
     button_->add(*Gtk::manage(new RTImage("expander-open-small.svg")));
     button_->add_events(Gdk::BUTTON_PRESS_MASK);
-    button_->signal_button_press_event().connect_notify(sigc::mem_fun(this, &DateEntry::on_button));
-    entry_->signal_activate().connect(sigc::mem_fun(this, &DateEntry::on_enter));
-    const auto on_focus_out =
-        [this](GdkEventFocus *) -> bool
-        {
-            on_enter();
-            return false;
-        };
-    entry_->signal_focus_out_event().connect(sigc::slot<bool, GdkEventFocus *>(on_focus_out));
+    button_->signal_button_press_event().connect_notify(
+        sigc::mem_fun(this, &DateEntry::on_button));
+    entry_->signal_activate().connect(
+        sigc::mem_fun(this, &DateEntry::on_enter));
+    const auto on_focus_out = [this](GdkEventFocus *) -> bool {
+        on_enter();
+        return false;
+    };
+    entry_->signal_focus_out_event().connect(
+        sigc::slot<bool, GdkEventFocus *>(on_focus_out));
     dialog_ = nullptr;
     calendar_ = nullptr;
 }
-
 
 DateEntry::~DateEntry()
 {
@@ -58,9 +57,8 @@ DateEntry::~DateEntry()
     }
 }
 
-
 void DateEntry::on_button(const GdkEventButton *evt)
-{ 
+{
     int pos_x = evt->x_root - evt->x;
     int pos_y = evt->y_root - evt->y;
 
@@ -86,17 +84,17 @@ void DateEntry::on_button(const GdkEventButton *evt)
     calendar_ = Gtk::manage(new Gtk::Calendar());
     dialog_->get_vbox()->pack_start(*calendar_, 0, 0);
 
-    //calendar_->set_date(date_);
-    calendar_->select_month(int(date_.get_month())-1, date_.get_year());
+    // calendar_->set_date(date_);
+    calendar_->select_month(int(date_.get_month()) - 1, date_.get_year());
     calendar_->select_day(date_.get_day());
 
-    dialog_->signal_button_press_event().connect(sigc::mem_fun(this, &DateEntry::on_date_selected));
+    dialog_->signal_button_press_event().connect(
+        sigc::mem_fun(this, &DateEntry::on_date_selected));
     dialog_->get_action_area()->set_size_request(-1, 0);
 
     dialog_->show_all();
     dialog_->run();
 }
-
 
 bool DateEntry::on_date_selected(const GdkEventButton *evt)
 {
@@ -109,13 +107,11 @@ bool DateEntry::on_date_selected(const GdkEventButton *evt)
     return false;
 }
 
-
 void DateEntry::set_date(const Glib::Date &date)
 {
     date_ = date;
     entry_->set_text(date_.format_string(options.dateFormat));
 }
-
 
 void DateEntry::on_enter()
 {
@@ -126,7 +122,8 @@ void DateEntry::on_enter()
     std::istringstream s(val);
     try {
         if (s >> std::get_time(&t, fmt.c_str())) {
-            Glib::Date d(t.tm_mday, Glib::Date::Month(t.tm_mon+1), 1900 + t.tm_year);
+            Glib::Date d(t.tm_mday, Glib::Date::Month(t.tm_mon + 1),
+                         1900 + t.tm_year);
             if (d.valid()) {
                 set_date(d);
             } else {

@@ -18,9 +18,9 @@
  */
 #pragma once
 
-#include <gtkmm.h>
 #include "../rtengine/dynamicprofile.h"
 #include "profilestorecombobox.h"
+#include <gtkmm.h>
 
 class DynamicProfilePanel: public Gtk::VBox {
 public:
@@ -74,18 +74,30 @@ private:
     };
 
     // cell renderers
-    void render_iso(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_fnumber(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_focallen(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_shutterspeed(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_expcomp(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_camera(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_lens(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_imagetype(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_software(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_filetype(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_customdata(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
-    void render_profilepath(Gtk::CellRenderer *cell, const Gtk::TreeModel::iterator &iter);
+    void render_iso(Gtk::CellRenderer *cell,
+                    const Gtk::TreeModel::iterator &iter);
+    void render_fnumber(Gtk::CellRenderer *cell,
+                        const Gtk::TreeModel::iterator &iter);
+    void render_focallen(Gtk::CellRenderer *cell,
+                         const Gtk::TreeModel::iterator &iter);
+    void render_shutterspeed(Gtk::CellRenderer *cell,
+                             const Gtk::TreeModel::iterator &iter);
+    void render_expcomp(Gtk::CellRenderer *cell,
+                        const Gtk::TreeModel::iterator &iter);
+    void render_camera(Gtk::CellRenderer *cell,
+                       const Gtk::TreeModel::iterator &iter);
+    void render_lens(Gtk::CellRenderer *cell,
+                     const Gtk::TreeModel::iterator &iter);
+    void render_imagetype(Gtk::CellRenderer *cell,
+                          const Gtk::TreeModel::iterator &iter);
+    void render_software(Gtk::CellRenderer *cell,
+                         const Gtk::TreeModel::iterator &iter);
+    void render_filetype(Gtk::CellRenderer *cell,
+                         const Gtk::TreeModel::iterator &iter);
+    void render_customdata(Gtk::CellRenderer *cell,
+                           const Gtk::TreeModel::iterator &iter);
+    void render_profilepath(Gtk::CellRenderer *cell,
+                            const Gtk::TreeModel::iterator &iter);
 
     class EditDialog: public Gtk::Dialog {
     public:
@@ -95,8 +107,10 @@ private:
 
     private:
         void set_ranges();
-        void add_range(const Glib::ustring &name, Gtk::SpinButton *&from, Gtk::SpinButton *&to);
-        void add_optional(const Glib::ustring &name, Gtk::CheckButton *&check, Gtk::Entry *&field);
+        void add_range(const Glib::ustring &name, Gtk::SpinButton *&from,
+                       Gtk::SpinButton *&to);
+        void add_optional(const Glib::ustring &name, Gtk::CheckButton *&check,
+                          Gtk::Entry *&field);
 
         Gtk::SpinButton *iso_min_;
         Gtk::SpinButton *iso_max_;
@@ -130,13 +144,13 @@ private:
         Gtk::CheckButton *has_customdata_;
         Gtk::TextView *customdata_view_;
         Glib::RefPtr<Gtk::TextBuffer> customdata_;
-        
+
         ProfileStoreComboBox *profilepath_;
     };
 
     DynamicProfileColumns columns_;
 
-    //Child widgets:
+    // Child widgets:
     Gtk::Box vbox_;
 
     Gtk::ScrolledWindow scrolledwindow_;

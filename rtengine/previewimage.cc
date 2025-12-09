@@ -18,38 +18,31 @@
  */
 
 #include "previewimage.h"
-#include "iimage.h"
-#include "utils.h"
-#include "iimage.h"
-#include "rtthumbnail.h"
-#include "rawimagesource.h"
-#include "stdimagesource.h"
 #include "iccstore.h"
+#include "iimage.h"
 #include "imgiomanager.h"
+#include "rawimagesource.h"
+#include "rtthumbnail.h"
+#include "stdimagesource.h"
+#include "utils.h"
 #define BENCHMARK
 #include "StopWatch.h"
-
 
 namespace rtengine {
 extern const Settings *settings;
 } // namespace rtengine
 
-
 using namespace rtengine;
 using namespace procparams;
 
-PreviewImage::PreviewImage(const Glib::ustring &fname, const Glib::ustring &ext, int width, int height, bool enable_cms, bool compute_histogram):
-    fname_(fname),
-    ext_(ext),
-    width_(width),
-    height_(height),
-    enable_cms_(enable_cms),
-    compute_histogram_(compute_histogram),
-    loaded_(false),
-    imgprof_(nullptr)
+PreviewImage::PreviewImage(const Glib::ustring &fname, const Glib::ustring &ext,
+                           int width, int height, bool enable_cms,
+                           bool compute_histogram)
+    : fname_(fname), ext_(ext), width_(width), height_(height),
+      enable_cms_(enable_cms), compute_histogram_(compute_histogram),
+      loaded_(false), imgprof_(nullptr)
 {
 }
-
 
 PreviewImage::~PreviewImage()
 {
@@ -58,17 +51,23 @@ PreviewImage::~PreviewImage()
     }
 }
 
-
 void PreviewImage::render(bool enable_cms)
 {
     if (img_) {
         cmsHTRANSFORM xform = nullptr;
         if (enable_cms) {
-            cmsHPROFILE mprof = ICCStore::getInstance()->getActiveMonitorProfile();
-            cmsHPROFILE iprof = imgprof_ ? imgprof_ : ICCStore::getInstance()->getsRGBProfile();
+            cmsHPROFILE mprof =
+                ICCStore::getInstance()->getActiveMonitorProfile();
+            cmsHPROFILE iprof =
+                imgprof_ ? imgprof_ : ICCStore::getInstance()->getsRGBProfile();
             if (mprof) {
                 lcmsMutex->lock();
-                xform = cmsCreateTransform(iprof, TYPE_RGB_8, mprof, TYPE_RGB_8, settings->monitorIntent, cmsFLAGS_NOCACHE | (settings->monitorBPC ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0));
+                xform = cmsCreateTransform(
+                    iprof, TYPE_RGB_8, mprof, TYPE_RGB_8,
+                    settings->monitorIntent,
+                    cmsFLAGS_NOCACHE |
+                        (settings->monitorBPC ? cmsFLAGS_BLACKPOINTCOMPENSATION
+                                              : 0));
                 lcmsMutex->unlock();
             }
         }
@@ -77,14 +76,14 @@ void PreviewImage::render(bool enable_cms)
         int h = img_->getHeight();
 
 #ifdef _OPENMP
-#       pragma omp parallel
+#pragma omp parallel
 #endif
         {
             std::vector<unsigned char> line(w * 3);
             unsigned char *buf = &line[0];
-            
+
 #ifdef _OPENMP
-#           pragma omp for
+#pragma omp for
 #endif
             for (unsigned int i = 0; i < (unsigned int)(h); ++i) {
                 const unsigned char *src = data + i * w * 3;
@@ -94,7 +93,7 @@ void PreviewImage::render(bool enable_cms)
                     cmsDoTransform(xform, src, buf, w);
                     src = buf;
                 }
-                
+
                 for (unsigned int j = 0; j < (unsigned int)(w); ++j) {
                     unsigned char r = *(src++);
                     unsigned char g = *(src++);
@@ -112,7 +111,6 @@ void PreviewImage::render(bool enable_cms)
     }
 }
 
-
 void PreviewImage::load()
 {
     loaded_ = true;
@@ -121,32 +119,36 @@ void PreviewImage::load()
 
     if (lext == "jpg" || lext == "jpeg" || lext == "png" /*|| lext == "tif" || lext == "tiff" || ImageIOManager::getInstance()->canLoad(lext)*/) {
         img_.reset(load_img(fname_, width_, height_));
-    } else if (settings->thumbnail_inspector_mode == Settings::ThumbnailInspectorMode::RAW) {
+    } else if (settings->thumbnail_inspector_mode ==
+               Settings::ThumbnailInspectorMode::RAW) {
         img_.reset(load_raw(fname_, width_, height_));
-        if (settings->thumbnail_inspector_raw_curve == Settings::ThumbnailInspectorRawCurve::RAW_CLIPPING) {
+        if (settings->thumbnail_inspector_raw_curve ==
+            Settings::ThumbnailInspectorRawCurve::RAW_CLIPPING) {
             enable_cms_ = false;
         }
     } else {
         img_.reset(load_raw_preview(fname_, width_, height_));
     }
-    if (!img_ && (lext == "tif" || lext == "tiff" || ImageIOManager::getInstance()->canLoad(lext))) {
+    if (!img_ && (lext == "tif" || lext == "tiff" ||
+                  ImageIOManager::getInstance()->canLoad(lext))) {
         img_.reset(load_img(fname_, width_, height_));
     }
-    
+
     if (img_) {
         try {
-            previewImage = Cairo::ImageSurface::create(Cairo::FORMAT_RGB24, img_->getWidth(), img_->getHeight());
+            previewImage = Cairo::ImageSurface::create(
+                Cairo::FORMAT_RGB24, img_->getWidth(), img_->getHeight());
             previewImage->flush();
             render(enable_cms_);
         } catch (std::exception &exc) {
             if (settings->verbose) {
-                std::cout << "ERROR in creating PreviewImage: " << exc.what() << std::endl;
+                std::cout << "ERROR in creating PreviewImage: " << exc.what()
+                          << std::endl;
             }
             previewImage.clear();
         }
-    }    
+    }
 }
-
 
 Cairo::RefPtr<Cairo::ImageSurface> PreviewImage::getImage()
 {
@@ -155,7 +157,6 @@ Cairo::RefPtr<Cairo::ImageSurface> PreviewImage::getImage()
     }
     return previewImage;
 }
-
 
 Image8 *PreviewImage::load_img(const Glib::ustring &fname, int w, int h)
 {
@@ -195,12 +196,11 @@ Image8 *PreviewImage::load_img(const Glib::ustring &fname, int w, int h)
         Imagefloat *f = static_cast<Imagefloat *>(img);
         if (has_profile) {
             lcmsMutex->lock();
-            cmsHTRANSFORM xform = cmsCreateTransform(
-                img->getEmbeddedProfile(),
-                TYPE_RGB_FLT,
-                ICCStore::getInstance()->getsRGBProfile(), TYPE_RGB_FLT,
-                INTENT_RELATIVE_COLORIMETRIC,
-                cmsFLAGS_NOOPTIMIZE|cmsFLAGS_NOCACHE);
+            cmsHTRANSFORM xform =
+                cmsCreateTransform(img->getEmbeddedProfile(), TYPE_RGB_FLT,
+                                   ICCStore::getInstance()->getsRGBProfile(),
+                                   TYPE_RGB_FLT, INTENT_RELATIVE_COLORIMETRIC,
+                                   cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
             lcmsMutex->unlock();
             f->normalizeFloatTo1();
             f->ExecCMSTransform(xform, true);
@@ -225,11 +225,10 @@ Image8 *PreviewImage::load_img(const Glib::ustring &fname, int w, int h)
 
     if (ret && compute_histogram_) {
         get_histogram(ret);
-    }        
+    }
 
     return ret;
 }
-
 
 void PreviewImage::get_histogram(Image8 *img)
 {
@@ -240,7 +239,7 @@ void PreviewImage::get_histogram(Image8 *img)
     const int W = img->getWidth();
     const int H = img->getHeight();
 #ifdef _OPENMP
-#   pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
@@ -251,14 +250,12 @@ void PreviewImage::get_histogram(Image8 *img)
     }
 }
 
-
 void PreviewImage::getHistogram(LUTu &r, LUTu &g, LUTu &b)
 {
     r = hist_[0];
     g = hist_[1];
     b = hist_[2];
 }
-
 
 Image8 *PreviewImage::load_raw_preview(const Glib::ustring &fname, int w, int h)
 {
@@ -274,11 +271,12 @@ Image8 *PreviewImage::load_raw_preview(const Glib::ustring &fname, int w, int h)
     if (!img) {
         return nullptr;
     }
-    
+
     if (w > 0 && h > 0) {
         double fw = img->getWidth();
         double fh = img->getHeight();
-        if ((ri.get_rotateDegree() == 90 || ri.get_rotateDegree() == 270) && ri.thumbNeedsRotation()) {
+        if ((ri.get_rotateDegree() == 90 || ri.get_rotateDegree() == 270) &&
+            ri.thumbNeedsRotation()) {
             std::swap(w, h);
         }
         double sw = std::max(fw / w, 1.0);
@@ -324,31 +322,29 @@ Image8 *PreviewImage::load_raw_preview(const Glib::ustring &fname, int w, int h)
     return img;
 }
 
-
 namespace {
 
 class PreviewRawImageSource: public RawImageSource {
 public:
-    PreviewRawImageSource(int bw, int bh):
-        RawImageSource(),
-        bbox_W_(bw),
-        bbox_H_(bh),
-        demosaiced_(false),
-        scaled_(false)
+    PreviewRawImageSource(int bw, int bh)
+        : RawImageSource(), bbox_W_(bw), bbox_H_(bh), demosaiced_(false),
+          scaled_(false)
     {
     }
 
     bool mark_clipped()
     {
-        array2D<float> *channels[3] = { &red, &green, &blue };
+        array2D<float> *channels[3] = {&red, &green, &blue};
 
         constexpr float hl = 65534.f;
         constexpr float sh = hl / 2.f;
-        
-        if ((ri->getSensorType() == ST_BAYER || ri->getSensorType() == ST_FUJI_XTRANS) && ri->get_colors() == 3) {
+
+        if ((ri->getSensorType() == ST_BAYER ||
+             ri->getSensorType() == ST_FUJI_XTRANS) &&
+            ri->get_colors() == 3) {
             const bool bayer = ri->getSensorType() == ST_BAYER;
 #ifdef _OPENMP
-#           pragma omp parallel for
+#pragma omp parallel for
 #endif
             for (int y = 0; y < H; ++y) {
                 for (int x = 0; x < W; ++x) {
@@ -366,15 +362,15 @@ public:
                             (*channels[i])[y][x] = 0.f;
                         }
                         (*channels[c])[y][x] = sh;
-                    }     
+                    }
                 }
             }
             return true;
         } else if (ri->get_colors() == 1) {
             const float chmax = 65535.f;
-            
+
 #ifdef _OPENMP
-#           pragma omp parallel for
+#pragma omp parallel for
 #endif
             for (int y = 0; y < H; ++y) {
                 for (int xx = 0; xx < W; ++xx) {
@@ -403,14 +399,13 @@ public:
         return false;
     }
 
-
     void mark_clipped_rgb(Imagefloat *img)
     {
         const int iw = img->getWidth();
         const int ih = img->getHeight();
-        
+
 #ifdef _OPENMP
-#       pragma omp parallel for
+#pragma omp parallel for
 #endif
         for (int y = 0; y < ih; ++y) {
             for (int x = 0; x < iw; ++x) {
@@ -435,11 +430,11 @@ public:
         if (settings->verbose > 1) {
             std::cout << "FAST PREVIEW DEMOSAIC: " << fileName << std::endl;
         }
-        
+
         BENCHFUN
-            
+
         scaled_ = rescale(mono);
-        
+
         if (demosaiced_) {
             return;
         } else if (!mono && scaled_ && ri->isBayer()) {
@@ -460,7 +455,7 @@ public:
         RawImageSource::demosaic(pp.raw, false, t);
     }
 
-    void getFullSize(int &w, int &h, int tr=TR_NONE) override
+    void getFullSize(int &w, int &h, int tr = TR_NONE) override
     {
         if (scaled_) {
             w = W;
@@ -485,8 +480,8 @@ public:
 private:
     bool rescale(bool mono)
     {
-        //return false;
-        
+        // return false;
+
         if (bbox_W_ < 0 || bbox_H_ < 0) {
             return false;
         }
@@ -503,9 +498,12 @@ private:
         int skip = std::max(sw, sh);
 
         if (settings->verbose > 1) {
-            std::cout << "  skip calculation: W = " << W << ", bbox_W = " << bbox_W_ << ", H = " << H << ", bbox_H_ = " << bbox_H_ << ", skip = " << skip << std::endl;
+            std::cout << "  skip calculation: W = " << W
+                      << ", bbox_W = " << bbox_W_ << ", H = " << H
+                      << ", bbox_H_ = " << bbox_H_ << ", skip = " << skip
+                      << std::endl;
         }
-        
+
         if (skip <= 1) {
             return false;
         }
@@ -513,7 +511,8 @@ private:
         if (ri->getSensorType() == ST_BAYER) {
             if (settings->verbose > 1) {
                 std::cout << "SKIP: " << skip << ", FROM: " << W << "x" << H
-                          << " to " << (W/skip) << "x" << (H/skip) << std::endl;
+                          << " to " << (W / skip) << "x" << (H / skip)
+                          << std::endl;
             }
 
             if (!mono) {
@@ -527,7 +526,7 @@ private:
                 if (skip <= 1) {
                     return false;
                 }
-                
+
                 int ww = (W / skip) - 1;
                 int hh = (H / skip) - 1;
                 flushRGB();
@@ -561,15 +560,15 @@ private:
                 }
 
 #ifdef _OPENMP
-#               pragma omp parallel for
+#pragma omp parallel for
 #endif
                 for (int y = 0; y < hh; ++y) {
                     int yy = y * skip;
                     for (int x = 0; x < ww; ++x) {
                         int xx = x * skip;
-                        red[y][x] = rawData[yy+yr][xx+xr];
-                        green[y][x] = rawData[yy+yg][xx+xg];
-                        blue[y][x] = rawData[yy+yb][xx+xb];
+                        red[y][x] = rawData[yy + yr][xx + xr];
+                        green[y][x] = rawData[yy + yg][xx + xg];
+                        blue[y][x] = rawData[yy + yb][xx + xb];
                     }
                 }
 
@@ -584,9 +583,9 @@ private:
                 H /= skip;
                 rawData.free();
                 rawData(W, H);
-            
+
 #ifdef _OPENMP
-#               pragma omp parallel for
+#pragma omp parallel for
 #endif
                 for (int y = 0; y < H; ++y) {
                     int yy = y * skip + int(y & 1);
@@ -610,18 +609,19 @@ private:
 
             if (settings->verbose > 1) {
                 std::cout << "SKIP: " << skip << ", FROM: " << W << "x" << H
-                          << " to " << (W/skip) << "x" << (H/skip) << std::endl;
+                          << " to " << (W / skip) << "x" << (H / skip)
+                          << std::endl;
             }
-            
+
             array2D<float> tmp;
             tmp(W * c, H, static_cast<float *>(rawData), 0);
             W /= skip;
             H /= skip;
             rawData.free();
             rawData(W * c, H);
-            
+
 #ifdef _OPENMP
-#           pragma omp parallel for
+#pragma omp parallel for
 #endif
             for (int y = 0; y < H; ++y) {
                 int yy = y * skip;
@@ -640,35 +640,46 @@ private:
         return true;
     }
 
-    void bayer_bilinear_demosaic(const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue)
+    void bayer_bilinear_demosaic(const array2D<float> &rawData,
+                                 array2D<float> &red, array2D<float> &green,
+                                 array2D<float> &blue)
     {
-        //BENCHFUN
-    #ifdef _OPENMP
-        #pragma omp parallel for
-    #endif
+        // BENCHFUN
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
         for (int i = 1; i < H - 1; ++i) {
             float **nonGreen1 = red;
             float **nonGreen2 = blue;
             if (FC(i, 0) == 2 || FC(i, 1) == 2) { // blue row => swap pointers
                 std::swap(nonGreen1, nonGreen2);
             }
-    #if defined(__clang__)
-            #pragma clang loop vectorize(assume_safety)
-    #elif defined(__GNUC__)
-            #pragma GCC ivdep
-    #endif
-            for (int j = 2 - (FC(i, 1) & 1); j < W - 2; j += 2) { // always begin with a green pixel
+#if defined(__clang__)
+#pragma clang loop vectorize(assume_safety)
+#elif defined(__GNUC__)
+#pragma GCC ivdep
+#endif
+            for (int j = 2 - (FC(i, 1) & 1); j < W - 2;
+                 j += 2) { // always begin with a green pixel
                 green[i][j] = rawData[i][j];
-                nonGreen1[i][j] = (rawData[i][j - 1] + rawData[i][j + 1]) * 0.5f;
-                nonGreen2[i][j] = (rawData[i - 1][j] + rawData[i + 1][j]) * 0.5f;
-                green[i][j + 1] = ((rawData[i - 1][j + 1] + rawData[i][j]) + (rawData[i][j + 2] + rawData[i + 1][j + 1])) * 0.25f;
+                nonGreen1[i][j] =
+                    (rawData[i][j - 1] + rawData[i][j + 1]) * 0.5f;
+                nonGreen2[i][j] =
+                    (rawData[i - 1][j] + rawData[i + 1][j]) * 0.5f;
+                green[i][j + 1] =
+                    ((rawData[i - 1][j + 1] + rawData[i][j]) +
+                     (rawData[i][j + 2] + rawData[i + 1][j + 1])) *
+                    0.25f;
                 nonGreen1[i][j + 1] = rawData[i][j + 1];
-                nonGreen2[i][j + 1] = ((rawData[i - 1][j] + rawData[i - 1][j + 2]) + (rawData[i + 1][j] + rawData[i + 1][j + 2])) * 0.25f;
+                nonGreen2[i][j + 1] =
+                    ((rawData[i - 1][j] + rawData[i - 1][j + 2]) +
+                     (rawData[i + 1][j] + rawData[i + 1][j + 2])) *
+                    0.25f;
             }
         }
         border_interpolate2(W, H, 2, rawData, red, green, blue);
     }
-    
+
     int bbox_W_;
     int bbox_H_;
     bool demosaiced_;
@@ -676,7 +687,6 @@ private:
 };
 
 } // namespace
-
 
 Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
 {
@@ -686,7 +696,8 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
         return nullptr;
     }
 
-    const bool show_clip = settings->thumbnail_inspector_raw_curve == Settings::ThumbnailInspectorRawCurve::RAW_CLIPPING;
+    const bool show_clip = settings->thumbnail_inspector_raw_curve ==
+                           Settings::ThumbnailInspectorRawCurve::RAW_CLIPPING;
 
     ProcParams neutral;
     neutral.icm.inputProfile = "(camera)";
@@ -699,13 +710,13 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
     ColorTemp wb = show_clip ? ColorTemp() : src.getWB();
     src.preprocess(neutral.raw, neutral.lensProf, neutral.coarse, false, wb);
 
-    //src.rescale();
+    // src.rescale();
     src.fast_demosaic(show_clip);
 
     if (compute_histogram_) {
         src.getRAWHistogram(hist_[0], hist_[1], hist_[2]);
     }
-    
+
     bool marked = show_clip && src.mark_clipped();
 
     int fw, fh;
@@ -728,8 +739,8 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
         w = fw / scale;
         h = fh / scale;
     }
-        
-    PreviewProps pp(0, 0, fw, fh, int(scale));//1);
+
+    PreviewProps pp(0, 0, fw, fh, int(scale)); // 1);
     int iw = fw / int(scale);
     int ih = fh / int(scale);
 
@@ -745,9 +756,12 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
     }
 
     LUTi gamma(65536);
-    const bool apply_curve = settings->thumbnail_inspector_raw_curve != Settings::ThumbnailInspectorRawCurve::LINEAR && !show_clip;
+    const bool apply_curve = settings->thumbnail_inspector_raw_curve !=
+                                 Settings::ThumbnailInspectorRawCurve::LINEAR &&
+                             !show_clip;
     if (apply_curve) {
-        if (settings->thumbnail_inspector_raw_curve == Settings::ThumbnailInspectorRawCurve::FILM) {
+        if (settings->thumbnail_inspector_raw_curve ==
+            Settings::ThumbnailInspectorRawCurve::FILM) {
             DiagonalCurve curve(curves::filmcurve_def);
             for (int i = 0; i < 65536; ++i) {
                 float x = Color::gamma_srgbclipped(i) / 65535.f;
@@ -757,7 +771,7 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
         } else {
             constexpr float base = 500.f;
             for (int i = 0; i < 65536; ++i) {
-                float x = float(i)/65535.f;
+                float x = float(i) / 65535.f;
                 float y = xlin2log(x, base);
                 gamma[i] = y * 255.f;
             }
@@ -771,7 +785,7 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
     Image8 *img = new Image8(iw, ih);
     const int maxval = MAXVALF;
 #ifdef _OPENMP
-    #pragma omp parallel for
+#pragma omp parallel for
 #endif
     for (int y = 0; y < ih; ++y) {
         for (int x = 0; x < iw; ++x) {

@@ -17,43 +17,39 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <set>
 #include "previewloader.h"
+#include "../rtengine/threadpool.h"
 #include "guiutils.h"
+#include "options.h"
 #include "threadutils.h"
-#include <thread>
+#include <atomic>
 #include <chrono>
 #include <deque>
-#include <atomic>
-#include "options.h"
-#include "../rtengine/threadpool.h"
+#include <set>
+#include <thread>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-#define DEBUG(format,args...)
-//#define DEBUG(format,args...) printf("PreviewLoader::%s: " format "\n", __FUNCTION__, ## args)
+#define DEBUG(format, args...)
+// #define DEBUG(format,args...) printf("PreviewLoader::%s: " format "\n",
+// __FUNCTION__, ## args)
 
-class PreviewLoader::Impl :
-    public rtengine::NonCopyable
-{
+class PreviewLoader::Impl: public rtengine::NonCopyable {
 public:
     struct Job {
-        Job(int dir_id, const Glib::ustring& dir_entry, PreviewLoaderListener* listener):
-            dir_id_(dir_id),
-            dir_entry_(dir_entry),
-            listener_(listener)
-        {}
+        Job(int dir_id, const Glib::ustring &dir_entry,
+            PreviewLoaderListener *listener)
+            : dir_id_(dir_id), dir_entry_(dir_entry), listener_(listener)
+        {
+        }
 
-        Job():
-            dir_id_(0),
-            listener_(nullptr)
-        {}
+        Job(): dir_id_(0), listener_(nullptr) {}
 
         int dir_id_;
         Glib::ustring dir_entry_;
-        PreviewLoaderListener* listener_;
+        PreviewLoaderListener *listener_;
     };
     /* Issue 2406
         struct OutputJob
@@ -65,9 +61,9 @@ public:
         };
     */
     struct JobCompare {
-        bool operator()(const Job& lhs, const Job& rhs) const
+        bool operator()(const Job &lhs, const Job &rhs) const
         {
-            if ( lhs.dir_id_ == rhs.dir_id_ ) {
+            if (lhs.dir_id_ == rhs.dir_id_) {
                 return lhs.dir_entry_ < rhs.dir_entry_;
             }
 
@@ -77,9 +73,7 @@ public:
 
     typedef std::set<Job, JobCompare> JobSet;
 
-    Impl(): num_concurrent_threads_(0), job_count_(0)
-    {
-    }
+    Impl(): num_concurrent_threads_(0), job_count_(0) {}
 
     MyMutex mutex_;
     std::deque<Job> jobs_;
@@ -93,7 +87,7 @@ public:
             MyMutex::MyLock lock(mutex_);
 
             // nothing to do; could be jobs have been removed
-            if ( jobs_.empty() ) {
+            if (jobs_.empty()) {
                 DEBUG("processing: nothing to do");
                 return;
             }
@@ -105,23 +99,27 @@ public:
             DEBUG("%d job(s) remaining", jobs_.size());
         }
 
-        ++num_concurrent_threads_; // to detect when last thread in pool has run out
+        ++num_concurrent_threads_; // to detect when last thread in pool has run
+                                   // out
         try {
-            Thumbnail* tmb = nullptr;
+            Thumbnail *tmb = nullptr;
             if (Glib::file_test(j.dir_entry_, Glib::FILE_TEST_EXISTS)) {
                 tmb = cacheMgr->getEntry(j.dir_entry_);
             }
 
             if (tmb) {
                 DEBUG("Preview Ready\n");
-                j.listener_->previewReady(j.dir_id_, new FileBrowserEntry(tmb, j.dir_entry_));
+                j.listener_->previewReady(
+                    j.dir_id_, new FileBrowserEntry(tmb, j.dir_entry_));
             }
 
             if (++job_count_ % 20 == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }                
+            }
 
-        } catch (Glib::Error &e) {} catch(...) {}
+        } catch (Glib::Error &e) {
+        } catch (...) {
+        }
 
         bool last = num_concurrent_threads_--;
 
@@ -132,18 +130,9 @@ public:
     }
 };
 
+PreviewLoader::PreviewLoader(): impl_(new Impl()) {}
 
-PreviewLoader::PreviewLoader():
-    impl_(new Impl())
-{
-}
-
-
-PreviewLoader::~PreviewLoader()
-{
-    delete impl_;
-}
-
+PreviewLoader::~PreviewLoader() { delete impl_; }
 
 PreviewLoader *PreviewLoader::getInstance()
 {
@@ -151,8 +140,8 @@ PreviewLoader *PreviewLoader::getInstance()
     return &instance_;
 }
 
-
-void PreviewLoader::add(int dir_id, const Glib::ustring& dir_entry, PreviewLoaderListener* l)
+void PreviewLoader::add(int dir_id, const Glib::ustring &dir_entry,
+                        PreviewLoaderListener *l)
 {
     // somebody listening?
     if (l != nullptr) {
@@ -166,10 +155,11 @@ void PreviewLoader::add(int dir_id, const Glib::ustring& dir_entry, PreviewLoade
 
         // queue a run request
         DEBUG("adding run request %s", dir_entry.c_str());
-        rtengine::ThreadPool::add_task(rtengine::ThreadPool::Priority::LOWEST, sigc::mem_fun(*impl_, &PreviewLoader::Impl::processNextJob));
+        rtengine::ThreadPool::add_task(
+            rtengine::ThreadPool::Priority::LOWEST,
+            sigc::mem_fun(*impl_, &PreviewLoader::Impl::processNextJob));
     }
 }
-
 
 void PreviewLoader::removeAllJobs()
 {

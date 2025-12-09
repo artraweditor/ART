@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -19,32 +19,33 @@
  */
 #pragma once
 
-#include <ctime>
-#include <cmath>
-#include <iostream>
 #include <array>
+#include <cmath>
+#include <ctime>
+#include <iostream>
 
 #include "dcraw.h"
-#include "imageformat.h"
 #include "gainmap.h"
+#include "imageformat.h"
 
 #ifdef ART_USE_LIBRAW
 class LibRaw;
 #endif // ART_USE_LIBRAW
 
-
 namespace rtengine {
 
 class Image8;
-
 
 class RawImage: protected DCraw {
 public:
     explicit RawImage(const Glib::ustring &name);
     ~RawImage();
 
-    int loadRaw(bool loadData, unsigned int imageNum=0, bool closeFile=true, ProgressListener *plistener=nullptr, double progressRange=1.0, bool apply_corrections=true);
-    void get_colorsCoeff(float *pre_mul_, float *scale_mul_, float *cblack_, bool forceAutoWB);
+    int loadRaw(bool loadData, unsigned int imageNum = 0, bool closeFile = true,
+                ProgressListener *plistener = nullptr,
+                double progressRange = 1.0, bool apply_corrections = true);
+    void get_colorsCoeff(float *pre_mul_, float *scale_mul_, float *cblack_,
+                         bool forceAutoWB);
     void set_prefilters()
     {
         if (isBayer() && get_colors() == 3) {
@@ -54,25 +55,28 @@ public:
     }
     typedef dcrawImage_t ImageType;
     ImageType get_image() { return image; }
-    float** compress_image(unsigned int frameNum, bool freeImage=true); // revert to compressed pixels format and release image data
-    float** data;             // holds pixel values, data[i][j] corresponds to the ith row and jth column
-    unsigned prefilters;               // original filters saved ( used for 4 color processing )
+    float **compress_image(
+        unsigned int frameNum,
+        bool freeImage =
+            true); // revert to compressed pixels format and release image data
+    float **data;  // holds pixel values, data[i][j] corresponds to the ith row
+                   // and jth column
+    unsigned
+        prefilters; // original filters saved ( used for 4 color processing )
     unsigned int getFrameCount() const { return is_raw; }
 
     double getBaselineExposure() const { return RT_baseline_exposure; }
-    
+
 protected:
     Glib::ustring filename; // complete filename
-    int rotate_deg; // 0,90,180,270 degree of rotation: info taken by dcraw from exif
+    int rotate_deg; // 0,90,180,270 degree of rotation: info taken by dcraw from
+                    // exif
     char *profile_data; // Embedded ICC color profile
-    float *allocation; // pointer to allocated memory
+    float *allocation;  // pointer to allocated memory
     int maximum_c4[4];
     char *thumb_data;
 
-    bool isFoveon() const
-    {
-        return is_foveon;
-    }
+    bool isFoveon() const { return is_foveon; }
 
     std::vector<std::array<int, 4>> raw_optical_black_med_;
 
@@ -81,10 +85,13 @@ protected:
     std::unique_ptr<LibRaw> libraw_;
 #endif // ART_USE_LIBRAW
 
-    int do_loadRaw(const Glib::ustring &fname, bool loadData, unsigned int imageNum, bool closeFile, ProgressListener *plistener, double progressRange, bool apply_corrections);
+    int do_loadRaw(const Glib::ustring &fname, bool loadData,
+                   unsigned int imageNum, bool closeFile,
+                   ProgressListener *plistener, double progressRange,
+                   bool apply_corrections);
     ThreeValBool use_imgio_;
     Glib::ustring imgio_filename_;
-    
+
 public:
     bool has_gain_map(std::vector<uint8_t> *out_buf) const;
 
@@ -103,7 +110,7 @@ public:
     eSensorType getSensorType() const;
 
     void getRgbCam(float rgbcam[3][4]);
-    void getXtransMatrix( int xtransMatrix[6][6]);
+    void getXtransMatrix(int xtransMatrix[6][6]);
     unsigned get_filters() const { return filters; }
     int get_colors() const { return colors; }
     int get_cblack(int i) const { return cblack[i]; }
@@ -131,12 +138,17 @@ public:
         if (std::isfinite(pre_mul[c])) {
             return pre_mul[c];
         } else {
-            std::cout << "Failure decoding '" << filename << "', please file a bug report including the raw file and the line below:" << std::endl;
-            std::cout << "rawimage.h get_pre_mul() : pre_mul[" << c << "] value " << pre_mul[c] << " automatically replaced by value 1.0" << std::endl;
+            std::cout << "Failure decoding '" << filename
+                      << "', please file a bug report including the raw file "
+                         "and the line below:"
+                      << std::endl;
+            std::cout << "rawimage.h get_pre_mul() : pre_mul[" << c
+                      << "] value " << pre_mul[c]
+                      << " automatically replaced by value 1.0" << std::endl;
             return 1.f;
         }
     }
-    
+
     float get_rgb_cam(int r, int c) const { return rgb_cam[r][c]; }
 
     int get_profileLen() const { return profile_length; }
@@ -154,7 +166,7 @@ protected:
     bool get_thumbSwap() const;
     unsigned get_thumbLength() const { return thumb_length; }
     bool checkThumbOk() const;
-    
+
 public:
     bool zeroIsBad() const { return zero_is_bad == 1; }
     bool isBayer() const { return (filters != 0 && filters != 9); }
@@ -172,37 +184,37 @@ public:
     {
         return ((filters >> ((((row) << 1 & 14) + ((col) & 1)) << 1) & 3) == 0);
     }
-    
+
     bool ISGREEN(unsigned row, unsigned col) const
     {
         return ((filters >> ((((row) << 1 & 14) + ((col) & 1)) << 1) & 3) == 1);
     }
-    
+
     bool ISBLUE(unsigned row, unsigned col) const
     {
         return ((filters >> ((((row) << 1 & 14) + ((col) & 1)) << 1) & 3) == 2);
     }
-    
+
     unsigned FC(unsigned row, unsigned col) const
     {
         return (filters >> ((((row) << 1 & 14) + ((col) & 1)) << 1) & 3);
     }
-    
+
     bool ISXTRANSRED(unsigned row, unsigned col) const
     {
         return ((xtrans[(row) % 6][(col) % 6]) == 0);
     }
-    
+
     bool ISXTRANSGREEN(unsigned row, unsigned col) const
     {
         return ((xtrans[(row) % 6][(col) % 6]) == 1);
     }
-    
+
     bool ISXTRANSBLUE(unsigned row, unsigned col) const
     {
         return ((xtrans[(row) % 6][(col) % 6]) == 2);
     }
-    
+
     unsigned XTRANSFC(unsigned row, unsigned col) const
     {
         return (xtrans[(row) % 6][(col) % 6]);

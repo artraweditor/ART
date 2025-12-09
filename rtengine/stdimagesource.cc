@@ -17,15 +17,15 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "stdimagesource.h"
-#include "mytime.h"
+#include "../rtgui/multilangmgr.h"
+#include "color.h"
+#include "curves.h"
 #include "iccstore.h"
 #include "imageio.h"
-#include "curves.h"
-#include "color.h"
 #include "imgiomanager.h"
-#include "../rtgui/multilangmgr.h"
+#include "mytime.h"
 #ifdef _OPENMP
-# include <omp.h>
+#include <omp.h>
 #endif
 #include "clutstore.h"
 
@@ -33,20 +33,20 @@
 
 namespace rtengine {
 
-extern const Settings* settings;
+extern const Settings *settings;
 
-template<class T> void freeArray (T** a, int H)
+template <class T> void freeArray(T **a, int H)
 {
     for (int i = 0; i < H; i++) {
-        delete [] a[i];
+        delete[] a[i];
     }
 
-    delete [] a;
+    delete[] a;
 }
-template<class T> T** allocArray (int W, int H)
+template <class T> T **allocArray(int W, int H)
 {
 
-    T** t = new T*[H];
+    T **t = new T *[H];
 
     for (int i = 0; i < H; i++) {
         t[i] = new T[W];
@@ -56,21 +56,16 @@ template<class T> T** allocArray (int W, int H)
 }
 
 #define HR_SCALE 2
-StdImageSource::StdImageSource():
-    ImageSource(),
-    img(nullptr),
-    plistener(nullptr),
-    full(false),
-    max{},
-    rgbSourceModified(false),
-    imgCopy(nullptr)
+StdImageSource::StdImageSource()
+    : ImageSource(), img(nullptr), plistener(nullptr), full(false), max{},
+      rgbSourceModified(false), imgCopy(nullptr)
 {
 
     embProfile = nullptr;
     idata = nullptr;
 }
 
-StdImageSource::~StdImageSource ()
+StdImageSource::~StdImageSource()
 {
 
     delete idata;
@@ -88,26 +83,29 @@ StdImageSource::~StdImageSource ()
     }
 }
 
-void StdImageSource::getSampleFormat (const Glib::ustring &fname, IIOSampleFormat &sFormat, IIOSampleArrangement &sArrangement)
+void StdImageSource::getSampleFormat(const Glib::ustring &fname,
+                                     IIOSampleFormat &sFormat,
+                                     IIOSampleArrangement &sArrangement)
 {
 
     sFormat = IIOSF_UNKNOWN;
     sArrangement = IIOSA_UNKNOWN;
 
     if (hasJpegExtension(fname)) {
-        // For now, png and jpeg files are converted to unsigned short by the loader itself,
-        // but there should be functions that read the sample format first, like the TIFF case below
+        // For now, png and jpeg files are converted to unsigned short by the
+        // loader itself, but there should be functions that read the sample
+        // format first, like the TIFF case below
         sFormat = IIOSF_UNSIGNED_CHAR;
         sArrangement = IIOSA_CHUNKY;
         return;
     } else if (hasPngExtension(fname)) {
-        int result = ImageIO::getPNGSampleFormat (fname, sFormat, sArrangement);
+        int result = ImageIO::getPNGSampleFormat(fname, sFormat, sArrangement);
 
         if (result == IMIO_SUCCESS) {
             return;
         }
     } else if (hasTiffExtension(fname)) {
-        int result = ImageIO::getTIFFSampleFormat (fname, sFormat, sArrangement);
+        int result = ImageIO::getTIFFSampleFormat(fname, sFormat, sArrangement);
 
         if (result == IMIO_SUCCESS) {
             return;
@@ -122,7 +120,8 @@ void StdImageSource::getSampleFormat (const Glib::ustring &fname, IIOSampleForma
  * and RT's image data type (Image8, Image16 and Imagefloat), then it will
  * load the image into it
  */
-int StdImageSource::load(const Glib::ustring &fname, int maxw_hint, int maxh_hint)
+int StdImageSource::load(const Glib::ustring &fname, int maxw_hint,
+                         int maxh_hint)
 {
     fileName = fname;
 
@@ -156,7 +155,8 @@ int StdImageSource::load(const Glib::ustring &fname, int maxw_hint, int maxh_hin
     }
 
     default:
-        if (!ImageIOManager::getInstance()->load(fname, plistener, img, maxw_hint, maxh_hint)) {
+        if (!ImageIOManager::getInstance()->load(fname, plistener, img,
+                                                 maxw_hint, maxh_hint)) {
             return IMIO_FILETYPENOTSUPPORTED;
         } else {
             loaded = true;
@@ -169,9 +169,9 @@ int StdImageSource::load(const Glib::ustring &fname, int maxw_hint, int maxh_hin
         img->setSampleArrangement(sArrangement);
 
         if (plistener) {
-            plistener->setProgressStr ("PROGRESSBAR_LOADING");
-            plistener->setProgress (0.0);
-            img->setProgressListener (plistener);
+            plistener->setProgressStr("PROGRESSBAR_LOADING");
+            plistener->setProgress(0.0);
+            img->setProgressListener(plistener);
         }
 
         // And load the image!
@@ -212,12 +212,12 @@ int StdImageSource::load(const Glib::ustring &fname, int maxw_hint, int maxh_hin
     }
 
     if (plistener) {
-        plistener->setProgressStr ("PROGRESSBAR_READY");
-        plistener->setProgress (1.0);
+        plistener->setProgressStr("PROGRESSBAR_READY");
+        plistener->setProgress(1.0);
     }
 
-    //this is probably a mistake if embedded profile is not D65
-    wb = ColorTemp (1.0, 1.0, 1.0, 1.0);
+    // this is probably a mistake if embedded profile is not D65
+    wb = ColorTemp(1.0, 1.0, 1.0, 1.0);
 
     return 0;
 }
@@ -227,15 +227,19 @@ int StdImageSource::load(const Glib::ustring &fname)
     return load(fname, 0, 0);
 }
 
-void StdImageSource::getImage (const ColorTemp &ctemp, int tran, Imagefloat* image, const PreviewProps &pp, const ExposureParams &hrp, const RAWParams &raw)
+void StdImageSource::getImage(const ColorTemp &ctemp, int tran,
+                              Imagefloat *image, const PreviewProps &pp,
+                              const ExposureParams &hrp, const RAWParams &raw)
 {
 
     // the code will use OpenMP as of now.
 
     img->getStdImage(ctemp, tran, image, pp);
 
-    // Hombre: we could have rotated the image here too, with just few line of code, but:
-    // 1. it would require other modifications in the engine, so "do not touch that little plonker!"
+    // Hombre: we could have rotated the image here too, with just few line of
+    // code, but:
+    // 1. it would require other modifications in the engine, so "do not touch
+    // that little plonker!"
     // 2. it's more optimized like this
 
     // Flip if needed
@@ -248,25 +252,32 @@ void StdImageSource::getImage (const ColorTemp &ctemp, int tran, Imagefloat* ima
     }
 }
 
-void StdImageSource::convertColorSpace(Imagefloat* image, const ColorManagementParams &cmp, const ColorTemp &wb)
+void StdImageSource::convertColorSpace(Imagefloat *image,
+                                       const ColorManagementParams &cmp,
+                                       const ColorTemp &wb)
 {
-    colorSpaceConversion(image, cmp, embProfile, img->getSampleFormat(), plistener, true);
+    colorSpaceConversion(image, cmp, embProfile, img->getSampleFormat(),
+                         plistener, true);
 }
-
 
 namespace {
 
 class ARTInputProfile {
 public:
-    ARTInputProfile(cmsHPROFILE prof, const procparams::ColorManagementParams &icm):
-        mode_(MODE_INVALID),
-        tc_(nullptr)
+    ARTInputProfile(cmsHPROFILE prof,
+                    const procparams::ColorManagementParams &icm)
+        : mode_(MODE_INVALID), tc_(nullptr)
     {
-        auto iws = ICCStore::getInstance()->workingSpaceInverseMatrix(icm.workingProfile);
+        auto iws = ICCStore::getInstance()->workingSpaceInverseMatrix(
+            icm.workingProfile);
         Mat33<float> m;
         float g = 0, s = 0;
         cmsCIEXYZ bp;
-        if (ICCStore::getProfileMatrix(prof, m) && ICCStore::getProfileParametricTRC(prof, g, s) && (!cmsDetectDestinationBlackPoint(&bp, prof, INTENT_RELATIVE_COLORIMETRIC, 0) || (bp.X == 0 && bp.Y == 0 && bp.Z == 0))) {
+        if (ICCStore::getProfileMatrix(prof, m) &&
+            ICCStore::getProfileParametricTRC(prof, g, s) &&
+            (!cmsDetectDestinationBlackPoint(&bp, prof,
+                                             INTENT_RELATIVE_COLORIMETRIC, 0) ||
+             (bp.X == 0 && bp.Y == 0 && bp.Z == 0))) {
             if (g == -2) {
                 mode_ = MODE_PQ;
             } else if (g == -1) {
@@ -294,14 +305,14 @@ public:
     }
 
     operator bool() const { return mode_ != MODE_INVALID; }
-    
+
     void operator()(const Imagefloat *src, Imagefloat *dst, bool multiThread)
     {
         const int W = src->getWidth();
         const int H = src->getHeight();
 
 #ifdef _OPENMP
-#       pragma omp parallel for if (multiThread)
+#pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < H; ++y) {
             Vec3<float> rgb;
@@ -329,8 +340,8 @@ public:
         const int W3 = W * 3;
         for (int x = 0; x < W3; x += 3) {
             rgb[0] = src[x];
-            rgb[1] = src[x+1];
-            rgb[2] = src[x+2];
+            rgb[1] = src[x + 1];
+            rgb[2] = src[x + 2];
 
             for (int i = 0; i < 3; ++i) {
                 rgb[i] = eval(rgb[i]);
@@ -339,8 +350,8 @@ public:
             rgb = dot_product(matrix_, rgb);
 
             dst[x] = rgb[0];
-            dst[x+1] = rgb[1];
-            dst[x+2] = rgb[2];
+            dst[x + 1] = rgb[1];
+            dst[x + 2] = rgb[2];
         }
     }
 
@@ -358,7 +369,7 @@ private:
             return cmsEvalToneCurveFloat(tc_, x);
         }
     }
-    
+
     enum Mode { MODE_INVALID, MODE_LINEAR, MODE_GAMMA, MODE_HLG, MODE_PQ };
     Mode mode_;
     Mat33<float> matrix_;
@@ -367,38 +378,49 @@ private:
 
 } // namespace
 
-void StdImageSource::colorSpaceConversion(Imagefloat* im, const ColorManagementParams &cmp, cmsHPROFILE embedded, IIOSampleFormat sampleFormat, ProgressListener *plistener)
+void StdImageSource::colorSpaceConversion(Imagefloat *im,
+                                          const ColorManagementParams &cmp,
+                                          cmsHPROFILE embedded,
+                                          IIOSampleFormat sampleFormat,
+                                          ProgressListener *plistener)
 {
     colorSpaceConversion(im, cmp, embedded, sampleFormat, plistener, false);
 }
 
-void StdImageSource::colorSpaceConversion (Imagefloat* im, const ColorManagementParams &cmp, cmsHPROFILE embedded, IIOSampleFormat sampleFormat, ProgressListener *plistener, bool multithread)
+void StdImageSource::colorSpaceConversion(
+    Imagefloat *im, const ColorManagementParams &cmp, cmsHPROFILE embedded,
+    IIOSampleFormat sampleFormat, ProgressListener *plistener, bool multithread)
 {
 
     bool skipTransform = false;
     cmsHPROFILE in = nullptr;
-    cmsHPROFILE out = ICCStore::getInstance()->workingSpace (cmp.workingProfile);
+    cmsHPROFILE out = ICCStore::getInstance()->workingSpace(cmp.workingProfile);
 
-    if (cmp.inputProfile == "(embedded)" || cmp.inputProfile == "" || cmp.inputProfile == "(camera)" || cmp.inputProfile == "(cameraICC)") {
+    if (cmp.inputProfile == "(embedded)" || cmp.inputProfile == "" ||
+        cmp.inputProfile == "(camera)" || cmp.inputProfile == "(cameraICC)") {
         if (embedded) {
             in = embedded;
         } else {
-            if (sampleFormat & (IIOSF_LOGLUV24 | IIOSF_LOGLUV32)) {// | IIOSF_FLOAT16 | IIOSF_FLOAT24 | IIOSF_FLOAT32)) {
+            if (sampleFormat &
+                (IIOSF_LOGLUV24 |
+                 IIOSF_LOGLUV32)) { // | IIOSF_FLOAT16 | IIOSF_FLOAT24 |
+                                    // IIOSF_FLOAT32)) {
                 skipTransform = true;
             } else {
-                in = ICCStore::getInstance()->getsRGBProfile ();
+                in = ICCStore::getInstance()->getsRGBProfile();
             }
         }
     } else {
         if (cmp.inputProfile != "(none)") {
-            in = ICCStore::getInstance()->getProfile (cmp.inputProfile);
+            in = ICCStore::getInstance()->getProfile(cmp.inputProfile);
 #ifdef ART_USE_OCIO
             if (!in) {
                 int num_threads = 1;
 #ifdef _OPENMP
                 num_threads = multithread ? omp_get_num_procs() : 1;
 #endif // _OPENMP
-                OCIOInputProfile lut(cmp.inputProfile, cmp.workingProfile, num_threads);
+                OCIOInputProfile lut(cmp.inputProfile, cmp.workingProfile,
+                                     num_threads);
                 if (lut) {
                     lut(im);
                     return;
@@ -406,39 +428,48 @@ void StdImageSource::colorSpaceConversion (Imagefloat* im, const ColorManagement
             }
 #endif // ART_USE_OCIO
             if (!in && plistener) {
-                plistener->error(Glib::ustring::compose(M("ERROR_MSG_FILE_READ"), cmp.inputProfile));
+                plistener->error(Glib::ustring::compose(
+                    M("ERROR_MSG_FILE_READ"), cmp.inputProfile));
             }
 
             if (in == nullptr && embedded) {
                 in = embedded;
             } else if (in == nullptr) {
-                if (sampleFormat & (IIOSF_LOGLUV24 | IIOSF_LOGLUV32 | IIOSF_FLOAT16 | IIOSF_FLOAT24 | IIOSF_FLOAT32)) {
+                if (sampleFormat &
+                    (IIOSF_LOGLUV24 | IIOSF_LOGLUV32 | IIOSF_FLOAT16 |
+                     IIOSF_FLOAT24 | IIOSF_FLOAT32)) {
                     skipTransform = true;
                 } else {
-                    in = ICCStore::getInstance()->getsRGBProfile ();
+                    in = ICCStore::getInstance()->getsRGBProfile();
                 }
             }
         }
     }
 
     if (!skipTransform && in) {
-        if(in == embedded && cmsGetColorSpace(in) != cmsSigRgbData) { // if embedded profile is not an RGB profile, use sRGB
-            printf("embedded profile is not an RGB profile, using sRGB as input profile\n");
-            in = ICCStore::getInstance()->getsRGBProfile ();
+        if (in == embedded && cmsGetColorSpace(in) !=
+                                  cmsSigRgbData) { // if embedded profile is not
+                                                   // an RGB profile, use sRGB
+            printf("embedded profile is not an RGB profile, using sRGB as "
+                   "input profile\n");
+            in = ICCStore::getInstance()->getsRGBProfile();
         }
 
         lcmsMutex->lock();
         ARTInputProfile artprof(in, cmp);
         cmsHTRANSFORM hTransform = nullptr;
         if (!artprof) {
-            hTransform = cmsCreateTransform (in, TYPE_RGB_FLT, out, TYPE_RGB_FLT, INTENT_RELATIVE_COLORIMETRIC,
-                                                       cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
+            hTransform =
+                cmsCreateTransform(in, TYPE_RGB_FLT, out, TYPE_RGB_FLT,
+                                   INTENT_RELATIVE_COLORIMETRIC,
+                                   cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
         }
         lcmsMutex->unlock();
 
         if (artprof) {
             if (settings->verbose) {
-                printf("stdimagesource: ART ICC profile detected, using built-in color space conversion\n");
+                printf("stdimagesource: ART ICC profile detected, using "
+                       "built-in color space conversion\n");
             }
             artprof(im, im, multithread);
         } else if (hTransform) {
@@ -452,12 +483,15 @@ void StdImageSource::colorSpaceConversion (Imagefloat* im, const ColorManagement
 
             cmsDeleteTransform(hTransform);
         } else {
-            printf("Could not convert from %s to %s\n", in == embedded ? "embedded profile" : cmp.inputProfile.data(), cmp.workingProfile.data());
+            printf("Could not convert from %s to %s\n",
+                   in == embedded ? "embedded profile"
+                                  : cmp.inputProfile.data(),
+                   cmp.workingProfile.data());
         }
     }
 }
 
-void StdImageSource::getFullSize (int& w, int& h, int tr)
+void StdImageSource::getFullSize(int &w, int &h, int tr)
 {
 
     w = img->getWidth();
@@ -469,14 +503,13 @@ void StdImageSource::getFullSize (int& w, int& h, int tr)
     }
 }
 
-void StdImageSource::getSize (const PreviewProps &pp, int& w, int& h)
+void StdImageSource::getSize(const PreviewProps &pp, int &w, int &h)
 {
     w = pp.getWidth() / pp.getSkip() + (pp.getWidth() % pp.getSkip() > 0);
     h = pp.getHeight() / pp.getSkip() + (pp.getHeight() % pp.getSkip() > 0);
 }
 
-
-void StdImageSource::getAutoWBMultipliers (double &rm, double &gm, double &bm)
+void StdImageSource::getAutoWBMultipliers(double &rm, double &gm, double &bm)
 {
     if (redAWBMul != -1.) {
         rm = redAWBMul;
@@ -492,25 +525,29 @@ void StdImageSource::getAutoWBMultipliers (double &rm, double &gm, double &bm)
     gm = LIM(gm, 0.0, MAX_WB_MUL);
     bm = LIM(bm, 0.0, MAX_WB_MUL);
     wbCamera2Mul(rm, gm, bm);
-    
+
     redAWBMul = rm;
     greenAWBMul = gm;
     blueAWBMul = bm;
 }
 
-ColorTemp StdImageSource::getSpotWB (std::vector<Coord2D> &red, std::vector<Coord2D> &green, std::vector<Coord2D>& blue, int tran, double equal)
+ColorTemp StdImageSource::getSpotWB(std::vector<Coord2D> &red,
+                                    std::vector<Coord2D> &green,
+                                    std::vector<Coord2D> &blue, int tran,
+                                    double equal)
 {
     int rn, gn, bn;
     double reds, greens, blues;
     img->getSpotWBData(reds, greens, blues, rn, gn, bn, red, green, blue, tran);
     double img_r, img_g, img_b;
-    wb.getMultipliers (img_r, img_g, img_b);
+    wb.getMultipliers(img_r, img_g, img_b);
 
-    if( settings->verbose ) {
-        printf ("AVG: %g %g %g\n", reds / rn, greens / gn, blues / bn);
+    if (settings->verbose) {
+        printf("AVG: %g %g %g\n", reds / rn, greens / gn, blues / bn);
     }
 
-    return ColorTemp (reds / rn * img_r, greens / gn * img_g, blues / bn * img_b, equal);
+    return ColorTemp(reds / rn * img_r, greens / gn * img_g, blues / bn * img_b,
+                     equal);
 }
 
 void StdImageSource::flushRGB()
@@ -522,14 +559,12 @@ void StdImageSource::flushRGB()
     }
 }
 
-
 void StdImageSource::wbMul2Camera(double &rm, double &gm, double &bm)
 {
     rm = 1.0 / rm;
     gm = 1.0 / gm;
     bm = 1.0 / bm;
 }
-
 
 void StdImageSource::wbCamera2Mul(double &rm, double &gm, double &bm)
 {

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2018 Alberto Griggio <alberto.griggio@gmail.com>
@@ -19,10 +19,9 @@
  */
 #pragma once
 
-#include <gtkmm.h>
-#include "edit.h"
 #include "../rtengine/procparams.h"
-
+#include "edit.h"
+#include <gtkmm.h>
 
 using rteMaskShape = rtengine::procparams::AreaMask::Shape;
 using rteMaskRect = rtengine::procparams::AreaMask::Rectangle;
@@ -30,17 +29,11 @@ using rteMaskPoly = rtengine::procparams::AreaMask::Polygon;
 
 class AreaMask: public EditSubscriber {
 public:
-    enum class DraggedElement {
-        NONE,
-        POINT,
-        ROUNDNESS,
-        SEGMENT,
-        WHOLE
-    };
+    enum class DraggedElement { NONE, POINT, ROUNDNESS, SEGMENT, WHOLE };
 
     AreaMask();
     ~AreaMask();
-    
+
     CursorShape getCursor(int objectID) override;
     bool mouseOver(int modifierKey) override;
     bool button1Pressed(int modifierKey) override;
@@ -48,7 +41,8 @@ public:
     bool drag1(int modifierKey) override;
     bool button3Pressed(int modifierKey) override;
     bool pick3(bool picked) override;
-    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX, double deltaY, bool &propagateEvent) override;
+    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX,
+                double deltaY, bool &propagateEvent) override;
 
     size_t getPolygonSize();
     void setPolygon(const std::vector<rteMaskPoly::Knot> &new_poly);
@@ -60,8 +54,8 @@ public:
     void createRectangleGeometry();
     void createPolygonGeometry();
     void createGradientGeometry();
-    void updateGeometry(const int fullWidth=-1, const int fullHeight=-1);
-    
+    void updateGeometry(const int fullWidth = -1, const int fullHeight = -1);
+
 protected:
     int last_object_;
     double dragged_point_old_angle_;
@@ -89,18 +83,20 @@ protected:
     Line *insertion_line;            // [0]    visible
     PolyLine *curve;                 // [1]    visible
     PolyLine *cage;                  // [2]    visible
-    std::vector<Line *> segments_MO;  // [3, n]           hoverable
+    std::vector<Line *> segments_MO; // [3, n]           hoverable
     Circle *sel_knot;                // [n+1]  visible / hoverable
     Circle *sel_knot_bg_;
-    Circle *prev_knot;               // [n+2]  visible / hoverable
-    Circle *next_knot;               // [n+3]  visible / hoverable
+    Circle *prev_knot; // [n+2]  visible / hoverable
+    Circle *next_knot; // [n+3]  visible / hoverable
 
     int hovered_line_id_;            // range identical to poly_knots_
     int sel_poly_knot_id_;           // range identical to poly_knots_
     int prev_poly_knot_id_;          // range identical to poly_knots_
     int next_poly_knot_id_;          // range identical to poly_knots_
     DraggedElement dragged_element_; // true if adjusting the Roundness value
-    std::vector<rtengine::CoordD> dragged_points_;  // copy of initial points for dragging and bounds handling
+    std::vector<rtengine::CoordD>
+        dragged_points_; // copy of initial points for dragging and bounds
+                         // handling
 
     // Gradient geometry IDs
     int h_line_id_;

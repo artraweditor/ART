@@ -1,5 +1,5 @@
 /* -*- C++ -*-
- *  
+ *
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -20,28 +20,30 @@
 #ifndef _CHMIXER_H_
 #define _CHMIXER_H_
 
-#include <gtkmm.h>
 #include "adjuster.h"
 #include "toolpanel.h"
+#include <gtkmm.h>
 
-class ChMixer : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel
-{
+class ChMixer: public ToolParamBlock,
+               public AdjusterListener,
+               public FoldableToolPanel {
 public:
     ChMixer();
 
-    void read(const rtengine::procparams::ProcParams* pp) override;
-    void write(rtengine::procparams::ProcParams* pp) override;
-    void setDefaults(const rtengine::procparams::ProcParams* defParams) override;
-    void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
-    void trimValues(rtengine::procparams::ProcParams* pp) override;
+    void read(const rtengine::procparams::ProcParams *pp) override;
+    void write(rtengine::procparams::ProcParams *pp) override;
+    void
+    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void adjusterChanged(Adjuster *a, double newval) override;
+    void adjusterAutoToggled(Adjuster *a, bool newval) override;
+    void trimValues(rtengine::procparams::ProcParams *pp) override;
     void enabledChanged() override;
 
     void toolReset(bool to_initial) override;
 
 private:
     void modeChanged();
-    
+
     MyComboBoxText *mode;
     Gtk::VBox *matrix_box;
     Gtk::VBox *primaries_box;

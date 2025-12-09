@@ -23,7 +23,7 @@
 #include <iostream>
 
 #if LF_VERSION < ((3 << 16) | (99 << 8))
-#  define ART_LENSFUN_LEGACY
+#define ART_LENSFUN_LEGACY
 #endif
 
 namespace rtengine {
@@ -45,14 +45,10 @@ LFModifier::~LFModifier()
     }
 }
 
+LFModifier::operator bool() const { return data_; }
 
-LFModifier::operator bool() const
-{
-    return data_;
-}
-
-
-void LFModifier::correctDistortion(double &x, double &y, int cx, int cy, double scale) const
+void LFModifier::correctDistortion(double &x, double &y, int cx, int cy,
+                                   double scale) const
 {
     if (!data_) {
         return;
@@ -64,7 +60,8 @@ void LFModifier::correctDistortion(double &x, double &y, int cx, int cy, double 
     if (swap_xy_) {
         std::swap(xx, yy);
     }
-    if (data_->ApplyGeometryDistortion(xx, yy, 1, 1, pos)) {  // This is thread-safe
+    if (data_->ApplyGeometryDistortion(xx, yy, 1, 1,
+                                       pos)) { // This is thread-safe
         x = pos[0];
         y = pos[1];
         if (swap_xy_) {
@@ -77,13 +74,13 @@ void LFModifier::correctDistortion(double &x, double &y, int cx, int cy, double 
     y *= scale;
 }
 
-
 bool LFModifier::isCACorrectionAvailable() const
 {
     return (flags_ & LF_MODIFY_TCA);
 }
 
-void LFModifier::correctCA(double &x, double &y, int cx, int cy, int channel) const
+void LFModifier::correctCA(double &x, double &y, int cx, int cy,
+                           int channel) const
 {
     assert(channel >= 0 && channel <= 2);
 
@@ -93,14 +90,14 @@ void LFModifier::correctCA(double &x, double &y, int cx, int cy, int channel) co
     // channels. We could consider caching the info to speed this up
     x += cx;
     y += cy;
-    
+
     float pos[6];
     if (swap_xy_) {
         std::swap(x, y);
     }
-    data_->ApplySubpixelDistortion(x, y, 1, 1, pos);  // This is thread-safe
-    x = pos[2*channel];
-    y = pos[2*channel+1];
+    data_->ApplySubpixelDistortion(x, y, 1, 1, pos); // This is thread-safe
+    x = pos[2 * channel];
+    y = pos[2 * channel + 1];
     if (swap_xy_) {
         std::swap(x, y);
     }
@@ -109,35 +106,42 @@ void LFModifier::correctCA(double &x, double &y, int cx, int cy, int channel) co
 }
 
 #ifdef _OPENMP
-void LFModifier::processVignette(int width, int height, float** rawData) const
+void LFModifier::processVignette(int width, int height, float **rawData) const
 {
-    #pragma omp parallel for schedule(dynamic,16)
+#pragma omp parallel for schedule(dynamic, 16)
 
     for (int y = 0; y < height; ++y) {
-        data_->ApplyColorModification(rawData[y], 0, y, width, 1, LF_CR_1(INTENSITY), 0);
+        data_->ApplyColorModification(rawData[y], 0, y, width, 1,
+                                      LF_CR_1(INTENSITY), 0);
     }
 }
 #else
-void LFModifier::processVignette(int width, int height, float** rawData) const
+void LFModifier::processVignette(int width, int height, float **rawData) const
 {
-    data_->ApplyColorModification(rawData[0], 0, 0, width, height, LF_CR_1(INTENSITY), width * sizeof(float));
+    data_->ApplyColorModification(rawData[0], 0, 0, width, height,
+                                  LF_CR_1(INTENSITY), width * sizeof(float));
 }
 
 #endif
 
 #ifdef _OPENMP
-void LFModifier::processVignette3Channels(int width, int height, float** rawData) const
+void LFModifier::processVignette3Channels(int width, int height,
+                                          float **rawData) const
 {
-    #pragma omp parallel for schedule(dynamic,16)
+#pragma omp parallel for schedule(dynamic, 16)
 
     for (int y = 0; y < height; ++y) {
-        data_->ApplyColorModification(rawData[y], 0, y, width, 1, LF_CR_3(RED, GREEN, BLUE), 0);
+        data_->ApplyColorModification(rawData[y], 0, y, width, 1,
+                                      LF_CR_3(RED, GREEN, BLUE), 0);
     }
 }
 #else
-void LFModifier::processVignette3Channels(int width, int height, float** rawData) const
+void LFModifier::processVignette3Channels(int width, int height,
+                                          float **rawData) const
 {
-    data_->ApplyColorModification(rawData[0], 0, 0, width, height, LF_CR_3(RED, GREEN, BLUE), width * 3 * sizeof(float));
+    data_->ApplyColorModification(rawData[0], 0, 0, width, height,
+                                  LF_CR_3(RED, GREEN, BLUE),
+                                  width * 3 * sizeof(float));
 }
 
 #endif
@@ -170,30 +174,18 @@ Glib::ustring LFModifier::getDisplayString() const
     }
 }
 
-
-LFModifier::LFModifier(lfModifier *m, bool swap_xy, int flags):
-    data_(m),
-    swap_xy_(swap_xy),
-    flags_(flags)
+LFModifier::LFModifier(lfModifier *m, bool swap_xy, int flags)
+    : data_(m), swap_xy_(swap_xy), flags_(flags)
 {
 }
-
 
 //-----------------------------------------------------------------------------
 // LFCamera
 //-----------------------------------------------------------------------------
 
-LFCamera::LFCamera():
-    data_(nullptr)
-{
-}
+LFCamera::LFCamera(): data_(nullptr) {}
 
-
-LFCamera::operator bool() const
-{
-    return data_;
-}
-
+LFCamera::operator bool() const { return data_; }
 
 Glib::ustring LFCamera::getMake() const
 {
@@ -204,7 +196,6 @@ Glib::ustring LFCamera::getMake() const
     }
 }
 
-
 Glib::ustring LFCamera::getModel() const
 {
     if (data_) {
@@ -213,7 +204,6 @@ Glib::ustring LFCamera::getModel() const
         return "";
     }
 }
-
 
 float LFCamera::getCropFactor() const
 {
@@ -224,7 +214,6 @@ float LFCamera::getCropFactor() const
     }
 }
 
-
 bool LFCamera::isFixedLens() const
 {
     // per lensfun's main developer Torsten Bronger:
@@ -232,7 +221,6 @@ bool LFCamera::isFixedLens() const
     // starts with a lowercase letter"
     return data_ && data_->Mount && std::islower(data_->Mount[0]);
 }
-
 
 Glib::ustring LFCamera::getDisplayString() const
 {
@@ -243,22 +231,13 @@ Glib::ustring LFCamera::getDisplayString() const
     }
 }
 
-
 //-----------------------------------------------------------------------------
 // LFLens
 //-----------------------------------------------------------------------------
 
-LFLens::LFLens():
-    data_(nullptr)
-{
-}
+LFLens::LFLens(): data_(nullptr) {}
 
-
-LFLens::operator bool() const
-{
-    return data_;
-}
-
+LFLens::operator bool() const { return data_; }
 
 Glib::ustring LFLens::getMake() const
 {
@@ -269,7 +248,6 @@ Glib::ustring LFLens::getMake() const
     }
 }
 
-
 Glib::ustring LFLens::getLens() const
 {
     if (data_) {
@@ -278,7 +256,6 @@ Glib::ustring LFLens::getLens() const
         return "---";
     }
 }
-
 
 float LFLens::getCropFactor() const
 {
@@ -316,13 +293,11 @@ bool LFLens::hasCACorrection() const
     }
 }
 
-
 //-----------------------------------------------------------------------------
 // LFDatabase
 //-----------------------------------------------------------------------------
 
 LFDatabase LFDatabase::instance_;
-
 
 bool LFDatabase::init(const Glib::ustring &dbdir)
 {
@@ -344,7 +319,7 @@ bool LFDatabase::init(const Glib::ustring &dbdir)
 
     bool ok = false;
     if (dbdir.empty()) {
-        ok = (instance_.data_->Load() ==  LF_NO_ERROR);
+        ok = (instance_.data_->Load() == LF_NO_ERROR);
     } else {
         ok = instance_.LoadDirectory(dbdir.c_str());
     }
@@ -352,10 +327,9 @@ bool LFDatabase::init(const Glib::ustring &dbdir)
     if (settings->verbose) {
         std::cout << (ok ? "OK" : "FAIL") << std::endl;
     }
-    
+
     return ok;
 }
-
 
 bool LFDatabase::LoadDirectory(const char *dirname)
 {
@@ -365,40 +339,31 @@ bool LFDatabase::LoadDirectory(const char *dirname)
     // backported from lensfun 0.3.x
     bool database_found = false;
 
-    GDir *dir = g_dir_open (dirname, 0, NULL);
-    if (dir)
-    {
-        GPatternSpec *ps = g_pattern_spec_new ("*.xml");
-        if (ps)
-        {
+    GDir *dir = g_dir_open(dirname, 0, NULL);
+    if (dir) {
+        GPatternSpec *ps = g_pattern_spec_new("*.xml");
+        if (ps) {
             const gchar *fn;
-            while ((fn = g_dir_read_name (dir)))
-            {
-                size_t sl = strlen (fn);
-                if (g_pattern_match (ps, sl, fn, NULL))
-                {
-                    gchar *ffn = g_build_filename (dirname, fn, NULL);
+            while ((fn = g_dir_read_name(dir))) {
+                size_t sl = strlen(fn);
+                if (g_pattern_match(ps, sl, fn, NULL)) {
+                    gchar *ffn = g_build_filename(dirname, fn, NULL);
                     /* Ignore errors */
-                    if (data_->Load (ffn) == LF_NO_ERROR)
+                    if (data_->Load(ffn) == LF_NO_ERROR)
                         database_found = true;
-                    g_free (ffn);
+                    g_free(ffn);
                 }
             }
-            g_pattern_spec_free (ps);
+            g_pattern_spec_free(ps);
         }
-        g_dir_close (dir);
+        g_dir_close(dir);
     }
 
     return database_found;
 #endif
 }
 
-
-LFDatabase::LFDatabase():
-    data_(nullptr)
-{
-}
-
+LFDatabase::LFDatabase(): data_(nullptr) {}
 
 LFDatabase::~LFDatabase()
 {
@@ -412,12 +377,7 @@ LFDatabase::~LFDatabase()
     }
 }
 
-
-const LFDatabase *LFDatabase::getInstance()
-{
-    return &instance_;
-}
-
+const LFDatabase *LFDatabase::getInstance() { return &instance_; }
 
 std::vector<LFCamera> LFDatabase::getCameras() const
 {
@@ -434,7 +394,6 @@ std::vector<LFCamera> LFDatabase::getCameras() const
     return ret;
 }
 
-
 std::vector<LFLens> LFDatabase::getLenses() const
 {
     std::vector<LFLens> ret;
@@ -450,8 +409,8 @@ std::vector<LFLens> LFDatabase::getLenses() const
     return ret;
 }
 
-
-LFCamera LFDatabase::findCamera(const Glib::ustring &make, const Glib::ustring &model) const
+LFCamera LFDatabase::findCamera(const Glib::ustring &make,
+                                const Glib::ustring &model) const
 {
     LFCamera ret;
     if (data_) {
@@ -465,14 +424,14 @@ LFCamera LFDatabase::findCamera(const Glib::ustring &make, const Glib::ustring &
     return ret;
 }
 
-
-LFLens LFDatabase::findLens(const LFCamera &camera, const Glib::ustring &name) const
+LFLens LFDatabase::findLens(const LFCamera &camera,
+                            const Glib::ustring &name) const
 {
     LFLens ret;
     if (data_) {
         MyMutex::MyLock lock(lfDBMutex);
         auto found = data_->FindLenses(camera.data_, nullptr, name.c_str());
-        for (size_t pos = 0; !found && pos < name.size(); ) {
+        for (size_t pos = 0; !found && pos < name.size();) {
             // try to split the maker from the model of the lens -- we have to
             // guess a bit here, since there are makers with a multi-word name
             // (e.g. "Leica Camera AG")
@@ -483,9 +442,10 @@ LFLens LFDatabase::findLens(const LFCamera &camera, const Glib::ustring &name) c
             auto i = name.find(' ', pos);
             if (i != Glib::ustring::npos) {
                 make = name.substr(0, i);
-                model = name.substr(i+1);
-                found = data_->FindLenses(camera.data_, make.c_str(), model.c_str());
-                pos = i+1;
+                model = name.substr(i + 1);
+                found = data_->FindLenses(camera.data_, make.c_str(),
+                                          model.c_str());
+                pos = i + 1;
             } else {
                 break;
             }
@@ -501,10 +461,10 @@ LFLens LFDatabase::findLens(const LFCamera &camera, const Glib::ustring &name) c
     return ret;
 }
 
-
-std::unique_ptr<LFModifier> LFDatabase::getModifier(const LFCamera &camera, const LFLens &lens,
-                                    float focalLen, float aperture, float focusDist,
-                                    int width, int height, bool swap_xy) const
+std::unique_ptr<LFModifier>
+LFDatabase::getModifier(const LFCamera &camera, const LFLens &lens,
+                        float focalLen, float aperture, float focusDist,
+                        int width, int height, bool swap_xy) const
 {
     std::unique_ptr<LFModifier> ret;
     if (data_) {
@@ -515,14 +475,20 @@ std::unique_ptr<LFModifier> LFDatabase::getModifier(const LFCamera &camera, cons
                 flags |= LF_MODIFY_VIGNETTING;
             }
 #ifdef ART_LENSFUN_LEGACY
-            lfModifier *mod = lfModifier::Create(lens.data_, camera.getCropFactor(), width, height);
-            flags = mod->Initialize(lens.data_, LF_PF_F32, focalLen, aperture, focusDist > 0 ? focusDist : 1000, 0.0, LF_RECTILINEAR, flags, false);
-#else // ART_LENSFUN_LEGACY
-            lfModifier *mod = new lfModifier(lens.data_, focalLen, camera.getCropFactor(), width, height, LF_PF_F32, false);
+            lfModifier *mod = lfModifier::Create(
+                lens.data_, camera.getCropFactor(), width, height);
+            flags = mod->Initialize(lens.data_, LF_PF_F32, focalLen, aperture,
+                                    focusDist > 0 ? focusDist : 1000, 0.0,
+                                    LF_RECTILINEAR, flags, false);
+#else  // ART_LENSFUN_LEGACY
+            lfModifier *mod =
+                new lfModifier(lens.data_, focalLen, camera.getCropFactor(),
+                               width, height, LF_PF_F32, false);
             mod->EnableDistortionCorrection();
             mod->EnableTCACorrection();
             if (aperture > 0) {
-                mod->EnableVignettingCorrection(aperture, focusDist > 0 ? focusDist : 1000);
+                mod->EnableVignettingCorrection(
+                    aperture, focusDist > 0 ? focusDist : 1000);
             }
             mod->EnableProjectionTransform(LF_RECTILINEAR);
             mod->EnableScaling(0.0);
@@ -534,7 +500,9 @@ std::unique_ptr<LFModifier> LFDatabase::getModifier(const LFCamera &camera, cons
     return ret;
 }
 
-std::unique_ptr<LFModifier> LFDatabase::findModifier(const LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const CoarseTransformParams &coarse, int rawRotationDeg) const
+std::unique_ptr<LFModifier> LFDatabase::findModifier(
+    const LensProfParams &lensProf, const FramesMetaData *idata, int width,
+    int height, const CoarseTransformParams &coarse, int rawRotationDeg) const
 {
     const float focallen = idata->getFocalLen();
 
@@ -563,12 +531,7 @@ std::unique_ptr<LFModifier> LFDatabase::findModifier(const LensProfParams &lensP
     }
 
     const LFCamera c = findCamera(make, model);
-    const LFLens l = findLens(
-        lensProf.lfAutoMatch()
-            ? c
-            : LFCamera(),
-        lens
-    );
+    const LFLens l = findLens(lensProf.lfAutoMatch() ? c : LFCamera(), lens);
 
     bool swap_xy = false;
     if (rawRotationDeg >= 0) {
@@ -579,24 +542,16 @@ std::unique_ptr<LFModifier> LFDatabase::findModifier(const LensProfParams &lensP
         }
     }
 
-    std::unique_ptr<LFModifier> ret = getModifier(
-        c,
-        l,
-        idata->getFocalLen(),
-        idata->getFNumber(),
-        idata->getFocusDist(),
-        width,
-        height,
-        swap_xy
-    );
+    std::unique_ptr<LFModifier> ret =
+        getModifier(c, l, idata->getFocalLen(), idata->getFNumber(),
+                    idata->getFocusDist(), width, height, swap_xy);
 
     if (settings->verbose > 1) {
         std::cout << "LENSFUN:\n"
                   << "  camera: " << c.getDisplayString() << "\n"
                   << "  lens: " << l.getDisplayString() << "\n"
                   << "  correction: "
-                  << (ret ? ret->getDisplayString() : "NONE")
-                  << std::endl;
+                  << (ret ? ret->getDisplayString() : "NONE") << std::endl;
     }
 
     if (!ret) {
@@ -605,6 +560,5 @@ std::unique_ptr<LFModifier> LFDatabase::findModifier(const LensProfParams &lensP
 
     return ret;
 }
-
 
 } // namespace rtengine

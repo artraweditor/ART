@@ -31,20 +31,26 @@ Glib::ustring BatchQueueButtonSet::moveHeadToolTip;
 Glib::ustring BatchQueueButtonSet::moveEndToolTip;
 Glib::ustring BatchQueueButtonSet::cancelJobToolTip;
 
-BatchQueueButtonSet::BatchQueueButtonSet (BatchQueueEntry* myEntry)
+BatchQueueButtonSet::BatchQueueButtonSet(BatchQueueEntry *myEntry)
 {
 
     if (!iconsLoaded) {
-        cancelIcon = Cairo::RefPtr<RTSurface>(new RTSurface("cancel-small.svg"));
-        headIcon = Cairo::RefPtr<RTSurface>(new RTSurface("goto-start-small.svg"));
-        tailIcon = Cairo::RefPtr<RTSurface>(new RTSurface("goto-end-small.svg"));
+        cancelIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("cancel-small.svg"));
+        headIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("goto-start-small.svg"));
+        tailIcon =
+            Cairo::RefPtr<RTSurface>(new RTSurface("goto-end-small.svg"));
         moveHeadToolTip = M("FILEBROWSER_POPUPMOVEHEAD");
         moveEndToolTip = M("FILEBROWSER_POPUPMOVEEND");
         cancelJobToolTip = M("FILEBROWSER_POPUPCANCELJOB");
         iconsLoaded = true;
     }
 
-    add(new LWButton(headIcon, 8, myEntry, LWButton::Left, LWButton::Center, &moveHeadToolTip));
-    add(new LWButton(tailIcon, 9, myEntry, LWButton::Left, LWButton::Center, &moveEndToolTip));
-    add(new LWButton(cancelIcon, 10, myEntry, LWButton::Right, LWButton::Center, &cancelJobToolTip));
+    add(new LWButton(headIcon, 8, myEntry, LWButton::Left, LWButton::Center,
+                     &moveHeadToolTip));
+    add(new LWButton(tailIcon, 9, myEntry, LWButton::Left, LWButton::Center,
+                     &moveEndToolTip));
+    add(new LWButton(cancelIcon, 10, myEntry, LWButton::Right, LWButton::Center,
+                     &cancelJobToolTip));
 }

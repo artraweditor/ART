@@ -18,7 +18,6 @@
  */
 #include "threadutils.h"
 
-
 void MyReaderLock::acquire()
 {
     if (locked) {
@@ -28,11 +27,13 @@ void MyReaderLock::acquire()
     std::unique_lock<std::mutex> lock(mutex.mutex);
 
     if (mutex.writerCount == 0) {
-        // There's no writer operating, we can increment the writer count which will lock writers.
+        // There's no writer operating, we can increment the writer count which
+        // will lock writers.
         ++mutex.writerCount;
     } else if (mutex.readerCount == 0) {
-        // The writer count is non null, but a reader can be the owner of the writer lock,
-        // which will be the case if the reader count is not zero too.
+        // The writer count is non null, but a reader can be the owner of the
+        // writer lock, which will be the case if the reader count is not zero
+        // too.
         while (mutex.writerCount != 0) {
             mutex.cond.wait(lock);
         }
@@ -46,7 +47,6 @@ void MyReaderLock::acquire()
 
     locked = true;
 }
-
 
 void MyReaderLock::release()
 {
@@ -70,7 +70,6 @@ void MyReaderLock::release()
     locked = false;
 }
 
-
 void MyWriterLock::acquire()
 {
     if (locked) {
@@ -79,7 +78,8 @@ void MyWriterLock::acquire()
 
     std::unique_lock<std::mutex> lock(mutex.mutex);
 
-    // The writer count is not zero, so we have to wait for it to be zero again...
+    // The writer count is not zero, so we have to wait for it to be zero
+    // again...
     while (mutex.writerCount != 0) {
         mutex.cond.wait(lock);
     }
@@ -90,8 +90,7 @@ void MyWriterLock::acquire()
     locked = true;
 }
 
-
-void MyWriterLock::release ()
+void MyWriterLock::release()
 {
     if (!locked) {
         return;
@@ -101,7 +100,8 @@ void MyWriterLock::release ()
 
     // Decrement the writer number first...
     if (--mutex.writerCount == 0) {
-        // ...and if the writer count is zero again, we can wake up the next writer or reader.
+        // ...and if the writer count is zero again, we can wake up the next
+        // writer or reader.
         mutex.cond.notify_all();
     }
 
