@@ -18,6 +18,7 @@
 #17 2025-06-20 Ohnishi, Yasuo, updates for 1.25.6
 #18 2025-09-10  Ohnishi, Yasuo, updates for 1.25.9
 #19 2025-11-12  Ohnishi, Yasuo, updates for 1.25.11
+#20 2025-12-19  Ohnishi, Yasuo, updates for 1.25.12
 ABOUT_TAB_BUILD;버전
 ABOUT_TAB_CREDITS;크레디트
 ABOUT_TAB_LICENSE;저작권
@@ -130,7 +131,7 @@ EXPORT_INSTRUCTIONS;현상 설정에 드는 시간과 수고를 생략하기 위
 EXPORT_MAXHEIGHT;최대 높이:
 EXPORT_MAXWIDTH;최대 폭:
 EXPORT_PIPELINE;고속출력 방법
-EXPORT_PUTTOQUEUEFAST; 고속출력 큐에 추가
+EXPORT_PUTTOQUEUEFAST;고속출력 큐에 추가
 EXPORT_RAW_DMETHOD;디모자이킹 방식
 EXPORT_USE_FAST_PIPELINE;처리속도 우선 (크기 조정한 화상에 조정을 모두함)
 EXPORT_USE_FAST_PIPELINE_TIP;처리속도를 우선하면 처리는 빨라지만, 화질은 떨어집니다.보통 화상 크기 조정은 전체 현상 처리공정의 마지막으로 합니다만, 여기서는 처리공정의 초기단계에서 크기 조정을 합니다. 처리속도는 굉장히 올라가지만, 현상 처리  된 화상에 불자연한 효과가 생기든가, 전체적 질이 떨어지든가 합니다.
@@ -204,6 +205,9 @@ FILEBROWSER_RANK3_TOOLTIP;평가 3 *\n단축키: <b>Shift-3</b>
 FILEBROWSER_RANK4_TOOLTIP;평가 4 *\n단축키: <b>Shift-4</b>
 FILEBROWSER_RANK5_TOOLTIP;평가 5 *\n단축키: <b>Shift-5</b>
 FILEBROWSER_RENAMEDLGLABEL;파일명변경
+FILEBROWSER_RENAME_DIALOG_LOAD_TIP;파일에서 설정을 불러오기
+FILEBROWSER_RENAME_DIALOG_SAVE_TIP;설정을 파일에 저장
+FILEBROWSER_RENAME_DIALOG_RESET_TIP;설정을 기본값으로 초기화
 FILEBROWSER_RESETDEFAULTPROFILE;초기 설정으로 리셋함
 FILEBROWSER_SELECTDARKFRAME;장시간노출 노이즈 제거 선택...
 FILEBROWSER_SELECTFLATFIELD;센서의 오점 그늘 제거용 화상을 선택함...
@@ -251,6 +255,7 @@ FILECHOOSER_FILTER_ANY;모둔 파일
 FILECHOOSER_FILTER_COLPROF;색 프로파일
 FILECHOOSER_FILTER_CURVE;커브파일
 FILECHOOSER_FILTER_LCP;렌즈보정프로파일
+FILECHOOSER_FILTER_INI;설정 피일 (*.ini)
 FILECHOOSER_FILTER_PP;처리 프로파일
 FILECHOOSER_FILTER_SAME;현재 화상과 같은 형식
 FILECHOOSER_FILTER_TIFF;TIFF파일
@@ -274,6 +279,7 @@ GENERAL_ENABLED;유효
 GENERAL_FILE;파일
 GENERAL_HIGH;높음
 GENERAL_LANDSCAPE;가로
+GENERAL_LOAD;불러오기
 GENERAL_LOW;낮음
 GENERAL_MEDIUM;중간
 GENERAL_NA;n/a
@@ -1104,6 +1110,7 @@ PREFERENCES_FORRAW;raw화상
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT;파일 브라우저와 편집패널의 썸네일 크기를 똑같이 함.
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT_HINT;썸네일 크기가 다르면 편집 패널 - 파일 브라우저 전환에 긴 시간이 걸립니다.
 PREFERENCES_GIMPPATH;GIMP 설치 디렉토리
+PREFERENCES_HIGHLIGHT_SELECTED_THUMBNAILS;하이라이트가 선택된 썸네일
 PREFERENCES_HISTOGRAMPOSITIONLEFT;왼쪽 패널에 히스토그램 표시
 PREFERENCES_HISTOGRAM_TOOLTIP;이것을 우효화하면 히스토그램과 네비게이터 표시에 출력 프로파일（감마적용）대신 작업 프로파일을 사용합니다.
 PREFERENCES_HLTHRESHOLD;하이라이트 클리핑 영역 임계 값
