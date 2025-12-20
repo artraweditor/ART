@@ -674,8 +674,8 @@ void Inspector::switchImage(const Glib::ustring &fullPath)
     }
     auto &entries = filecatalog_->fileBrowser->getEntries();
     size_t j = entries.size();
-    size_t ilo = cur_image_idx_[active_];
-    size_t ihi = cur_image_idx_[active_];
+    size_t ilo = std::min(cur_image_idx_[active_], j-1);
+    size_t ihi = ilo;
     while (ilo > 0 || ihi < entries.size()) {
         if (ilo > 0) {
             if (!entries[ilo - 1]->filtered &&
