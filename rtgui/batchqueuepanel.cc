@@ -155,15 +155,16 @@ BatchQueuePanel::BatchQueuePanel(FileCatalog *aFileCatalog): parent(nullptr)
     Gtk::VBox *vb = Gtk::manage(new Gtk::VBox());
     vb->pack_start(*fdir);
 
+    // setup export profile
     {
         apply_batch_profile_ = Gtk::manage(
             new Gtk::CheckButton(M("QUEUE_APPLY_BATCH_PROFILE") + ": "));
         apply_batch_profile_->set_active(false);
         profiles_cb_ = Gtk::manage(new ProfileStoreComboBox());
         Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
-        hb->pack_start(*apply_batch_profile_, Gtk::PACK_SHRINK);
-        hb->pack_start(*profiles_cb_, Gtk::PACK_SHRINK);
-        vb->pack_start(*hb, Gtk::PACK_SHRINK, 4);
+        hb->pack_start(*apply_batch_profile_, Gtk::PACK_SHRINK, 4);
+        hb->pack_start(*profiles_cb_, Gtk::PACK_EXPAND_WIDGET, 4);
+        vb->pack_start(*hb, Gtk::PACK_SHRINK, 8);
         profiles_cb_->updateProfileList();
         auto &info =
             options.export_profile_map[options.saveFormatBatch.getKey()];
@@ -396,6 +397,8 @@ void BatchQueuePanel::setGuiFromBatchState(bool queueRunning, int qsize)
 
     fdir->set_sensitive(!queueRunning);
     fformat->set_sensitive(!queueRunning);
+    apply_batch_profile_->set_sensitive(!queueRunning);
+    profiles_cb_->set_sensitive(!queueRunning);
 
     updateTab(qsize);
 }
