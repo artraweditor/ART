@@ -11,6 +11,7 @@
 #09 31.07.2025 Update für neue Version (apostel338)
 #10 13.09.2025 Update für neue Version (apostel338)
 #11 11.11.2025 Update für neue Version (apostel338)
+#12 20.12.2025 Update für neue Version (apostel338)
 ABOUT_TAB_BUILD;Version
 ABOUT_TAB_CREDITS;Danksagungen
 ABOUT_TAB_LICENSE;Lizenz
@@ -199,6 +200,9 @@ FILEBROWSER_RANK4_TOOLTIP;Bewertung 4 *\nTaste: <b>Shift + 4</b>
 FILEBROWSER_RANK5_TOOLTIP;Bewertung 5 *\nTaste: <b>Shift + 5</b>
 FILEBROWSER_RENAMEDLGLABEL;Datei(en) umbenennen
 FILEBROWSER_RENAME_DIALOG_COPY_LABEL;Datei(en) kopieren
+FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Einstellungen aus Datei laden
+FILEBROWSER_RENAME_DIALOG_RESET_TIP;Standardwerte wiederherstellen
+FILEBROWSER_RENAME_DIALOG_SAVE_TIP;Einstellungen in Datei speichern
 FILEBROWSER_RESETDEFAULTPROFILE;Profil auf Vorgabe zurücksetzen
 FILEBROWSER_SELECTDARKFRAME;Dunkelbild wählen...
 FILEBROWSER_SELECTFLATFIELD;Weißbild wählen...
@@ -245,6 +249,7 @@ FILECHOOSER_FILTER_ANY;Alle Dateien
 FILECHOOSER_FILTER_ARS;ART-Sitzungdateien (*.ars)
 FILECHOOSER_FILTER_COLPROF;Farbprofile
 FILECHOOSER_FILTER_CURVE;Kurvendateien
+FILECHOOSER_FILTER_INI;Konfigurationsdateien (*.ini)
 FILECHOOSER_FILTER_LCP;Objektivkorrekturprofile
 FILECHOOSER_FILTER_LUT;Unterstützte LUT-Dateien
 FILECHOOSER_FILTER_PP;Verarbeitungsprofile
@@ -271,6 +276,7 @@ GENERAL_ENABLED;Aktiviert
 GENERAL_FILE;Datei
 GENERAL_HIGH;Hoch
 GENERAL_LANDSCAPE;Querformat
+GENERAL_LOAD;Laden
 GENERAL_LOW;Niedrig
 GENERAL_MEDIUM;Mittel
 GENERAL_NA;n/a
@@ -1100,6 +1106,7 @@ PREFERENCES_FORRAW;Für RAW-Dateien
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT;Gleiche Höhe der Miniaturbilder in Dateiverwaltung und Filmstreifen verwenden
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT_HINT;Unterschiedliche Miniaturbildgrößen benötigen mehr Verarbeitungszeit beim Wechsel zwischen der Dateiverwaltung und dem Editor.
 PREFERENCES_GIMPPATH;GIMP Installationsverzeichnis
+PREFERENCES_HIGHLIGHT_SELECTED_THUMBNAILS;Ausgewählte Miniaturbilder hervorheben
 PREFERENCES_HISTOGRAMPOSITIONLEFT;Histogramm linksseitig
 PREFERENCES_HISTOGRAM_TOOLTIP;Wenn aktiviert, wird das Arbeitsprofil für die Darstellung\ndes Haupthistogramms verwendet, andernfalls das des\ngammakorrigierten Ausgangsprofils.
 PREFERENCES_HLTHRESHOLD;Schwellenwert Lichter
