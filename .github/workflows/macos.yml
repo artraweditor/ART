@@ -77,6 +77,7 @@ jobs:
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          sudo port selfupdate
           sudo port install pkgconfig
           sudo port install automake
           sudo port install autoconf
