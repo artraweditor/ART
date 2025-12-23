@@ -20,11 +20,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-15-intel, macos-15]
+        os: [macos-15-intel, macos-14]
         include:
           - os: macos-15-intel
             arch: x64
-          - os: macos-15
+          - os: macos-14
             arch: arm64
       fail-fast: false
         
@@ -69,11 +69,20 @@ jobs:
               echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_ENV
           fi
           
-      - name: Install MacPorts
+      - if: ${{ matrix.os == 'macos-15-intel' }}
+        name: Install MacPorts (x64)
         run: |          
           wget https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-15-Sequoia.pkg
           sudo installer -pkg MacPorts-2.11.6-15-Sequoia.pkg -target /
 
+      - if: ${{ matrix.os == 'macos-14' }}
+        name: Install MacPorts (arm64)
+        run: |          
+          wget https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-14-Sonoma.pkg
+          sudo installer -pkg MacPorts-2.11.6-14-Sonoma.pkg -target /
+          export
+          PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
