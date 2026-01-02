@@ -96,16 +96,6 @@ set(RTENGINESOURCEFILES
     ipsharpen.cc
     iptransform.cc
     rtjpeg.cc
-    klt/convolve.cc
-    klt/error.cc
-    klt/klt.cc
-    klt/klt_util.cc
-    klt/pnmio.cc
-    klt/pyramid.cc
-    klt/selectGoodFeatures.cc
-    klt/storeFeatures.cc
-    klt/trackFeatures.cc
-    klt/writeFeatures.cc
     labimage.cc
     lcp.cc
     lmmse_demosaic.cc
