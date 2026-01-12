@@ -7,13 +7,13 @@ Developer/Maintainer:
 
 Other developers:
   
-  Daniel Catalina
   Jean-Christophe Frisch  
 
 Other contributors (profiles, ideas, mockups, testing, forum activity, translations, etc.), in last name alphabetical order:
 
   Péter Bereczky
   Felipe Bouabci Simões
+  Daniel Catalina
   Alvaro De Amicis
   André Gauthier
   Sebastien Guyader

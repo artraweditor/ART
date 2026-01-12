@@ -1,8 +1,7 @@
-    ART - A fork of RawTherapee - A powerful, cross-platform 
-    raw image processing program.
+    ART - A powerful, cross-platform raw image processing program.
     Copyright (C) 2004-2012 Gabor Horvath <hgabor@rawtherapee.com>
     Copyright (C) 2010-2018 RawTherapee development team.
-    Copyright (C) 2018-2020 Alberto Griggio
+    Copyright (C) 2018-2026 Alberto Griggio
 
     ART is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
