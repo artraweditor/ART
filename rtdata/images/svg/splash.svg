@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    enable-background="new"
    inkscape:export-ydpi="96"
    inkscape:export-xdpi="96"
    inkscape:export-filename="/tmp/splash.png"
    sodipodi:docname="splash.svg"
-   inkscape:version="1.0 (4035a4f, 2020-05-01)"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
    id="svg783"
    version="1.1"
    viewBox="0 0 146.05 91.545836"
    height="346"
-   width="552">
+   width="552"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <title
      id="title188">RawTherapee splash screen</title>
   <defs
@@ -140,10 +140,10 @@
        style="color-interpolation-filters:sRGB"
        id="filter4749"
        inkscape:label="RawTherapee white"
-       x="-0.5"
-       y="-0.5"
-       height="2"
-       width="2">
+       x="-0.50706821"
+       y="-0.45522515"
+       height="1.9104503"
+       width="2.0141364">
       <feFlood
          id="feFlood4751"
          flood-opacity="0.40000000000000002"
@@ -178,10 +178,10 @@
        inkscape:collect="always" />
     <filter
        style="color-interpolation-filters:sRGB"
-       height="4"
-       width="4"
-       y="-1.5"
-       x="-1.5"
+       height="5.8094969"
+       width="5.5557987"
+       y="-2.4047485"
+       x="-2.2778993"
        id="filter3580-78"
        inkscape:label="ring glow"
        inkscape:menu="Shadows and Glows"
@@ -301,10 +301,10 @@
        inkscape:menu-tooltip="Increase or decrease lightness and contrast"
        inkscape:menu="Color"
        inkscape:label="ring inset lightness-contrast"
-       height="2"
-       width="2"
-       y="-0.5"
-       x="-0.5"
+       height="1"
+       width="1"
+       y="0"
+       x="0"
        id="filter4905-0">
       <feFlood
          flood-color="rgb(255,255,255)"
@@ -421,10 +421,10 @@
        xlink:href="#linearGradient3986-8"
        inkscape:collect="always" />
     <filter
-       height="4"
-       width="4"
-       y="-1.5"
-       x="-1.5"
+       height="2.6629915"
+       width="2.590506"
+       y="-0.83346063"
+       x="-0.79119502"
        inkscape:label="logo glow"
        id="filter173"
        style="color-interpolation-filters:sRGB">
@@ -440,10 +440,10 @@
          in2="result1" />
     </filter>
     <filter
-       width="2"
-       height="2"
-       y="-0.5"
-       x="-0.5"
+       width="1.109533"
+       height="1.2767438"
+       y="-0.1383719"
+       x="-0.054766505"
        inkscape:label="RawTherapee black"
        id="filter155"
        style="color-interpolation-filters:sRGB">
@@ -471,9 +471,9 @@
     </filter>
     <filter
        height="1.0717983"
-       y="-0.03589917"
+       y="-0.035899169"
        width="1.0722028"
-       x="-0.036101401"
+       x="-0.036101398"
        id="filter6797"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -485,7 +485,7 @@
     <filter
        height="1.7393093"
        y="-0.36965463"
-       width="1.0947675"
+       width="1.0947674"
        x="-0.047383718"
        id="filter6964"
        style="color-interpolation-filters:sRGB"
@@ -506,9 +506,9 @@
     </clipPath>
     <filter
        height="1.1838182"
-       y="-0.091909096"
+       y="-0.09190909"
        width="2.0308232"
-       x="-0.51541162"
+       x="-0.5154116"
        id="filter6864"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -962,7 +962,7 @@
        height="1.3445992"
        y="-0.17229962"
        width="1.5788015"
-       x="-0.28940076"
+       x="-0.28940074"
        id="filter6478"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1041,7 +1041,7 @@
     </linearGradient>
     <filter
        height="1.134923"
-       y="-0.067461498"
+       y="-0.067461502"
        width="2.1762621"
        x="-0.58813107"
        id="filter6672"
@@ -1064,9 +1064,9 @@
     </clipPath>
     <filter
        height="1.2669371"
-       y="-0.13346855"
+       y="-0.13346856"
        width="1.5526832"
-       x="-0.27634159"
+       x="-0.2763416"
        id="filter6836"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1077,9 +1077,9 @@
     </filter>
     <filter
        height="1.0717983"
-       y="-0.03589917"
+       y="-0.035899169"
        width="1.0722028"
-       x="-0.036101401"
+       x="-0.036101398"
        id="filter6797-5"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1091,7 +1091,7 @@
     <filter
        height="1.7393093"
        y="-0.36965463"
-       width="1.0947675"
+       width="1.0947674"
        x="-0.047383718"
        id="filter6964-3"
        style="color-interpolation-filters:sRGB"
@@ -1112,9 +1112,9 @@
     </clipPath>
     <filter
        height="1.1838182"
-       y="-0.091909096"
+       y="-0.09190909"
        width="2.0308232"
-       x="-0.51541162"
+       x="-0.5154116"
        id="filter6864-6"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1312,7 +1312,7 @@
        height="1.3445992"
        y="-0.17229962"
        width="1.5788015"
-       x="-0.28940076"
+       x="-0.28940074"
        id="filter6478-6"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1353,7 +1353,7 @@
        inkscape:collect="always" />
     <filter
        height="1.134923"
-       y="-0.067461498"
+       y="-0.067461502"
        width="2.1762621"
        x="-0.58813107"
        id="filter6672-6"
@@ -1376,9 +1376,9 @@
     </clipPath>
     <filter
        height="1.2669371"
-       y="-0.13346855"
+       y="-0.13346856"
        width="1.5526832"
-       x="-0.27634159"
+       x="-0.2763416"
        id="filter6836-8"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1429,10 +1429,10 @@
          in="blur" />
     </filter>
     <filter
-       height="1.1852689"
-       y="-0.092634425"
-       width="1.1891541"
-       x="-0.094577061"
+       height="1.2595585"
+       y="-0.12656137"
+       width="1.2611429"
+       x="-0.13067125"
        id="filter7145"
        style="color-interpolation-filters:sRGB"
        inkscape:collect="always">
@@ -1501,10 +1501,10 @@
      inkscape:measure-end="422.317,192.368"
      inkscape:measure-start="416.334,192.525"
      inkscape:window-maximized="1"
-     inkscape:window-y="30"
+     inkscape:window-y="39"
      inkscape:window-x="0"
-     inkscape:window-height="1013"
-     inkscape:window-width="1920"
+     inkscape:window-height="1023"
+     inkscape:window-width="1784"
      inkscape:snap-global="false"
      inkscape:snap-nodes="true"
      inkscape:object-nodes="false"
@@ -1526,17 +1526,20 @@
      inkscape:snap-bbox="true"
      units="px"
      showgrid="false"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g1170"
      inkscape:document-units="px"
-     inkscape:cy="220.52334"
-     inkscape:cx="44.352924"
+     inkscape:cy="158.72329"
+     inkscape:cx="284.27426"
      inkscape:zoom="1.1907515"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
      borderopacity="1.0"
      bordercolor="#666666"
      pagecolor="#ffffff"
-     id="base">
+     id="base"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1">
     <sodipodi:guide
        inkscape:color="rgb(0,0,255)"
        inkscape:label=""
@@ -2656,7 +2659,7 @@
       <g
          style="display:inline"
          id="g4353"
-         transform="matrix(0.3422132,0,0,0.3422132,81.492592,13.635701)">
+         transform="matrix(0.3422132,0,0,0.3422132,81.492592,-29.370448)">
         <g
            id="text3659"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Eras Medium ITC';-inkscape-font-specification:'Eras Medium ITC';letter-spacing:1px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.07076px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4749);enable-background:new"
@@ -2729,12 +2732,12 @@
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:7.96222px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          x="60.008163"
-         y="20.333431"
+         y="-22.672709"
          id="text4391"><tspan
            sodipodi:role="line"
            id="tspan4393"
            x="60.008163"
-           y="20.333431"
+           y="-22.672709"
            style="font-style:oblique;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.97639px;line-height:125%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans, Oblique';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1">a fork of</tspan></text>
     </g>
     <text
