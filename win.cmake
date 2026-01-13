@@ -12,10 +12,10 @@ set(DOCDIR ./doc CACHE PATH "Documentation installation path")
 set(CREDITSDIR . CACHE PATH "Credit file installation path")
 set(LICENCEDIR . CACHE PATH "Licence file installation path")
 
-set(BUILD_SHARED OFF CACHE BOOL "Should RT generate shared libraries")
+set(BUILD_SHARED OFF CACHE BOOL "Should ART generate shared libraries")
 set(OPTION_OMP ON CACHE BOOL "Use OpenMP to speedup the preview and batch processing")
 
-set(CACHE_NAME_SUFFIX "" CACHE STRING "RawTherapee's cache folder suffix (leave empty to use the default suffix, i.e. latesttag)")
+set(CACHE_NAME_SUFFIX "" CACHE STRING "ART's cache folder suffix (leave empty to use the default suffix, i.e. latesttag)")
 
 # This line will let you chose the target number, and the associated processor
 set(PROC_TARGET_NUMBER 0 CACHE STRING "Target Processor")
