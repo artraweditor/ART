@@ -167,7 +167,7 @@ jobs:
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DBUILD_BUNDLE=1 \
-            -DENABLE_SIMDE=${ART_SIMDE}
+            -DENABLE_SIMDE=${ART_SIMDE} \
             -DCMAKE_CXX_FLAGS="${ART_CXX_FLAGS}" \
             ../repo
           cd ..
