@@ -26,7 +26,7 @@
 #define pow_F(a, b) (xexpf(b * xlogf(a)))
 
 #ifdef ART_SIMD
-#include "sleefsseavx.h"
+#  include "sleefsseavx.h"
 #endif
 
 #ifdef __GNUC__

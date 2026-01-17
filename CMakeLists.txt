@@ -108,7 +108,6 @@ endif()
 if(HAVE_X86_SSE_MATH)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2 -mfpmath=sse")
-    add_definitions(-DART_SIMD)
 endif()
 
 # Do net set math errno, as we never check its value.
@@ -862,6 +861,16 @@ if(ENABLE_SIMDE)
     check_symbol_exists(_MM_GET_FLUSH_ZERO_MODE "simde/x86/sse.h" HAVE_SIMDE_MM_GET_FLUSH_ZERO_MODE)
     if(HAVE_SIMDE_MM_GET_FLUSH_ZERO_MODE)
         add_definitions(-DART_SIMDE_GET_MM_FLUSH_ZERO_MODE)
+    endif()
+else()
+    check_cxx_source_compiles("#if !defined(__SSE2__)
+#error
+#endif
+
+int main() { return 0; }
+" HAVE_SSE2)
+    if(HAVE_SSE2)
+        add_definitions(-DART_SIMD)
     endif()
 endif()
 

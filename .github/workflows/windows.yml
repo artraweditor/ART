@@ -137,14 +137,13 @@ jobs:
       - if: ${{ matrix.arch == 'arm64' }}
         name: Install SIMDE
         run: |
-          pacman --noconfirm -S clangarm64/mingw-w64-clang-aarch64-meson
+          wget https://github.com/mesonbuild/meson/releases/download/1.10.0/meson-1.10.0.tar.gz
+          tar xzf meson-1.10.0.tar.gz
           wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
           tar xzf v0.8.2.tar.gz
           cd simde-0.8.2
-          meson setup build -Dbuildtype=release -Dtests=false
-          cd build
-          meson compile
-          meson install
+          python ../meson-1.10.0/meson.py setup build -Dbuildtype=release -Dtests=false
+          python ../meson-1.10.0/meson.py install -C build
           
       - name: Configure build
         run: |
