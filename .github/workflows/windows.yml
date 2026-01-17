@@ -134,6 +134,18 @@ jobs:
           ninja install
           cd ..
 
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          pacman --noconfirm -S clangarm64/mingw-w64-clang-aarch64-meson
+          wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
+          tar xzf v0.8.2.tar.gz
+          cd simde-0.8.2
+          meson setup build -Dbuildtype=release -Dtests=false
+          cd build
+          meson compile
+          meson install
+          
       - name: Configure build
         run: |
           mkdir build
@@ -141,8 +153,10 @@ jobs:
           export PKG_CONFIG_PATH=c:/msys2/msys64/usr/local/lib/pkgconfig
           if [ "${{ matrix.msystem }}" = "UCRT64" ]; then
              ART_CXX_FLAGS=
+             ART_SIMDE=0
           else
              ART_CXX_FLAGS="-Wno-ignored-attributes -Wno-unused-command-line-argument"
+             ART_SIMDE=1
           fi
           cmake \
             -GNinja \
@@ -153,6 +167,7 @@ jobs:
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DBUILD_BUNDLE=1 \
+            -DENABLE_SIMDE=${ART_SIMDE}
             -DCMAKE_CXX_FLAGS="${ART_CXX_FLAGS}" \
             ../repo
           cd ..
