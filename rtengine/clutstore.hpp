@@ -119,7 +119,7 @@ inline void CLUTApplication::apply_single(int thread_id, float &r, float &g, flo
 }    
 
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
 inline void CLUTApplication::apply_vec(int thread_id, vfloat &r, vfloat &g, vfloat &b)
 {
@@ -225,6 +225,6 @@ inline void CLUTApplication::apply_vec(int thread_id, vfloat &r, vfloat &g, vflo
     }
 }    
 
-#endif // __SSE2__
+#endif // ART_SIMD
 
 } // namespace rtengine

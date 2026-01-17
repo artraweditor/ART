@@ -41,7 +41,7 @@ void ImProcFunctions::expcomp(Imagefloat *img,
 
     const float exp_scale = pow(2.f, expparams->expcomp);
     const float black = expparams->black * 2000.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat exp_scalev = F2V(exp_scale);
     vfloat blackv = F2V(black);
 #endif
@@ -56,7 +56,7 @@ void ImProcFunctions::expcomp(Imagefloat *img,
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             for (int c = 0; c < 3; ++c) {
                 vfloat v = LVF(chan[c][y][x]);

@@ -36,7 +36,7 @@ private:
     static void cat02_to_hpefloat(float &rh, float &gh, float &bh, float r,
                                   float g, float b);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void xyz_to_cat02float(vfloat &r, vfloat &g, vfloat &b, vfloat x,
                                   vfloat y, vfloat z);
     static void cat02_to_hpefloat(vfloat &rh, vfloat &gh, vfloat &bh, vfloat r,
@@ -55,7 +55,7 @@ private:
                                 float b);
     static void cat02_to_xyzfloat(float &x, float &y, float &z, float r,
                                   float g, float b);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static vfloat inverse_nonlinear_adaptationfloat(vfloat c, vfloat fl);
     static void calculate_abfloat(vfloat &aa, vfloat &bb, vfloat h, vfloat e,
                                   vfloat t, vfloat nbb, vfloat a);
@@ -82,7 +82,7 @@ public:
                                       float zw, float c, float nc, float n,
                                       float nbb, float ncb, float fl, float cz,
                                       float d, float aw);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void jch2xyz_ciecam02float(vfloat &x, vfloat &y, vfloat &z, vfloat J,
                                       vfloat C, vfloat h, vfloat xw, vfloat yw,
                                       vfloat zw, vfloat nc, vfloat n,
@@ -116,7 +116,7 @@ public:
                                          float ncb, float pfl, float cz,
                                          float d);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void xyz2jchqms_ciecam02float(
         vfloat &J, vfloat &C, vfloat &h, vfloat &Q, vfloat &M, vfloat &s,
         vfloat aw, vfloat fl, vfloat wh, vfloat x, vfloat y, vfloat z,

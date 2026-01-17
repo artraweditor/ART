@@ -1193,7 +1193,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
 #pragma omp parallel if (multithread)
 #endif
     {
-#ifdef __SSE2__
+#ifdef ART_SIMD
         float cBuffer[W];
         float hBuffer[W];
         float lBuffer[W];
@@ -1204,7 +1204,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
 #pragma omp for schedule(dynamic, 16)
 #endif
         for (int y = 0; y < H; ++y) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (int x = 0; x < W; ++x) {
                 rgb2lab(mode, rgb->r(y, x), rgb->g(y, x), rgb->b(y, x),
                         lBuffer[x], aBuffer[x], bBuffer[x], wp);
@@ -1221,7 +1221,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
             }
 #endif
             for (int x = 0; x < W; ++x) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 const float l = lBuffer[x]; // / 32768.f;
                 const float a = aBuffer[x]; // / 42000.f;
                 const float b = bBuffer[x]; // / 42000.f;
@@ -1239,7 +1239,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
                 // }
 
                 if (has_mask) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     // use precalculated values
                     float c = cBuffer[x];
                     float h = hBuffer[x];
@@ -1284,7 +1284,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
     }
 
     if (has_mask) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
         const auto LIM01v = [](vfloat v) -> vfloat {
             return vminf(vmaxf(v, F2V(0)), F2V(1));
         };
@@ -1317,7 +1317,7 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
 #endif
             for (int y = 0; y < H; ++y) {
                 int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 for (; x < W - 3; x += 4) {
                     if (abmask) {
                         STVFU((*abmask)[i][y][x],

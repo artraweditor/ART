@@ -440,7 +440,7 @@ void Color::rgb2hsl(float r, float g, float b, float &h, float &s, float &l)
     }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::rgb2hsl(vfloat r, vfloat g, vfloat b, vfloat &h, vfloat &s,
                     vfloat &l)
 {
@@ -504,7 +504,7 @@ float Color::hue2rgbfloat(float p, float q, float t)
     }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 vfloat Color::hue2rgb(vfloat p, vfloat q, vfloat t)
 {
     vfloat fourv = F2V(4.f);
@@ -546,7 +546,7 @@ void Color::hsl2rgb(float h, float s, float l, float &r, float &g, float &b)
     }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::hsl2rgb(vfloat h, vfloat s, vfloat l, vfloat &r, vfloat &g,
                     vfloat &b)
 {
@@ -859,7 +859,7 @@ void Color::rgbxyz(float r, float g, float b, float &x, float &y, float &z,
     z = ((xyz_rgb[2][0] * r + xyz_rgb[2][1] * g + xyz_rgb[2][2] * b));
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::rgbxyz(vfloat r, vfloat g, vfloat b, vfloat &x, vfloat &y,
                    vfloat &z, const vfloat xyz_rgb[3][3])
 {
@@ -913,7 +913,7 @@ void Color::xyz2rgb(float x, float y, float z, float &r, float &g, float &b,
     b = ((rgb_xyz[2][0] * x + rgb_xyz[2][1] * y + rgb_xyz[2][2] * z));
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::xyz2rgb(vfloat x, vfloat y, vfloat z, vfloat &r, vfloat &g,
                     vfloat &b, const vfloat rgb_xyz[3][3])
 {
@@ -921,7 +921,7 @@ void Color::xyz2rgb(vfloat x, vfloat y, vfloat z, vfloat &r, vfloat &g,
     g = ((rgb_xyz[1][0] * x + rgb_xyz[1][1] * y + rgb_xyz[1][2] * z));
     b = ((rgb_xyz[2][0] * x + rgb_xyz[2][1] * y + rgb_xyz[2][2] * z));
 }
-#endif // __SSE2__
+#endif // ART_SIMD
 
 void Color::interpolateRGBColor(const float balance, const float r1,
                                 const float g1, const float b1, const float r2,
@@ -1178,7 +1178,7 @@ void Color::compute_LCMS_tone_curve_params(double gamma, double slope,
 void Color::gammaf2lut(LUTf &gammacurve, float gamma, float start, float slope,
                        float divisor, float factor)
 {
-#ifdef __SSE2__
+#ifdef ART_SIMD
     // SSE2 version is more than 6 times faster than scalar version
     vfloat iv = _mm_set_ps(3.f, 2.f, 1.f, 0.f);
     vfloat fourv = F2V(4.f);
@@ -1227,7 +1227,7 @@ void Color::gammaf2lut(LUTf &gammacurve, float gamma, float start, float slope,
 void Color::gammanf2lut(LUTf &gammacurve, float gamma, float divisor,
                         float factor) // standard gamma without slope...
 {
-#ifdef __SSE2__
+#ifdef ART_SIMD
     // SSE2 version is more than 6 times faster than scalar version
     vfloat iv = _mm_set_ps(3.f, 2.f, 1.f, 0.f);
     vfloat fourv = F2V(4.f);
@@ -1283,7 +1283,7 @@ void Color::L2XYZ(float L, float &x, float &y, float &z) // for black & white
     y = (LL > epskap) ? 65535.0f * fy * fy * fy : 65535.0f * LL / kappa;
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::Lab2XYZ(vfloat L, vfloat a, vfloat b, vfloat &x, vfloat &y,
                     vfloat &z)
 {
@@ -1302,7 +1302,7 @@ void Color::Lab2XYZ(vfloat L, vfloat a, vfloat b, vfloat &x, vfloat &y,
     y = vself(vmaskf_gt(L, F2V(epskap)), res1, res2);
     y *= c65535;
 }
-#endif // __SSE2__
+#endif // ART_SIMD
 
 inline float Color::computeXYZ2Lab(float f)
 {
@@ -1336,7 +1336,7 @@ void Color::RGB2Lab(float *R, float *G, float *B, float *L, float *a, float *b,
                     const float wp[3][3], int width)
 {
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat minvalfv = F2V(0.f);
     vfloat maxvalfv = F2V(MAXVALF);
     vfloat c500v = F2V(500.f);
@@ -1344,7 +1344,7 @@ void Color::RGB2Lab(float *R, float *G, float *B, float *L, float *a, float *b,
 #endif
     int i = 0;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     for (; i < width - 3; i += 4) {
         const vfloat rv = LVFU(R[i]);
         const vfloat gv = LVFU(G[i]);
@@ -1408,13 +1408,13 @@ void Color::RGB2L(float *R, float *G, float *B, float *L, const float wp[3][3],
                   int width)
 {
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat minvalfv = F2V(0.f);
     vfloat maxvalfv = F2V(MAXVALF);
 #endif
     int i = 0;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     for (; i < width - 3; i += 4) {
         const vfloat rv = LVFU(R[i]);
         const vfloat gv = LVFU(G[i]);
@@ -1463,7 +1463,7 @@ void Color::XYZ2Lab(float X, float Y, float Z, float &L, float &a, float &b)
     b = (200.0f * (fy - fz));
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::XYZ2Lab(vfloat X, vfloat Y, vfloat Z, vfloat &L, vfloat &a,
                     vfloat &b)
 {
@@ -1547,7 +1547,7 @@ void Color::Lab2Lch(float a, float b, float &c, float &h)
     h = xatan2f(b, a);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Color::Lab2Lch(float *a, float *b, float *c, float *h, int w)
 {
     int i = 0;
@@ -2627,7 +2627,7 @@ void Color::LabGamutMunsell(float *labL, float *laba, float *labb, const int N,
 #endif
     float correctlum = 0.f;
     float correctionHuechroma = 0.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     // precalculate H and C using SSE
     float HHBuffer[N];
     float CCBuffer[N];
@@ -2647,10 +2647,10 @@ void Color::LabGamutMunsell(float *labL, float *laba, float *labb, const int N,
         CCBuffer[k] = sqrt(SQR(laba[k]) + SQR(labb[k])) / 327.68f;
     }
 
-#endif // __SSE2__
+#endif // ART_SIMD
 
     for (int j = 0; j < N; j++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
         float HH = HHBuffer[j];
         float Chprov1 = CCBuffer[j];
 #else

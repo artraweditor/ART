@@ -275,7 +275,7 @@ public:
 class WeightedStdToneCurve: public ToneCurve {
 private:
     float Triangle(float refX, float refY, float X2) const;
-    // #ifdef __SSE2__
+    // #ifdef ART_SIMD
     //     vfloat Triangle(vfloat refX, vfloat refY, vfloat X2) const;
     // #endif
 public:
@@ -387,7 +387,7 @@ inline void StandardToneCurve::Apply(float &r, float &g, float &b) const
 //             just return.
 //             // (Or, for non-SSE mode, if we get to the end.)
 //             return;
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 //         } else if (reinterpret_cast<uintptr_t>(&r[i]) % 16 == 0) {
 //             // Otherwise, we get to the first aligned address; go to the SSE
 //             part. break;
@@ -399,7 +399,7 @@ inline void StandardToneCurve::Apply(float &r, float &g, float &b) const
 //         i++;
 //     }
 
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 //     for (; i + 3 < end; i += 4) {
 //         vfloat r_val = LVF(r[i]);
 //         vfloat g_val = LVF(g[i]);
@@ -517,7 +517,7 @@ inline float WeightedStdToneCurve::Triangle(float a, float a1, float b) const
     return a1;
 }
 
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 // inline vfloat WeightedStdToneCurve::Triangle(vfloat a, vfloat a1, vfloat b)
 // const
 // {
@@ -586,7 +586,7 @@ inline void WeightedStdToneCurve::Apply(float &ir, float &ig, float &ib) const
 //             just return.
 //             // (Or, for non-SSE mode, if we get to the end.)
 //             return;
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 //         } else if (reinterpret_cast<uintptr_t>(&r[i]) % 16 == 0) {
 //             // Otherwise, we get to the first aligned address; go to the SSE
 //             part. break;
@@ -596,7 +596,7 @@ inline void WeightedStdToneCurve::Apply(float &ir, float &ig, float &ib) const
 //         i++;
 //     }
 
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 //     const vfloat c65535v = F2V(65535.f);
 //     const vfloat zd5v = F2V(0.5f);
 //     const vfloat zd25v = F2V(0.25f);

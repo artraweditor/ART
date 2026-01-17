@@ -423,7 +423,7 @@ void RGB_denoise_info(ImProcData &im, Imagefloat *src, Imagefloat *provicalc,
 
                 for (int i = tiletop; i < tilebottom; i += 2) {
                     int i1 = i - tiletop;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     __m128 aNv, bNv;
                     __m128 c100v = _mm_set1_ps(100.f);
                     int j;

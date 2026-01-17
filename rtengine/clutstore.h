@@ -167,12 +167,12 @@ protected:
     TMatrix wiprof_;
     TMatrix xyz2clut_;
     TMatrix clut2xyz_;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat v_work2xyz_[3][3] ALIGNED16;
     vfloat v_xyz2clut_[3][3] ALIGNED16;
     vfloat v_clut2xyz_[3][3] ALIGNED16;
     vfloat v_xyz2work_[3][3] ALIGNED16;
-#endif // __SSE2__
+#endif // ART_SIMD
 
 #ifdef ART_USE_OCIO
     bool OCIO_init();

@@ -252,7 +252,7 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
     float gmult = refOut.g / pow_F(rtengine::max(refIn.g, 1.f), gexp);
     float bmult = refOut.b / pow_F(rtengine::max(refIn.b, 1.f), bexp);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat clipv = F2V(MAXVALF);
     const vfloat rexpv = F2V(rexp);
     const vfloat gexpv = F2V(gexp);
@@ -273,7 +273,7 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
         float *glineout = output->g(i);
         float *blineout = output->b(i);
         int j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
         for (; j < rwidth - 3; j += 4) {
             STVFU(rlineout[j],
@@ -513,7 +513,7 @@ void rtengine::Thumbnail::processFilmNegative(
             static_cast<double>(bmult));
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat clipv = F2V(MAXVALF);
     const vfloat rexpv = F2V(rexp);
     const vfloat gexpv = F2V(gexp);
@@ -528,7 +528,7 @@ void rtengine::Thumbnail::processFilmNegative(
         float *gline = baseImg->g(i);
         float *bline = baseImg->b(i);
         int j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
         for (; j < rwidth - 3; j += 4) {
             STVFU(rline[j],
@@ -661,7 +661,7 @@ void rtengine::Thumbnail::processFilmNegativeV2(
             static_cast<double>(bmult));
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat clipv = F2V(MAXVALF);
     const vfloat rexpv = F2V(rexp);
     const vfloat gexpv = F2V(gexp);
@@ -676,7 +676,7 @@ void rtengine::Thumbnail::processFilmNegativeV2(
         float *gline = baseImg->g(i);
         float *bline = baseImg->b(i);
         int j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
         for (; j < rwidth - 3; j += 4) {
             STVFU(rline[j],

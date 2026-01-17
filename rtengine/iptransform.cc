@@ -155,7 +155,7 @@ void decode(rtengine::Imagefloat *img, bool multiThread)
     }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
 inline void interpolateTransformCubic(rtengine::Imagefloat *src, int xs, int ys,
                                       float Dx, float Dy, float &r, float &g,
@@ -192,7 +192,7 @@ inline void interpolateTransformCubic(rtengine::Imagefloat *src, int xs, int ys,
     b = vhadd(weight * bv);
 }
 
-#else // __SSE2__
+#else // ART_SIMD
 
 inline void interpolateTransformCubic(rtengine::Imagefloat *src, int xs, int ys,
                                       float Dx, float Dy, float &r, float &g,
@@ -234,9 +234,9 @@ inline void interpolateTransformCubic(rtengine::Imagefloat *src, int xs, int ys,
     b = (bv[0] * w0Hor + bv[1] * w1Hor + bv[2] * w2Hor + bv[3] * w3Hor);
 }
 
-#endif // __SSE2__
+#endif // ART_SIMD
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
 inline void interpolateTransformChannelsCubic(const float *const *src, int xs,
                                               int ys, float Dx, float Dy,
@@ -265,7 +265,7 @@ inline void interpolateTransformChannelsCubic(const float *const *src, int xs,
     dest = vhadd(weight * cv);
 }
 
-#else // __SSE2__
+#else // ART_SIMD
 
 inline void interpolateTransformChannelsCubic(const float *const *src, int xs,
                                               int ys, float Dx, float Dy,
@@ -298,7 +298,7 @@ inline void interpolateTransformChannelsCubic(const float *const *src, int xs,
     dest = (cv[0] * w0Hor + cv[1] * w1Hor + cv[2] * w2Hor + cv[3] * w3Hor);
 }
 
-#endif // __SSE2__
+#endif // ART_SIMD
 
 void transform_perspective(const ProcParams *params,
                            const FramesMetaData *metadata, Imagefloat *orig,

@@ -224,7 +224,7 @@ void do_median_denoise(float **src, float **dst, float upperBound, int width,
             }
 
             case Median::TYPE_5X5_STRONG: {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                 for (; !useUpperBound && j < width - border - 3; j += 4) {
                     STVFU(medianOut[i][j],
@@ -281,7 +281,7 @@ void do_median_denoise(float **src, float **dst, float upperBound, int width,
             }
 
             case Median::TYPE_7X7: {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 std::array<vfloat, 49> vpp ALIGNED16;
 
                 for (; !useUpperBound && j < width - border - 3; j += 4) {
@@ -316,7 +316,7 @@ void do_median_denoise(float **src, float **dst, float upperBound, int width,
             }
 
             case Median::TYPE_9X9: {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 std::array<vfloat, 81> vpp ALIGNED16;
 
                 for (; !useUpperBound && j < width - border - 3; j += 4) {
@@ -479,7 +479,7 @@ void RGBtile_denoise(double scale, float *fLblox, int hblproc,
                blurbuffer); // blur neighbor weights for more robust estimation
                             // //for DCT
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     __m128 tempv;
     //__m128  noisevar_Ldetailv = _mm_set1_ps(noisevar_Ldetail);
     __m128 onev = _mm_set1_ps(1.0f);
@@ -650,7 +650,7 @@ void ShrinkAllL(double scale, wavelet_decomposition &WaveletCoeffs_L,
     }
 
     float levelFactor = mad_L * 5.f / static_cast<float>(level + 1);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     __m128 magv;
     __m128 levelFactorv = _mm_set1_ps(levelFactor);
     __m128 mad_Lv;
@@ -693,7 +693,7 @@ void ShrinkAllL(double scale, wavelet_decomposition &WaveletCoeffs_L,
     boxblur(sfave, sfaved, blurBuffer, blur_rad, blur_rad, W_L,
             H_L); // increase smoothness by locally averaging shrinkage
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     __m128 sfv;
 
     for (i = 0; i < W_L * H_L - 3; i += 4) {
@@ -763,7 +763,7 @@ void ShrinkAllAB(double scale, wavelet_decomposition &WaveletCoeffs_L,
 
     if (noisevar_ab > 0.001f) {
         madab = useNoiseCCurve ? madab : madab * noisevar_ab;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         __m128 onev = _mm_set1_ps(1.f);
         __m128 mad_abrv = _mm_set1_ps(madab);
 
@@ -810,7 +810,7 @@ void ShrinkAllAB(double scale, wavelet_decomposition &WaveletCoeffs_L,
         const int blur_rad = max(1, int((level + 2) / scale));
         boxblur(sfaveab, sfaveabd, blurBuffer, blur_rad, blur_rad, W_ab,
                 H_ab); // increase smoothness by locally averaging shrinkage
-#ifdef __SSE2__
+#ifdef ART_SIMD
         __m128 epsv = _mm_set1_ps(eps);
         __m128 sfabv;
         __m128 sfaveabv;
@@ -918,7 +918,7 @@ bool WaveletDenoiseAll_BiShrinkL(double scale,
                         float mad_Lr = madL[lvl][dir - 1];
 
                         float levelFactor = mad_Lr * 5.f / (lvl + 1);
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         __m128 mad_Lv;
                         __m128 ninev = _mm_set1_ps(9.0f);
                         __m128 epsv = _mm_set1_ps(eps);
@@ -973,7 +973,7 @@ bool WaveletDenoiseAll_BiShrinkL(double scale,
                         boxblur(sfave, sfaved, blurBuffer, blur_rad, blur_rad,
                                 Wlvl_L, Hlvl_L); // increase smoothness by
                                                  // locally averaging shrinkage
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         __m128 sfavev;
                         __m128 sf_Lv;
 
@@ -1119,7 +1119,7 @@ bool WaveletDenoiseAll_BiShrinkAB(double scale,
 
                         if (noisevar_ab > 0.001f) {
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                             __m128 onev = _mm_set1_ps(1.f);
                             __m128 mad_abrv = _mm_set1_ps(mad_abr);
                             __m128 rmad_Lm9v = onev / _mm_set1_ps(mad_Lr * 9.f);

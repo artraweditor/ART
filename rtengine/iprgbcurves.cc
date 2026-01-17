@@ -122,7 +122,7 @@ void ImProcFunctions::rgbCurves(Imagefloat *img)
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; x < W - 3; x += 4) {
                 if (rCurve) {
                     STVF(img->r(y, x), rCurve[LVF(img->r(y, x))]);
@@ -134,7 +134,7 @@ void ImProcFunctions::rgbCurves(Imagefloat *img)
                     STVF(img->b(y, x), bCurve[LVF(img->b(y, x))]);
                 }
             }
-#endif // __SSE2__
+#endif // ART_SIMD
             for (; x < W; ++x) {
                 if (rCurve) {
                     img->r(y, x) = rCurve[img->r(y, x)];

@@ -75,7 +75,7 @@ void PF_correct_RT(const rtengine::ProcParams *params, Imagefloat *lab,
 #endif
 
         for (int i = 0; i < height; i++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
             // vectorized per row precalculation of the atan2 values
             if (chCurve) {
@@ -96,7 +96,7 @@ void PF_correct_RT(const rtengine::ProcParams *params, Imagefloat *lab,
             for (int j = 0; j < width; j++) {
                 float chromaChfactor = 1.f;
                 if (chCurve) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     // use the precalculated atan values
                     const float HH = fringe[i * width + j];
 #else

@@ -150,7 +150,7 @@ void ImProcFunctions::Lanczos(Imagefloat *src, Imagefloat *dst, float scale)
             }
 
             // Do vertical interpolation. Store results.
-#ifdef __SSE2__
+#ifdef ART_SIMD
             int j;
             __m128 Lv, av, bv, wkv;
 

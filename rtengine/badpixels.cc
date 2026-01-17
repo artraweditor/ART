@@ -36,7 +36,7 @@ unsigned fc(const unsigned int cfa[2][2], int r, int c)
 
 inline void sum5x5(const array2D<float> &in, int col, float &sum)
 {
-#ifdef __SSE2__
+#ifdef ART_SIMD
     // sum up 5*4 = 20 values using SSE
     // 10 fabs function calls and 10 float additions with SSE
     const vfloat sumv = (vabsf(LVFU(in[0][col])) + vabsf(LVFU(in[1][col]))) +

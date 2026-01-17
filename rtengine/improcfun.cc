@@ -317,7 +317,7 @@ void proPhotoBlue(Imagefloat *rgb, bool multiThread)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat rv = LVF(rgb->r(y, x));
             vfloat gv = LVF(rgb->g(y, x));
@@ -480,7 +480,7 @@ void ImProcFunctions::lab2rgb(const LabImage &src, Imagefloat &dst,
 
     const int W = dst.getWidth();
     const int H = dst.getHeight();
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat wipv[3][3];
 
     for (int i = 0; i < 3; i++) {
@@ -497,7 +497,7 @@ void ImProcFunctions::lab2rgb(const LabImage &src, Imagefloat &dst,
 
     for (int i = 0; i < H; i++) {
         int j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
         for (; j < W - 3; j += 4) {
             vfloat X, Y, Z;

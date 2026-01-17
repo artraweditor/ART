@@ -145,7 +145,7 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
     const int ntiles_y = int(std::ceil(float(HH) / (tile_size - 2 * border)));
     const int ntiles = ntiles_x * ntiles_y;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat zerov = F2V(0.0);
     const vfloat v1e_5f = F2V(1e-5f);
     const vfloat v65535f = F2V(factor);
@@ -156,7 +156,7 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
 #endif
     {
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         // flush denormals to zero to avoid performance penalty
         const auto oldMode = _MM_GET_FLUSH_ZERO_MODE();
         _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
@@ -215,7 +215,7 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
                     for (int yy = start_y + border; yy < end_y - border; ++yy) {
                         int y = yy - border;
                         int xx = start_x + border;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         for (; xx < end_x - border - 3; xx += 4) {
                             int x = xx - border;
                             int sx = xx + tx;
@@ -273,7 +273,7 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
             for (int yy = start_y + border; yy < end_y - border; ++yy) {
                 int y = yy - border;
                 int xx = start_x + border;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 for (; xx < end_x - border - 3; xx += 4) {
                     int x = xx - border;
 
@@ -295,7 +295,7 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
             }
         }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         _MM_SET_FLUSH_ZERO_MODE(oldMode);
 #endif
     } // omp parallel

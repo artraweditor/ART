@@ -1087,7 +1087,7 @@ void rtengine::LCPMapper::processVignetteLine(int width, int y,
     float yd = ((float)y - mc.y0) * mc.rfy;
     yd *= yd;
     int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat fourv = F2V(4.f);
     const vfloat zerov = F2V(0.f);
     const vfloat ydv = F2V(yd);
@@ -1109,7 +1109,7 @@ void rtengine::LCPMapper::processVignetteLine(int width, int y,
         STVFU(line[x], valv);
         xv += fourv;
     }
-#endif // __SSE2__
+#endif // ART_SIMD
     for (; x < width; x++) {
         if (line[x] > 0) {
             const float xd = ((float)x - mc.x0) * mc.rfx;

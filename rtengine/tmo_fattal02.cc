@@ -462,7 +462,7 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 #pragma omp parallel if (multithread)
 #endif
     {
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat epsv = F2V(eps);
         // vfloat tempv = F2V (temp);
 #endif
@@ -472,7 +472,7 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 
         for (size_t i = 0; i < height; ++i) {
             size_t j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
             for (; j < width - 3; j += 4) {
                 STVFU((*H)[i][j], xlogf(/*tempv **/ LVFU(Y[i][j]) + epsv));
@@ -636,7 +636,7 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 #pragma omp parallel if (multithread)
 #endif
     {
-// #ifdef __SSE2__
+// #ifdef ART_SIMD
 //         vfloat gammav = F2V (gamma);
 // #endif
 #ifdef _OPENMP
@@ -645,7 +645,7 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 
         for (size_t i = 0; i < height; i++) {
             size_t j = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
             for (; j < width - 3; j += 4) {
                 STVFU(L[i][j], xexpf(/*gammav **/ LVFU(L[i][j])));

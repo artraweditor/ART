@@ -248,7 +248,7 @@ void Ciecam02::xyz_to_cat02float(float &r, float &g, float &b, float x, float y,
     b = (0.0000f * x) + (0.0000f * y) + (1.0000f * z);
     //    }
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::xyz_to_cat02float(vfloat &r, vfloat &g, vfloat &b, vfloat x,
                                  vfloat y, vfloat z)
 {
@@ -279,7 +279,7 @@ void Ciecam02::cat02_to_xyzfloat(float &x, float &y, float &z, float r, float g,
     z = (0.000000f * r) - (0.000000f * g) + (1.000000f * b);
     //    }
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::cat02_to_xyzfloat(vfloat &x, vfloat &y, vfloat &z, vfloat r,
                                  vfloat g, vfloat b)
 {
@@ -299,7 +299,7 @@ void Ciecam02::hpe_to_xyzfloat(float &x, float &y, float &z, float r, float g,
     y = (0.370950f * r) + (0.629054f * g) - (0.000008f * b);
     z = b;
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::hpe_to_xyzfloat(vfloat &x, vfloat &y, vfloat &z, vfloat r,
                                vfloat g, vfloat b)
 {
@@ -325,7 +325,7 @@ void Ciecam02::cat02_to_hpefloat(float &rh, float &gh, float &bh, float r,
     //    }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::cat02_to_hpefloat(vfloat &rh, vfloat &gh, vfloat &bh, vfloat r,
                                  vfloat g, vfloat b)
 {
@@ -350,7 +350,7 @@ void Ciecam02::Aab_to_rgbfloat(float &r, float &g, float &b, float A, float aa,
     /*       c1              c6               c7       */
     b = (0.32787f * x) - (0.15681f * aa) - (4.49038f * bb);
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::Aab_to_rgbfloat(vfloat &r, vfloat &g, vfloat &b, vfloat A,
                                vfloat aa, vfloat bb, vfloat nbb)
 {
@@ -404,7 +404,7 @@ void Ciecam02::calculate_abfloat(float &aa, float &bb, float h, float e,
         std::swap(aa, bb);
     }
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::calculate_abfloat(vfloat &aa, vfloat &bb, vfloat h, vfloat e,
                                  vfloat t, vfloat nbb, vfloat a)
 {
@@ -559,7 +559,7 @@ void Ciecam02::xyz2jchqms_ciecam02float(float &J, float &C, float &h, float &Q,
     s = 100.0f * sqrtf(M / Q);
     h = (myh * 180.f) / (float)rtengine::RT_PI;
 }
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::xyz2jchqms_ciecam02float(
     vfloat &J, vfloat &C, vfloat &h, vfloat &Q, vfloat &M, vfloat &s, vfloat aw,
     vfloat fl, vfloat wh, vfloat x, vfloat y, vfloat z, vfloat xw, vfloat yw,
@@ -649,7 +649,7 @@ void Ciecam02::xyz2jch_ciecam02float(float &J, float &C, float &h, float aw,
     bp = MAXR(bp, 0.0f);
     //    }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat pv = _mm_setr_ps(rp, gp, bp, 1.f);
     vfloat fv = F2V(fl);
     vfloat outv = nonlinear_adaptationfloat(pv, fv);
@@ -706,7 +706,7 @@ void Ciecam02::jch2xyz_ciecam02float(float &x, float &y, float &z, float J,
     e = ((961.53846f) * nc * ncb) *
         (xcosf(h * rtengine::RT_PI_F_180 + 2.0f) + 3.8f);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat powinv1 =
         _mm_setr_ps(J / 100.0f, 10.f * C / (sqrtf(J) * pow1), 1.f, 1.f);
     vfloat powinv2 = _mm_setr_ps(1.0f / (c * cz), 1.1111111f, 1.f, 1.f);
@@ -721,7 +721,7 @@ void Ciecam02::jch2xyz_ciecam02float(float &x, float &y, float &z, float J,
     calculate_abfloat(ca, cb, h, e, t, nbb, a);
     Aab_to_rgbfloat(rpa, gpa, bpa, a, ca, cb, nbb);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat pav = _mm_setr_ps(rpa, gpa, bpa, 1.f);
     vfloat fv = F2V(fl);
     vfloat outv = inverse_nonlinear_adaptationfloat(pav, fv);
@@ -743,7 +743,7 @@ void Ciecam02::jch2xyz_ciecam02float(float &x, float &y, float &z, float J,
     cat02_to_xyzfloat(x, y, z, r, g, b);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 void Ciecam02::jch2xyz_ciecam02float(vfloat &x, vfloat &y, vfloat &z, vfloat J,
                                      vfloat C, vfloat h, vfloat xw, vfloat yw,
                                      vfloat zw, vfloat nc, vfloat pow1,
@@ -795,7 +795,7 @@ float Ciecam02::nonlinear_adaptationfloat(float c, float fl)
     }
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 vfloat Ciecam02::nonlinear_adaptationfloat(vfloat c, vfloat fl)
 {
     vfloat c100 = F2V(100.f);
@@ -827,7 +827,7 @@ float Ciecam02::inverse_nonlinear_adaptationfloat(float c, float fl)
            pow_F((27.13f * fabsf(c)) / (400.0f - fabsf(c)), 2.38095238f);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 vfloat Ciecam02::inverse_nonlinear_adaptationfloat(vfloat c, vfloat fl)
 {
     c -= F2V(0.1f);

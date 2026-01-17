@@ -405,7 +405,7 @@ void Imagefloat::multiply(float factor, bool multithread)
 {
     const int W = width;
     const int H = height;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat vfactor = F2V(factor);
 #endif
 
@@ -415,7 +415,7 @@ void Imagefloat::multiply(float factor, bool multithread)
 #endif
     for (int y = 0; y < H; y++) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
             vfloat gv = LVF(g(y, x));
@@ -615,7 +615,7 @@ inline void Imagefloat::get_ws()
                 iws_[i][j] = float(iws[i][j]);
             }
         }
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 vws_[i][j] = F2V(float(ws[i][j]));
@@ -682,7 +682,7 @@ void Imagefloat::rgb_to_xyz(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Xv, Yv, Zv;
         for (; x < width - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
@@ -713,7 +713,7 @@ void Imagefloat::rgb_to_yuv(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Yv, uv, vv;
         for (; x < width - 3; x += 4) {
             vfloat rv = LVF(r(y, x));
@@ -741,7 +741,7 @@ void Imagefloat::xyz_to_rgb(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Rv, Gv, Bv;
         for (; x < width - 3; x += 4) {
             vfloat xv = LVF(r(y, x));
@@ -790,7 +790,7 @@ void Imagefloat::yuv_to_rgb(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Rv, Gv, Bv;
         for (; x < width - 3; x += 4) {
             vfloat Yv = LVF(g(y, x));
@@ -850,7 +850,7 @@ void Imagefloat::rgb_to_lab(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Rv, Gv, Bv;
         vfloat Lv, av, bv;
         for (; x < width - 3; x += 4) {
@@ -904,7 +904,7 @@ void Imagefloat::yuv_to_lab(bool multithread)
 #endif
     for (int y = 0; y < height; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Rv, Gv, Bv;
         vfloat Xv, Yv, Zv;
         vfloat Lv, av, bv;
@@ -945,7 +945,7 @@ void Imagefloat::lab_to_rgb(bool multithread)
     for (int y = 0; y < height; ++y) {
         // float X, Y, Z;
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Lv, av, bv;
         vfloat Rv, Gv, Bv;
         for (; x < width - 3; x += 4) {
@@ -994,7 +994,7 @@ void Imagefloat::lab_to_yuv(bool multithread)
         float X, Y, Z;
         float R, G, B;
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat Lv, av, bv;
         vfloat Rv, Gv, Bv;
         vfloat Xv, Yv, Zv;

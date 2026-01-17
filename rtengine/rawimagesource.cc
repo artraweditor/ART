@@ -2435,7 +2435,7 @@ void RawImageSource::processFlatField(const RAWParams &raw,
             1.f; // if the pixel value in the flat field is less or equal this
                  // value, no correction will be applied.
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat refcolorv[2] = {_mm_set_ps(refcolor[0][1], refcolor[0][0],
                                           refcolor[0][1], refcolor[0][0]),
                                _mm_set_ps(refcolor[1][1], refcolor[1][0],
@@ -2458,7 +2458,7 @@ void RawImageSource::processFlatField(const RAWParams &raw,
 
         for (int row = 0; row < H; row++) {
             int col = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             vfloat rowBlackv = blackv[row & 1];
             vfloat ffrowBlackv = ffblackv[row & 1];
             vfloat rowRefcolorv = refcolorv[row & 1];
@@ -2603,7 +2603,7 @@ void RawImageSource::processFlatField(const RAWParams &raw,
                 c4[1][1] = c[1][1];
             }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
             vfloat blackv[2] = {_mm_set_ps(black[c4[0][1]], black[c4[0][0]],
                                            black[c4[0][1]], black[c4[0][0]]),
                                 _mm_set_ps(black[c4[1][1]], black[c4[1][0]],
@@ -2617,7 +2617,7 @@ void RawImageSource::processFlatField(const RAWParams &raw,
 
             for (int row = 0; row < H; row++) {
                 int col = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat rowBlackv = blackv[row & 1];
 
                 for (; col < W - 3; col += 4) {
@@ -2904,7 +2904,7 @@ void RawImageSource::cfaboxblur(RawImage *riFlatFile, float *cfablur, int boxH,
 
         if (boxH > 0) {
             // vertical blur
-#ifdef __SSE2__
+#ifdef ART_SIMD
             vfloat leninitv = F2V(boxH / 2 + 1);
             vfloat onev = F2V(1.0f);
             vfloat temp1v, temp2v, temp3v, temp4v, lenv, lenp1v, lenm1v;
@@ -3406,7 +3406,7 @@ void RawImageSource::processFalseColorCorrectionThread(
     const int W = im->getWidth();
     constexpr float onebynine = 1.f / 9.f;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat buffer[12];
     vfloat *pre1 = &buffer[0];
     vfloat *pre2 = &buffer[3];
@@ -3442,7 +3442,7 @@ void RawImageSource::processFalseColorCorrectionThread(
         convert_row_to_YIQ(im->r(i + 1), im->g(i + 1), im->b(i + 1),
                            rbconv_Y[nx], rbconv_I[nx], rbconv_Q[nx], W);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         pre1[0] = _mm_setr_ps(rbconv_I[px][0], rbconv_Q[px][0], 0, 0),
         pre1[1] = _mm_setr_ps(rbconv_I[cx][0], rbconv_Q[cx][0], 0, 0),
         pre1[2] = _mm_setr_ps(rbconv_I[nx][0], rbconv_Q[nx][0], 0, 0);
