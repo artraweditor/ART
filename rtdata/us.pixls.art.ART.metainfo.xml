@@ -16,6 +16,7 @@
     <metadata_license>MIT</metadata_license>
     <project_license>GPL-3.0+</project_license>
     <url type="homepage">https://artraweditor.github.io</url>
+    <url type="vcs-browser">https://github.com/artraweditor/ART/</url>
     <launchable type="desktop-id">ART.desktop</launchable>
     <provides>
         <binary>ART</binary>
