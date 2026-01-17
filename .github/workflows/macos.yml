@@ -212,7 +212,7 @@ jobs:
             -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
             -DMACOS_LEGACY_BUNDLE=0 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=$OS_VERSION \
-            -DENABLE_SIMDE=${ART_SIMDE}
+            -DENABLE_SIMDE=${ART_SIMDE} \
             ../repo
           cd ..
 
