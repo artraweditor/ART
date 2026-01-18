@@ -142,7 +142,7 @@ jobs:
           wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
           tar xzf v0.8.2.tar.gz
           cd simde-0.8.2
-          python ../meson-1.10.0/meson.py setup build -Dbuildtype=release -Dtests=false
+          python ../meson-1.10.0/meson.py setup build -Dbuildtype=release -Dtests=false -Dprefix=c:/msys2/msys64/usr/local
           python ../meson-1.10.0/meson.py install -C build
           
       - name: Configure build
