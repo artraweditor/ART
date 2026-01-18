@@ -249,7 +249,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                 // a 16 pixel border is added to each side of the image
 
                 // begin of tile initialization
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat c65535v = F2V(65535.f);
 
                 // fill upper border
@@ -408,7 +408,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                 // end of tile initialization
 
                 // horizontal and vertical gradients
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat epsv = F2V(eps);
 
                 for (int rr = 2; rr < rr1 - 2; rr++) {
@@ -449,7 +449,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 #endif
 
                 // interpolate vertical and horizontal colour differences
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat sgnv;
 
                 if (!(FC(4, 4) & 1)) {
@@ -676,7 +676,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 
 #endif
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat clip_ptv = F2V(clip_pt);
                 vfloat sgn3v;
 
@@ -915,7 +915,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 
 #endif
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat epssqv = F2V(epssq);
 
                 for (int rr = 6; rr < rr1 - 6; rr++) {
@@ -1082,7 +1082,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 
 #endif
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat gaussg0 = F2V(gaussgrad[0]);
                 vfloat gaussg1 = F2V(gaussgrad[1]);
                 vfloat gaussg2 = F2V(gaussgrad[2]);
@@ -1101,7 +1101,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                     int cc = 6 + (FC(rr, 2) & 1);
                     int indx = rr * ts + cc;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                     for (; cc < cc1 - 7; cc += 8, indx += 8) {
                         vfloat valv =
@@ -1229,14 +1229,14 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                     memset(&nyquist2[4 * tsh], 0,
                            sizeof(char) * (ts - 8) * tsh);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     vint fourvb = _mm_set1_epi8(4);
                     vint onevb = _mm_set1_epi8(1);
 
 #endif
 
                     for (int rr = nystartrow; rr < nyendrow; rr++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                         for (int indx = rr * ts; indx < rr * ts + cc1;
                              indx += 32) {
@@ -1445,7 +1445,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                         }
                 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                 for (int rr = 6; rr < rr1 - 6; rr++) {
                     if ((FC(rr, 2) & 1) == 0) {
@@ -1527,13 +1527,13 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 
                 // diagonal interpolation correction
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat gausseven0v = F2V(gausseven[0]);
                 vfloat gausseven1v = F2V(gausseven[1]);
 #endif
 
                 for (int rr = 8; rr < rr1 - 8; rr++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                     for (int indx = rr * ts + 8 + (FC(rr, 2) & 1),
                              indx1 = indx >> 1;
@@ -1801,12 +1801,12 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 #endif
                 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat zd25v = F2V(0.25f);
 #endif
 
                 for (int rr = 10; rr < rr1 - 10; rr++)
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     for (int indx = rr * ts + 10 + (FC(rr, 2) & 1),
                              indx1 = indx >> 1;
                          indx < rr * ts + cc1 - 10; indx += 8, indx1 += 4) {
@@ -1857,7 +1857,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 #endif
 
                 for (int rr = 12; rr < rr1 - 12; rr++)
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     for (int indx = rr * ts + 12 + (FC(rr, 2) & 1),
                              indx1 = indx >> 1;
                          indx < rr * ts + cc1 - 12; indx += 8, indx1 += 4) {
@@ -2099,14 +2099,14 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                         Dgrb[0][indx1] = 0;
                     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 vfloat oned325v = F2V(1.325f);
                 vfloat zd175v = F2V(0.175f);
                 vfloat zd075v = F2V(0.075f);
 #endif
 
                 for (int rr = 14; rr < rr1 - 14; rr++)
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     for (int cc = 14 + (FC(rr, 2) & 1), indx = rr * ts + cc,
                              c = 1 - FC(rr, cc) / 2;
                          cc < cc1 - 14; cc += 8, indx += 8) {
@@ -2226,7 +2226,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
 
 #endif
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 int offset;
                 vfloat twov = F2V(2.f);
                 vmask selmask;
@@ -2245,7 +2245,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                     int row = rr + top;
                     int col = left + 16;
                     int indx = rr * ts + 16;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     offset = 1 - offset;
                     selmask = vnotm(selmask);
 
@@ -2549,7 +2549,7 @@ void RawImageSource::amaze_demosaic_RT(int winx, int winy, int winw, int winh,
                 for (int rr = 16; rr < rr1 - 16; rr++) {
                     int row = rr + top;
                     int cc = 16;
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                     for (; cc < cc1 - 19; cc += 4) {
                         STVFU(green[row][cc + left],

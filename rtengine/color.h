@@ -98,7 +98,7 @@ private:
     static void initMunsell();
     static double hue2rgb(double p, double q, double t);
     static float hue2rgbfloat(float p, float q, float t);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static vfloat hue2rgb(vfloat p, vfloat q, vfloat t);
 #endif
 
@@ -218,7 +218,7 @@ public:
                b * workingspace[1][2];
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static vfloat rgbLuminance(vfloat r, vfloat g, vfloat b,
                                const vfloat workingspace[3][3])
     {
@@ -322,7 +322,7 @@ public:
         }
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void rgb2hsl(vfloat r, vfloat g, vfloat b, vfloat &h, vfloat &s,
                         vfloat &l);
 #endif
@@ -362,7 +362,7 @@ public:
         }
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void hsl2rgb(vfloat h, vfloat s, vfloat l, vfloat &r, vfloat &g,
                         vfloat &b);
 #endif
@@ -614,7 +614,7 @@ public:
                       const double rgb_xyz[3][3]);
     static void xyz2rgb(float x, float y, float z, float &r, float &g, float &b,
                         const float rgb_xyz[3][3]);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void xyz2rgb(vfloat x, vfloat y, vfloat z, vfloat &r, vfloat &g,
                         vfloat &b, const vfloat rgb_xyz[3][3]);
 #endif
@@ -635,7 +635,7 @@ public:
                        const double xyz_rgb[3][3]);
     static void rgbxyz(float r, float g, float b, float &x, float &y, float &z,
                        const float xyz_rgb[3][3]);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void rgbxyz(vfloat r, vfloat g, vfloat b, vfloat &x, vfloat &y,
                        vfloat &z, const vfloat xyz_rgb[3][3]);
 #endif
@@ -654,10 +654,10 @@ public:
                         float &z);
     static void L2XYZ(float L, float &x, float &y, float &z);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void Lab2XYZ(vfloat L, vfloat a, vfloat b, vfloat &x, vfloat &y,
                         vfloat &z);
-#endif // __SSE2__
+#endif // ART_SIMD
 
     /**
      * @brief Convert xyz in Lab
@@ -673,7 +673,7 @@ public:
      */
     static void XYZ2Lab(float x, float y, float z, float &L, float &a,
                         float &b);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void XYZ2Lab(vfloat x, vfloat y, vfloat z, vfloat &L, vfloat &a,
                         vfloat &b);
 #endif
@@ -700,7 +700,7 @@ public:
         xyz2rgb(x, y, z, R, G, B, iws);
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void rgb2lab(vfloat R, vfloat G, vfloat B, vfloat &l, vfloat &a,
                         vfloat &b, const vfloat ws[3][3])
     {
@@ -757,7 +757,7 @@ public:
      * @param h 'h' channel return value, in [-PI ; +PI] (return value)
      */
     static void Lab2Lch(float a, float b, float &c, float &h);
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void Lab2Lch(float *a, float *b, float *c, float *h, int w);
 #endif
 
@@ -841,7 +841,7 @@ public:
         return (f > epsilonExpInv3f) ? f * f * f
                                      : (116.f * f - 16.f) * kappaInvf;
     }
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static inline vfloat f2xyz(vfloat f)
     {
         const vfloat epsilonExpInv3v = F2V(epsilonExpInv3f);
@@ -871,7 +871,7 @@ public:
             workingspace[1][1];
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     static void rgb2yuv(vfloat r, vfloat g, vfloat b, vfloat &Y, vfloat &u,
                         vfloat &v, const vfloat workingspace[3][3])
     {

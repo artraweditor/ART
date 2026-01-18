@@ -106,6 +106,7 @@ jobs:
           sudo port install adwaita-icon-theme
           sudo port install meson
           sudo port install dbus
+          sudo port install simde
 
       - name: Install LibRaw
         run: |
@@ -195,6 +196,11 @@ jobs:
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           mkdir build
           cd build
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+              ART_SIMDE=1
+          else
+              ART_SIMDE=0
+          fi
           export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
           /opt/local/bin/cmake \
             -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
@@ -206,6 +212,7 @@ jobs:
             -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
             -DMACOS_LEGACY_BUNDLE=0 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=$OS_VERSION \
+            -DENABLE_SIMDE=${ART_SIMDE} \
             ../repo
           cd ..
 

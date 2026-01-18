@@ -1014,7 +1014,7 @@ void RawImageSource::pixelshift(int winx, int winy, int winw, int winh,
 #endif
 
         for (int i = winy + border - offsY; i < winh - (border + offsY); ++i) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
             // pow() is expensive => pre calculate blend factor using SSE
             if (smoothTransitions) { //
@@ -1054,7 +1054,7 @@ void RawImageSource::pixelshift(int winx, int winy, int winw, int winh,
                                              // paint areas according to their
                                              // motion (dark = no motion, bright
                                              // = motion)
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         // use pre calculated blend factor
                         const float blend = psMask[i][j];
 #else
@@ -1076,7 +1076,7 @@ void RawImageSource::pixelshift(int winx, int winy, int winw, int winh,
                                     blueDest);
                 } else {
                     if (smoothTransitions) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         // use pre calculated blend factor
                         const float blend = psMask[i][j];
 #else

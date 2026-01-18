@@ -51,7 +51,7 @@ float calcBlendFactor(float val, float threshold)
     return 1.f / (1.f + xexpf(16.f - 16.f * val / threshold));
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 vfloat calcBlendFactor(vfloat valv, vfloat thresholdv)
 {
     // sigmoid function
@@ -67,12 +67,12 @@ float tileAverage(float **data, size_t tileY, size_t tileX, size_t tilesize)
 {
 
     float avg = 0.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat avgv = ZEROV;
 #endif
     for (std::size_t y = tileY; y < tileY + tilesize; ++y) {
         std::size_t x = tileX;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < tileX + tilesize - 3; x += 4) {
             avgv += LVFU(data[y][x]);
         }
@@ -81,7 +81,7 @@ float tileAverage(float **data, size_t tileY, size_t tileX, size_t tilesize)
             avg += data[y][x];
         }
     }
-#ifdef __SSE2__
+#ifdef ART_SIMD
     avg += vhadd(avgv);
 #endif
     return avg / rtengine::SQR(tilesize);
@@ -92,13 +92,13 @@ float tileVariance(float **data, size_t tileY, size_t tileX, size_t tilesize,
 {
 
     float var = 0.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat varv = ZEROV;
     const vfloat avgv = F2V(avg);
 #endif
     for (std::size_t y = tileY; y < tileY + tilesize; ++y) {
         std::size_t x = tileX;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < tileX + tilesize - 3; x += 4) {
             varv += SQRV(LVFU(data[y][x]) - avgv);
         }
@@ -107,7 +107,7 @@ float tileVariance(float **data, size_t tileY, size_t tileX, size_t tilesize,
             var += rtengine::SQR(data[y][x] - avg);
         }
     }
-#ifdef __SSE2__
+#ifdef ART_SIMD
     var += vhadd(varv);
 #endif
     return var / (rtengine::SQR(tilesize) * avg);
@@ -121,13 +121,13 @@ float calcContrastThreshold(float **luminance, int tileY, int tileX,
     std::vector<std::vector<float>> blend(tilesize - 4,
                                           std::vector<float>(tilesize - 4));
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat scalev = F2V(scale);
 #endif
 
     for (int j = tileY + 2; j < tileY + tilesize - 2; ++j) {
         int i = tileX + 2;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; i < tileX + tilesize - 5; i += 4) {
             vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i + 1]) -
                                            LVFU(luminance[j][i - 1])) +
@@ -161,14 +161,14 @@ float calcContrastThreshold(float **luminance, int tileY, int tileX,
     for (c = 1; c < 100; ++c) {
         const float contrastThreshold = c / 100.f;
         float sum = 0.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         const vfloat contrastThresholdv = F2V(contrastThreshold);
         vfloat sumv = ZEROV;
 #endif
 
         for (int j = 0; j < tilesize - 4; ++j) {
             int i = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; i < tilesize - 7; i += 4) {
                 sumv += calcBlendFactor(LVFU(blend[j][i]), contrastThresholdv);
             }
@@ -177,7 +177,7 @@ float calcContrastThreshold(float **luminance, int tileY, int tileX,
                 sum += calcBlendFactor(blend[j][i], contrastThreshold);
             }
         }
-#ifdef __SSE2__
+#ifdef ART_SIMD
         sum += vhadd(sumv);
 #endif
         if (sum <= limit) {
@@ -479,7 +479,7 @@ void buildBlendMask(float **luminance, float **blend, int W, int H,
 #pragma omp parallel
 #endif
         {
-#ifdef __SSE2__
+#ifdef ART_SIMD
             const vfloat contrastThresholdv = F2V(contrastThreshold);
             const vfloat scalev = F2V(scale);
             const vfloat amountv = F2V(amount);
@@ -490,7 +490,7 @@ void buildBlendMask(float **luminance, float **blend, int W, int H,
 
             for (int j = 2; j < H - 2; ++j) {
                 int i = 2;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 for (; i < W - 5; i += 4) {
                     vfloat contrastv = vsqrtf(SQRV(LVFU(luminance[j][i + 1]) -
                                                    LVFU(luminance[j][i - 1])) +
@@ -548,7 +548,7 @@ void buildBlendMask(float **luminance, float **blend, int W, int H,
                 }
             }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
             // flush denormals to zero for gaussian blur to avoid performance
             // penalty if there are a lot of zero values in the mask
             const auto oldMode = _MM_GET_FLUSH_ZERO_MODE();
@@ -558,7 +558,7 @@ void buildBlendMask(float **luminance, float **blend, int W, int H,
             // blur blend mask to smooth transitions
             gaussianBlur(blend, blend, W, H, blur_radius); // 2.0);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
             _MM_SET_FLUSH_ZERO_MODE(oldMode);
 #endif
         }
@@ -598,7 +598,7 @@ void markImpulse(int width, int height, float **const src, char **impulse,
     {
         int i1, j1, j;
         float hpfabs, hfnbrave;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat hfnbravev, hpfabsv;
         vfloat impthrDiv24v = F2V(impthrDiv24);
 #endif
@@ -620,7 +620,7 @@ void markImpulse(int width, int height, float **const src, char **impulse,
                 impulse[i][j] = (hpfabs > ((hfnbrave - hpfabs) * impthrDiv24));
             }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
             for (; j < width - 5; j += 4) {
                 hfnbravev = ZEROV;

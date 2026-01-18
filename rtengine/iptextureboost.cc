@@ -68,7 +68,7 @@ void texture_boost(array2D<float> &Y,
     array2D<float> mid(W, H, ARRAY2D_ALIGNED);
     array2D<float> base(W, H, ARRAY2D_ALIGNED);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat v65535 = F2V(65535.f);
     const vfloat vstrength = F2V(strength);
     const vfloat vstrength2 = F2V(strength2);
@@ -77,7 +77,7 @@ void texture_boost(array2D<float> &Y,
     float minval = RT_INFINITY;
     constexpr float lo = 1e-5f;
     constexpr float hi = 32.f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat vlo = F2V(lo);
     const vfloat vhi = F2V(hi);
 #endif
@@ -87,7 +87,7 @@ void texture_boost(array2D<float> &Y,
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat v = LVFU((*src)[y][x]) / v65535;
             STVFU((*src)[y][x], v);
@@ -103,7 +103,7 @@ void texture_boost(array2D<float> &Y,
         }
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat vminval = F2V(minval);
 #endif
 
@@ -116,7 +116,7 @@ void texture_boost(array2D<float> &Y,
 
     for (int i = 0; i < pp.iterations; ++i) {
         float blend = 1.f / std::pow(2.f, i);
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat vblend = F2V(blend);
 #endif
         if (isguided) {
@@ -138,7 +138,7 @@ void texture_boost(array2D<float> &Y,
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; x < W - 3; x += 4) {
                 vfloat vy = LVFU((*src)[y][x]);
                 vfloat vm = LVFU(mid[y][x]);
@@ -166,7 +166,7 @@ void texture_boost(array2D<float> &Y,
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat v = LVFU((*src)[y][x]);
             STVFU((*src)[y][x], v * v65535);

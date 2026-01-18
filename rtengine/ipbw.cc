@@ -275,7 +275,7 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
         }
     }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat bwr_v = F2V(bwr);
     vfloat bwg_v = F2V(bwg);
     vfloat bwb_v = F2V(bwb);
@@ -287,7 +287,7 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat r = LVF(img->r(y, x));
             vfloat g = LVF(img->g(y, x));
@@ -347,7 +347,7 @@ void ImProcFunctions::blackAndWhite(Imagefloat *img)
 #endif
         for (int y = 0; y < H; ++y) {
             int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; x < W - 3; x += 4) {
                 vfloat yv = LVF(img->g(y, x));
                 vfloat uv = ulut[yv];

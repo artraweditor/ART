@@ -141,7 +141,7 @@ private:
     Mode mode_;
     float ws_[3][3];
     float iws_[3][3];
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat vws_[3][3];
     vfloat viws_[3][3];
 #endif

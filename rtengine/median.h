@@ -36,7 +36,7 @@
 
 #include "opthelper.h"
 
-#if defined __GNUC__ && __GNUC__ >= 6 && defined __SSE2__
+#if defined __GNUC__ && __GNUC__ >= 6 && defined ART_SIMD
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
 
@@ -56,7 +56,7 @@ template <typename T> inline T median(std::array<T, 3> array)
                     std::min(array[2], std::max(array[0], array[1])));
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 3> array)
 {
     return vmaxf(vminf(array[0], array[1]),
@@ -89,7 +89,7 @@ template <typename T> inline T median(std::array<T, 5> array)
     return std::max(array[1], tmp);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 5> array)
 {
     vfloat tmp = vminf(array[0], array[1]);
@@ -136,7 +136,7 @@ template <typename T> inline T median(std::array<T, 7> array)
     return std::min(array[3], array[4]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 7> array)
 {
     vfloat tmp = vminf(array[0], array[5]);
@@ -209,7 +209,7 @@ template <typename T> inline T median(std::array<T, 9> array)
     return std::min(array[4], array[2]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 9> array)
 {
     vfloat tmp = vminf(array[1], array[2]);
@@ -348,7 +348,7 @@ template <typename T> inline T median(std::array<T, 13> array)
     return std::max(array[5], array[6]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 13> array)
 {
     vfloat tmp = vminf(array[1], array[7]);
@@ -657,7 +657,7 @@ template <typename T> inline T median(std::array<T, 25> array)
     return std::max(tmp, array[12]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 25> array)
 {
     vfloat tmp = vminf(array[0], array[1]);
@@ -1718,7 +1718,7 @@ template <typename T> inline T median(std::array<T, 49> array)
     return std::max(array[23], array[24]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 49> array)
 {
     vfloat tmp = vminf(array[0], array[32]);
@@ -4394,7 +4394,7 @@ template <typename T> inline T median(std::array<T, 81> array)
     return std::max(array[39], array[40]);
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <> inline vfloat median(std::array<vfloat, 81> array)
 {
     vfloat tmp = vminf(array[0], array[64]);
@@ -6253,7 +6253,7 @@ inline std::array<T, 4> middle4of6(const std::array<T, 6> &array)
     return res;
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 template <>
 inline std::array<vfloat, 4> middle4of6(const std::array<vfloat, 6> &array)
 {

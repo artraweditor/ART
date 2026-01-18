@@ -219,7 +219,7 @@ void tone_eq(array2D<float> &R, array2D<float> &G, array2D<float> &B,
         return ret;
     };
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat vfactors[12];
     vfloat vcenters[12];
 
@@ -255,7 +255,7 @@ void tone_eq(array2D<float> &R, array2D<float> &G, array2D<float> &B,
 
     vfloat v1 = F2V(1.f);
     vfloat v65535 = F2V(65535.f);
-#endif // __SSE2__
+#endif // ART_SIMD
 
     if (show_color_map) {
         LUTf lut_r(65537), lut_g(65537), lut_b(65537);
@@ -296,7 +296,7 @@ void tone_eq(array2D<float> &R, array2D<float> &G, array2D<float> &B,
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat cY = LVFU(Y[y][x]);
             vmask m = vmaskf_gt(cY, v1);
@@ -310,7 +310,7 @@ void tone_eq(array2D<float> &R, array2D<float> &G, array2D<float> &B,
             STVF(G[y][x], LVF(G[y][x]) * corr);
             STVF(B[y][x], LVF(B[y][x]) * corr);
         }
-#endif // __SSE2__
+#endif // ART_SIMD
         for (; x < W; ++x) {
             float cY = Y[y][x];
             float corr = cY > 1.f ? process_pixel(cY) : lut[cY * 65535.f];

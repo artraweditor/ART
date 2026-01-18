@@ -569,7 +569,7 @@ bool ImProcFunctions::colorCorrection(Imagefloat *rgb)
         }
     };
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     vfloat vws[3][3];
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -777,7 +777,7 @@ bool ImProcFunctions::colorCorrection(Imagefloat *rgb)
             }
         }
     };
-#endif // __SSE2__
+#endif // ART_SIMD
 
     rgb->setMode(Imagefloat::Mode::YUV, multiThread);
 
@@ -822,7 +822,7 @@ bool ImProcFunctions::colorCorrection(Imagefloat *rgb)
                     }
                 } else {
                     int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     for (; x < W - 3; x += 4) {
                         vfloat Yv = LVF(rgb->g(y, x));
                         vfloat uv = LVF(rgb->b(y, x));
@@ -849,7 +849,7 @@ bool ImProcFunctions::colorCorrection(Imagefloat *rgb)
                         STVF(rgb->b(y, x), uv);
                         STVF(rgb->r(y, x), vv);
                     }
-#endif // __SSE2__
+#endif // ART_SIMD
                     for (; x < W; ++x) {
                         float Y = rgb->g(y, x);
                         float u = rgb->b(y, x);

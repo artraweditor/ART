@@ -25,8 +25,8 @@
 
 #define pow_F(a, b) (xexpf(b * xlogf(a)))
 
-#ifdef __SSE2__
-#include "sleefsseavx.h"
+#ifdef ART_SIMD
+#  include "sleefsseavx.h"
 #endif
 
 #ifdef __GNUC__
@@ -42,4 +42,8 @@
 #define ALIGNED64
 #define ALIGNED16
 #endif
+#endif
+
+#if defined(ART_USE_SIMDE) && !defined(ART_SIMDE_GET_MM_FLUSH_ZERO_MODE)
+#  define _MM_GET_FLUSH_ZERO_MODE SIMDE_MM_GET_FLUSH_ZERO_MODE
 #endif

@@ -105,7 +105,7 @@ bool loadFile(const Glib::ustring &filename,
     return res;
 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 vfloat2 getClutValues(const AlignedBuffer<std::uint16_t> &clut_image,
                       size_t index)
 {
@@ -172,7 +172,7 @@ void rtengine::HaldCLUT::getRGB(float strength, std::size_t line_size,
 
     const unsigned int level_square = level * level;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat v_strength = F2V(strength);
 #endif
 
@@ -187,7 +187,7 @@ void rtengine::HaldCLUT::getRGB(float strength, std::size_t line_size,
 
         const unsigned int color = red + green * level + blue * level_square;
 
-#ifndef __SSE2__
+#ifndef ART_SIMD
         const float re = *r * flevel_minus_one - red;
         const float gr = *g * flevel_minus_one - green;
         const float bl = *b * flevel_minus_one - blue;
@@ -1110,7 +1110,7 @@ void CLUTApplication::init(int num_threads)
         clut2xyz_ = ICCStore::getInstance()->workingSpaceMatrix(
             hald_clut_->getProfile());
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 v_work2xyz_[i][j] = F2V(wprof_[i][j]);
@@ -1530,7 +1530,7 @@ inline void CLUTApplication::do_apply(int W, float *r, float *g, float *b)
         // Convert from working to clut profile
         int j = 0;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; j < W - 3; j += 4) {
             vfloat sourceR = LVF(r[j]);
             vfloat sourceG = LVF(g[j]);
@@ -1592,7 +1592,7 @@ inline void CLUTApplication::do_apply(int W, float *r, float *g, float *b)
         // Convert from clut to working profile
         int j = 0;
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
         for (; j < W - 3; j += 4) {
             vfloat sourceR = LVF(clutr[j]);

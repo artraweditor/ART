@@ -205,7 +205,7 @@ void boxblur(T **src, A **dst, T *buffer, int radx, int rady, int W, int H)
     } else {
         const int numCols = 8; // process numCols columns at once for better
                                // usage of L1 cpu cache
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat leninitv = F2V((float)(rady + 1));
         vfloat onev = F2V(1.f);
         vfloat tempv, temp1v, lenv, lenp1v, lenm1v, rlenv;
@@ -429,7 +429,7 @@ inline void boxblur(float **src, float **dst, int radius, int W, int H,
         }
 
         // vertical blur
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat(*const rowBuffer)[2] = (vfloat(*)[2])buffer.get();
         const vfloat leninitv = F2V(radius + 1);
         const vfloat onev = F2V(1.f);
@@ -675,7 +675,7 @@ void boxblur(T *src, A *dst, A *buffer, int radx, int rady, int W, int H)
             }
     } else {
         // vertical blur
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat leninitv = F2V((float)(rady + 1));
         vfloat onev = F2V(1.f);
         vfloat tempv, temp1v, lenv, lenp1v, lenm1v, rlenv;
@@ -899,7 +899,7 @@ void boxabsblur(T *src, A *dst, int radx, int rady, int W, int H, float *temp)
             }
     } else {
         // vertical blur
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat leninitv = F2V((float)(rady + 1));
         vfloat onev = F2V(1.f);
         vfloat tempv, lenv, lenp1v, lenm1v, rlenv;

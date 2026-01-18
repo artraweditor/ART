@@ -152,6 +152,7 @@ option(ENABLE_MIMALLOC "Use the mimalloc library if available" ON)
 option(ENABLE_LIBRAW "Use libraw for decoding" ON)
 option(ENABLE_OCIO "Use OpenColorIOv2 for LUT application" ON)
 option(ENABLE_CTL "Enable support for the ACES Color Transformation Language" OFF)
+option(ENABLE_SIMDE "Build with SIMD Everywhere support" OFF)
 
 option(MACOS_LEGACY_BUNDLE "Use legacy method for building a macOS bundle using the tools/osx/macos_bundle.sh script" OFF)
 
@@ -835,8 +836,9 @@ if(WIN32)
     endif()
 endif()
 
+include(CheckSymbolExists)
+
 if(APPLE)
-    include(CheckSymbolExists)
     set(CMAKE_REQUIRED_INCLUDES ${GTK_INCLUDE_DIRS})
     message(STATUS "Checking whether GDK supports specifying custom color spaces")
     check_symbol_exists(GDK_QUARTZ_WINDOW_SUPPORTS_COLORSPACE "gdk/gdkquartz.h" HAVE_GDK_QUARTZ_COLORSPACE)
@@ -845,6 +847,30 @@ if(APPLE)
         add_definitions(-DART_MACOS_GDK_QUARTZ_COLORSPACE)
     else()
         message(STATUS "NO, GDK will force everything to sRGB")
+    endif()
+endif()
+
+if(ENABLE_SIMDE)
+    pkg_check_modules(SIMDE REQUIRED simde)
+    add_compile_definitions(-DART_USE_SIMDE)
+    add_compile_definitions(-DSIMDE_ENABLE_NATIVE_ALIASES)
+    add_compile_definitions(-DART_SIMD)
+
+    set(CMAKE_REQUIRED_INCLUDES ${SIMDE_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_DEFINITIONS -DSIMDE_ENABLE_NATIVE_ALIASES)
+    check_symbol_exists(_MM_GET_FLUSH_ZERO_MODE "simde/x86/sse.h" HAVE_SIMDE_MM_GET_FLUSH_ZERO_MODE)
+    if(HAVE_SIMDE_MM_GET_FLUSH_ZERO_MODE)
+        add_definitions(-DART_SIMDE_GET_MM_FLUSH_ZERO_MODE)
+    endif()
+else()
+    check_cxx_source_compiles("#if !defined(__SSE2__)
+#error
+#endif
+
+int main() { return 0; }
+" HAVE_SSE2)
+    if(HAVE_SSE2)
+        add_definitions(-DART_SIMD)
     endif()
 endif()
 

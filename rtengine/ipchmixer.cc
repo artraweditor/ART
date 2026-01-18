@@ -168,7 +168,7 @@ void ImProcFunctions::channelMixer(Imagefloat *img)
             }
         }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
         vfloat vRR = F2V(RR);
         vfloat vRG = F2V(RG);
         vfloat vRB = F2V(RB);
@@ -178,14 +178,14 @@ void ImProcFunctions::channelMixer(Imagefloat *img)
         vfloat vBR = F2V(BR);
         vfloat vBG = F2V(BG);
         vfloat vBB = F2V(BB);
-#endif // __SSE2__
+#endif // ART_SIMD
 
 #ifdef _OPENMP
 #pragma omp parallel for if (multiThread)
 #endif
         for (int y = 0; y < img->getHeight(); ++y) {
             int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; x < img->getWidth() - 3; x += 4) {
                 vfloat r = LVF(img->r(y, x));
                 vfloat g = LVF(img->g(y, x));

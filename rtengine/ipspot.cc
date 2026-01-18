@@ -102,7 +102,7 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
         cur = upd;
     };
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat w1v = F2V(w1);
     const vfloat w2v = F2V(w2);
     const vint iZEROv = vcast_vi_i(0);
@@ -124,7 +124,7 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
 #endif
         for (int y = 1; y < height - 1; ++y) {
             int x = 1;
-#ifdef __SSE2__
+#ifdef ART_SIMD
             for (; x < width - 1 - 3; x += 4) {
                 vint m = _mm_loadu_si128(reinterpret_cast<vint *>(&mask[y][x]));
                 if (vtest(vnotm(vmaski_eq(m, iZEROv)))) {

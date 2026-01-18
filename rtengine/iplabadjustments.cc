@@ -269,7 +269,7 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve,
     }
 
     const float chroma = (params->labCurve.chromaticity + 100.0f) / 100.0f;
-#ifdef __SSE2__
+#ifdef ART_SIMD
     const vfloat chromav = F2V(chroma);
     const vfloat v32768 = F2V(32768.f);
 #endif
@@ -279,7 +279,7 @@ void lab_adjustments(const ImProcData &im, Imagefloat *img, LUTf &lcurve,
 #endif
     for (int y = 0; y < H; ++y) {
         int x = 0;
-#ifdef __SSE2__
+#ifdef ART_SIMD
         for (; x < W - 3; x += 4) {
             vfloat L = LVF(img->g(y, x));
             vfloat a = LVF(img->r(y, x));

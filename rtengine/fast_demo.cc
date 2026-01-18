@@ -46,7 +46,7 @@ LUTf RawImageSource::initInvGrad()
 }
 */
 #define INVGRAD(i) (16.0f / SQR(4.0f + i))
-#ifdef __SSE2__
+#ifdef ART_SIMD
 #define INVGRADV(i) (c16v * _mm_rcp_ps(SQRV(fourv + i)))
 #endif
 // LUTf RawImageSource::invGrad = RawImageSource::initInvGrad();
@@ -274,7 +274,7 @@ void RawImageSource::fast_demosaic()
                 int bottom = min(top + TS, H - bord + 2);
                 int right = min(left + TS, W - bord + 2);
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 int j, cc;
                 __m128 wtuv, wtdv, wtlv, wtrv;
                 __m128 greenv, tempv, absv, abs2v;
@@ -295,7 +295,7 @@ void RawImageSource::fast_demosaic()
                 // interpolate G using gradient weights
                 for (int i = top, rr = 0; i < bottom; i++, rr++) {
                     float wtu, wtd, wtl, wtr;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     selmask =
                         (vmask)_mm_andnot_ps((__m128)selmask, (__m128)andmask);
 
@@ -413,14 +413,14 @@ void RawImageSource::fast_demosaic()
 #endif
                 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 __m128 zd25v = _mm_set1_ps(0.25f);
                 __m128 clip_ptv = _mm_set1_ps(clip_pt);
 #endif
 
                 for (int i = top + 1, rr = 1; i < bottom - 1; i++, rr++) {
                     if (FC(i, left + (FC(i, 2) & 1) + 1) == 0)
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         for (int j = left + 1, cc = 1; j < right - 1;
                              j += 4, cc += 4) {
                             // interpolate B/R colors at R/B sites
@@ -463,7 +463,7 @@ void RawImageSource::fast_demosaic()
 
 #endif
                     else
-#ifdef __SSE2__
+#ifdef ART_SIMD
                         for (int j = left + 1, cc = 1; j < right - 1;
                              j += 4, cc += 4) {
                             // interpolate B/R colors at R/B sites
@@ -507,14 +507,14 @@ void RawImageSource::fast_demosaic()
 #endif
                 }
 
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 __m128 temp1v, temp2v, greensumv;
                 selmask = _mm_set_epi32(0xffffffff, 0, 0xffffffff, 0);
 #endif
 
                 // interpolate R/B using color differences
                 for (int i = top + 2, rr = 2; i < bottom - 2; i++, rr++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                     for (int cc = 2 + (FC(i, 2) & 1), j = left + cc;
                          j < right - 2; j += 4, cc += 4) {
@@ -588,7 +588,7 @@ void RawImageSource::fast_demosaic()
                 }
 
                 for (int i = top + 2, rr = 2; i < bottom - 2; i++, rr++) {
-#ifdef __SSE2__
+#ifdef ART_SIMD
 
                     for (j = left + 2, cc = 2; j < right - 5; j += 4, cc += 4) {
                         _mm_storeu_ps(

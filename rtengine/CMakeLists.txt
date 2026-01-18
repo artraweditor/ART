@@ -41,6 +41,10 @@ if(CTL_FOUND)
     link_directories(${CTL_LIBRARY_DIRS})
 endif()
 
+if(SIMDE_INCLUDE_DIRS)
+    include_directories("${SIMDE_INCLUDE_DIRS}")
+endif()
+
 set(CAMCONSTSFILE "camconst.json")
 
 set(RTENGINESOURCEFILES

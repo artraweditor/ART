@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////
 
-#ifndef __SSE2__
+#if ! defined(__SSE2__) && ! defined(ART_USE_SIMDE)
 #error Please specify -msse2.
 #endif
 
@@ -22,7 +22,12 @@
 #define INLINE inline
 #endif
 
-#include <x86intrin.h>
+#ifdef ART_USE_SIMDE
+#  include <simde/x86/sse2.h>
+#  include <simde/x86/avx.h>
+#else
+#  include <x86intrin.h>
+#endif
 
 #include <stdint.h>
 
@@ -40,7 +45,7 @@ typedef __m128i vint2;
 #define STVFU(x, y) _mm_storeu_ps(&x, y)
 #define LVI(x) _mm_load_si128((__m128i *)&x)
 
-#ifdef __AVX__
+#if defined(__AVX__) || defined(ART_USE_SIMDE)
 #define PERMUTEPS(a, mask) _mm_permute_ps(a, mask)
 #else
 #define PERMUTEPS(a, mask) _mm_shuffle_ps(a, a, mask)
@@ -56,7 +61,7 @@ static INLINE vfloat LC2VFU(float &a)
 }
 
 // Store a vector of 4 floats in a[0],a[2],a[4] and a[6]
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) || defined(ART_USE_SIMDE)
 // SSE4.1 => use _mm_blend_ps instead of _mm_set_epi32 and vself
 #define STC2VFU(a, v)                                                          \
     {                                                                          \
@@ -168,9 +173,11 @@ static INLINE vint vandnoti(vint x, vint y) { return _mm_andnot_si128(x, y); }
 static INLINE vint vori(vint x, vint y) { return _mm_or_si128(x, y); }
 static INLINE vint vxori(vint x, vint y) { return _mm_xor_si128(x, y); }
 
+#ifdef __SSE2__
 static INLINE vint vslli(vint x, int c) { return _mm_slli_epi32(x, c); }
 static INLINE vint vsrli(vint x, int c) { return _mm_srli_epi32(x, c); }
 static INLINE vint vsrai(vint x, int c) { return _mm_srai_epi32(x, c); }
+#endif
 
 //
 
@@ -276,9 +283,15 @@ static INLINE vint2 vandnoti2(vint2 x, vint2 y) { return vandnoti(x, y); }
 static INLINE vint2 vori2(vint2 x, vint2 y) { return vori(x, y); }
 static INLINE vint2 vxori2(vint2 x, vint2 y) { return vxori(x, y); }
 
+#ifdef __SSE2__
 static INLINE vint2 vslli2(vint2 x, int c) { return vslli(x, c); }
 static INLINE vint2 vsrli2(vint2 x, int c) { return vsrli(x, c); }
 static INLINE vint2 vsrai2(vint2 x, int c) { return vsrai(x, c); }
+#else
+#define vslli2(x,c) (vint2)_mm_slli_epi32((vint2)(x), (int)(c))
+#define vsrli2(x,c) (vint2)_mm_srli_epi32((vint2)(x), (int)(c))
+#define vsrai2(x,c) (vint2)_mm_srai_epi32((vint2)(x), (int)(c))
+#endif
 
 static INLINE vmask vmaski2_eq(vint2 x, vint2 y)
 {

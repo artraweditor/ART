@@ -273,7 +273,7 @@ void RawImageSource::vng4_demosaic(const array2D<float> &rawData,
 
                 *ip++ = (y1 * width + x1) * 4 + color;
                 *ip++ = (y2 * width + x2) * 4 + color;
-#ifdef __SSE2__
+#ifdef ART_SIMD
                 // at least on machines with SSE2 feature this cast is save
                 *reinterpret_cast<float *>(ip++) = 1 << weight;
 #else
@@ -336,7 +336,7 @@ void RawImageSource::vng4_demosaic(const array2D<float> &rawData,
                 float gval[8] = {};
 
                 while (ip[0] != INT_MAX) { /* Calculate gradients */
-#ifdef __SSE2__
+#ifdef ART_SIMD
                     // at least on machines with SSE2 feature this cast is save
                     // and saves a lot of int => float conversions
                     const float diff = std::fabs(pix[ip[0]] - pix[ip[1]]) *
