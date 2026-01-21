@@ -236,6 +236,23 @@ jobs:
               echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
           fi
 
+      - name: Create AppImage
+        run: |
+          wget https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod a+x appimagetool-x86_64.AppImage
+          pushd "${ART_BUNDLE_NAME}"
+          ln -s share/icons/hicolor/128x128/apps/ART.png
+          echo -e '#!/bin/sh\nexec $(dirname "$0")/ART "$@"' > AppRun
+          chmod a+x AppRun
+          echo '[Desktop Entry]' > ART.desktop
+          echo "Name=ART-${ART_VERSION}" >> ART.desktop
+          echo -e 'Type=Application\nExec=ART' >> ART.desktop
+          echo 'Comment=ART is a free RAW image processor' >> ART.desktop
+          echo -e 'Icon=ART\nCategories=Graphics;' >> ART.desktop
+          popd
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage -n "${ART_BUNDLE_NAME}"
+          echo "ARTIFACT_APPIMAGE_NAME=ART-${ART_VERSION}-x86_64.AppImage" >> $GITHUB_ENV
+
       - name: Publish release
         uses: ncipollo/release-action@v1
         with:
@@ -243,4 +260,4 @@ jobs:
           body: ${{ env.RELEASE_TAG }}
           allowUpdates: true
           makeLatest: ${{ env.RELEASE_MAKE_LATEST }}
-          artifacts: ${{ env.ARTIFACT_NAME }}
+          artifacts: ${{ env.ARTIFACT_NAME }},${{ env.ARTIFACT_APPIMAGE_NAME }}
