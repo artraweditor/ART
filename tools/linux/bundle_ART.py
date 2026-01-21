@@ -15,6 +15,7 @@ import tempfile
 import io
 import json
 import time
+import platform
 
 
 def getopts():
@@ -87,6 +88,7 @@ def getdlls(opts):
 
 
 def extra_files(opts):
+    machine = platform.machine()
     def D(s): return os.path.expanduser(s)
     if opts.exiftool and os.path.isdir(opts.exiftool):
         extra = [('lib', [(opts.exiftool, 'exiftool')])]
@@ -121,7 +123,7 @@ def extra_files(opts):
                              'imageio')]))
     if opts.imageio_bin:
         extra.append(('imageio', [(opts.imageio_bin, 'bin')]))            
-    elif opts.imageio_download:
+    elif opts.imageio_download and machine == 'x86_64': # TODO for aarch64
         with urlopen(imageio.asset('ART-imageio-bin-linux64.tar.gz')) as f:
             if opts.verbose:
                 print('downloading ART-imageio-bin-linux64.tar.gz '
@@ -140,17 +142,17 @@ def extra_files(opts):
             D('/usr/share/icons/Adwaita/cursors'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0'),
+            D('/usr/lib/' + machine + '-linux-gnu/gdk-pixbuf-2.0'),
         ]),
         ('lib/gio/modules', [
-            D('/usr/lib/x86_64-linux-gnu/gio/modules/libgioremote-volume-monitor.so'),
-            D('/usr/lib/x86_64-linux-gnu/gio/modules/libgvfsdbus.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gio/modules/libgioremote-volume-monitor.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gio/modules/libgvfsdbus.so'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules')
+            D('/usr/lib/' + machine + '-linux-gnu/gtk-3.0/3.0.0/immodules')
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0')
+            D('/usr/lib/' + machine + '-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0')
         ]),
         ('share/glib-2.0/schemas', [
             D('/usr/share/glib-2.0/schemas/gschemas.compiled'),
@@ -159,8 +161,8 @@ def extra_files(opts):
             (D('~/.local/share/lensfun/updates/version_1'), 'lensfun'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gvfs/libgvfscommon.so'),
-            D('/usr/lib/x86_64-linux-gnu/gvfs/libgvfsdaemon.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gvfs/libgvfscommon.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gvfs/libgvfsdaemon.so'),
         ]),
     ] + extra
 
