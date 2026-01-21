@@ -19,7 +19,7 @@ jobs:
         os: [ubuntu-22.04, ubuntu-22.04-arm]
         include:
           - os: ubuntu-22.04
-            arch: x86_x64
+            arch: x86_64
           - os: ubuntu-22.04-arm
             arch: arm64
       fail-fast: false
@@ -66,8 +66,13 @@ jobs:
             gvfs \
             wget
           sudo python3 -m pip install meson
-          wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
-          unzip ninja-linux.zip
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+              ninja_zip=ninja-linux.zip
+          else
+              ninja_zip=ninja-linux-aarch64.zip
+          fi
+          wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/${ninja_zip}
+          unzip ${ninja_zip}
           sudo mv ninja /usr/local/bin
 
       - name: Install LCMS2
