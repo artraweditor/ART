@@ -269,7 +269,12 @@ jobs:
           chmod a+x appimagetool-${arch}.AppImage
           pushd "${ART_BUNDLE_NAME}"
           ln -s share/icons/hicolor/128x128/apps/ART.png
-          echo -e '#!/bin/sh\nexec $(dirname "$0")/ART "$@"' > AppRun
+          echo '#!/bin/sh' > AppRun
+          echo 'export ART_MKDESKTOP=no' >> AppRun
+          echo 'd=$(dirname "$0")' >> AppRun
+          echo 'if [ "$1" = "--cli" ]; then' >> AppRun
+          echo -e '  shift\n  exec "${d}/ART-cli" "$@"' >> AppRun
+          echo -e 'else\n  exec "${d}/ART" "$@"\nfi' >> AppRun
           chmod a+x AppRun
           echo '[Desktop Entry]' > ART.desktop
           echo "Name=ART-${ART_VERSION}" >> ART.desktop
