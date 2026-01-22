@@ -2556,7 +2556,11 @@ void CropWindow::buttonPressed(LWButton *button, int actionCode,
     }
 }
 
-void CropWindow::redrawNeeded(LWButton *button) { iarea->redraw(); }
+void CropWindow::redrawNeeded(LWButton *button)
+{
+    GThreadLock lock;
+    iarea->redraw();
+}
 
 void CropWindow::updateHoveredPicker(rtengine::Coord *imgPos)
 {

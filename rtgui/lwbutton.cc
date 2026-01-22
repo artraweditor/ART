@@ -177,7 +177,7 @@ bool LWButton::releaseNotify(int x, int y, int bstate)
 void LWButton::redraw(Cairo::RefPtr<Cairo::Context> context)
 {
 
-    GThreadLock lock; // All GUI access from idle_add callbacks or separate
+//    GThreadLock lock; // All GUI access from idle_add callbacks or separate
                       // thread HAVE to be protected
     context->set_line_width(1.0);
     context->set_antialias(Cairo::ANTIALIAS_SUBPIXEL);
