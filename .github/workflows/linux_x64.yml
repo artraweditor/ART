@@ -171,13 +171,27 @@ jobs:
           sudo make install
           cd ../..
 
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
+          tar xzf v0.8.2.tar.gz
+          cd simde-0.8.2
+          meson setup build -Dbuildtype=release -Dtests=false
+          meson install -C build
+          
       - name: Configure build
         run: |
           BUILDTYPE=Release
           if [ "${{ inputs.debug }}" = "true" ]; then
               echo "Configuring a Debug build"
               BUILDTYPE=Debug
-          fi    
+          fi
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+              ART_SIMDE=1
+          else
+              ART_SIMDE=0
+          fi
           sudo ldconfig
           mkdir build
           cd build
@@ -188,6 +202,7 @@ jobs:
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
+            -DENABLE_SIMDE=${ART_SIMDE}
             ../repo
           cd ..
 
