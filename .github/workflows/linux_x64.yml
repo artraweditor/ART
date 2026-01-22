@@ -202,7 +202,7 @@ jobs:
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
-            -DENABLE_SIMDE=${ART_SIMDE}
+            -DENABLE_SIMDE=${ART_SIMDE} \
             ../repo
           cd ..
 
