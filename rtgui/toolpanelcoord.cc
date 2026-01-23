@@ -711,7 +711,8 @@ void ToolPanelCoordinator::initImage(rtengine::StagedImageProcessor *ipc_,
 
 void ToolPanelCoordinator::closeImage()
 {
-
+    editModeSwitchedOff();
+    
     if (ipc) {
         ipc->stopProcessing();
         ipc = nullptr;
