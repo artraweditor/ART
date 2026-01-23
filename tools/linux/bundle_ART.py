@@ -15,6 +15,7 @@ import tempfile
 import io
 import json
 import time
+import platform
 
 
 def getopts():
@@ -66,6 +67,7 @@ def getdlls(opts):
 	'libpthread.so.0',
 	'libc.so.6',
 	'ld-linux-x86-64.so.2',
+        'ld-linux-aarch64.so.1',
 	'libdl.so.2',
 	'libsystemd.so.0',
         'librt.so.1',
@@ -87,6 +89,7 @@ def getdlls(opts):
 
 
 def extra_files(opts):
+    machine = platform.machine()
     def D(s): return os.path.expanduser(s)
     if opts.exiftool and os.path.isdir(opts.exiftool):
         extra = [('lib', [(opts.exiftool, 'exiftool')])]
@@ -122,16 +125,19 @@ def extra_files(opts):
     if opts.imageio_bin:
         extra.append(('imageio', [(opts.imageio_bin, 'bin')]))            
     elif opts.imageio_download:
-        with urlopen(imageio.asset('ART-imageio-bin-linux64.tar.gz')) as f:
+        if machine == 'x86_64':
+            asset_name = 'ART-imageio-bin-linux64'
+        else:
+            asset_name = 'ART-imageio-bin-linux-aarch64'            
+        with urlopen(imageio.asset(asset_name + '.tar.gz')) as f:
             if opts.verbose:
-                print('downloading ART-imageio-bin-linux64.tar.gz '
-                      'from GitHub ...')
+                print(f'downloading {asset_name}.tar.gz from GitHub ...')
             tf = tarfile.open(fileobj=io.BytesIO(f.read()))
             if opts.verbose:
-                print('unpacking ART-imageio-bin-linux64.tar.gz ...')
+                print(f'unpacking {asset_name}.tar.gz ...')
             tf.extractall(opts.tempdir)
         extra.append(('imageio',
-                      [(os.path.join(opts.tempdir, 'ART-imageio-bin-linux64'),
+                      [(os.path.join(opts.tempdir, asset_name),
                         'bin')]))
     return [
         ('share/icons/Adwaita', [
@@ -140,17 +146,19 @@ def extra_files(opts):
             D('/usr/share/icons/Adwaita/cursors'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0'),
+            D('/usr/lib/' + machine + '-linux-gnu/gdk-pixbuf-2.0'),
         ]),
         ('lib/gio/modules', [
-            D('/usr/lib/x86_64-linux-gnu/gio/modules/libgioremote-volume-monitor.so'),
-            D('/usr/lib/x86_64-linux-gnu/gio/modules/libgvfsdbus.so'),
+            D('/usr/lib/' + machine +
+              '-linux-gnu/gio/modules/libgioremote-volume-monitor.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gio/modules/libgvfsdbus.so'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules')
+            D('/usr/lib/' + machine + '-linux-gnu/gtk-3.0/3.0.0/immodules')
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0')
+            D('/usr/lib/' + machine +
+              '-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0')
         ]),
         ('share/glib-2.0/schemas', [
             D('/usr/share/glib-2.0/schemas/gschemas.compiled'),
@@ -159,8 +167,8 @@ def extra_files(opts):
             (D('~/.local/share/lensfun/updates/version_1'), 'lensfun'),
         ]),
         ('lib', [
-            D('/usr/lib/x86_64-linux-gnu/gvfs/libgvfscommon.so'),
-            D('/usr/lib/x86_64-linux-gnu/gvfs/libgvfsdaemon.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gvfs/libgvfscommon.so'),
+            D('/usr/lib/' + machine + '-linux-gnu/gvfs/libgvfsdaemon.so'),
         ]),
     ] + extra
 
@@ -306,7 +314,9 @@ EOF
         fi
     fi
 }
-mkdesktop
+if [ "$ART_MKDESKTOP" != "no" ]; then
+    mkdesktop
+fi        
         
 export ART_restore_GTK_CSD=$GTK_CSD
 export ART_restore_GDK_PIXBUF_MODULE_FILE=$GDK_PIXBUF_MODULE_FILE

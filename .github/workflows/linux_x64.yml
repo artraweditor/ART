@@ -14,7 +14,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
+        include:
+          - os: ubuntu-22.04
+            arch: x86_64
+          - os: ubuntu-22.04-arm
+            arch: arm64
+      fail-fast: false
+    
+    runs-on: ${{ matrix.os }}
 
     permissions:
       contents: write
@@ -56,8 +66,13 @@ jobs:
             gvfs \
             wget
           sudo python3 -m pip install meson
-          wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
-          unzip ninja-linux.zip
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+              ninja_zip=ninja-linux.zip
+          else
+              ninja_zip=ninja-linux-aarch64.zip
+          fi
+          wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/${ninja_zip}
+          unzip ${ninja_zip}
           sudo mv ninja /usr/local/bin
 
       - name: Install LCMS2
@@ -156,13 +171,27 @@ jobs:
           sudo make install
           cd ../..
 
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
+          tar xzf v0.8.2.tar.gz
+          cd simde-0.8.2
+          meson setup build -Dbuildtype=release -Dtests=false
+          meson install -C build
+          
       - name: Configure build
         run: |
           BUILDTYPE=Release
           if [ "${{ inputs.debug }}" = "true" ]; then
               echo "Configuring a Debug build"
               BUILDTYPE=Debug
-          fi    
+          fi
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+              ART_SIMDE=1
+          else
+              ART_SIMDE=0
+          fi
           sudo ldconfig
           mkdir build
           cd build
@@ -173,6 +202,7 @@ jobs:
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
+            -DENABLE_SIMDE=${ART_SIMDE} \
             ../repo
           cd ..
 
@@ -212,17 +242,24 @@ jobs:
           else
               cd build/Release
           fi
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+              suffix=linux64
+              prefix=x86_64
+          else
+              suffix=linux-aarch64
+              prefix=aarch64
+          fi
           python ../../repo/tools/linux/bundle_ART.py \
-            -o ../../${ART_NAME}-linux64 -v -E -I ${DBG}
+            -o ../../${ART_NAME}-${suffix} -v -E -I ${DBG}
           cd ../..
-          pushd ${ART_NAME}-linux64/lib
+          pushd ${ART_NAME}-${suffix}/lib
           for l in libgmodule-2.0.so.0 libglib-2.0.so.0 libgio-2.0.so.0; do
             rm -f ${l}
-            cp /opt/glib/lib/x86_64-linux-gnu/${l} .
+            cp /opt/glib/lib/${prefix}-linux-gnu/${l} .
           done
           popd
-          tar cJf ${ART_NAME}-linux64.tar.xz ${ART_NAME}-linux64
-          echo "ART_BUNDLE_NAME=${ART_NAME}-linux64" >> $GITHUB_ENV
+          tar cJf ${ART_NAME}-${suffix}.tar.xz ${ART_NAME}-${suffix}
+          echo "ART_BUNDLE_NAME=${ART_NAME}-${suffix}" >> $GITHUB_ENV
 
       - name: Prepare artifact name
         run: |
@@ -238,11 +275,21 @@ jobs:
 
       - name: Create AppImage
         run: |
-          wget https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
-          chmod a+x appimagetool-x86_64.AppImage
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+              arch=x86_64
+          else
+              arch=aarch64
+          fi
+          wget https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-${arch}.AppImage
+          chmod a+x appimagetool-${arch}.AppImage
           pushd "${ART_BUNDLE_NAME}"
           ln -s share/icons/hicolor/128x128/apps/ART.png
-          echo -e '#!/bin/sh\nexec $(dirname "$0")/ART "$@"' > AppRun
+          echo '#!/bin/sh' > AppRun
+          echo 'export ART_MKDESKTOP=no' >> AppRun
+          echo 'd=$(dirname "$0")' >> AppRun
+          echo 'if [ "$1" = "--cli" ]; then' >> AppRun
+          echo -e '  shift\n  exec "${d}/ART-cli" "$@"' >> AppRun
+          echo -e 'else\n  exec "${d}/ART" "$@"\nfi' >> AppRun
           chmod a+x AppRun
           echo '[Desktop Entry]' > ART.desktop
           echo "Name=ART-${ART_VERSION}" >> ART.desktop
@@ -250,8 +297,8 @@ jobs:
           echo 'Comment=ART is a free RAW image processor' >> ART.desktop
           echo -e 'Icon=ART\nCategories=Graphics;' >> ART.desktop
           popd
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage -n "${ART_BUNDLE_NAME}"
-          echo "ARTIFACT_APPIMAGE_NAME=ART-${ART_VERSION}-x86_64.AppImage" >> $GITHUB_ENV
+          ARCH=${arch} ./appimagetool-${arch}.AppImage -n "${ART_BUNDLE_NAME}"
+          echo "ARTIFACT_APPIMAGE_NAME=ART-${ART_VERSION}-${arch}.AppImage" >> $GITHUB_ENV
 
       - name: Publish release
         uses: ncipollo/release-action@v1
