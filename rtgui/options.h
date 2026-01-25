@@ -434,6 +434,7 @@ public:
         bool allow_whitespace;
         int on_existing;
         int progressive_number;
+        bool use_basedir;
 
         RenameOptions();
         bool load(Glib::KeyFile &kf);

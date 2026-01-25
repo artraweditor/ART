@@ -263,6 +263,7 @@ struct Params {
     enum class OnExistingAction { SKIP, RENAME };
     OnExistingAction on_existing;
     int progressive_number;
+    bool use_basedir;
 
     Params() = default;
 };
@@ -547,17 +548,18 @@ Glib::ustring get_new_name(Params &params, FileBrowserEntry *entry)
         ret.push_back(c);
     }
 
-    if (!params.basedir.empty() && params.basedir != ".") {
+    if (params.use_basedir && !params.basedir.empty() && params.basedir != ".") {
         ret = Glib::build_filename(params.basedir, ret);
     }
 
     return ret;
 }
 
-bool get_params(Gtk::Window &parent,
+bool get_params(FileCatalog *fcatalog,
                 const std::vector<FileBrowserEntry *> &args, Params &out,
                 bool move)
 {
+    Gtk::Window &parent = getToplevelWindow(fcatalog);
     Gtk::Dialog dialog(M(move ? "FILEBROWSER_RENAMEDLGLABEL"
                               : "FILEBROWSER_RENAME_DIALOG_COPY_LABEL"),
                        parent);
@@ -575,6 +577,8 @@ bool get_params(Gtk::Window &parent,
     Gtk::Label lbld(M("RENAME_DIALOG_BASEDIR") + ":");
     Gtk::HBox hbd;
     hbd.pack_start(lbld, Gtk::PACK_SHRINK, pad);
+    Gtk::CheckButton use_basedir("");
+    hbd.pack_start(use_basedir, Gtk::PACK_SHRINK, 0);
     hbd.pack_start(basedir, Gtk::PACK_EXPAND_WIDGET, pad);
     mainvb.pack_start(hbd, Gtk::PACK_SHRINK, pad);
 
@@ -699,17 +703,6 @@ bool get_params(Gtk::Window &parent,
     dialog.set_size_request(600, -1);
     dialog.show_all_children();
 
-    const auto set_values = [&](const Options::RenameOptions &r) -> void {
-        basedir.set_filename(r.basedir);
-        pattern.set_text(r.pattern);
-        sidecars.set_text(r.sidecars);
-        name_norm.set_active(r.name_norm);
-        ext_norm.set_active(r.ext_norm);
-        on_existing.set_active(r.on_existing);
-        allow_whitespace.set_active(r.allow_whitespace);
-        progressive_number.set_value(r.progressive_number);
-    };
-
     const auto get_values = [&]() -> Options::RenameOptions {
         Options::RenameOptions r;
         r.pattern = pattern.get_text();
@@ -720,6 +713,7 @@ bool get_params(Gtk::Window &parent,
         r.on_existing = on_existing.get_active_row_number();
         r.progressive_number = progressive_number.get_value_as_int();
         r.basedir = out.basedir;
+        r.use_basedir = use_basedir.get_active();
         return r;
     };
 
@@ -754,6 +748,7 @@ bool get_params(Gtk::Window &parent,
         out.on_existing =
             Params::OnExistingAction(on_existing.get_active_row_number());
         out.progressive_number = progressive_number.get_value_as_int();
+        out.use_basedir = use_basedir.get_active();
 
         if (options.renaming_remember) {
             options.renaming = get_values();
@@ -791,6 +786,26 @@ bool get_params(Gtk::Window &parent,
 
     const auto on_file_select = [&](const Gtk::TreeModel::Path &path,
                                     Gtk::TreeViewColumn *column) -> void {
+        on_pattern_change();
+    };
+
+    const auto set_values = [&](const Options::RenameOptions &r) -> void {
+        Glib::ustring fn = r.basedir;
+        if (fn.empty() || fn == ".") {
+            fn = fcatalog->lastSelectedDir();
+            if (art::session::check(fn)) {
+                fn = Glib::get_home_dir();
+            }
+        }
+        basedir.set_filename(fn);
+        pattern.set_text(r.pattern);
+        sidecars.set_text(r.sidecars);
+        name_norm.set_active(r.name_norm);
+        ext_norm.set_active(r.ext_norm);
+        on_existing.set_active(r.on_existing);
+        allow_whitespace.set_active(r.allow_whitespace);
+        progressive_number.set_value(r.progressive_number);
+        use_basedir.set_active(r.use_basedir);
         on_pattern_change();
     };
 
@@ -915,6 +930,7 @@ bool get_params(Gtk::Window &parent,
         sigc::slot<void, const Gtk::TreeModel::Path &, Gtk::TreeViewColumn *>(
             on_file_select));
     basedir.signal_file_set().connect(sigc::slot<void>(on_pattern_change));
+    use_basedir.signal_toggled().connect(sigc::slot<void>(on_pattern_change));
 
     load.signal_clicked().connect(sigc::slot<void>(on_load));
     save.signal_clicked().connect(sigc::slot<void>(on_save));
@@ -1082,7 +1098,7 @@ void FileCatalog::copyMoveRequested(const std::vector<FileBrowserEntry *> &args,
     };
 
     Params params;
-    if (get_params(getToplevelWindow(this), args, params, move)) {
+    if (get_params(this, args, params, move)) {
         const bool is_session = art::session::check(selectedDirectory);
 
         if (!move) {

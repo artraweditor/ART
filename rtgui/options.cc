@@ -69,7 +69,8 @@ Glib::ustring SaveFormat::getKey() const
 
 Options::RenameOptions::RenameOptions()
 {
-    basedir = ".";
+    use_basedir = false;
+    basedir = "";
     pattern = "%f.%e";
     sidecars = "";
     name_norm = 0;
@@ -86,8 +87,10 @@ bool Options::RenameOptions::load(Glib::KeyFile &keyFile)
         if (keyFile.has_key(g, "Basedir")) {
             basedir = keyFile.get_string(g, "Basedir");
         }
-        if (basedir.empty()) {
-            basedir = ".";
+        if (keyFile.has_key(g, "UseBasedir")) {
+            use_basedir = keyFile.get_boolean(g, "UseBasedir");
+        } else {
+            use_basedir = true;
         }
         if (keyFile.has_key(g, "Pattern")) {
             pattern = keyFile.get_string(g, "Pattern");
@@ -118,6 +121,7 @@ bool Options::RenameOptions::load(Glib::KeyFile &keyFile)
 bool Options::RenameOptions::save(Glib::KeyFile &keyFile)
 {
     keyFile.set_string("Renaming", "Basedir", basedir);
+    keyFile.set_boolean("Renaming", "UseBasedir", use_basedir);
     keyFile.set_string("Renaming", "Pattern", pattern);
     keyFile.set_string("Renaming", "Sidecars", sidecars);
     keyFile.set_integer("Renaming", "NameNormalization", name_norm);
