@@ -27,6 +27,7 @@
 #include "rawimagesource.h"
 #include "rt_math.h"
 #include "rtthumbnail.h"
+#include "gauss.h"
 // #define BENCHMARK
 // #include "StopWatch.h"
 #include <iostream>
@@ -45,22 +46,20 @@ struct CdfInfo {
     CdfInfo(): cdf(256), min_val(-1), max_val(-1) {}
 };
 
-typedef int (*PixelGetter)(const IImage8 &img, int y, int x);
+typedef int (*PixelGetter)(const Imagefloat &img, int y, int x);
 
-int get_luminance(const IImage8 &img, int y, int x)
+int get_luminance(const Imagefloat &img, int y, int x)
 {
-    return LIM(int(Color::rgbLuminance(float(img.r(y, x)), float(img.g(y, x)),
-                                       float(img.b(y, x)))),
-               0, 255);
+    return (int(CLIP(Color::rgbLuminance(img.r(y, x), img.g(y, x), img.b(y, x)))) * 255) / 65535;
 }
 
-int get_r(const IImage8 &img, int y, int x) { return img.r(y, x); }
+int get_r(const Imagefloat &img, int y, int x) { return LIM01(img.r(y, x) / 65535.f) * 255; }
 
-int get_g(const IImage8 &img, int y, int x) { return img.g(y, x); }
+int get_g(const Imagefloat &img, int y, int x) { return LIM01(img.g(y, x) / 65535.f) * 255; }
 
-int get_b(const IImage8 &img, int y, int x) { return img.b(y, x); }
+int get_b(const Imagefloat &img, int y, int x) { return LIM01(img.b(y, x) / 65535.f) * 255; }
 
-CdfInfo getCdf(const IImage8 &img, PixelGetter getpix, float expcomp = 0)
+CdfInfo getCdf(const Imagefloat &img, PixelGetter getpix, float expcomp = 0)
 {
     CdfInfo ret;
     const float factor = std::pow(2.f, expcomp);
@@ -306,7 +305,7 @@ void mappingToCurve(const std::vector<int> &mapping, std::vector<double> &curve)
 
 class CurveEvaluator {
 public:
-    CurveEvaluator(const IImage8 &source, const IImage8 &target): srchist_{}
+    CurveEvaluator(const Imagefloat &source, const Imagefloat &target): srchist_{}
     {
         int sw = source.getWidth();
         int sh = source.getHeight();
@@ -377,7 +376,7 @@ private:
     array2D<float> img_;
 };
 
-int avg_luminance(const IImage8 &img, int starty, int startx, int tilesize)
+int avg_luminance(const Imagefloat &img, int starty, int startx, int tilesize)
 {
     int ret = 0;
     for (int j = 0; j < tilesize; ++j) {
@@ -389,7 +388,7 @@ int avg_luminance(const IImage8 &img, int starty, int startx, int tilesize)
     return float(ret) / float(SQR(tilesize));
 }
 
-int max_corner_luminance(const IImage8 &img)
+int max_corner_luminance(const Imagefloat &img)
 {
     int w = img.getWidth();
     int h = img.getHeight();
@@ -415,6 +414,28 @@ double get_expcomp(const FramesMetaData *md)
         }
     }
     return 0.0;
+}
+
+
+void do_blur(Imagefloat *img, int radius)
+{
+    const int W = img->getWidth(), H = img->getHeight();
+#ifdef _OPENMP
+#   pragma omp parallel
+#endif
+    {
+        gaussianBlur(img->r.ptrs, img->r.ptrs, W, H, radius);
+        gaussianBlur(img->g.ptrs, img->g.ptrs, W, H, radius);
+        gaussianBlur(img->b.ptrs, img->b.ptrs, W, H, radius);
+    }
+}
+
+
+Imagefloat *to_float(const IImage8 *src)
+{
+    Imagefloat *res = new Imagefloat(src->getWidth(), src->getHeight());
+    src->resizeImgTo(src->getWidth(), src->getHeight(), TI_Nearest, res);
+    return res;
 }
 
 } // namespace
@@ -470,7 +491,7 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
     neutral.raw.xtranssensor.method = RAWParams::XTransSensor::Method::FAST;
     neutral.icm.outputProfile = ColorManagementParams::NoICMString;
 
-    std::unique_ptr<IImage8> source;
+    std::unique_ptr<Imagefloat> source;
     {
         eSensorType sensor_type;
         int w = -1, h = -1;
@@ -500,7 +521,9 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
         skip = LIM(skip * fh / h, 6,
                    10); // adjust the skip factor -- the larger the thumbnail,
                         // the less we should skip to get a good match
-        source.reset(thumb->quickProcessImage(neutral, fh / skip, TI_Nearest));
+        std::unique_ptr<IImage8> img8(
+            thumb->quickProcessImage(neutral, fh / skip, TI_Nearest));
+        source.reset(to_float(img8.get()));
 
         if (settings->verbose > 1) {
             std::cout << "histogram matching: extracted embedded thumbnail"
@@ -508,7 +531,7 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
         }
     }
 
-    std::unique_ptr<IImage8> target;
+    std::unique_ptr<Imagefloat> target;
     {
         eSensorType sensor_type;
         double scale;
@@ -526,9 +549,13 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
             histMatchingParams = cp;
             return;
         }
-        target.reset(thumb->processImage(neutral, sensor_type, fh / skip,
-                                         TI_Nearest, getMetaData(), scale,
-                                         false, true));
+        {
+            std::unique_ptr<IImage8> img8(
+                thumb->processImage(neutral, sensor_type, fh / skip,
+                                    TI_Nearest, getMetaData(), scale,
+                                    false, true));
+            target.reset(to_float(img8.get()));
+        }
 
         int sw = source->getWidth(), sh = source->getHeight();
         int tw = target->getWidth(), th = target->getHeight();
@@ -554,9 +581,10 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
                                  "reprocessing with auto-distortion correction"
                               << std::endl;
                 }
-                target.reset(thumb->processImage(
-                    neutral, sensor_type, fh / skip, TI_Nearest, getMetaData(),
-                    scale, false, true));
+                std::unique_ptr<IImage8> img8(
+                    thumb->processImage(
+                        neutral, sensor_type, fh / skip, TI_Nearest, getMetaData(), scale, false, true));
+                target.reset(to_float(img8.get()));
             }
         }
 
@@ -583,9 +611,9 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
             }
 
             if (cx || cy) {
-                Image8 *tmp = new Image8(tw, th);
+                Imagefloat *tmp = new Imagefloat(tw, th);
 #ifdef _OPENMP
-#pragma omp parallel for
+#               pragma omp parallel for
 #endif
                 for (int y = 0; y < th; ++y) {
                     for (int x = 0; x < tw; ++x) {
@@ -605,14 +633,22 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
     }
     if (target->getWidth() != source->getWidth() ||
         target->getHeight() != source->getHeight()) {
-        Image8 *tmp = new Image8(source->getWidth(), source->getHeight());
+        Imagefloat *tmp = new Imagefloat(source->getWidth(), source->getHeight());
         target->resizeImgTo(source->getWidth(), source->getHeight(), TI_Nearest,
                             tmp);
         target.reset(tmp);
     }
 
-    static const std::vector<PixelGetter> getters = {&get_luminance, &get_r,
-                                                     &get_g, &get_b};
+    {
+        int radius = 2;
+        do_blur(source.get(), radius);
+        do_blur(target.get(), radius);
+    }
+
+    static const std::vector<PixelGetter> getters = {
+        &get_luminance
+        //, &get_r, &get_g, &get_b
+    };
     std::vector<std::vector<double>> candidates;
     double expcomp = get_expcomp(getMetaData());
     for (auto g : getters) {
