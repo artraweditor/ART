@@ -538,7 +538,7 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
         int tl = max_corner_luminance(*target);
         int sl = max_corner_luminance(*source);
         const int l_noise = 10;
-        if (tl <= l_noise && sl > l_noise) {
+        if ((tl <= l_noise && sl > l_noise) || (tl > 0 && sl > l_noise && sl / tl > 2)) {
             if (settings->verbose > 1) {
                 std::cout << "histogram matching: corners luminance is " << tl
                           << " for target, " << sl << " for source, "
