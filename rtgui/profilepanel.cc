@@ -152,20 +152,23 @@ ProfilePanel::~ProfilePanel()
 
 bool ProfilePanel::isCustomSelected()
 {
-    return profiles->getCurrentLabel() ==
-           Glib::ustring("(" + M("PROFILEPANEL_PCUSTOM") + ")");
+    return profiles->getSelectedEntry() == customPSE;
+    // return profiles->getCurrentLabel() ==
+    //        Glib::ustring("(" + M("PROFILEPANEL_PCUSTOM") + ")");
 }
 
 bool ProfilePanel::isLastSavedSelected()
 {
-    return profiles->getCurrentLabel() ==
-           Glib::ustring("(" + M("PROFILEPANEL_PLASTSAVED") + ")");
+    return profiles->getSelectedEntry() == lastSavedPSE;
+    // return profiles->getCurrentLabel() ==
+    //        Glib::ustring("(" + M("PROFILEPANEL_PLASTSAVED") + ")");
 }
 
 bool ProfilePanel::isDefaultSelected()
 {
-    return profiles->getCurrentLabel() ==
-           Glib::ustring("(" + M("PROFILEPANEL_PDEFAULT") + ")");
+    return profiles->getSelectedEntry() == defaultPSE;
+    // return profiles->getCurrentLabel() ==
+    //        Glib::ustring("(" + M("PROFILEPANEL_PDEFAULT") + ")");
 }
 
 Gtk::TreeIter ProfilePanel::getCustomRow()
