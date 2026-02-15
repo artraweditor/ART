@@ -42,6 +42,9 @@ Glib::ustring CropWindow::zoomIntt;
 Glib::ustring CropWindow::zoom100tt;
 Glib::ustring CropWindow::closett;
 
+SurroundCompensation CropWindow::surroundcomp_;
+
+
 CropWindow::CropWindow(ImageArea *parent, bool isLowUpdatePriority_,
                        bool isDetailWindow)
     : ObjectMOBuffer(parent), state(SNormal), press_x(0), press_y(0),
@@ -1714,6 +1717,7 @@ void show_false_colors(Glib::RefPtr<Gdk::Pixbuf> pixbuf,
                        Glib::RefPtr<Gdk::Pixbuf> pixbuftrue)
 {
     guint8 *pix = pixbuf->get_pixels();
+    guint8 *pixt = pixbuftrue->get_pixels();
 
     const int pixRowStride = pixbuf->get_rowstride();
     const int bHeight = pixbuf->get_height();
@@ -1738,8 +1742,9 @@ void show_false_colors(Glib::RefPtr<Gdk::Pixbuf> pixbuf,
 #endif
     for (int i = 0; i < bHeight; i++) {
         guint8 *curr = pix + i * pixRowStride;
+        guint8 *currt = pixt + i * pixRowStride;
         for (int j = 0; j < bWidth; j++) {
-            int L = get_L(curr);
+            int L = get_L(currt);
             int ire = L_to_IRE(L);
             // auto it = options.falseColorsMap.lower_bound(ire);
             // get_rgb(it->second.c_str(), curr);
@@ -1748,6 +1753,7 @@ void show_false_colors(Glib::RefPtr<Gdk::Pixbuf> pixbuf,
             curr[1] = it->second[1];
             curr[2] = it->second[2];
             curr += 3;
+            currt += 3;
         }
     }
 }
@@ -1906,8 +1912,12 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
                 iarea->getImProcCoordinator().get());
             const bool mask_shown = ipc && ipc->is_mask_image();
 
-            if (!mask_shown && (showcs || showch || showR || showG || showB ||
-                                showL || showFocusMask || showFalseColors)) {
+            const bool need_copy =
+                !mask_shown && (showcs || showch || showR || showG || showB ||
+                                showL || showFocusMask || showFalseColors ||
+                                options.viewing_conditions != Options::ViewingConditions::NORMAL);
+
+            if (need_copy) {
                 Glib::RefPtr<Gdk::Pixbuf> tmp = cropHandler.cropPixbuf->copy();
                 guint8 *pix = tmp->get_pixels();
                 guint8 *pixWrkSpace = cropHandler.cropPixbuftrue->get_pixels();
@@ -1918,6 +1928,10 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
 
                 const int bHeight = tmp->get_height();
                 const int bWidth = tmp->get_width();
+
+                if (options.viewing_conditions != Options::ViewingConditions::NORMAL && !showFalseColors) {
+                    surroundcomp_.apply(tmp, options.viewing_conditions);
+                }
 
                 if (showFocusMask) { // modulate preview to display focus mask
                     show_focus_mask(tmp, cropHandler.cropPixbuftrue);

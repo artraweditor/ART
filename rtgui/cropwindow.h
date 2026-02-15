@@ -31,6 +31,7 @@
 #include "maskspanel.h"
 #include "pointermotionlistener.h"
 #include "toolenum.h"
+#include "surroundcomp.h"
 #include <gtkmm.h>
 #include <list>
 
@@ -57,6 +58,8 @@ class CropWindow: public LWButtonListener,
     static Glib::ustring zoomIntt;
     static Glib::ustring zoom100tt;
     static Glib::ustring closett;
+
+    static SurroundCompensation surroundcomp_;
 
     // state management
     ImgEditState state; // current state of user (see enum State)

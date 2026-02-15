@@ -476,6 +476,15 @@ public:
     };
     std::map<Glib::ustring, ExportProfileInfo> export_profile_map;
 
+    enum class ViewingConditions {
+        VERY_BRIGHT,
+        BRIGHT,
+        NORMAL,
+        DIM,
+        DARK
+    };
+    ViewingConditions viewing_conditions;
+
     Options();
 
     Options *copyFrom(Options *other);

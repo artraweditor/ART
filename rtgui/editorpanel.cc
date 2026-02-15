@@ -60,10 +60,12 @@ class EditorPanel::ColorManagementToolbar {
 private:
     MyComboBoxText profileBox;
     PopUpButton intentBox;
+    PopUpButton surround_box_;
     Gtk::ToggleButton softProof;
     Gtk::ToggleButton spGamutCheck;
     Gtk::ToggleButton spGamutCheckMonitor;
     sigc::connection profileConn, intentConn, softproofConn;
+    sigc::connection surround_conn_;
     Glib::ustring defprof;
 
     std::shared_ptr<rtengine::StagedImageProcessor> &processor;
@@ -130,6 +132,22 @@ private:
             intentBox.setSelected(1);
             intentBox.show();
         }
+        // TODO
+        surround_box_.addEntry("env-verybright.svg",
+                               M("PREFERENCES_SURROUND_VERYBRIGHT"));
+        surround_box_.addEntry("env-bright.svg",
+                               M("PREFERENCES_SURROUND_BRIGHT"));
+        surround_box_.addEntry("curve-flat.svg",
+                               M("PREFERENCES_SURROUND_OFF"));
+        surround_box_.addEntry("env-dim.svg",
+                               M("PREFERENCES_SURROUND_DIM"));
+        surround_box_.addEntry("env-dark.svg",
+                               M("PREFERENCES_SURROUND_DARK"));
+        setExpandAlignProperties(surround_box_.buttonGroup, false, false,
+                                 Gtk::ALIGN_CENTER, Gtk::ALIGN_FILL);
+
+        surround_box_.setSelected(int(options.viewing_conditions));
+        surround_box_.show();
     }
 
     void prepareSoftProofingBox()
@@ -171,6 +189,12 @@ private:
     void profileBoxChanged() { updateParameters(); }
 
     void intentBoxChanged(int) { updateParameters(); }
+
+    void surroundBoxChanged(int c)
+    {
+        options.viewing_conditions = Options::ViewingConditions(c);
+        parent->refreshImageAreas();
+    }
 
     void softProofToggled() { updateSoftProofParameters(); }
 
@@ -386,7 +410,9 @@ private:
 public:
     explicit ColorManagementToolbar(
         EditorPanel *p, std::shared_ptr<rtengine::StagedImageProcessor> &ipc)
-        : intentBox(Glib::ustring(), true), processor(ipc), parent(p)
+        : intentBox(Glib::ustring(), true),
+          surround_box_(Glib::ustring(), true),
+          processor(ipc), parent(p)
     {
         prepareProfileBox();
         prepareIntentBox();
@@ -413,6 +439,9 @@ public:
             intentConn = intentBox.signal_changed().connect(
                 sigc::mem_fun(this, &ColorManagementToolbar::intentBoxChanged));
         }
+
+        surround_conn_ = surround_box_.signal_changed().connect(
+            sigc::mem_fun(this, &ColorManagementToolbar::surroundBoxChanged));
     }
 
     void pack_right_in(Gtk::Grid *grid)
@@ -422,6 +451,7 @@ public:
             grid->attach_next_to(profileBox, Gtk::POS_RIGHT, 1, 1);
             grid->attach_next_to(*intentBox.buttonGroup, Gtk::POS_RIGHT, 1, 1);
         }
+        grid->attach_next_to(*surround_box_.buttonGroup, Gtk::POS_RIGHT, 1, 1);
         grid->attach_next_to(softProof, Gtk::POS_RIGHT, 1, 1);
         grid->attach_next_to(spGamutCheck, Gtk::POS_RIGHT, 1, 1);
         grid->attach_next_to(spGamutCheckMonitor, Gtk::POS_RIGHT, 1, 1);
@@ -2883,4 +2913,13 @@ void EditorPanel::setParent(RTWindow *p)
     shortcut_mgr_.reset(new ToolShortcutManager(p));
     tpc->setToolShortcutManager(shortcut_mgr_.get());
     iareapanel->imageArea->setToolShortcutManager(shortcut_mgr_.get());
+}
+
+
+void EditorPanel::refreshImageAreas()
+{
+    iareapanel->imageArea->queue_draw();
+    if (iareapanel->imageArea->iLinkedImageArea != nullptr) {
+        iareapanel->imageArea->iLinkedImageArea->queue_draw();
+    }
 }

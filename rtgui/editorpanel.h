@@ -175,6 +175,8 @@ public:
     void cleanup();
     void close();
 
+    void refreshImageAreas();
+
 private:
     BatchQueueEntry *createBatchQueueEntry(
         bool fast_export, bool use_batch_queue_profile,

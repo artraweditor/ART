@@ -1190,6 +1190,11 @@ PREFERENCES_SND_LNGEDITPROCDONE;Editor processing done
 PREFERENCES_SND_BATCHQUEUEDONE;Queue processing done
 PREFERENCES_SND_THRESHOLDSECS;After seconds
 PREFERENCES_STARTUPIMDIR;Image Directory at Startup
+PREFERENCES_SURROUND_VERYBRIGHT;Ambient light compensation: very bright surround
+PREFERENCES_SURROUND_BRIGHT;Ambient light compensation: bright surround
+PREFERENCES_SURROUND_OFF;Ambient light compensation: none
+PREFERENCES_SURROUND_DIM;Ambient light compensation: dim surround
+PREFERENCES_SURROUND_DARK;Ambient light compensation: dark surround
 PREFERENCES_TAB_BROWSER;File Browser
 PREFERENCES_TAB_COLORMGR;Color Management
 PREFERENCES_TAB_DYNAMICPROFILE;Dynamic Profile Rules

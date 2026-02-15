@@ -729,6 +729,8 @@ void Options::setDefaults()
     preview_resampling_quality = PreviewResamplingQuality::MEDIUM;
 
     rtSettings.os_monitor_profile = rtengine::Settings::StdMonitorProfile::SRGB;
+
+    viewing_conditions = ViewingConditions::NORMAL;
 }
 
 Options *Options::copyFrom(Options *other)
@@ -1881,6 +1883,25 @@ void Options::readFromFile(Glib::ustring fname)
                             rtengine::Settings::StdMonitorProfile::SRGB;
                     }
                 }
+
+                if (keyFile.has_key("Color Management", "ViewingConditions")) {
+                    auto s =
+                        keyFile
+                            .get_string("Color Management", "ViewingConditions")
+                            .lowercase();
+                    if (s == "verybright") {
+                        viewing_conditions = ViewingConditions::VERY_BRIGHT;
+                    } else if (s == "bright") {
+                        viewing_conditions = ViewingConditions::BRIGHT;
+                    } else if (s == "dim") {
+                        viewing_conditions = ViewingConditions::DIM;
+                    } else if (s == "dark") {
+                        viewing_conditions = ViewingConditions::DARK;
+                    } else {
+                        viewing_conditions = ViewingConditions::NORMAL;
+                    }
+                }
+                
             }
 
             if (keyFile.has_group("Sounds")) {
@@ -2503,6 +2524,24 @@ void Options::saveToFile(Glib::ustring fname)
             break;
         }
         keyFile.set_string("Color Management", "OSMonitorProfile", os_mon_prof);
+        Glib::ustring viewcond = "Normal";
+        switch (viewing_conditions) {
+        case ViewingConditions::VERY_BRIGHT:
+            viewcond = "VeryBright";
+            break;
+        case ViewingConditions::BRIGHT:
+            viewcond = "Bright";
+            break;
+        case ViewingConditions::DIM:
+            viewcond = "Dim";
+            break;
+        case ViewingConditions::DARK:
+            viewcond = "Dark";
+            break;
+        default:
+            viewcond = "Normal";
+        }
+        keyFile.set_string("Color Management", "ViewingConditions", viewcond);
 
         keyFile.set_boolean("Sounds", "Enable", sndEnable);
         keyFile.set_string("Sounds", "BatchQueueDone", sndBatchQueueDone);
