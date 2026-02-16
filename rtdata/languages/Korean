@@ -1,24 +1,3 @@
-#00 Korea - Korean
-#01 2021-10-22 Ohnishi, Yasuo, initial translation for 1.10.1
-#02 2021-12-01 Ohnishi, Yasuo, some fixes and updated for 1.11
-#03 2021-12-27 Ohnishi, Yasuo, some refinements and updated for 1.12
-#04 2022-01-30 Ohnishi, Yasuo, updated for 1.12.1
-#05 2022-03-31 Ohnishi, Yasuo, some fixes and updates for 1.13
-#06 2022-05-27 Ohnishi, Yasuo, updates for 1.14
-#07 2022-07-14 Ohnishi, Yasuo, updates for 1.15
-#08 2022-08-24 Ohnishi, Yasuo, updates for 1.16
-#09 2022-11-28 Ohnishi, Yasuo, updates for 1.17
-#10 2022-12-27 Ohnishi, Yasuo, updates for 1.18
-#11 2023-03-12 Ohnishi, Yasuo, updates for 1.19
-#12 2023-09-19 Ohnishi, Yasuo, updates for 1.20.2
-#13 2023-12-03 Ohnishi, Yasuo, updates for 1.21
-#14 2024-01-20 Ohnishi, Yasuo, updates for 1.21.1
-#15 2024-05-21 Ohnishi, Yasuo, updates for 1.22
-#16 2024-07-28 Ohnishi, Yasuo, updates for 1.22.2
-#17 2025-06-20 Ohnishi, Yasuo, updates for 1.25.6
-#18 2025-09-10  Ohnishi, Yasuo, updates for 1.25.9
-#19 2025-11-12  Ohnishi, Yasuo, updates for 1.25.11
-#20 2025-12-19  Ohnishi, Yasuo, updates for 1.25.12
 ABOUT_TAB_BUILD;버전
 ABOUT_TAB_CREDITS;크레디트
 ABOUT_TAB_LICENSE;저작권
@@ -191,7 +170,7 @@ FILEBROWSER_POPUPRANK3;평가 3 ***
 FILEBROWSER_POPUPRANK4;평가 4 ****
 FILEBROWSER_POPUPRANK5;평가 5 *****
 FILEBROWSER_POPUPREMOVE;삭제
-FILEBROWSER_POPUPRENAME;이름 변경
+FILEBROWSER_POPUPRENAME;이름 변경/이동
 FILEBROWSER_POPUPSELECTALL;모두 선택
 FILEBROWSER_POPUPTRASH;쓰레기 통에 이동
 FILEBROWSER_POPUPUNRANK;평가 없음
@@ -204,7 +183,7 @@ FILEBROWSER_RANK2_TOOLTIP;평가 2 *\n단축키: <b>Shift-2</b>
 FILEBROWSER_RANK3_TOOLTIP;평가 3 *\n단축키: <b>Shift-3</b>
 FILEBROWSER_RANK4_TOOLTIP;평가 4 *\n단축키: <b>Shift-4</b>
 FILEBROWSER_RANK5_TOOLTIP;평가 5 *\n단축키: <b>Shift-5</b>
-FILEBROWSER_RENAMEDLGLABEL;파일명변경
+FILEBROWSER_RENAMEDLGLABEL;파일명변경/파일 이동
 FILEBROWSER_RENAME_DIALOG_LOAD_TIP;파일에서 설정을 불러오기
 FILEBROWSER_RENAME_DIALOG_SAVE_TIP;설정을 파일에 저장
 FILEBROWSER_RENAME_DIALOG_RESET_TIP;설정을 기본값으로 초기화
@@ -1207,6 +1186,11 @@ PREFERENCES_SND_LNGEDITPROCDONE;편집처리 완료시
 PREFERENCES_SND_BATCHQUEUEDONE;큐 처리 완료시
 PREFERENCES_SND_THRESHOLDSECS;초후
 PREFERENCES_STARTUPIMDIR;기동시의 화상 디렉토리
+PREFERENCES_SURROUND_VERYBRIGHT;환경광 보정: 주변이 매우 밝음
+PREFERENCES_SURROUND_BRIGHT;환경광 보정: 주변이 밝음
+PREFERENCES_SURROUND_OFF;환경광 보정: 없음
+PREFERENCES_SURROUND_DIM;환경광 보정: 주변이 어둑함
+PREFERENCES_SURROUND_DARK;환경광 보정: 주변이 어두움
 PREFERENCES_TAB_BROWSER;파일 브라우저
 PREFERENCES_TAB_COLORMGR;색관리
 PREFERENCES_TAB_DYNAMICPROFILE;동적 프로파일의 규정
