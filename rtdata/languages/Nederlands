@@ -39,11 +39,12 @@
 #38 04-09-2023 update naar ART v1.19 door pm
 #39 30-12-2023 update naar ART v1.21 door pm
 #40 23-01-2024 update naar ART v1.21.1 door pm
-#41 23-05-24 update naar ART v1.23 door pm
-#42 28-07-24 update naar ART v1.24 door pm
-#43 08-09-25 update naar ART v1.25.8 door pm
-#44 12-11-25 update naar ART v1.25.9 door pm
-#45 19-12-25 update naar ART v1.25.12 door pm
+#41 23-05-2024 update naar ART v1.23 door pm
+#42 28-07-2024 update naar ART v1.24 door pm
+#43 08-09-2025 update naar ART v1.25.8 door pm
+#44 12-11-2025 update naar ART v1.25.9 door pm
+#45 19-12-2025 update naar ART v1.25.12 door pm
+#46 16-02-2026 update naar ART v1.26.2 door pm
 
 ABOUT_TAB_BUILD;Versie
 ABOUT_TAB_CREDITS;Credits
@@ -214,7 +215,7 @@ FILEBROWSER_POPUPRANK5;Waardering 5 *****
 FILEBROWSER_POPUPRANK;Waardering
 FILEBROWSER_POPUPREMOVEINCLPROC;Verwijder met uitvoer van verwerkingsrij
 FILEBROWSER_POPUPREMOVE;Verwijder
-FILEBROWSER_POPUPRENAME;Hernoem
+FILEBROWSER_POPUPRENAME;Hernoem/verplaats
 FILEBROWSER_POPUPSELECTALL;Alles selecteren
 FILEBROWSER_POPUPTRASH;Verplaats naar prullenbak
 FILEBROWSER_POPUPUNRANK;Verwijder sterwaardering
@@ -227,7 +228,7 @@ FILEBROWSER_RANK2_TOOLTIP;Waardering 2 *\nSneltoets: Shift+2
 FILEBROWSER_RANK3_TOOLTIP;Waardering 3 *\nSneltoets: Shift+3
 FILEBROWSER_RANK4_TOOLTIP;Waardering 4 *\nSneltoets: Shift+4
 FILEBROWSER_RANK5_TOOLTIP;Waardering 5 *\nSneltoets: Shift+5
-FILEBROWSER_RENAMEDLGLABEL; Hernoem bestand(en)
+FILEBROWSER_RENAMEDLGLABEL; Hernoem/verplaats bestand(en)
 FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Laad instellingen uit bestand
 FILEBROWSER_RENAME_DIALOG_SAVE_TIP;Bewaar instellingen naar bestand
 FILEBROWSER_RENAME_DIALOG_RESET_TIP;Herstel instellingen naar standaardwaarden
@@ -1197,6 +1198,11 @@ PREFERENCES_SND_HELP;Typ volledig pad naar geluidsbestanden, laat leeg voor geen
 PREFERENCES_SND_LNGEDITPROCDONE;Bewerking klaar
 PREFERENCES_SND_THRESHOLDSECS;na seconden
 PREFERENCES_STARTUPIMDIR;Standaardmap bij opstarten
+PREFERENCES_SURROUND_VERYBRIGHT;Compensatie omgevingslicht: erg helder
+PREFERENCES_SURROUND_BRIGHT;Compensatie omgevingslicht: helder
+PREFERENCES_SURROUND_OFF;Compensatie omgevingslicht: geen
+PREFERENCES_SURROUND_DIM;Compensatie omgevingslicht: gedimpd
+PREFERENCES_SURROUND_DARK;Compensatie omgevingslicht: donker
 PREFERENCES_TAB_BROWSER;Bestandsnavigator
 PREFERENCES_TAB_COLORMGR;Kleurbeheer
 PREFERENCES_TAB_DYNAMICPROFILE;Dynamische profielregel
