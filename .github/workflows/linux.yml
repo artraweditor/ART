@@ -178,7 +178,7 @@ jobs:
           tar xzf v0.8.2.tar.gz
           cd simde-0.8.2
           meson setup build -Dbuildtype=release -Dtests=false
-          meson install -C build
+          sudo meson install -C build
           
       - name: Configure build
         run: |
