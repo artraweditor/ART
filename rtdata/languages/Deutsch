@@ -1,3 +1,4 @@
+
 # added with automatic translation
 #00 Als Grundlage die Übersetzung von RawTherapee übernommen.
 #01 Vielen Dank an die Übersetzer von RT: cytrinox, Ingo, keenonkites, klonk, marter, MaWe, Metex, mozzihh, oduis, phberlin, TooWaBoo
@@ -12,6 +13,7 @@
 #10 13.09.2025 Update für neue Version (apostel338)
 #11 11.11.2025 Update für neue Version (apostel338)
 #12 20.12.2025 Update für neue Version (apostel338)
+#13 17.02.2026 Update für neue Version (apostel338)
 ABOUT_TAB_BUILD;Version
 ABOUT_TAB_CREDITS;Danksagungen
 ABOUT_TAB_LICENSE;Lizenz
@@ -186,6 +188,7 @@ FILEBROWSER_POPUPRANK5;Bewertung 5 *****
 FILEBROWSER_POPUPRANK;Bewertung
 FILEBROWSER_POPUPREMOVE;Unwiderruflich löschen
 FILEBROWSER_POPUPRENAME;Umbenennen
+FILEBROWSER_POPUPRENAME;Umbenennen/verschieben
 FILEBROWSER_POPUPSELECTALL;Alle auswählen
 FILEBROWSER_POPUPTRASH;In den Papierkorb verschieben
 FILEBROWSER_POPUPUNRANK;Bewertung entfernen
@@ -199,6 +202,7 @@ FILEBROWSER_RANK3_TOOLTIP;Bewertung 3 *\nTaste: <b>Shift + 3</b>
 FILEBROWSER_RANK4_TOOLTIP;Bewertung 4 *\nTaste: <b>Shift + 4</b>
 FILEBROWSER_RANK5_TOOLTIP;Bewertung 5 *\nTaste: <b>Shift + 5</b>
 FILEBROWSER_RENAMEDLGLABEL;Datei(en) umbenennen
+FILEBROWSER_RENAMEDLGLABEL;Datei(en) umbenennen/verschieben
 FILEBROWSER_RENAME_DIALOG_COPY_LABEL;Datei(en) kopieren
 FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Einstellungen aus Datei laden
 FILEBROWSER_RENAME_DIALOG_RESET_TIP;Standardwerte wiederherstellen
@@ -1203,6 +1207,11 @@ PREFERENCES_SND_HELP;Pfad zu einer Sound-Datei eingeben, oder leer lassen für k
 PREFERENCES_SND_LNGEDITPROCDONE;Bearbeitung abgeschlossen
 PREFERENCES_SND_THRESHOLDSECS;Verzögerung in Sekunden
 PREFERENCES_STARTUPIMDIR;Bildverzeichnis beim Programmstart
+PREFERENCES_SURROUND_BRIGHT;Umgebungslicht kompensieren: Helle Umgebung
+PREFERENCES_SURROUND_DARK;Umgebungslicht kompensieren: Dunkle Umgebung
+PREFERENCES_SURROUND_DIM;Umgebungslicht kompensieren: Dämmrige Umgebung
+PREFERENCES_SURROUND_OFF;Umgebungslicht kompensieren: Keine
+PREFERENCES_SURROUND_VERYBRIGHT;Umgebungslicht kompensieren: Sehr helle Umgebung
 PREFERENCES_TAB_BROWSER;Dateiverwaltung
 PREFERENCES_TAB_COLORMGR;Farbmanagement
 PREFERENCES_TAB_DYNAMICPROFILE;Dynamisches Profil
