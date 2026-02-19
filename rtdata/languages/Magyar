@@ -1,8 +1,8 @@
 #00 Hungary - Hungarian
 #01 Developers should add translations to this file and then run the 'generateTranslationDiffs' Bash script to update other locales.
 #02 Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page, e.g.:
-#03 2025-12-22 Bereczky Péter
-# ART version: 1.25.12
+#03 2026-02-15 Bereczky Péter
+# ART version: 1.26.2
 ABOUT_TAB_BUILD;Verzió
 ABOUT_TAB_CREDITS;Szerzők
 ABOUT_TAB_LICENSE;Licenc
@@ -174,6 +174,7 @@ FILEBROWSER_POPUPRANK3;Értékelés 3 ***
 FILEBROWSER_POPUPRANK4;Értékelés 4 ****
 FILEBROWSER_POPUPRANK5;Értékelés 5 *****
 FILEBROWSER_POPUPREMOVE;Törlés
+FILEBROWSER_POPUPRENAME;Átnevezés/Áthelyezés
 FILEBROWSER_POPUPREMOVEINCLPROC;Végleges törlés az eredményül kapott képekkel együtt
 FILEBROWSER_POPUPRENAME;Átnevezés
 FILEBROWSER_POPUPSELECTALL;Összes kijelölése
@@ -188,7 +189,7 @@ FILEBROWSER_RANK2_TOOLTIP;Értékelés 2 *\nGyorsbillentyű: <b>Shift-2</b>
 FILEBROWSER_RANK3_TOOLTIP;Értékelés 3 *\nGyorsbillentyű: <b>Shift-3</b>
 FILEBROWSER_RANK4_TOOLTIP;Értékelés 4 *\nGyorsbillentyű: <b>Shift-4</b>
 FILEBROWSER_RANK5_TOOLTIP;Értékelés 5 *\nGyorsbillentyű: <b>Shift-5</b>
-FILEBROWSER_RENAMEDLGLABEL;Fájl(ok) átnevezése
+FILEBROWSER_RENAMEDLGLABEL;Fájl(ok) Átnevezése/Áthelyezése
 FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Beállítások betöltése fájlból
 FILEBROWSER_RENAME_DIALOG_SAVE_TIP;Beállítások mentése fájlba
 FILEBROWSER_RENAME_DIALOG_RESET_TIP;Beállítások visszaállítása az alapértelmezett értékekre
@@ -1177,6 +1178,11 @@ PREFERENCES_SND_LNGEDITPROCDONE;Az előnézet frissítése kész
 PREFERENCES_SND_BATCHQUEUEDONE;A sor feldolgozása befejeződött
 PREFERENCES_SND_THRESHOLDSECS;Másodpercek múlva
 PREFERENCES_STARTUPIMDIR;Képkönyvtár indításkor
+PREFERENCES_SURROUND_VERYBRIGHT;Környezeti fény kompenzáció: nagyon világos környezet
+PREFERENCES_SURROUND_BRIGHT;Környezeti fény kompenzáció: világos környezet
+PREFERENCES_SURROUND_OFF;Környezeti fény kompenzáció: nincs
+PREFERENCES_SURROUND_DIM;Környezeti fény kompenzáció: gyengén megvilágított környezet
+PREFERENCES_SURROUND_DARK;Környezeti fény kompenzáció: sötét környezet
 PREFERENCES_TAB_BROWSER;Fájlböngésző
 PREFERENCES_TAB_COLORMGR;Színkezelés
 PREFERENCES_TAB_DYNAMICPROFILE;Dinamikus profil szabály
