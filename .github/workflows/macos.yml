@@ -94,7 +94,6 @@ jobs:
           sudo port install cmake
           sudo port install glib2 +quartz
           sudo port install gtkmm3 +quartz
-          sudo port install gtk-osx-application-gtk3
           sudo port install libomp
           sudo port install clang-17
           sudo port install librsvg-devel
@@ -107,6 +106,19 @@ jobs:
           sudo port install meson
           sudo port install dbus
           sudo port install simde
+
+      - name: Install gtk-osx-application-gtk3
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          wget https://distfiles.macports.org/gtk-osx-application/gtk-mac-integration-3.0.2.tar.xz
+          xzcat gtk-mac-integration-3.0.2.tar.xz | tar x
+          cd gtk-mac-integration-3.0.2
+          CC=/opt/local/bin/clang-mp-17 \
+            CXX=/opt/local/bin/clang++-mp-17 \
+            ./configure --prefix=$INSTDIR --with-gtk3
+          make -j$(nproc)
+          sudo make install
 
       - name: Install LibRaw
         run: |
