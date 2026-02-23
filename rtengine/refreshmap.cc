@@ -30,7 +30,7 @@ int refreshmap[NUMOFEVENTS] = {
     LUMINANCECURVE,                   // EvBrightness,
     LUMINANCECURVE,                   // EvContrast,
     RGBCURVE,                         // EvBlack,
-    ALLNORAW,                         // EvExpComp,
+    HDR/*ALLNORAW*/,                  // EvExpComp,
     RGBCURVE,                         // EvHLCompr,
     RGBCURVE,                         // EvSHCompr,
     LUMINANCECURVE,                   // EvToneCurve1,
