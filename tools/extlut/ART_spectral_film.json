@@ -72,7 +72,9 @@
             "KodakVericolorIII",
             "TechnicolorIV",
             "TechnicolorIValt1",
-            "TechnicolorIValt2"
+            "TechnicolorIValt2",
+            "Kodak5203",
+            "Kodak5213"
         ], 0],
         ["red_light", "Red printer light", -1, 1, 0, 0.01],
         ["green_light", "Green printer light", -1, 1, 0, 0.01],
@@ -110,7 +112,12 @@
             "KodakPortraEndura",
             "KodakSupraEndura",
             "TechinicolorV",
-            "None"
+            "None",
+            "FujiCrystalArchiveProPDII",
+            "IlfochromeMicrographicM",
+            "IlfochromeMicrographicP",
+            "KodakDyeTransferSlide",
+            "KodakEktachromeRadianceIIIPaper"            
         ], 0],
         ["projector_wb", "Projector wb", 2700, 16000, 6500, 1],
         ["white_point", "White point", 0.5, 2.0, 1.0, 0.001],

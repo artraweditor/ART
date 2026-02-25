@@ -3,16 +3,123 @@ import io
 import warnings
 import argparse
 import json
+import traceback
 from contextlib import redirect_stdout, redirect_stderr
+
+FIXED_STOCKS = True
+
+if FIXED_STOCKS:
+    films = [
+        "AgfaVista100",
+        "FujiC200",
+        "FujiEterna500",
+        "FujiEterna500Vivid",
+        "FujiFP100C",
+        "FujiInstaxColor",
+        "FujiNatura1600",
+        "FujiPro160C",
+        "FujiPro160S",
+        "FujiPro400H",
+        "FujiProvia100F",
+        "FujiSuperiaReala",
+        "FujiSuperiaXtra400",
+        "FujiVelvia50",
+        "Kodachrome64",
+        "Kodak5207",
+        "Kodak5219",
+        "Kodak5222Dev12",
+        "Kodak5222Dev4",
+        "Kodak5222Dev5",
+        "Kodak5222Dev6",
+        "Kodak5222Dev9",
+        "Kodak5247",
+        "Kodak5247II",
+        "Kodak5248",
+        "Kodak5250",
+        "Kodak5277",
+        "Kodak5293",
+        "KodakAerochromeIII",
+        "KodakAerocolor",
+        "KodakAerocolorHigh",
+        "KodakAerocolorLow",
+        "KodakDyeTransferSeparation",
+        "KodakEXR5248",
+        "KodakEktachromeE100",
+        "KodakEktar100",
+        "KodakGold200",
+        "KodakPortra160",
+        "KodakPortra400",
+        "KodakPortra800",
+        "KodakPortra800At1600",
+        "KodakPortra800At3200",
+        "KodakTriX400Dev11",
+        "KodakTriX400Dev6",
+        "KodakTriX400Dev7",
+        "KodakTriX400Dev9",
+        "KodakUltramax400",
+        "KodakVericolorIII",
+        "TechnicolorIV",
+        "TechnicolorIValt1",
+        "TechnicolorIValt2",
+        "Kodak5203",
+        "Kodak5213"
+    ]
+    papers = [
+        "Fuji3513DI",
+        "FujiCrystalArchiveDPII",
+        "FujiCrystalArchiveMaxima",
+        "FujiCrystalArchiveSuperTypeC",
+        "FujiflexNew",
+        "FujiflexOld",
+        "Kodak2303Dev2",
+        "Kodak2303Dev3",
+        "Kodak2303Dev5",
+        "Kodak2303Dev7",
+        "Kodak2303Dev9",
+        "Kodak2383",
+        "Kodak2393",
+        "Kodak5381",
+        "Kodak5383",
+        "Kodak5384",
+        "KodakDuraflexPlus",
+        "KodakDyeTransferKodachrome",
+        "KodakDyeTransferNegative",
+        "KodakEnduraPremier",
+        "KodakExr5386",
+        "KodakPolymax",
+        "KodakPolymaxGrade0",
+        "KodakPolymaxGrade1",
+        "KodakPolymaxGrade2",
+        "KodakPolymaxGrade3",
+        "KodakPolymaxGrade4",
+        "KodakPolymaxGrade5",
+        "KodakPolymaxGradeNeg1",
+        "KodakPortraEndura",
+        "KodakSupraEndura",
+        "TechinicolorV",
+        "None",
+        "FujiCrystalArchiveProPDII",
+        "IlfochromeMicrographicM",
+        "IlfochromeMicrographicP",
+        "KodakDyeTransferSlide",
+        "KodakEktachromeRadianceIIIPaper"            
+    ]
 
 with warnings.catch_warnings(action='ignore'):
     from spectral_film_lut.utils import create_lut
-    from spectral_film_lut import FILMSTOCKS
-
-    films = sorted(f for f in FILMSTOCKS if FILMSTOCKS[f]().stage == 'camera')
-    papers = sorted(f for f in FILMSTOCKS
-                    if FILMSTOCKS[f]().stage == 'print') + ['None']
+    try:
+        from spectral_film_lut import FILMSTOCKS
+    except ImportError:
+        import spectral_film_lut.film_loader
+        FILMSTOCKS = {cls.__name__ : cls
+                      for cls in spectral_film_lut.film_loader.filmstocks}
+    if not FIXED_STOCKS:
+        films = sorted(f for f in FILMSTOCKS
+                       if FILMSTOCKS[f]().stage == 'camera')
+        papers = sorted(f for f in FILMSTOCKS
+                        if FILMSTOCKS[f]().stage == 'print') + ['None']
     FILMSTOCKS['None'] = lambda : None
+
 
 def getopts():
     p = argparse.ArgumentParser()
@@ -29,6 +136,7 @@ def getopts():
     p.add_argument('--white-point', type=float, default=1)
     p.add_argument('--sat', type=float, default=1)
     p.add_argument('--black-offset', type=float, default=0)
+    p.add_argument('--print-stocks', action='store_true')
     p.add_argument('params', nargs='?')
     p.add_argument('output', nargs='?')
     return p.parse_args()
@@ -85,9 +193,10 @@ def mklut(params, output):
                      sat_adjust=params['sat'],
                      matrix_method=False,
                      )
+    dx, dy, dz = lut.shape[:-1]
     table = lut.reshape((-1, 3))
     with open(output, 'w') as out:
-        out.write("""\
+        out.write(f"""\
 <?xml version="1.0" encoding="UTF-8"?>
 <ProcessList compCLFversion="3" id="1">
     <Matrix inBitDepth="32f" outBitDepth="32f">
@@ -101,7 +210,7 @@ def mklut(params, output):
         <LogParams base="2" linSideSlope="1" linSideOffset="0" logSideSlope="0.0570776255707763" logSideOffset="0.554794520547945" linSideBreak="0.0078125" />
     </Log>
     <LUT3D inBitDepth="32f" outBitDepth="32f" interpolation="tetrahedral">
-        <Array dim="33 33 33 3">
+        <Array dim="{dx} {dy} {dz} 3">
 """)
         for row in table:
             out.write(f'{row[0]:.7f} {row[1]:.7f} {row[2]:.7f}\n')
@@ -114,19 +223,30 @@ def mklut(params, output):
 
 def main():
     opts = getopts()
+
+    if opts.print_stocks:
+        print(f'films = {json.dumps(films, indent=2)}')
+        print(f'papers = {json.dumps(papers, indent=2)}')
+        exit(0)
+    
     params = get_params(opts)
     if opts.server:
         while True:
             p = sys.stdin.readline().strip()
             o = sys.stdin.readline().strip()
-            params = update_params(params, p)
             buf = io.StringIO()
-            with redirect_stdout(buf):
-                with redirect_stderr(buf):
-                    mklut(params, o)
-                    print(f'lut for {params} created in {o}')
+            try:
+                params = update_params(params, p)
+                with redirect_stdout(buf):
+                    with redirect_stderr(buf):
+                        mklut(params, o)
+                        print(f'lut for {params} created in {o}')
+                res = 'Y'
+            except Exception:
+                buf.write(traceback.format_exc())
+                res = 'N'
             data = buf.getvalue().splitlines()
-            sys.stdout.write(f'Y {len(data)}\n')
+            sys.stdout.write(f'{res} {len(data)}\n')
             for line in data:
                 sys.stdout.write(f'{line}\n')
             sys.stdout.flush()
