@@ -222,12 +222,41 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
         if (sz >= 3 && sz <= 7) {
             n = cJSON_GetArrayItem(root, 2);
             if (cJSON_IsArray(n)) {
-                for (int i = 0, k = cJSON_GetArraySize(n); i < k; ++i) {
+                int k = cJSON_GetArraySize(n);
+                bool all_strings = true;
+                for (int i = 0; i < k; ++i) {
                     auto v = cJSON_GetArrayItem(n, i);
                     if (!cJSON_IsString(v)) {
+                        if (all_strings && i > 0) {
+                            return false;
+                        }
+                        all_strings = false;
+                        if (!(cJSON_IsArray(v) && cJSON_GetArraySize(v) == 2 &&
+                              cJSON_IsString(cJSON_GetArrayItem(v, 0)) &&
+                              cJSON_IsNumber(cJSON_GetArrayItem(v, 1)))) {
+                            return false;
+                        }
+                    } else if (!all_strings) {
                         return false;
                     }
-                    choices.push_back(cJSON_GetStringValue(v));
+                }
+                if (all_strings) {
+                    for (int i = 0; i < k; ++i) {
+                        auto v = cJSON_GetArrayItem(n, i);
+                        choices.push_back(std::make_pair(cJSON_GetStringValue(v), i));
+                    }
+                } else {
+                    std::vector<bool> seen(k);
+                    for (int i = 0; i < k; ++i) {
+                        auto v = cJSON_GetArrayItem(n, i);
+                        int idx = int(cJSON_GetArrayItem(v, 1)->valuedouble);
+                        Glib::ustring s = cJSON_GetStringValue(cJSON_GetArrayItem(v, 0));
+                        if (idx < 0 || idx >= k || seen[idx]) {
+                            return false;
+                        }
+                        seen[idx] = true;
+                        choices.push_back(std::make_pair(s, idx));
+                    }
                 }
                 type = CLUTParamType::PT_CHOICE;
                 if (sz >= 4) {

@@ -44,7 +44,7 @@ struct CLUTParamDescriptor {
     double value_min;
     double value_max;
     std::vector<double> value_default;
-    std::vector<Glib::ustring> choices;
+    std::vector<std::pair<Glib::ustring, int>> choices;
     Glib::ustring gui_name;
     Glib::ustring gui_group;
     double gui_step;

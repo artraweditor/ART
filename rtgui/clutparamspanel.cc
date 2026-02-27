@@ -181,8 +181,8 @@ void CLUTParamsPanel::setParams(const rtengine::CLUTParamDescriptorList &params)
         } break;
         case rtengine::CLUTParamType::PT_CHOICE: {
             MyComboBoxText *c = Gtk::manage(new MyComboBoxText());
-            for (auto l : d.choices) {
-                c->append(lbl(l));
+            for (auto &p : d.choices) {
+                c->append(lbl(p.first));
             }
             Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
             hb->pack_start(*Gtk::manage(new Gtk::Label(lbl(d.gui_name) + ": ")),
@@ -296,7 +296,7 @@ rtengine::CLUTParamValueMap CLUTParamsPanel::getValue() const
             v[0] = static_cast<Gtk::CheckButton *>(w)->get_active();
             break;
         case rtengine::CLUTParamType::PT_CHOICE:
-            v[0] = static_cast<MyComboBoxText *>(w)->get_active_row_number();
+            v[0] = d.choices[static_cast<MyComboBoxText *>(w)->get_active_row_number()].second;
             break;
         case rtengine::CLUTParamType::PT_CURVE:
         case rtengine::CLUTParamType::PT_FLATCURVE:
@@ -335,7 +335,7 @@ void CLUTParamsPanel::setValue(const rtengine::CLUTParamValueMap &val)
             static_cast<Gtk::CheckButton *>(w)->set_active(bool(v));
             break;
         case rtengine::CLUTParamType::PT_CHOICE:
-            static_cast<MyComboBoxText *>(w)->set_active(int(v));
+            static_cast<MyComboBoxText *>(w)->set_active(d.choices[int(v)].second);
             break;
         case rtengine::CLUTParamType::PT_CURVE:
         case rtengine::CLUTParamType::PT_FLATCURVE:
