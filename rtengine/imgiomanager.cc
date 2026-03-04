@@ -146,7 +146,16 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
                         k.model = kf.get_string(raw_group, "Model").lowercase();
                     }
 
-                    raw_loaders_[k] = Pair(dirname, cmd);
+                    const Glib::ustring meta_group = "Metadata";
+                    if (kf.has_group(meta_group)) {
+                        k.meta.enabled = true;
+                        for (auto key : kf.get_keys(meta_group)) {
+                            auto val = kf.get_string(meta_group, key);
+                            k.meta.value.push_back(std::make_pair(key, val));
+                        }
+                    }
+
+                    raw_loaders_.insert(std::make_pair(k, Pair(dirname, cmd)));
 
                     if (settings->verbose > 1) {
                         std::cout << "Found RAW loader for (extension, make, "
@@ -534,17 +543,23 @@ bool ImageIOManager::loadRaw(const Glib::ustring &fname,
     if (it == raw_loaders_.end()) {
         return false;
     }
-    auto &o = it->first;
-    if (o.ext != k.ext) {
-        return false;
+    while (it != raw_loaders_.end()) {
+        auto &o = it->first;
+        if (o.ext != k.ext) {
+            return false;
+        }
+        if (!o.make.empty() && o.make != k.make) {
+            return false;
+        }
+        if (!o.model.empty() && o.model != k.model) {
+            return false;
+        }
+        if (o.meta(fname)) {
+            return do_loadRaw(it->second, fname, out_dng_name);
+        }
+        ++it;
     }
-    if (!o.make.empty() && o.make != k.make) {
-        return false;
-    }
-    if (!o.model.empty() && o.model != k.model) {
-        return false;
-    }
-    return do_loadRaw(it->second, fname, out_dng_name);
+    return false;
 }
 
 namespace {

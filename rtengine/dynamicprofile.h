@@ -50,6 +50,7 @@ public:
         explicit CustomMetadata(bool e = false): value(), enabled(e) {}
 
         bool operator()(const rtengine::FramesMetaData *m) const;
+        bool operator()(const Glib::ustring &filename) const;
     };
 
     DynamicProfileRule();

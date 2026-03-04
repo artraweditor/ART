@@ -55,15 +55,21 @@ bool DynamicProfileRule::Optional::operator()(const Glib::ustring &val) const
     }
 }
 
-bool DynamicProfileRule::CustomMetadata::operator()(
-    const FramesMetaData *m) const
+
+bool DynamicProfileRule::CustomMetadata::operator()(const FramesMetaData *m) const
+{
+    return (*this)(m->getFileName());
+}
+
+
+bool DynamicProfileRule::CustomMetadata::operator()(const Glib::ustring &filename) const
 {
     if (!enabled || value.empty()) {
         return true;
     }
 
     try {
-        rtengine::Exiv2Metadata meta(m->getFileName());
+        rtengine::Exiv2Metadata meta(filename);
         std::unordered_map<std::string, std::string> mn;
         bool mn_loaded = false;
         meta.load();

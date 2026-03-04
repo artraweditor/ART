@@ -25,6 +25,7 @@
 #include "noncopyable.h"
 #include "procparams.h"
 #include "rtengine.h"
+#include "dynamicprofile.h"
 #include <cctype>
 #include <glib/gstdio.h>
 #include <glibmm/ustring.h>
@@ -97,15 +98,17 @@ private:
     std::map<std::string, SaveFormatInfo> savelbls_;
     std::unordered_map<std::string, procparams::FilePartialProfile>
         saveprofiles_;
+
     class RawKey {
     public:
         std::string ext;
         std::string make;
         std::string model;
+        DynamicProfileRule::CustomMetadata meta;
 
         RawKey(const std::string &e = "", const std::string &ma = "",
                const std::string &mo = "")
-            : ext(e), make(), model()
+            : ext(e), make(), model(), meta()
         {
             make.reserve(ma.size());
             for (auto &c : ma) {
@@ -117,7 +120,9 @@ private:
             }
         }
 
-        bool operator<(const RawKey &other) const
+        bool operator<(const RawKey &other) const { return precedes(other); }
+        
+        bool precedes(const RawKey &other) const            
         {
             int r = ext.compare(other.ext);
             if (r) {
@@ -131,7 +136,7 @@ private:
             return r > 0;
         }
     };
-    std::map<RawKey, Pair> raw_loaders_;
+    std::multimap<RawKey, Pair> raw_loaders_;
 
     typedef Cache<Glib::ustring, Glib::ustring> RAWCache;
 
