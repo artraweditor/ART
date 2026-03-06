@@ -193,6 +193,33 @@ bool skip_line(subprocess::SubprocessInfo *p, std::vector<char> *buf)
     }
 }
 
+
+bool with_parse_error(const Glib::ustring &filename, const char *data)
+{
+    if (settings->verbose) {
+        int lineno = 1;
+        const char *e = cJSON_GetErrorPtr();
+        for (const char *s = data; s != e; ++s) {
+            if (*s == '\n') {
+                ++lineno;
+            }
+        }
+        std::cout << "Parse error in " << filename << ", line " << lineno
+                  << std::endl;
+    }
+    return false;
+}
+
+
+bool with_error_msg(const Glib::ustring &filename, const Glib::ustring &msg)
+{
+    if (settings->verbose) {
+        std::cout << "External LUT error in " << filename << ": "
+                  << msg << std::endl;
+    }
+    return false;
+}
+
 } // namespace
 
 //-----------------------------------------------------------------------------
@@ -373,18 +400,21 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     const std::unique_ptr<cJSON, decltype(&cJSON_Delete)> root_p(
         cJSON_Parse(buffer.get()), cJSON_Delete);
     cJSON *root = root_p.get();
-    if (!root || !cJSON_IsObject(root)) {
-        return false;
+    if (!root) {
+        return with_parse_error(filename, buffer.get());
+    }
+    if (!cJSON_IsObject(root)) {
+        return with_error_msg(filename, "invalid root object in JSON");
     }
 
     root = cJSON_GetObjectItem(root, "ART-lut3d");
     if (!root || !cJSON_IsObject(root)) {
-        return false;
+        return with_error_msg(filename, "ART-lut3d object not found");
     }
 
     cJSON *cmd = cJSON_GetObjectItem(root, "command");
     if (!cmd || !cJSON_IsString(cmd)) {
-        return false;
+        return with_error_msg(filename, "command string not found");
     }
     auto cmdline = cJSON_GetStringValue(cmd);
     workdir_ = Glib::path_get_dirname(filename);
@@ -393,11 +423,11 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     cJSON *params = cJSON_GetObjectItem(root, "params");
     if (params) {
         if (!cJSON_IsArray(params)) {
-            return false;
+            return with_error_msg(filename, "invalid \"params\" entry");
         }
         for (size_t i = 0, n = cJSON_GetArraySize(params); i < n; ++i) {
             if (!add_param(params_, cJSON_GetArrayItem(params, i))) {
-                return false;
+                return with_error_msg(filename, "invalid entry for param " + std::to_string(i));
             }
         }
     }
@@ -405,11 +435,11 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     cJSON *presets = cJSON_GetObjectItem(root, "presets");
     if (presets) {
         if (!cJSON_IsArray(presets)) {
-            return false;
+            return with_error_msg(filename, "invalid \"presets\" entry");
         }
-        for (size_t i = 0, n = cJSON_GetArraySize(params); i < n; ++i) {
-            if (!params_.add_preset_from_json(cJSON_GetArrayItem(params, i))) {
-                return false;
+        for (size_t i = 0, n = cJSON_GetArraySize(presets); i < n; ++i) {
+            if (!params_.add_preset_from_json(cJSON_GetArrayItem(presets, i))) {
+                return with_error_msg(filename, "invalid entry for preset " + std::to_string(i));
             }
         }
     }
@@ -417,7 +447,7 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     cJSON *label = cJSON_GetObjectItem(root, "label");
     if (label) {
         if (!cJSON_IsString(label)) {
-            return false;
+            return with_error_msg(filename, "invalid \"label\" entry");
         }
         gui_name_ = cJSON_GetStringValue(label);
         if (!gui_name_.empty() && gui_name_[0] == '$') {
@@ -436,7 +466,7 @@ bool ExternalLUT3D::init(const Glib::ustring &filename)
     cJSON *is_server = cJSON_GetObjectItem(root, "server");
     if (is_server) {
         if (!cJSON_IsBool(is_server)) {
-            return false;
+            return with_error_msg(filename, "invalid \"server\" entry");
         }
         is_server_ = cJSON_IsTrue(is_server);
     }

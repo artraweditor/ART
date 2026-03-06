@@ -246,15 +246,15 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
                         choices.push_back(std::make_pair(cJSON_GetStringValue(v), i));
                     }
                 } else {
-                    std::vector<bool> seen(k);
+                    // std::vector<bool> seen(k);
                     for (int i = 0; i < k; ++i) {
                         auto v = cJSON_GetArrayItem(n, i);
                         int idx = int(cJSON_GetArrayItem(v, 1)->valuedouble);
                         Glib::ustring s = cJSON_GetStringValue(cJSON_GetArrayItem(v, 0));
-                        if (idx < 0 || idx >= k || seen[idx]) {
+                        if (idx < 0) {// || idx >= k || seen[idx]) {
                             return false;
                         }
-                        seen[idx] = true;
+                        // seen[idx] = true;
                         choices.push_back(std::make_pair(s, idx));
                     }
                 }

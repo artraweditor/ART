@@ -335,6 +335,9 @@ void CLUTParamsPanel::setValue(const rtengine::CLUTParamValueMap &val)
             static_cast<Gtk::CheckButton *>(w)->set_active(bool(v));
             break;
         case rtengine::CLUTParamType::PT_CHOICE:
+            if (!d.choices.empty()) {
+                static_cast<MyComboBoxText *>(w)->set_active(0);
+            }
             for (size_t i = 0; i < d.choices.size(); ++i) {
                 if (d.choices[i].second == int(v)) {
                     static_cast<MyComboBoxText *>(w)->set_active(i);
