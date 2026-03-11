@@ -129,6 +129,7 @@ ThumbBrowserEntryBase::ThumbBrowserEntryBase(const Glib::ustring &fname)
       thumbnail(nullptr), filename(fname), selected(false), drawable(false),
       filtered(false), framed(false), processing(false), italicstyle(false),
       edited(false), recentlysaved(false), updatepriority(false),
+      open_in_editor(0),
       withFilename(WFNAME_NONE)
 {
 }
@@ -173,7 +174,7 @@ void ThumbBrowserEntryBase::updateBackBuffer()
     RTSurface::setDeviceScale(surface, scale);
 
     bbSelected = selected;
-    bbFramed = framed;
+    bbFramed = framed || (open_in_editor > 0);
     bbPreview = !preview.empty() ? &preview[0] : nullptr;
 
     Cairo::RefPtr<Cairo::Context> cc = Cairo::Context::create(surface);
@@ -661,6 +662,17 @@ void ThumbBrowserEntryBase::drawFrame(Cairo::RefPtr<Cairo::Context> cc,
         cc->set_line_width(2.0);
         cc->stroke();
     }
+
+    if (open_in_editor) {
+        cc->set_source_rgb(fg.get_red(), fg.get_green(), fg.get_blue());
+
+        const auto off = 1.5;
+        cc->move_to(0.5 + exp_width / 2.0 - 6, off + 0.5);
+        cc->line_to(0.5 + exp_width / 2.0 + 6, off + 0.5);
+        cc->line_to(0.5 + exp_width / 2.0, off + 6.5);
+        cc->close_path();
+        cc->fill();        
+    }
 }
 
 void ThumbBrowserEntryBase::draw(Cairo::RefPtr<Cairo::Context> cc)
@@ -679,7 +691,8 @@ void ThumbBrowserEntryBase::draw(Cairo::RefPtr<Cairo::Context> cc)
         bbHeight = backBuffer->getHeight();
     }
 
-    if (!backBuffer || selected != bbSelected || framed != bbFramed ||
+    if (!backBuffer || selected != bbSelected ||
+        (framed || (open_in_editor > 0)) != bbFramed ||
         (!preview.empty() ? &preview[0] != bbPreview : !bbPreview) ||
         exp_width != bbWidth || exp_height != bbHeight ||
         getIconsOnImageArea() != bbIcons ||

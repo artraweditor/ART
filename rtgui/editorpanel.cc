@@ -1142,6 +1142,7 @@ void EditorPanel::open(Thumbnail *tmb, rtengine::InitialImage *isrc)
     // initialize everything
     openThm = tmb;
     openThm->increaseRef();
+    update_open_mark(openThm, true);
 
     fname = openThm->getFileName();
     lastSaveAsFileName = Glib::path_get_basename(fname);
@@ -1259,6 +1260,9 @@ void EditorPanel::close()
             openThm->removeThumbnailListener(this);
             openThm->decreaseRef();
         }
+    }
+    if (openThm) {
+        update_open_mark(openThm, false);
     }
     openThm = nullptr;
 }
@@ -2923,5 +2927,19 @@ void EditorPanel::refreshImageAreas()
     iareapanel->imageArea->queue_draw();
     if (iareapanel->imageArea->iLinkedImageArea != nullptr) {
         iareapanel->imageArea->iLinkedImageArea->queue_draw();
+    }
+}
+
+
+void EditorPanel::update_open_mark(Thumbnail *thm, bool yes)
+{
+    if (fPanel) {
+        const auto entries = fPanel->fileCatalog->fileBrowser->getEntries();
+        for (auto e : entries) {
+            if (static_cast<const FileBrowserEntry *>(e)->thumbnail == thm) {
+                e->open_in_editor += (yes ? 1 : -1);
+                break;
+            }
+        }
     }
 }

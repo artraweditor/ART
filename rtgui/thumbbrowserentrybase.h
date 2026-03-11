@@ -108,6 +108,7 @@ public:
     bool edited;
     bool recentlysaved;
     bool updatepriority;
+    unsigned open_in_editor;
     eWithFilename withFilename;
 
     explicit ThumbBrowserEntryBase(const Glib::ustring &fname);

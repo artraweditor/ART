@@ -199,6 +199,7 @@ private:
     bool autosave();
 
     bool can_open_now() const;
+    void update_open_mark(Thumbnail *thm, bool yes);
 
     Glib::ustring lastSaveAsFileName;
     bool realized;
