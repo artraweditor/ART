@@ -354,7 +354,7 @@ public:
     void toolDeselected(ToolMode tool) override;
     void editModeSwitchedOff() override;
 
-    void setEditProvider(EditDataProvider *provider);
+    void setEditProvider(EditDataProvider *provider, bool recursive=true);
 
     // AutoExpListener interface
     void autoExpChanged(double expcomp, int bright, int contr, int black,

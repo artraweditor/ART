@@ -961,6 +961,8 @@ EditorPanel::~EditorPanel()
         autosave_conn_.disconnect();
     }
 
+    tpc->setEditProvider(nullptr, false);
+        
     idle_register.destroy();
 
     history->setHistoryBeforeAfterListener(nullptr);

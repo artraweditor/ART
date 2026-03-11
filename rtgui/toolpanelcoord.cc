@@ -1207,12 +1207,14 @@ void ToolPanelCoordinator::dirSelected(const Glib::ustring &dirname,
     flatfield->setShortcutPath(dirname);
 }
 
-void ToolPanelCoordinator::setEditProvider(EditDataProvider *provider)
+void ToolPanelCoordinator::setEditProvider(EditDataProvider *provider, bool recursive)
 {
     editDataProvider = provider;
 
-    for (size_t i = 0; i < toolPanels.size(); i++) {
-        toolPanels.at(i)->setEditProvider(provider);
+    if (recursive) {
+        for (size_t i = 0; i < toolPanels.size(); i++) {
+            toolPanels.at(i)->setEditProvider(provider);
+        }
     }
 }
 
