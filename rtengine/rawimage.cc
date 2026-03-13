@@ -721,10 +721,6 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
                 // dnglab
                 use_internal_decoder_ = true;
             }
-
-            if (strcmp(make, "") == 0) {
-                is_raw = false;
-            }
         }
     }
     if (use_internal_decoder_) {
