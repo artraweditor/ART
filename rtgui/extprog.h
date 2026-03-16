@@ -49,7 +49,7 @@ public:
     UserCommand();
     bool matches(const std::vector<Thumbnail *> &args) const;
     void execute(const std::vector<Thumbnail *> &args) const;
-    void executeWithDirectory(const Glib::ustring path) const;
+    void executeWithDirectory(const Glib::ustring &path) const;
 };
 
 class UserCommandStore {

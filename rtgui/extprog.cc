@@ -177,7 +177,7 @@ void UserCommand::execute(const std::vector<Thumbnail *> &args) const
     std::thread(doit, options.rtSettings.verbose).detach();
 }
 
-void UserCommand::executeWithDirectory(const Glib::ustring path) const
+void UserCommand::executeWithDirectory(const Glib::ustring &path) const
 {
     std::vector<Glib::ustring> argv =
         rtengine::subprocess::split_command_line(command);
