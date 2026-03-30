@@ -40,6 +40,8 @@
 
 namespace rtengine {
 
+extern const Settings *settings;
+
 using procparams::AreaMask;
 using procparams::DrawnMask;
 using procparams::Mask;
@@ -790,7 +792,7 @@ bool mask_postprocess(int width, int height, float scale,
     if (posterization && smoothing) {
         const float radius_coeff =
             10.f * (101.f - float(LIM(smoothing, 0, 100)));
-        const float radius = (max(width, height) / radius_coeff);
+        const float radius = (max(width, height) * scale / radius_coeff);
         const float epsilon = 0.015f;
         array2D<float> threshold(W, H);
         constexpr float l = 0.0;
@@ -961,8 +963,9 @@ void ExternalMaskManager::cleanup() { instance_.reset(nullptr); }
 
 bool ExternalMaskManager::apply_mask(
     const Glib::ustring &filename, bool inverted, double feather, int offset_x,
-    int offset_y, int full_width, int full_height, const array2D<float> &guide,
-    array2D<float> *out, bool multithread, ProgressListener *plistener)
+    int offset_y, int full_width, int full_height, double scale,
+    const array2D<float> &guide, array2D<float> *out,
+    bool multithread, ProgressListener *plistener)
 {
     std::string key =
         Glib::filename_from_utf8(filename) + "\n" + getMD5(filename, true);
@@ -1008,9 +1011,9 @@ bool ExternalMaskManager::apply_mask(
     const int H = a.height();
 
     if (plistener) {
-        int mask_ratio = int(float(W) / float(H) * 100 + 0.5);
+        int mask_ratio = int(float(W) / float(H) * 10);
         int image_ratio =
-            int(float(full_width) / float(full_height) * 100 + 0.5);
+            int(float(full_width) / float(full_height) * 10);
         if (mask_ratio != image_ratio) {
             plistener->error(M("EXTERNAL_MASK_ASPECT_RATIO_WARNING"));
         }
@@ -1040,7 +1043,7 @@ bool ExternalMaskManager::apply_mask(
 
     if (feather > 0) {
         int radius = int(
-            feather / 100.0 * std::min(full_width, full_height) * 0.1 + 0.5);
+            feather / 100.0 * std::min(full_width, full_height) * scale * 0.1 + 0.5);
         if (radius > 0) {
             guidedFilter(guide, *out, *out, radius, 1e-7, multithread);
         }
@@ -1446,8 +1449,8 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
         auto &em = masks[i].externalMask;
         if (em.enabled && ExternalMaskManager::getInstance()->apply_mask(
                               em.filename, em.inverted, em.feather, offset_x,
-                              offset_y, full_width, full_height, guide, &amask,
-                              multithread, plistener)) {
+                              offset_y, full_width, full_height, scale,
+                              guide, &amask, multithread, plistener)) {
 #ifdef _OPENMP
 #pragma omp parallel for if (multithread)
 #endif

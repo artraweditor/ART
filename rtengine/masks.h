@@ -52,8 +52,9 @@ class ExternalMaskManager: public NonCopyable {
 public:
     static ExternalMaskManager *getInstance();
     bool apply_mask(const Glib::ustring &filename, bool inverted,
-                    double feather, int offset_x, int offset_y, int full_width,
-                    int full_height, const array2D<float> &guide,
+                    double feather, int offset_x, int offset_y,
+                    int full_width, int full_height, double scale,
+                    const array2D<float> &guide,
                     array2D<float> *out, bool multithread,
                     ProgressListener *plistener);
 
