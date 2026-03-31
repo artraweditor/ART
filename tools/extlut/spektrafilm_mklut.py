@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
-# script to generate an ASC-CLF LUT by running the agx-emulsion film
-# simulation pipeline (see https://github.com/andreavolpato/agx-emulsion)
+# script to generate an ASC-CLF LUT by running the spektrafilm film
+# simulation pipeline (see https://github.com/andreavolpato/spektrafilm)
 #
 # the script can be run standalone or integrated with ART
 # (https://artraweditor.github.io) using its "external 3dLUT" interface
@@ -22,8 +22,14 @@ import warnings
 import copy
 from scipy.optimize import least_squares
 from contextlib import redirect_stdout, redirect_stderr
-from agx_emulsion.model.process import photo_params, AgXPhoto
-from agx_emulsion.model.stocks import FilmStocks, PrintPapers
+try:
+    from spektrafilm import photo_params, AgXPhoto
+    from spektrafilm.model.stocks import FilmStocks, PrintPapers
+    spektrafilm_legacy = False
+except ImportError:
+    from agx_emulsion.model.process import photo_params, AgXPhoto
+    from agx_emulsion.model.stocks import FilmStocks, PrintPapers
+    spektrafilm_legacy = True
 
 
 def _enum(cls, *vals):
@@ -50,7 +56,11 @@ film_stocks = _enum(FilmStocks,
                     'kodak_portra_800_push2',
                     'kodak_vision3_250d',
                     'kodak_vision3_200t',
-                    'kodak_vision3_500t')
+                    'kodak_vision3_500t',
+                    'kodak_ektachrome_100',
+                    'kodak_kodachrome_64',
+                    'fujifilm_velvia_100',
+                    'fujifilm_provia_100f')
                     
 
 print_papers = _enum(PrintPapers,
@@ -61,6 +71,11 @@ print_papers = _enum(PrintPapers,
                      'fujifilm_crystal_archive_typeii',
                      'kodak_2393',
                      'kodak_2383')
+class NoPaper:
+    def __init__(self):
+        self.name = 'none'
+        self.value = 'kodak_endura_premier' # arbitrary but valid
+print_papers.append(NoPaper())
 
 
 def getopts():
@@ -221,42 +236,58 @@ class LUTCreator:
     def get_params(self, opts):
         params = photo_params(film_stocks[opts.film].value,
                               print_papers[opts.paper].value)
+        params.camera.auto_exposure = False
+        params.camera.auto_exposure_method = 'median'
         params.camera.exposure_compensation_ev = opts.camera_expcomp
-        params.enlarger.print_exposure = opts.print_exposure
+        params.debug.deactivate_spatial_effects = True
         params.enlarger.lens_blur = 0
+        params.enlarger.m_filter_shift = opts.m_shift
+        params.enlarger.print_exposure = opts.print_exposure
+        params.enlarger.print_exposure_compensation = True
+        params.enlarger.y_filter_shift = opts.y_shift
+        params.io.compute_negative = False
+        params.io.crop = False
+        params.io.full_image = True
+        params.io.input_cctf_decoding = False
+        params.io.output_cctf_encoding = False
+        params.io.output_color_space = 'ACES2065-1'
+        params.io.preview_resize_factor = 1.0
+        params.io.upscale_factor = 1.0
         params.scanner.lens_blur = 0
+        params.settings.use_camera_lut = False
+        params.settings.use_enlarger_lut = False
+        params.settings.use_scanner_lut = False
         if opts.gamut == 'srgb':
             params.io.input_color_space = 'sRGB'
             params.settings.rgb_to_raw_method = 'mallett2019'
         else:
             params.io.input_color_space = 'ITU-R BT.2020'
             params.settings.rgb_to_raw_method = 'hanatos2025'
-        params.io.input_cctf_decoding = False
-        params.io.output_color_space = 'ACES2065-1'
-        params.io.output_cctf_encoding = False
-        params.io.crop = False
-        params.io.preview_resize_factor = 1.0
-        params.io.upscale_factor = 1.0
-        params.io.full_image = True
-        params.io.compute_negative = False
-        params.negative.grain.active = False
-        params.negative.halation.active = False
-        params.print_paper.glare.active = False
-        params.negative.parametric.density_curves.active = False
-        params.camera.auto_exposure = False
-        params.camera.auto_exposure_method = 'median'
-        params.enlarger.print_exposure_compensation = True
-        params.debug.deactivate_spatial_effects = True
-        params.negative.data.tune.gamma_factor = opts.film_gamma
-        params.print_paper.data.tune.gamma_factor = opts.print_gamma
-        params.enlarger.y_filter_shift = opts.y_shift
-        params.enlarger.m_filter_shift = opts.m_shift
-        params.negative.dir_couplers.amount = opts.dir_couplers_amount
-        params.negative.dir_couplers.active = opts.dir_couplers_amount > 0
-        params.settings.use_scanner_lut = False
-        params.settings.use_enlarger_lut = False
-        params.settings.use_camera_lut = False
-        
+        if spektrafilm_legacy:
+            params.negative.data.tune.gamma_factor = opts.film_gamma
+            params.negative.dir_couplers.active = opts.dir_couplers_amount > 0
+            params.negative.dir_couplers.amount = opts.dir_couplers_amount
+            params.negative.grain.active = False
+            params.negative.halation.active = False
+            params.negative.parametric.density_curves.active = False
+            params.print_paper.data.tune.gamma_factor = opts.print_gamma
+            params.print_paper.glare.active = False
+            if isinstance(print_papers[opts.paper], NoPaper):
+                params.io.compute_negative = True
+        else:
+            params.film_render.grain.active = False
+            params.film_render.halation.active = False
+            params.print_render.glare.active = False
+            #params.negative.parametric.density_curves.active = False
+            params.film_render.density_curve_gamma = opts.film_gamma
+            params.film_render.dir_couplers.active = \
+                opts.dir_couplers_amount > 0
+            params.film_render.dir_couplers.amount = opts.dir_couplers_amount
+            params.print_render.density_curve_gamma = opts.print_gamma
+            params.scanner.unsharp_mask = (0.0, 0.0)
+            params.debug.deactivate_stochastic_effects = True
+            if isinstance(print_papers[opts.paper], NoPaper):
+                params.io.scan_film = True
         if opts.auto_ym_shifts:
             key = self._key('autoshifts', opts)
             res = self.cache.get(key)
@@ -268,22 +299,33 @@ class LUTCreator:
                 ]])
 
                 par = copy.copy(params)
-                par.debug.return_negative_density_cmy = True
+                if spektrafilm_legacy:
+                    par.debug.return_negative_density_cmy = True
 
-                photo = AgXPhoto(par)
-                density_cmy = photo.process(image)
+                    photo = AgXPhoto(par)
+                    density_cmy = photo.process(image)
 
-                def sqr(x): return x*x
+                    def func(x):
+                        y_shift, m_shift = x
+                        photo.enlarger.y_filter_shift = y_shift
+                        photo.enlarger.m_filter_shift = m_shift
+                        log_raw = photo._expose_print(density_cmy)
+                        print_cmy = photo._develop_print(log_raw)
+                        out = photo._scan(print_cmy)
+                        r, g, b = out.flatten()
+                        return (abs(b-g), abs(r-g), abs(r-b))                    
+                else:
+                    photo = AgXPhoto(par)
+                    density_cmy = photo.process(image)
 
-                def func(x):
-                    y_shift, m_shift = x
-                    photo.enlarger.y_filter_shift = y_shift
-                    photo.enlarger.m_filter_shift = m_shift
-                    log_raw = photo._expose_print(density_cmy)
-                    print_cmy = photo._develop_print(log_raw)
-                    out = photo._scan(print_cmy)
-                    r, g, b = out.flatten()
-                    return (abs(b-g), abs(r-g), abs(r-b))
+                    def func(x):
+                        y_shift, m_shift = x
+                        photo = AgXPhoto(par)
+                        photo.enlarger.y_filter_shift = y_shift
+                        photo.enlarger.m_filter_shift = m_shift
+                        out = photo.process(image)
+                        r, g, b = out.flatten()
+                        return (abs(b-g), abs(r-g), abs(r-b))
 
                 start = time.time()
                 res = least_squares(func, [0.0, 0.0],
@@ -295,7 +337,8 @@ class LUTCreator:
                 print(f'least_squares: {round(end - start, 2)}, '
                       f'y_shift: {y_shift}, m_shift: {m_shift}')
 
-                self.cache[key] = (y_shift, m_shift)
+                if spektrafilm_legacy:
+                    self.cache[key] = (y_shift, m_shift)
                 
             params.enlarger.y_filter_shift = y_shift + opts.y_shift
             params.enlarger.m_filter_shift = m_shift + opts.m_shift
@@ -304,11 +347,11 @@ class LUTCreator:
 
 
     def __init__(self, opts):
+        self.cache = {}
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             self.image = self.get_base_image(opts)
             self.shaper = self.get_shaper()
-        self.cache = {}
 
     def _key(self, step, opts):
         keys = {
@@ -353,15 +396,21 @@ class LUTCreator:
         params = self.get_params(opts)
         photo = AgXPhoto(params)
         def identity(rgb, *args, **kwds): return rgb
-        photo.print_paper._apply_cctf_encoding_and_clip = identity
-        image = self._get('full', opts, photo, self.image)
-        if image is None:
-            image = self._get('film', opts, photo, self.image)
-            log_raw = photo._expose_print(image)
-            density_cmy = photo._develop_print(log_raw)
-            image = photo._scan(density_cmy)
-            self.cache[self._key('full', opts)] = image
-        #image = photo.process(self.image)
+        if spektrafilm_legacy:
+            photo.print_paper._apply_cctf_encoding_and_clip = identity
+        else:
+            photo._pipeline._scanning_stage.apply_cctf_encoding_and_clip = \
+                identity
+        if spektrafilm_legacy:
+            image = self._get('full', opts, photo, self.image)
+            if image is None:
+                image = self._get('film', opts, photo, self.image)
+                log_raw = photo._expose_print(image)
+                density_cmy = photo._develop_print(log_raw)
+                image = photo._scan(density_cmy)
+                self.cache[self._key('full', opts)] = image
+        else:
+            image = photo.process(self.image)
         self.make_lut(opts, image)
         end = time.time()
         sys.stderr.write('total time: %.3f\n' % (end - start))
