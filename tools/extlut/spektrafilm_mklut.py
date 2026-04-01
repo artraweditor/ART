@@ -278,7 +278,6 @@ class LUTCreator:
             params.film_render.grain.active = False
             params.film_render.halation.active = False
             params.print_render.glare.active = False
-            #params.negative.parametric.density_curves.active = False
             params.film_render.density_curve_gamma = opts.film_gamma
             params.film_render.dir_couplers.active = \
                 opts.dir_couplers_amount > 0
@@ -398,9 +397,6 @@ class LUTCreator:
         def identity(rgb, *args, **kwds): return rgb
         if spektrafilm_legacy:
             photo.print_paper._apply_cctf_encoding_and_clip = identity
-        else:
-            photo._pipeline._scanning_stage.apply_cctf_encoding_and_clip = \
-                identity
         if spektrafilm_legacy:
             image = self._get('full', opts, photo, self.image)
             if image is None:
