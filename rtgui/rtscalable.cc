@@ -82,9 +82,9 @@ void RTScalable::init(Gtk::Window *window)
         window->get_screen()->get_resolution(),
         rtengine::max((int)initialGdkScale, window->get_scale_factor()));
     direction = window->get_direction();
-#ifdef __APPLE__
-    device_scale = window->get_scale_factor();
-#endif
+    if (!options.pseudoHiDPISupport) {
+        device_scale = window->get_scale_factor();
+    }
 }
 
 void RTScalable::deleteDir(const Glib::ustring &path)

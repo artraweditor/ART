@@ -33,8 +33,9 @@ class RTScalable {
     static Gtk::TextDirection direction; // cached value for text-direction
     static void deleteDir(const Glib::ustring &path);
 
-protected:
     static void setDPInScale(const double newDPI, const int newScale);
+    
+protected:
     static Cairo::RefPtr<Cairo::ImageSurface>
     loadImage(const Glib::ustring &fname, double dpi);
     static Gtk::TextDirection getDirection();

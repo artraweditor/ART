@@ -730,13 +730,7 @@ bool RTWindow::on_configure_event(GdkEventConfigure *event)
         get_position(options.windowX, options.windowY);
     }
 
-    RTImage::setDPInScale(RTScalable::getDPI(),
-                          RTScalable::getScale()); // will update the RTImage on
-                                                   // scale/resolution change
-    RTSurface::setDPInScale(
-        RTScalable::getDPI(),
-        RTScalable::getScale()); // will update the RTSurface on
-                                 // scale/resolution change
+    RTScalable::init(this);
 
     return Gtk::Widget::on_configure_event(event);
 }

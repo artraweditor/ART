@@ -31,15 +31,10 @@ std::map<std::string, Cairo::RefPtr<Cairo::ImageSurface>> surfaceCache;
 
 } // namespace
 
-double RTImage::dpiBack = 0.;
-int RTImage::scaleBack = 0;
-
 RTImage::RTImage() {}
 
 RTImage::RTImage(RTImage &other)
 {
-    dpiBack = other.dpiBack;
-    scaleBack = other.scaleBack;
     pixbuf = other.pixbuf;
     surface = other.surface;
     if (pixbuf) {
@@ -105,20 +100,6 @@ void RTImage::setImage(const Glib::ustring &fileName,
     changeImage(imageName);
 }
 
-/*
- * On windows, if scale = 2, the dpi is non significant, i.e. should be
- * considered = 192
- */
-void RTImage::setDPInScale(const double newDPI, const int newScale)
-{
-    if (scaleBack != newScale || (scaleBack == 1 && dpiBack != newDPI)) {
-        RTScalable::setDPInScale(newDPI, newScale);
-        dpiBack = getDPI();
-        scaleBack = getScale();
-        updateImages();
-    }
-}
-
 void RTImage::changeImage(const Glib::ustring &imageName)
 {
     clear();
@@ -169,8 +150,6 @@ int RTImage::get_height()
 
 void RTImage::init()
 {
-    dpiBack = RTScalable::getDPI();
-    scaleBack = RTScalable::getScale();
 }
 
 void RTImage::cleanup(bool all)
@@ -216,18 +195,6 @@ RTImage::createImgSurfFromFile(const Glib::ustring &fileName)
 
     try {
         surf = loadImage(fileName, getTweakedDPI());
-
-        // HOMBRE: As of now, GDK_SCALE is forced to 1, so setting the
-        // Cairo::ImageSurface scale is not required
-        /*
-        double x=0., y=0.;
-        cairo_surface_get_device_scale(surf->cobj(), &x, &y);
-        if (getScale() == 2) {
-            cairo_surface_set_device_scale(surf->cobj(), 0.5, 0.5);
-            cairo_surface_get_device_scale(surf->cobj(), &x, &y);
-            surf->flush();
-        }
-        */
     } catch (const Glib::Exception &exception) {
         if (options.rtSettings.verbose) {
             std::cerr << "Failed to load image \"" << fileName

@@ -27,10 +27,6 @@
  * sets.
  */
 class RTImage: public Gtk::Image, public RTScalable {
-    static double dpiBack; // used to keep track of master dpi change
-    static int scaleBack;  // used to keep track of master scale change
-    // bool on_configure_event(GdkEventConfigure* configure_event);
-
 protected:
     Cairo::RefPtr<Cairo::ImageSurface> surface;
     Glib::RefPtr<Gdk::Pixbuf> pixbuf;
@@ -55,8 +51,6 @@ public:
     static void init();
     static void cleanup(bool all = false);
     static void updateImages();
-    static void setDPInScale(const double newDPI, const int newScale);
-    static void setScale(const int newScale);
 
     static Glib::RefPtr<Gdk::Pixbuf>
     createPixbufFromFile(const Glib::ustring &fileName);

@@ -26,8 +26,6 @@
  * sets.
  */
 class RTSurface: public RTScalable {
-    static double dpiBack; // used to keep track of master dpi change
-    static int scaleBack;  // used to keep track of master scale change
     void changeImage(Glib::ustring imageName);
 
 public:
@@ -46,8 +44,6 @@ public:
 
     static void init();
     static void updateImages();
-    static void setDPInScale(const double newDPI, const int newScale);
-    static void setScale(const int newScale);
 
     void from(Glib::RefPtr<RTSurface> other);
 };
