@@ -774,33 +774,6 @@ inline int round_up_pow2(int dim)
     return v;
 }
 
-inline int find_fast_dim(int dim)
-{
-    // as per the FFTW docs:
-    //
-    //   FFTW is generally best at handling sizes of the form
-    //     2^a 3^b 5^c 7^d 11^e 13^f,
-    //   where e+f is either 0 or 1.
-    //
-    // Here, we try to round up to the nearest dim that can be expressed in
-    // the above form. This is not exhaustive, but should be ok for pictures
-    // up to 100MPix at least
-
-    int d1 = round_up_pow2(dim);
-    std::vector<int> d = {d1 / 128 * 65, d1 / 64 * 33, d1 / 512 * 273,
-                          d1 / 16 * 9,   d1 / 8 * 5,   d1 / 16 * 11,
-                          d1 / 128 * 91, d1 / 4 * 3,   d1 / 64 * 49,
-                          d1 / 16 * 13,  d1 / 8 * 7,   d1};
-
-    for (size_t i = 0; i < d.size(); ++i) {
-        if (d[i] >= dim) {
-            return d[i];
-        }
-    }
-
-    assert(false);
-    return dim;
-}
 
 void do_convolution(fftwf_plan fwd_plan, fftwf_plan inv_plan,
                     fftwf_complex *kernel_fft, int kernel_radius, int pH,
@@ -899,15 +872,14 @@ struct ConvolutionData {
 
 #ifdef RT_FFTW3F_OMP
             if (multithread) {
-                fftwf_init_threads();
                 fftwf_plan_with_nthreads(omp_get_num_procs());
             }
 #endif
 
             this->W = W;
             this->H = H;
-            pW = find_fast_dim(W + K);
-            pH = find_fast_dim(H + K);
+            pW = find_fast_fftw_dim(W + K);
+            pH = find_fast_fftw_dim(H + K);
 
             buf = static_cast<float *>(fftwf_malloc(sizeof(float) * pH * pW));
             buf_fft = fftwf_alloc_complex(pH * (pW / 2 + 1));
@@ -941,6 +913,41 @@ struct ConvolutionData {
 };
 
 } // namespace
+
+
+int find_fast_fftw_dim(int dim)
+{
+    // as per the FFTW docs:
+    //
+    //   FFTW is generally best at handling sizes of the form
+    //     2^a 3^b 5^c 7^d 11^e 13^f,
+    //   where e+f is either 0 or 1.
+    //
+    // Here, we try to round up to the nearest dim that can be expressed in
+    // the above form. This is not exhaustive, but should be ok for pictures
+    // up to 100MPix at least
+
+    int d1 = round_up_pow2(dim);
+
+    int d2 = d1 / 2;
+    std::vector<int> d = {
+        d2 * 9 / 8,
+        d2 * 5 / 4,
+        d2 * 3 / 2,
+        d2 * 7 / 4,
+        d1
+    };
+    
+    for (size_t i = 0; i < d.size(); ++i) {
+        if (d[i] >= dim) {
+            return d[i];
+        }
+    }
+
+    assert(false);
+    return dim;    
+}
+
 
 Convolution::Convolution(const array2D<float> &kernel, int W, int H,
                          bool multithread)

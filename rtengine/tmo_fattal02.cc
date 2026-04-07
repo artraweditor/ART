@@ -64,7 +64,9 @@
 #include <fftw3.h>
 #include <math.h>
 
+#define BENCHMARK
 #include "StopWatch.h"
+
 #include "array2D.h"
 #include "iccstore.h"
 #include "improcfun.h"
@@ -706,8 +708,10 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 
 // returns T = EVy A EVx^tr
 // note, modifies input data
-void transform_ev2normal(Array2Df *A, Array2Df *T, bool multithread)
+void transform_ev2normal(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithread)
 {
+    BENCHFUN
+        
     int width = A->getCols();
     int height = A->getRows();
     assert((int)T->getCols() == width && (int)T->getRows() == height);
@@ -743,26 +747,30 @@ void transform_ev2normal(Array2Df *A, Array2Df *T, bool multithread)
     // fftwf_free(in);
 
     // executes 2d discrete cosine transform
-    fftwf_plan p;
-    p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
-                          FFTW_REDFT00, FFTW_ESTIMATE);
+    // fftwf_plan p;
+    // auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
+    // p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
+    //                       FFTW_REDFT00, flags);
     fftwf_execute(p);
-    fftwf_destroy_plan(p);
+    // fftwf_destroy_plan(p);
 }
 
 // returns T = EVy^-1 * A * (EVx^-1)^tr
-void transform_normal2ev(Array2Df *A, Array2Df *T, bool multithread)
+void transform_normal2ev(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithread)
 {
+    BENCHFUN
+        
     int width = A->getCols();
     int height = A->getRows();
     assert((int)T->getCols() == width && (int)T->getRows() == height);
 
     // executes 2d discrete cosine transform
-    fftwf_plan p;
-    p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
-                          FFTW_REDFT00, FFTW_ESTIMATE);
+    // fftwf_plan p;
+    // auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
+    // p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
+    //                       FFTW_REDFT00, flags);
     fftwf_execute(p);
-    fftwf_destroy_plan(p);
+    // fftwf_destroy_plan(p);
 
     // need to scale the output matrix to get the right transform
     float factor = (1.0f / ((height - 1) * (width - 1)));
@@ -845,6 +853,7 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
                    bool multithread) /*, pfs::Progress &ph,
      bool adjust_bound)*/
 {
+    BENCHFUN
     // ph.setValue(20);
     // DEBUG_STR << "solve_pde_fft: solving Laplace U = F ..." << std::endl;
     int width = F->getCols();
@@ -854,15 +863,30 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
 
     // activate parallel execution of fft routines
 #ifdef RT_FFTW3F_OMP
-
     if (multithread) {
-        fftwf_init_threads();
-        fftwf_plan_with_nthreads(omp_get_num_procs());
+#  ifdef _OPENMP
+        int n = omp_get_num_procs();
+#  else
+        int n = 1;
+#  endif
+        if (settings->verbose > 1) {
+            std::cout << "fftwf planning with " << n << " threads" << std::endl;
+        }
+        fftwf_plan_with_nthreads(n);
     }
-
-// #else
-//   fftwf_plan_with_nthreads( 2 );
 #endif
+
+    Array2Df *F_tr = buf;
+    
+    auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
+    fftwf_plan p1 = fftwf_plan_r2r_2d(height, width,
+                                      F->data(), F_tr->data(),
+                                      FFTW_REDFT00,
+                                      FFTW_REDFT00, flags);
+    fftwf_plan p2 = fftwf_plan_r2r_2d(height, width,
+                                      F_tr->data(), U->data(),
+                                      FFTW_REDFT00,
+                                      FFTW_REDFT00, flags);
 
     // in general there might not be a solution to the Poisson pde
     // with Neumann boundary conditions unless the boundary satisfies
@@ -876,8 +900,7 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
 
     // transforms F into eigenvector space: Ftr =
     // DEBUG_STR << "solve_pde_fft: transform F to ev space (fft)" << std::endl;
-    Array2Df *F_tr = buf;
-    transform_normal2ev(F, F_tr, multithread);
+    transform_normal2ev(p1, F, F_tr, multithread);
     // TODO: F no longer needed so could release memory, but as it is an
     // input parameter we won't do that
 
@@ -898,7 +921,10 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
     (*F_tr)(0, 0) = 0.f; // any value ok, only adds a const to the solution
 
     // transforms F_tr back to the normal space
-    transform_ev2normal(F_tr, U, multithread);
+    transform_ev2normal(p2, F_tr, U, multithread);
+
+    fftwf_destroy_plan(p2);
+    fftwf_destroy_plan(p1);
 
     // the solution U as calculated will satisfy something like int U = 0
     // since for any constant c, U-c is also a solution and we are mainly
@@ -984,33 +1010,6 @@ inline int round_up_pow2(int dim)
     return v;
 }
 
-inline int find_fast_dim(int dim)
-{
-    // as per the FFTW docs:
-    //
-    //   FFTW is generally best at handling sizes of the form
-    //     2^a 3^b 5^c 7^d 11^e 13^f,
-    //   where e+f is either 0 or 1.
-    //
-    // Here, we try to round up to the nearest dim that can be expressed in
-    // the above form. This is not exhaustive, but should be ok for pictures
-    // up to 100MPix at least
-
-    int d1 = round_up_pow2(dim);
-    std::vector<int> d = {d1 / 128 * 65, d1 / 64 * 33, d1 / 512 * 273,
-                          d1 / 16 * 9,   d1 / 8 * 5,   d1 / 16 * 11,
-                          d1 / 128 * 91, d1 / 4 * 3,   d1 / 64 * 49,
-                          d1 / 16 * 13,  d1 / 8 * 7,   d1};
-
-    for (size_t i = 0; i < d.size(); ++i) {
-        if (d[i] >= dim) {
-            return d[i];
-        }
-    }
-
-    assert(false);
-    return dim;
-}
 
 void ToneMapFattal02(Imagefloat *rgb, ImProcFunctions *ipf,
                      const ProcParams *params, bool multiThread)
@@ -1058,16 +1057,17 @@ void ToneMapFattal02(Imagefloat *rgb, ImProcFunctions *ipf,
     // median filter on the deep shadows, to avoid boosting noise
     // because w2 >= w and h2 >= h, we can use the L buffer as temporary buffer
     // for Median_Denoise()
-    int w2 = find_fast_dim(w) + 1;
-    int h2 = find_fast_dim(h) + 1;
+    int w2 = find_fast_fftw_dim(w);
+    int h2 = find_fast_fftw_dim(h);
     Array2Df L(w2, h2);
+    float scale_ratio = float(std::max(w, h)) / float(RT_dimension_cap);
     {
 #ifdef _OPENMP
         int num_threads = multiThread ? omp_get_num_procs() : 1;
 #else
         int num_threads = 1;
 #endif
-        float r = float(std::max(w, h)) / float(RT_dimension_cap);
+        float r = scale_ratio;
         denoise::Median med;
 
         if (r >= 3) {

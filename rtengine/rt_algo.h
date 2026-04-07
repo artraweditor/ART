@@ -75,4 +75,6 @@ void multiply(Imagefloat *img, const array2D<float> &num,
 void inpaint(Imagefloat *img, const array2D<float> &mask, float threshold,
              int radius, int border, int limit, bool multithread, int skip);
 
+int find_fast_fftw_dim(int dim);
+
 } // namespace rtengine

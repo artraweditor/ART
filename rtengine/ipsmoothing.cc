@@ -49,8 +49,6 @@ extern Options options;
 
 namespace rtengine {
 
-extern MyMutex *fftwMutex;
-
 namespace {
 
 // code adapted from darktable, src/iop/blurs.c
