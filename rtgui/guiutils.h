@@ -705,3 +705,50 @@ void getGUIColor(float &r, float &g, float &b);
 void getGUIColor(double &r, double &g, double &b);
 
 guint getKeyval(GdkEventKey *event, bool consider_shift = true);
+
+
+class MyFontChooser: public Gtk::Dialog {
+public:
+    MyFontChooser(Gtk::Window& parent, const Glib::ustring& initial_font);
+    Glib::ustring get_selected_font() const;
+    void set_use_size(bool yes);
+
+protected:
+    struct ModelColumns: public Gtk::TreeModel::ColumnRecord {
+        ModelColumns() { add(m_col_name); }
+        Gtk::TreeModelColumn<Glib::ustring> m_col_name;
+    };
+
+    void set_initial_state(const Glib::ustring& font_str);
+    void update_preview();    
+
+    ModelColumns m_columns;
+    Glib::RefPtr<Gtk::ListStore> m_refModel;
+    Gtk::TreeView m_treeView;
+    Gtk::ScrolledWindow m_scrolledWindow;
+    Gtk::SpinButton m_spinButton;
+    Glib::RefPtr<Gtk::Adjustment> m_adjustment;
+    Gtk::Label m_previewLabel;
+    Glib::ustring m_selectedFamily;
+    bool use_size_;
+};
+
+
+class MyFontButton: public Gtk::Button {
+public:
+    MyFontButton();
+
+    void set_font_name(const Glib::ustring& font_name);
+    Glib::ustring get_font_name() const;
+
+    sigc::signal<void> signal_font_set() { return m_signal_font_set; }
+    void set_use_size(bool yes) { use_size_ = yes; }
+
+private:
+    void update_button_label();
+    void on_btn_clicked();
+    
+    Glib::ustring m_selected_font;
+    sigc::signal<void> m_signal_font_set;
+    bool use_size_;
+};

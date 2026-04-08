@@ -123,8 +123,8 @@ class Preferences: public Gtk::Dialog, public ProfileStoreListener {
     Gtk::ComboBoxText *curveBBoxPosC;
 
     Gtk::ComboBoxText *themeCBT;
-    Gtk::FontButton *mainFontFB;
-    Gtk::FontButton *colorPickerFontFB;
+    /*Gtk::*/MyFontButton *mainFontFB;
+    /*Gtk::*/MyFontButton *colorPickerFontFB;
     // Gtk::ColorButton* cropMaskColorCB;
     // Gtk::ColorButton* navGuideColorCB;
     Gtk::CheckButton *pseudoHiDPI;

@@ -1148,7 +1148,7 @@ Gtk::Widget *Preferences::getGeneralPanel()
     setExpandAlignProperties(mainFontLbl, false, false, Gtk::ALIGN_START,
                              Gtk::ALIGN_CENTER);
 
-    mainFontFB = Gtk::manage(new Gtk::FontButton());
+    mainFontFB = Gtk::manage(new /*Gtk::*/MyFontButton());
     // setExpandAlignProperties(mainFontFB, false, false, Gtk::ALIGN_START,
     // Gtk::ALIGN_CENTER);
     mainFontFB->set_use_size(true);
@@ -1165,7 +1165,7 @@ Gtk::Widget *Preferences::getGeneralPanel()
     setExpandAlignProperties(colorPickerFontLbl, false, false, Gtk::ALIGN_START,
                              Gtk::ALIGN_CENTER);
 
-    colorPickerFontFB = Gtk::manage(new Gtk::FontButton());
+    colorPickerFontFB = Gtk::manage(new /*Gtk::*/MyFontButton());
     // setExpandAlignProperties(colorPickerFontFB, false, false,
     // Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
     colorPickerFontFB->set_use_size(true);

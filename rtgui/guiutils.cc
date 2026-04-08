@@ -2220,3 +2220,156 @@ guint getKeyval(GdkEventKey *event, bool consider_shift)
     }
     return res;
 }
+
+
+MyFontChooser::MyFontChooser(Gtk::Window& parent, const Glib::ustring& initial_font):
+    Gtk::Dialog(M("FONTCHOOSER_TITLE"), parent, true),
+    m_adjustment(Gtk::Adjustment::create(12.0, 1.0, 100.0, 1.0, 5.0, 0.0)),
+    use_size_(true)
+{
+    set_default_size(400, 500);
+
+    m_refModel = Gtk::ListStore::create(m_columns);
+    m_treeView.set_model(m_refModel);
+    m_treeView.append_column(M("FONTCHOOSER_FAMILY"), m_columns.m_col_name);
+
+    auto families = parent.get_pango_context()->list_families();
+    std::vector<Glib::ustring> fontnames;
+    fontnames.reserve(families.size());
+    for (const auto& family : families) {
+        fontnames.push_back(family->get_name());
+    }
+    std::sort(fontnames.begin(), fontnames.end());
+    for (const auto &n : fontnames) {
+        auto row = *(m_refModel->append());
+        row[m_columns.m_col_name] = n;
+    }
+
+    m_scrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+    m_scrolledWindow.add(m_treeView);
+    get_content_area()->pack_start(m_scrolledWindow, Gtk::PACK_EXPAND_WIDGET);
+
+    Gtk::Box *sizeBox = Gtk::manage(new Gtk::HBox());
+    Gtk::Label *sizeLabel = Gtk::manage(new Gtk::Label(M("FONTCHOOSER_SIZE") + ": "));
+        
+    m_spinButton.set_adjustment(m_adjustment);
+    m_spinButton.set_numeric(true);
+
+    sizeBox->pack_start(*Gtk::manage(new Gtk::Label("")), Gtk::PACK_EXPAND_WIDGET);
+    sizeBox->pack_start(*sizeLabel, Gtk::PACK_SHRINK);
+    sizeBox->pack_start(m_spinButton, Gtk::PACK_SHRINK);
+    get_content_area()->pack_start(*sizeBox, Gtk::PACK_SHRINK, 10);
+
+    m_previewLabel.set_text(M("FONTCHOOSER_PREVIEW_TEXT"));
+    get_content_area()->pack_start(m_previewLabel, Gtk::PACK_SHRINK, 10);
+
+    add_button(M("GENERAL_OK"), Gtk::RESPONSE_OK);
+    add_button(M("GENERAL_CANCEL"), Gtk::RESPONSE_CANCEL);
+
+    m_treeView.get_selection()->signal_changed().connect(
+        sigc::mem_fun(*this, &MyFontChooser::update_preview));
+    m_spinButton.signal_value_changed().connect(
+        sigc::mem_fun(*this, &MyFontChooser::update_preview));
+
+    set_initial_state(initial_font);
+    show_all_children();
+}
+
+
+Glib::ustring MyFontChooser::get_selected_font() const
+{
+    Pango::FontDescription desc;
+    desc.set_family(m_selectedFamily);
+    if (use_size_) {
+        desc.set_size(m_spinButton.get_value() * Pango::SCALE);
+    }
+    return desc.to_string();
+}
+
+
+void MyFontChooser::set_use_size(bool yes)
+{
+    use_size_ = yes;
+    m_spinButton.set_visible(yes);
+}
+
+
+void MyFontChooser::set_initial_state(const Glib::ustring& font_str)
+{
+    Pango::FontDescription desc(font_str);
+    m_selectedFamily = desc.get_family();
+    m_spinButton.set_value(desc.get_size() / (double)Pango::SCALE);
+
+    auto children = m_refModel->children();
+    for (auto iter = children.begin(); iter != children.end(); ++iter) {
+        if ((*iter)[m_columns.m_col_name] == m_selectedFamily) {
+            m_treeView.get_selection()->select(iter);
+            m_treeView.scroll_to_row(m_refModel->get_path(iter));
+            break;
+        }
+    }
+}
+
+
+void MyFontChooser::update_preview()
+{
+    auto iter = m_treeView.get_selection()->get_selected();
+    if (iter) {
+        m_selectedFamily = (*iter)[m_columns.m_col_name];
+        Pango::FontDescription desc;
+        desc.set_family(m_selectedFamily);
+        desc.set_size(m_spinButton.get_value() * Pango::SCALE);
+        m_previewLabel.override_font(desc);
+    }
+}
+
+
+MyFontButton::MyFontButton():
+    m_selected_font("Sans 12"),
+    use_size_(true)
+{
+    update_button_label();
+    signal_clicked().connect(sigc::mem_fun(*this, &MyFontButton::on_btn_clicked));
+}
+
+
+void MyFontButton::set_font_name(const Glib::ustring& font_name)
+{
+    m_selected_font = font_name;
+    update_button_label();
+}
+
+
+Glib::ustring MyFontButton::get_font_name() const
+{
+    return m_selected_font;
+}
+
+
+void MyFontButton::update_button_label()
+{
+    set_label(m_selected_font);
+    // Pango::FontDescription desc(m_selected_font);
+    // override_font(desc);
+}
+
+void MyFontButton::on_btn_clicked()
+{
+    Gtk::Window *parent = dynamic_cast<Gtk::Window*>(this->get_toplevel());
+    if (!parent) {
+        return;
+    }
+
+    MyFontChooser dialog(*parent, m_selected_font);
+    dialog.set_use_size(use_size_);
+        
+    int result = dialog.run();
+
+    if (result == Gtk::RESPONSE_OK) {
+        m_selected_font = dialog.get_selected_font();
+        update_button_label();
+        m_signal_font_set.emit();
+    }
+        
+    dialog.hide();
+}
