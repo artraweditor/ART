@@ -878,7 +878,7 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
 
     Array2Df *F_tr = buf;
     
-    auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
+    auto flags = FFTW_ESTIMATE;
     fftwf_plan p1 = fftwf_plan_r2r_2d(height, width,
                                       F->data(), F_tr->data(),
                                       FFTW_REDFT00,
