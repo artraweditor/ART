@@ -70,6 +70,7 @@ namespace rtengine {
 constexpr unsigned int ARRAY2D_CLEAR_DATA = 2;
 constexpr unsigned int ARRAY2D_BYREFERENCE = 4;
 constexpr unsigned int ARRAY2D_ALIGNED = 16;
+constexpr unsigned int ARRAY2D_ALIGNED_BUF = 32;
 
 template <typename T> class array2D: public rtengine::NonCopyable {
 private:
@@ -172,13 +173,13 @@ public:
 
     explicit array2D(unsigned int flgs)
         : width_(0), height_(0), flags_(flgs), owner_(false), ptr_(nullptr),
-          buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
+          buf_(0, flgs & (ARRAY2D_ALIGNED|ARRAY2D_ALIGNED_BUF) ? 16 : 0)
     {
     }
 
     // creator type1
     array2D(int w, int h, unsigned int flgs = 0)
-        : buf_(0, flgs & ARRAY2D_ALIGNED ? 16 : 0)
+        : buf_(0, flgs & (ARRAY2D_ALIGNED|ARRAY2D_ALIGNED_BUF) ? 16 : 0)
     {
         flags_ = flgs;
         owner_ = true;
@@ -202,7 +203,7 @@ public:
 
     // creator type 2
     array2D(int w, int h, T **source, unsigned int flgs = 0)
-        : buf_(0, (flgs & ARRAY2D_ALIGNED) && !(flgs & ARRAY2D_BYREFERENCE) ? 16
+        : buf_(0, (flgs & (ARRAY2D_ALIGNED|ARRAY2D_ALIGNED_BUF)) && !(flgs & ARRAY2D_BYREFERENCE) ? 16
                                                                             : 0)
     {
         construct(w, h, 0, 0, source, flgs);
@@ -265,7 +266,7 @@ public:
     // or use as resize of 2D array
     void operator()(int w, int h, unsigned int flgs = 0, int offset = 0)
     {
-        flags_ = flgs & ~(ARRAY2D_BYREFERENCE | ARRAY2D_ALIGNED);
+        flags_ = flgs & ~(ARRAY2D_BYREFERENCE|ARRAY2D_ALIGNED|ARRAY2D_ALIGNED_BUF);
         ar_realloc(w, h, offset);
 
         if (flags_ & ARRAY2D_CLEAR_DATA) {
@@ -276,7 +277,7 @@ public:
     // import from flat data
     void operator()(int w, int h, T *copy, unsigned int flgs = 0)
     {
-        flags_ = flgs & ~(ARRAY2D_BYREFERENCE | ARRAY2D_ALIGNED);
+        flags_ = flgs & ~(ARRAY2D_BYREFERENCE|ARRAY2D_ALIGNED|ARRAY2D_ALIGNED_BUF);
 
         ar_realloc(w, h);
         for (int y = 0; y < h; ++y) {

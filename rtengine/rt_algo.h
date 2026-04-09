@@ -40,10 +40,6 @@ void buildBlendMask(float **luminance, float **blend, int W, int H,
 
 void markImpulse(int W, int H, float **const src, char **impulse, float thresh);
 
-// implemented in tmo_fattal02
-void buildGradientsMask(int W, int H, float **luminance, float **out,
-                        float amount, int nlevels, int detail_level, float alfa,
-                        float beta, bool multithread);
 
 // Fills the polygon into the buffer ; Range has to be updated to the
 // PorcParams's AreaMask::Polygon::x/y range Return the smallest dimension of

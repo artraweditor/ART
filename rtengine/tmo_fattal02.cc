@@ -93,10 +93,7 @@ class Array2Df: public array2D<float> {
 
 public:
     Array2Df(): Super() {}
-    Array2Df(int w, int h): Super(w, h) {}
-    Array2Df(int w, int h, float **data): Super(w, h, data, ARRAY2D_BYREFERENCE)
-    {
-    }
+    Array2Df(int w, int h): Super(w, h, ARRAY2D_ALIGNED_BUF) {}
 
     float &operator()(int w, int h) { return (*this)[h][w]; }
 
@@ -1193,78 +1190,6 @@ void ImProcFunctions::dynamicRangeCompression(Imagefloat *rgb)
     if (params->fattal.enabled) {
         ToneMapFattal02(rgb, this, params, multiThread);
     }
-}
-
-void buildGradientsMask(int W, int H, float **luminance, float **out,
-                        float amount, int nlevels, int detail_level, float alfa,
-                        float beta, bool multithread)
-{
-    Array2Df Y(W, H, luminance);
-    const float noise = alfa * 0.01f;
-
-    Array2Df *pyramids[nlevels];
-    pyramids[0] = &Y;
-    createGaussianPyramids(pyramids, nlevels, multithread);
-
-    // calculate gradients and its average values on pyramid levels
-    Array2Df *gradients[nlevels];
-    float avgGrad[nlevels];
-
-    for (int k = 0; k < nlevels; k++) {
-        gradients[k] =
-            new Array2Df(pyramids[k]->getCols(), pyramids[k]->getRows());
-        avgGrad[k] =
-            calculateGradients(pyramids[k], gradients[k], k, multithread);
-        if (k != 0) { // pyramids[0] is Y
-            delete pyramids[k];
-        }
-    }
-
-    // calculate fi matrix
-    Array2Df FI(W, H, out);
-    calculateFiMatrix(&FI, gradients, avgGrad, nlevels, detail_level, alfa,
-                      beta, noise, multithread);
-
-    for (int i = 0; i < nlevels; i++) {
-        delete gradients[i];
-    }
-
-    // rescale the mask
-    float m = out[0][0];
-#ifdef _OPENMP
-#pragma omp parallel for reduction(max : m) if (multithread)
-#endif
-    for (int y = 0; y < H; ++y) {
-        for (int x = 0; x < W; ++x) {
-            float v = std::abs(out[y][x]);
-            out[y][x] = v;
-            m = std::max(v, m);
-        }
-    }
-    if (m > 0.f) {
-        const float f = amount / m;
-#ifdef _OPENMP
-#pragma omp parallel for reduction(max : m) if (multithread)
-#endif
-        for (int y = 0; y < H; ++y) {
-            for (int x = 0; x < W; ++x) {
-                out[y][x] *= f;
-            }
-        }
-    }
-
-    // {
-    //     Imagefloat tmp(W, H);
-    //     for (int y = 0; y < H; ++y) {
-    //         for (int x = 0; x < W; ++x) {
-    //             tmp.r(y, x) = tmp.g(y, x) = tmp.b(y, x) = out[y][x] *
-    //             65535.f;
-    //         }
-    //     }
-    //     std::ostringstream name;
-    //     name << "/tmp/FI-" << W << "x" << H << ".tif";
-    //     tmp.saveAsTIFF(name.str(), 16);
-    // }
 }
 
 } // namespace rtengine
