@@ -710,13 +710,12 @@ Image8 *PreviewImage::load_raw(const Glib::ustring &fname, int w, int h)
     ColorTemp wb = show_clip ? ColorTemp() : src.getWB();
     src.preprocess(neutral.raw, neutral.lensProf, neutral.coarse, false, wb);
 
-    // src.rescale();
-    src.fast_demosaic(show_clip);
-
     if (compute_histogram_) {
         src.getRAWHistogram(hist_[0], hist_[1], hist_[2]);
     }
 
+    src.fast_demosaic(show_clip);
+    
     bool marked = show_clip && src.mark_clipped();
 
     int fw, fh;
