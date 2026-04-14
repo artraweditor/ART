@@ -56,7 +56,7 @@ MyMutex *fftwMutex = nullptr;
 MyMutex *librawMutex = nullptr;
 
 
-#ifdef _OPENMP
+#ifdef ART_FFTW3F_THREADS_CALLBACK
 
 void art_omp_fftwf_parallel_loop(void *(*work)(char *), char *jobdata, size_t elsize, int njobs, void *data)
 {
@@ -166,7 +166,7 @@ int init(const Settings *s, Glib::ustring baseDir,
 
 #ifdef RT_FFTW3F_OMP
     fftwf_init_threads();
-#  ifdef _OPENMP
+#  ifdef ART_FFTW3F_THREADS_CALLBACK
     fftwf_threads_set_callback(art_omp_fftwf_parallel_loop, NULL);
 #  endif // _OPENMP
 #endif

@@ -455,9 +455,9 @@ if(WITH_SYSTEM_KLT)
 endif()
 
 #Set the appropriate FFTW flags on macOS
-if(APPLE AND OPTION_OMP)
-        set(EXTRA_LIB "-L${LOCAL_PREFIX}/lib -lfftw3f_omp -lfftw3f -lm")
-endif()
+# if(APPLE AND OPTION_OMP)
+#         set(EXTRA_LIB "-L${LOCAL_PREFIX}/lib -lfftw3f_omp -lfftw3f -lm")
+# endif()
 
 # Check for libcanberra-gtk3 (sound events on Linux):
 if(UNIX AND(NOT APPLE))
@@ -537,6 +537,29 @@ int main()
             add_definitions(-DRT_FFTW3F_OMP)
             set(FFTW3F_LIBRARIES ${FFTW3F_LIBRARIES} ${fftw3f_omp})
         endif()
+    endif()
+
+    set(CMAKE_REQUIRED_INCLUDES ${FFTW3F_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_LIBRARIES)
+    foreach(l ${FFTW3F_LIBRARIES})
+        set(_f "_f-NOTFOUND")
+        find_library(_f ${l} PATHS ${FFTW3F_LIBRARY_DIRS})
+        set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${_f})
+    endforeach()    
+    check_c_source_compiles(
+"#include <fftw3.h>
+
+void parallel_loop(void *(*work)(char *), char *jobdata, size_t elsize, int njobs, void *data)
+{
+}
+
+int main()
+{
+    fftwf_threads_set_callback(parallel_loop, NULL);
+    return 0;
+}" _fftw3f_threads_callback)
+    if(_fftw3f_threads_callback)
+        add_definitions(-DART_FFTW3F_THREADS_CALLBACK)
     endif()
 endif()
 
