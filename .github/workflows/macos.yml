@@ -132,6 +132,7 @@ jobs:
           cmake ../exiv2-${EXIV2_VERSION} \
              -DCMAKE_BUILD_TYPE=Release \
              -DEXIV2_ENABLE_BMFF=1 \
+             -DEXIV2_ENABLE_INIH=0 \
              -DCMAKE_INSTALL_PREFIX=$INSTDIR
           make -j$(nproc)
           sudo make install
