@@ -89,7 +89,7 @@ jobs:
 
       - name: Install Exiv2
         run: |
-          EXIV2_VERSION='0.28.3'
+          EXIV2_VERSION='0.28.8'
           mkdir exiv2
           cd exiv2
           wget https://github.com/Exiv2/exiv2/archive/refs/tags/v${EXIV2_VERSION}.tar.gz
