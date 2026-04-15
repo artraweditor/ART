@@ -98,6 +98,7 @@ jobs:
           sudo port install clang-17
           sudo port install librsvg-devel
           sudo port install lensfun
+          sudo port install exiv2
           sudo port install fftw-3-single +openmp
           sudo port install openexr
           sudo port install lcms2
@@ -118,25 +119,6 @@ jobs:
             ./configure --prefix=$INSTDIR --with-gtk3
           make -j$(nproc)
           sudo make install
-
-      - name: Install Exiv2
-        run: |
-          EXIV2_VERSION='0.28.8'
-          INSTDIR=/opt/art-deps
-          mkdir exiv2
-          cd exiv2
-          wget https://github.com/Exiv2/exiv2/archive/refs/tags/v${EXIV2_VERSION}.tar.gz
-          tar xzf v${EXIV2_VERSION}.tar.gz
-          mkdir build
-          cd build
-          cmake ../exiv2-${EXIV2_VERSION} \
-             -DCMAKE_BUILD_TYPE=Release \
-             -DEXIV2_ENABLE_BMFF=1 \
-             -DEXIV2_ENABLE_INIH=0 \
-             -DCMAKE_INSTALL_PREFIX=$INSTDIR
-          make -j$(nproc)
-          sudo make install
-          cd ../..
 
       - name: Install LibRaw
         run: |
