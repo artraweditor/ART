@@ -31,6 +31,7 @@
 #include "../rtengine/rtengine.h"
 
 #include "rtimage.h"
+#include "rtsurface.h"
 
 // for convenience...
 #include "pathutils.h"
@@ -183,22 +184,22 @@ public:
 
 private:
     type_signal_enabled_toggled message;
-    static Glib::RefPtr<RTImage>
+    static std::shared_ptr<RTSurface>
         inconsistentImage; /// "inconsistent" image, displayed when useEnabled
                            /// is true ; in this case, nothing will tell that an
                            /// expander is opened/closed
-    static Glib::RefPtr<RTImage>
+    static std::shared_ptr<RTSurface>
         enabledImage; ///      "enabled" image, displayed when useEnabled is
                       ///      true ; in this case, nothing will tell that an
                       ///      expander is opened/closed
-    static Glib::RefPtr<RTImage>
+    static std::shared_ptr<RTSurface>
         disabledImage; ///     "disabled" image, displayed when useEnabled is
                        ///     true ; in this case, nothing will tell that an
                        ///     expander is opened/closed
-    static Glib::RefPtr<RTImage>
+    static std::shared_ptr<RTSurface>
         openedImage; ///       "opened" image, displayed when useEnabled is
                      ///       false
-    static Glib::RefPtr<RTImage>
+    static std::shared_ptr<RTSurface>
         closedImage;   ///       "closed" image, displayed when useEnabled is
                        ///       false
     bool enabled;      /// Enabled feature (default to true)

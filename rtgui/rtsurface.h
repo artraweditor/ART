@@ -36,14 +36,14 @@ public:
     RTSurface(Glib::ustring fileName,
               Glib::ustring rtlFileName = Glib::ustring());
 
-    void setImage(Glib::ustring fileName,
-                  Glib::ustring rtlFileName = Glib::ustring());
+    // void setImage(Glib::ustring fileName,
+    //               Glib::ustring rtlFileName = Glib::ustring());
     int getWidth() const;
     int getHeight() const;
     bool hasSurface() const;
 
-    static void init();
-    static void updateImages();
+    // static void init();
+    // static void updateImages();
 
-    void from(Glib::RefPtr<RTSurface> other);
+    // void from(Glib::RefPtr<RTSurface> other);
 };

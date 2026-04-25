@@ -17,8 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __IMAGEAREA_H__
-#define __IMAGEAREA_H__
+#pragma once
 
 #include "cropguilistener.h"
 #include "cropwindow.h"
@@ -171,6 +170,6 @@ public:
     void setAreaDrawListenerProvider(AreaDrawListenerProvider *ap);
 
     void setToolShortcutManager(ToolShortcutManager *mgr);
-};
 
-#endif
+    void setHiDPI(bool yes);    
+};

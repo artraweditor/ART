@@ -38,9 +38,6 @@ extern Options options;
 //-----------------------------------------------------------------------------
 
 class InspectorBuffer {
-    // private:
-    //     int infoFromImage (const Glib::ustring& fname);
-
 public:
     BackBuffer imgBuffer;
     Glib::ustring imgPath;
@@ -48,7 +45,6 @@ public:
 
     explicit InspectorBuffer(const Glib::ustring &imgagePath, int width = -1,
                              int height = -1);
-    //~InspectorBuffer();
 };
 
 InspectorBuffer::InspectorBuffer(const Glib::ustring &imagePath, int width,
@@ -136,22 +132,23 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
     // cleanup the region
 
     if (cur_image_ && cur_image_->imgBuffer.surfaceCreated()) {
-        // this will eventually create/update the off-screen pixmap
+        int scale = getImageDisplayScale();
 
         // compute the displayed area
         rtengine::Coord availableSize;
         rtengine::Coord topLeft;
-        rtengine::Coord displayedSize;
+        // rtengine::Coord displayedSize;
         rtengine::Coord dest(0, 0);
         availableSize.x = win->get_width();
         availableSize.y = win->get_height();
-        int imW = cur_image_->imgBuffer.getWidth();
-        int imH = cur_image_->imgBuffer.getHeight();
+        int imW = cur_image_->imgBuffer.getWidth() / scale;
+        int imH = cur_image_->imgBuffer.getHeight() / scale;
+
+        rtengine::Coord center(center_.x * imW, center_.y * imH);
 
         if (imW < availableSize.x) {
             // center the image in the available space along X
             topLeft.x = 0;
-            displayedSize.x = availableSize.x;
             dest.x = (availableSize.x - imW) / 2;
         } else {
             // partial image display
@@ -165,7 +162,6 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         if (imH < availableSize.y) {
             // center the image in the available space along Y
             topLeft.y = 0;
-            displayedSize.y = availableSize.y;
             dest.y = (availableSize.y - imH) / 2;
         } else {
             // partial image display
@@ -192,6 +188,7 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         }
 
         // Draw!
+        RTScalable::setDisplayScale(cur_image_->imgBuffer.getSurface(), scale);
 
         Gdk::RGBA c;
         Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
@@ -200,7 +197,7 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         if (has_focus_mask_) {
             int sw = std::min(win->get_width(), imW);
             int sh = std::min(win->get_height(), imH);
-            BackBuffer surf(sw, sh); // win->get_width(), win->get_height());
+            BackBuffer surf(sw, sh); 
             cur_image_->imgBuffer.setDestPosition(0, 0);
             cur_image_->imgBuffer.copySurface(&surf);
             show_focus_mask(surf.getSurface());
@@ -223,12 +220,15 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         }
 
         if (options.thumbnail_inspector_show_histogram) {
-            auto s = RTScalable::getScale();
+            auto s = RTScalable::getPseudoHiDPIScale();
+            int dscale = RTScalable::getDisplayScale(this);
             double border = 4 * s;
+            const int hist_W = hist_bb_.getWidth() / dscale;
+            const int hist_H = hist_bb_.getHeight() / dscale;
             Gdk::Rectangle rect(border + 8 * s,
-                                availableSize.y - hist_bb_.getHeight() - 8 * s -
+                                availableSize.y - hist_H - 8 * s -
                                     border,
-                                hist_bb_.getWidth(), hist_bb_.getHeight());
+                                hist_W, hist_H);
 
             // cr->set_operator(Cairo::OPERATOR_OVER);
             cr->set_source_rgba(0., 0., 0., 0.75);
@@ -269,12 +269,9 @@ void InspectorArea::mouseMove(rtengine::Coord2D pos, int transform)
     }
 
     if (cur_image_) {
-        center.set(int(rtengine::LIM01(pos.x) *
-                       double(cur_image_->imgBuffer.getWidth())),
-                   int(rtengine::LIM01(pos.y) *
-                       double(cur_image_->imgBuffer.getHeight())));
+        center_.set(rtengine::LIM01(pos.x), rtengine::LIM01(pos.y));
     } else {
-        center.set(0, 0);
+        center_.set(0, 0);
     }
 
     queue_draw();
@@ -302,6 +299,16 @@ void InspectorArea::switchImage(const Glib::ustring &fullPath, bool recenter,
     }
 }
 
+int InspectorArea::getImageDisplayScale()
+{
+    if (options.thumbnail_inspector_hidpi_preview) {
+        return RTScalable::getDisplayScale(this);
+    } else {
+        return 1;
+    }
+}
+    
+
 bool InspectorArea::doSwitchImage(bool recenter, rtengine::Coord2D newcenter)
 {
     Glib::ustring fullPath = next_image_path_;
@@ -314,13 +321,10 @@ bool InspectorArea::doSwitchImage(bool recenter, rtengine::Coord2D newcenter)
 
     if (cur_image_ && recenter) {
         if (newcenter.x >= 0 && newcenter.y >= 0) {
-            center.set(rtengine::LIM01(newcenter.x) *
-                           cur_image_->imgBuffer.getWidth(),
-                       rtengine::LIM01(newcenter.y) *
-                           cur_image_->imgBuffer.getHeight());
+            center_.set(rtengine::LIM01(newcenter.x),
+                        rtengine::LIM01(newcenter.y));
         } else {
-            center.set(cur_image_->imgBuffer.getWidth() / 2,
-                       cur_image_->imgBuffer.getHeight() / 2);
+            center_.set(0.5, 0.5);
         }
     }
 
@@ -341,8 +345,9 @@ InspectorArea::doCacheImage(const Glib::ustring &fullPath)
         Glib::RefPtr<Gdk::Window> win = get_window();
         int width = -1, height = -1;
         if (win && options.thumbnail_inspector_zoom_fit) {
-            width = win->get_width();
-            height = win->get_height();
+            int scale = getImageDisplayScale();
+            width = win->get_width() * scale;
+            height = win->get_height() * scale;
         }
 
         // Loading a new image
@@ -399,15 +404,15 @@ Gtk::SizeRequestMode InspectorArea::get_request_mode_vfunc() const
 void InspectorArea::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getScale();
-    natural_height = 300 * RTScalable::getScale();
+    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_height = 300 * RTScalable::getPseudoHiDPIScale();
 }
 
 void InspectorArea::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
-    minimum_width = 50 * RTScalable::getScale();
-    natural_width = 200 * RTScalable::getScale();
+    minimum_width = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_width = 200 * RTScalable::getPseudoHiDPIScale();
 }
 
 void InspectorArea::get_preferred_height_for_width_vfunc(
@@ -443,11 +448,11 @@ void InspectorArea::setInfoText(const Glib::ustring &text)
     ilayout->get_pixel_size(iw, ih);
 
     // create BackBuffer
-    int scale = RTScalable::getDeviceScale();
+    int scale = RTScalable::getDisplayScale(this);
     info_bb_.setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, (iw + 16) * scale,
                               (ih + 16) * scale, true);
     info_bb_.setDestPosition(8, 8);
-    RTScalable::setDeviceScale(info_bb_.getSurface(), scale);
+    RTScalable::setDisplayScale(info_bb_.getSurface(), scale);
 
     Cairo::RefPtr<Cairo::Context> cr = info_bb_.getContext();
 
@@ -498,8 +503,8 @@ void InspectorArea::updateHistogram()
                     cur_image_->histogram[2], 1, dummy_arr, dummy_arr, 1,
                     dummy_arr, dummy_arr, dummy_arr, dummy_arr);
 
-    int hist_w = RTScalable::getScale() * 300;
-    int hist_h = RTScalable::getScale() * 200;
+    int hist_w = RTScalable::getPseudoHiDPIScale() * 300;
+    int hist_h = RTScalable::getPseudoHiDPIScale() * 200;
 
     hist_bb_.updateBackBuffer(hist_w, hist_h);
 }
@@ -507,12 +512,13 @@ void InspectorArea::updateHistogram()
 bool InspectorArea::onMouseMove(GdkEventMotion *evt)
 {
     if (active_ && cur_image_ && prev_point_.x >= 0) {
-        double w = cur_image_->imgBuffer.getWidth();
-        double h = cur_image_->imgBuffer.getHeight();
+        int scale = getImageDisplayScale();
+        double w = cur_image_->imgBuffer.getWidth() / scale;
+        double h = cur_image_->imgBuffer.getHeight() / scale;
         if (w > 0 && h > 0) {
             constexpr double gain = 4.0;
-            double dx = center.x - (evt->x - prev_point_.x) * gain;
-            double dy = center.y - (evt->y - prev_point_.y) * gain;
+            double dx = (center_.x * w) - (evt->x - prev_point_.x) * gain;
+            double dy = (center_.y * h) - (evt->y - prev_point_.y) * gain;
             sig_moved_.emit(rtengine::Coord2D(dx / w, dy / h));
         }
         prev_point_.set(evt->x, evt->y);
@@ -596,6 +602,11 @@ Inspector::Inspector(FileCatalog *filecatalog)
     }
     signal_size_allocate().connect(
         sigc::mem_fun(*this, &Inspector::onInspectorResized));
+
+    property_scale_factor().signal_changed().connect(
+        [this]() {
+            hidpi_->set_visible(RTScalable::getDisplayScale(this) > 1);
+        });
 }
 
 void Inspector::mouseMove(rtengine::Coord2D pos, int transform)
@@ -764,6 +775,8 @@ Gtk::HBox *Inspector::get_toolbar()
 
     tb->pack_start(*Gtk::manage(new Gtk::VSeparator()), Gtk::PACK_SHRINK, 4);
 
+    hidpi_ = add_tool("hidpi.svg", "HIDPI_PREVIEW");
+
     zoomfit_ = add_tool("magnifier-fit.svg", "INSPECTOR_ZOOM_FIT");
     zoom11_ = add_tool("magnifier-1to1.svg", "INSPECTOR_ZOOM_11");
 
@@ -809,6 +822,7 @@ Gtk::HBox *Inspector::get_toolbar()
     zoom11_->set_active(!options.thumbnail_inspector_zoom_fit);
 
     cms_->set_active(options.thumbnail_inspector_enable_cms);
+    hidpi_->set_active(options.thumbnail_inspector_hidpi_preview);
 
     jpgconn_ = jpg_->signal_toggled().connect(
         sigc::bind(sigc::mem_fun(*this, &Inspector::mode_toggled), jpg_));
@@ -828,6 +842,9 @@ Gtk::HBox *Inspector::get_toolbar()
 
     cms_->signal_toggled().connect(
         sigc::mem_fun(*this, &Inspector::cms_toggled));
+
+    hidpi_->signal_toggled().connect(
+        sigc::mem_fun(*this, &Inspector::hidpi_toggled));
 
     return tb;
 }
@@ -976,6 +993,15 @@ void Inspector::do_toggle_zoom(Gtk::ToggleButton *b, rtengine::Coord2D pos)
 void Inspector::cms_toggled()
 {
     options.thumbnail_inspector_enable_cms = cms_->get_active();
+    for (size_t i = 0; i < num_active_; ++i) {
+        ins_[i].flushBuffers();
+        ins_[i].switchImage(cur_image_[i]);
+    }
+}
+
+void Inspector::hidpi_toggled()
+{
+    options.thumbnail_inspector_hidpi_preview = hidpi_->get_active();
     for (size_t i = 0; i < num_active_; ++i) {
         ins_[i].flushBuffers();
         ins_[i].switchImage(cur_image_[i]);
@@ -1172,4 +1198,5 @@ void Inspector::onInspectorResized(Gtk::Allocation &a)
         delayconn_ = Glib::signal_timeout().connect(sigc::slot<bool>(doit),
                                                     options.adjusterMaxDelay);
     }
+    hidpi_->set_visible(RTScalable::getDisplayScale(this) > 1);
 }

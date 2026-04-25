@@ -71,7 +71,7 @@ private:
 
     class MethodColumns: public Gtk::TreeModel::ColumnRecord {
     public:
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> colIcon;
+        Gtk::TreeModelColumn<int> colIcon;
         Gtk::TreeModelColumn<Glib::ustring> colLabel;
         Gtk::TreeModelColumn<int> colPreset;
         MethodColumns()
@@ -82,7 +82,7 @@ private:
         }
     };
 
-    static std::vector<Glib::RefPtr<Gdk::Pixbuf>> wbPixbufs;
+    static std::vector<std::shared_ptr<RTSurface>> wbPixbufs;
     Glib::RefPtr<Gtk::TreeStore> refTreeModel;
     MethodColumns methodColumns;
     MyComboBox *method;

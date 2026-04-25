@@ -75,6 +75,9 @@ public:
     void setEnabled(bool e, bool do_update = true);
     bool getEnabled();
 
+    int getDisplayScale() const { return display_scale_; }
+    void setDisplayScale(int scale);
+    
     void colorPick(const rtengine::Coord &pickerPos, float &r, float &g,
                    float &b, float &rpreview, float &gpreview, float &bpreview,
                    LockableColorPicker::Size size);
@@ -141,4 +144,6 @@ private:
 
     IdleRegister idle_register;
     sigc::connection zoom_conn_;
+
+    int display_scale_;
 };

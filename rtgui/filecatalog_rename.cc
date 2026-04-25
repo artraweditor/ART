@@ -571,7 +571,7 @@ bool get_params(FileCatalog *fcatalog,
     Gtk::HBox hb;
     Gtk::HBox mainhb;
     Gtk::VBox mainvb;
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
     int pad = 4 * s;
 
     Gtk::Label lbld(M("RENAME_DIALOG_BASEDIR") + ":");

@@ -17,8 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _THUMBNAILBROWSERBASE_
-#define _THUMBNAILBROWSERBASE_
+#pragma once
 
 #include "guiutils.h"
 #include "inspector.h"
@@ -210,6 +209,6 @@ public:
     Gdk::RGBA getSelectedBgColor() { return internal.getSelectedBgColor(); }
     Gdk::RGBA getPrelightBgColor() { return internal.getPrelightBgColor(); }
     Gdk::RGBA getHighlightColor() { return internal.getHighlightColor(); }
-};
 
-#endif
+    int getThumbDisplayScale() const;
+};

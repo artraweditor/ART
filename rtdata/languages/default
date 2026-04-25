@@ -285,6 +285,7 @@ GENERAL_WARNING;Warning
 GENERAL_DEPRECATED;Deprecated
 GENERAL_DEPRECATED_TOOLTIP;Deprecated! Will be removed in a future version.
 GIMP_PLUGIN_INFO;Welcome to the ART GIMP plugin!\nOnce you are done editing, simply close the main ART window and the image will be automatically imported in GIMP.
+HIDPI_PREVIEW;Enable pixel-for-pixel mode (display images\nusing the native resolution of the screen).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), peak: %5 (%6)\n    range: %7 EV, values: %8, pixels: %9
 HISTOGRAM_TOOLTIP_B;Show/Hide blue histogram.
 HISTOGRAM_TOOLTIP_BAR;Show/Hide RGB indicator bar.

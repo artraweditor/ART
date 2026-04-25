@@ -27,16 +27,17 @@
 namespace {
 
 std::map<std::string, Glib::RefPtr<Gdk::Pixbuf>> pixbufCache;
-std::map<std::string, Cairo::RefPtr<Cairo::ImageSurface>> surfaceCache;
+std::map<std::pair<std::string, int>, Cairo::RefPtr<Cairo::ImageSurface>> surfaceCache;
 
 } // namespace
 
-RTImage::RTImage() {}
+RTImage::RTImage(): path_("") {}
 
-RTImage::RTImage(RTImage &other)
+RTImage::RTImage(RTImage &other): path_("")
 {
     pixbuf = other.pixbuf;
     surface = other.surface;
+    path_ = other.path_;
     if (pixbuf) {
         set(pixbuf);
     } else if (surface) {
@@ -49,6 +50,7 @@ RTImage::RTImage(const Glib::ustring &fileName,
     : Gtk::Image()
 {
     setImage(fileName, rtlFileName);
+    property_scale_factor().signal_changed().connect(sigc::mem_fun(*this, &RTImage::updateScale));
 }
 
 RTImage::RTImage(Glib::RefPtr<Gdk::Pixbuf> &pbuf)
@@ -60,6 +62,7 @@ RTImage::RTImage(Glib::RefPtr<Gdk::Pixbuf> &pbuf)
         set(pbuf);
         this->pixbuf = pbuf;
     }
+    path_ = "";
 }
 
 RTImage::RTImage(Cairo::RefPtr<Cairo::ImageSurface> &surf)
@@ -71,6 +74,7 @@ RTImage::RTImage(Cairo::RefPtr<Cairo::ImageSurface> &surf)
         set(surf);
         surface = surf;
     }
+    path_ = "";
 }
 
 RTImage::RTImage(Glib::RefPtr<RTImage> &other)
@@ -83,6 +87,10 @@ RTImage::RTImage(Glib::RefPtr<RTImage> &other)
             pixbuf = other->get_pixbuf();
             set(pixbuf);
         }
+        path_ = other->path_;
+        property_scale_factor().signal_changed().connect(sigc::mem_fun(*this, &RTImage::updateScale));
+    } else {
+        path_ = "";
     }
 }
 
@@ -104,6 +112,8 @@ void RTImage::changeImage(const Glib::ustring &imageName)
 {
     clear();
 
+    path_ = imageName;
+
     if (imageName.empty()) {
         return;
     }
@@ -114,10 +124,12 @@ void RTImage::changeImage(const Glib::ustring &imageName)
         pixbuf = iterator->second;
         set(iterator->second);
     } else { // if no Pixbuf is set, we update or create a Cairo::ImageSurface
-        auto iterator = surfaceCache.find(imageName);
+        int scale = RTScalable::getDisplayScale(this);
+        auto key = std::make_pair(imageName, scale);
+        auto iterator = surfaceCache.find(key);
         if (iterator == surfaceCache.end()) {
-            auto surf = createImgSurfFromFile(imageName);
-            iterator = surfaceCache.emplace(imageName, surf).first;
+            auto surf = createImgSurfFromFile(imageName, scale);
+            iterator = surfaceCache.emplace(key, surf).first;
         }
         surface = iterator->second;
         set(iterator->second);
@@ -148,37 +160,13 @@ int RTImage::get_height()
     return -1;
 }
 
-void RTImage::init()
-{
-}
-
-void RTImage::cleanup(bool all)
-{
-    for (auto &entry : pixbufCache) {
-        entry.second.reset();
-    }
-    for (auto &entry : surfaceCache) {
-        entry.second.clear();
-    }
-    RTScalable::cleanup(all);
-}
-
-void RTImage::updateImages()
-{
-    for (auto &entry : pixbufCache) {
-        entry.second = createPixbufFromFile(entry.first);
-    }
-    for (auto &entry : surfaceCache) {
-        entry.second = createImgSurfFromFile(entry.first);
-    }
-}
 
 Glib::RefPtr<Gdk::Pixbuf>
-RTImage::createPixbufFromFile(const Glib::ustring &fileName)
+RTImage::createPixbufFromFile(const Glib::ustring &fileName, int scale)
 {
     Cairo::RefPtr<Cairo::ImageSurface> imgSurf =
-        createImgSurfFromFile(fileName);
-    int s = RTScalable::getDeviceScale();
+        createImgSurfFromFile(fileName, scale);
+    int s = scale > 0 ? scale : RTScalable::getGlobalDisplayScale();
     auto res = Gdk::Pixbuf::create(imgSurf, 0, 0, imgSurf->get_width(),
                                    imgSurf->get_height());
     if (s > 1) {
@@ -189,12 +177,12 @@ RTImage::createPixbufFromFile(const Glib::ustring &fileName)
 }
 
 Cairo::RefPtr<Cairo::ImageSurface>
-RTImage::createImgSurfFromFile(const Glib::ustring &fileName)
+RTImage::createImgSurfFromFile(const Glib::ustring &fileName, int scale)
 {
     Cairo::RefPtr<Cairo::ImageSurface> surf;
 
     try {
-        surf = loadImage(fileName, getTweakedDPI());
+        surf = loadImage(fileName, getTweakedDPI(), scale);
     } catch (const Glib::Exception &exception) {
         if (options.rtSettings.verbose) {
             std::cerr << "Failed to load image \"" << fileName
@@ -203,4 +191,13 @@ RTImage::createImgSurfFromFile(const Glib::ustring &fileName)
     }
 
     return surf;
+}
+
+
+void RTImage::updateScale()
+{
+    if (!path_.empty()) {
+        changeImage(path_);
+        queue_draw();
+    }
 }

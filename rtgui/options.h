@@ -218,6 +218,7 @@ public:
     Glib::ustring CPFontFamily; // ColorPicker font family
     int CPFontSize;             // ColorPicker font size (units: pt)
     bool pseudoHiDPISupport;
+    bool hidpi_preview;
     bool fbShowDateTime;
     bool fbShowBasicExif;
     bool fbShowExpComp;
@@ -408,6 +409,9 @@ public:
     int browser_width_for_inspector;
     bool thumbnail_inspector_show_histogram;
     bool thumbnail_inspector_hover;
+    bool thumbnail_inspector_hidpi_preview;
+
+    bool thumbnail_browser_hidpi;
 
     // Glib::ustring batch_queue_profile_path;
     // bool batch_queue_use_profile;

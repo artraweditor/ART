@@ -160,6 +160,8 @@ private:
     BatchQueue *bqueue_;
     std::vector<Thumbnail *> to_open_;
 
+    Gtk::ToggleButton *hidpi_;
+
     void addAndOpenFile(const Glib::ustring &fname, bool force = false);
     void addFile(const Glib::ustring &fName);
     std::vector<Glib::ustring> getFileList(bool recursive);
@@ -174,6 +176,9 @@ private:
     void on_dir_changed(const Glib::RefPtr<Gio::File> &file,
                         const Glib::RefPtr<Gio::File> &other_file,
                         Gio::FileMonitorEvent event_type);
+
+    void toggleHiDPI();
+    void onScaleChange();
 
 public:
     // thumbnail browsers

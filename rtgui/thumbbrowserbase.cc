@@ -57,6 +57,19 @@ ThumbBrowserBase::ThumbBrowserBase()
 
     internal.signal_size_allocate().connect(
         sigc::mem_fun(*this, &ThumbBrowserBase::internalAreaResized));
+
+    property_scale_factor().signal_changed().connect(
+        [this](){
+            const int W = internal.get_width();
+            const int H = internal.get_height();
+            for (auto entry : fd) {
+                if (entry->insideWindow(0, 0, W, H)) {
+                    entry->updateBackBuffer();
+                }
+            }
+            internal.setDirty();
+            internal.queue_draw();
+        });
 }
 
 void ThumbBrowserBase::scrollChanged()
@@ -1053,15 +1066,15 @@ Gtk::SizeRequestMode ThumbBrowserBase::Internal::get_request_mode_vfunc() const
 void ThumbBrowserBase::Internal::get_preferred_height_vfunc(
     int &minimum_height, int &natural_height) const
 {
-    minimum_height = 20 * RTScalable::getScale();
-    natural_height = 80 * RTScalable::getScale();
+    minimum_height = 20 * RTScalable::getPseudoHiDPIScale();
+    natural_height = 80 * RTScalable::getPseudoHiDPIScale();
 }
 
 void ThumbBrowserBase::Internal::get_preferred_width_vfunc(
     int &minimum_width, int &natural_width) const
 {
-    minimum_width = 200 * RTScalable::getScale();
-    natural_width = 1000 * RTScalable::getScale();
+    minimum_width = 200 * RTScalable::getPseudoHiDPIScale();
+    natural_width = 1000 * RTScalable::getPseudoHiDPIScale();
 }
 
 void ThumbBrowserBase::Internal::get_preferred_height_for_width_vfunc(
@@ -1135,7 +1148,6 @@ void ThumbBrowserBase::redraw(bool checkfilter)
 
 void ThumbBrowserBase::zoomChanged(bool zoomIn)
 {
-
     int newHeight = 0;
     int optThumbSize = getThumbnailHeight();
 
@@ -1328,5 +1340,15 @@ void ThumbBrowserBase::getFocus()
     internal.grab_focus();
     if (!fd.empty() && selected.empty()) {
         selectFirst(false);
+    }
+}
+
+
+int ThumbBrowserBase::getThumbDisplayScale() const
+{
+    if (options.thumbnail_browser_hidpi) {
+        return RTScalable::getDisplayScale(this);
+    } else {
+        return 1;
     }
 }

@@ -851,7 +851,7 @@ void DiagonalCurveEditorSubGroup::switchGUI()
                                       dCurve->paramCurveEd.at(2),
                                       dCurve->paramCurveEd.at(3));
 
-            double s = (double)RTScalable::getScale();
+            double s = (double)RTScalable::getPseudoHiDPIScale();
             highlights->setValue(dCurve->paramCurveEd.at(4));
             highlights->setLabel(label[3]);
             lights->setValue(dCurve->paramCurveEd.at(5));

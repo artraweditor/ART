@@ -178,7 +178,7 @@ void RGBCurves::renderCurveBackground(int caller_id,
                                       Cairo::RefPtr<Cairo::Context> cr,
                                       double x, double y, double w, double h)
 {
-    const double s = RTScalable::getScale();
+    const double s = RTScalable::getPseudoHiDPIScale();
     cr->set_line_width(1.0 * s);
 
     DiagonalCurveEditor *curves[3] = {Rshape, Gshape, Bshape};

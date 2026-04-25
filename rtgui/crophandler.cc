@@ -165,7 +165,8 @@ CropHandler::CropHandler()
       cropX(0), cropY(0), cropW(0), cropH(0), enabled(false), cropimg_width(0),
       cropimg_height(0), cix(0), ciy(0), ciw(0), cih(0), cis(1), ipc(nullptr),
       crop(nullptr), displayHandler(nullptr), redraw_needed(false),
-      initial(false)
+      initial(false),
+      display_scale_(1)
 {
 }
 
@@ -235,16 +236,16 @@ bool CropHandler::isFullDisplay()
 
 double CropHandler::getFitCropZoom()
 {
-    double z1 = (double)wh / cropParams.h;
-    double z2 = (double)ww / cropParams.w;
+    double z1 = (double)wh / (cropParams.h / getDisplayScale());
+    double z2 = (double)ww / (cropParams.w / getDisplayScale());
     return z1 < z2 ? z1 : z2;
 }
 
 double CropHandler::getFitZoom()
 {
     if (ipc) {
-        double z1 = (double)wh / ipc->getFullHeight();
-        double z2 = (double)ww / ipc->getFullWidth();
+        double z1 = (double)wh / (ipc->getFullHeight() / getDisplayScale());
+        double z2 = (double)ww / (ipc->getFullWidth() / getDisplayScale());
         return z1 < z2 ? z1 : z2;
     } else {
         return 1.0;
@@ -382,9 +383,8 @@ void CropHandler::setWSize(int w, int h)
 
 void CropHandler::getWSize(int &w, int &h)
 {
-
-    w = ww;
-    h = wh;
+    w = ww * display_scale_;
+    h = wh * display_scale_;
 }
 
 void CropHandler::getAnchorPosition(int &x, int &y)
@@ -505,13 +505,15 @@ void CropHandler::setDetailedCrop(
                                     : float((zoom / 10) * 10) / float(zoom);
                             int imw = cropimg_width * czoom;
                             int imh = cropimg_height * czoom;
+                            int dw = ww * getDisplayScale();
+                            int dh = wh * getDisplayScale();
 
-                            if (imw > ww) {
-                                imw = ww;
+                            if (imw > dw) {
+                                imw = dw;
                             }
 
-                            if (imh > wh) {
-                                imh = wh;
+                            if (imh > dh) {
+                                imh = dh;
                             }
 
                             cropPixbuf = Gdk::Pixbuf::create_from_data(
@@ -765,22 +767,24 @@ void CropHandler::compDim()
     cax = rtengine::LIM(cax, 0, fullW - 1);
     cay = rtengine::LIM(cay, 0, fullH - 1);
 
+    int ow, oh;
+    getWSize(ow, oh);
+
     if (zoom >= 1000) {
-        wwImgSpace = int(float(ww) / float(zoom / 1000) + 0.5f);
-        whImgSpace = int(float(wh) / float(zoom / 1000) + 0.5f);
-        // scaledFullW = fullW * (zoom/1000);
-        // scaledFullH = fullH * (zoom/1000);
+        wwImgSpace = int(float(ow) / float(zoom / 1000) + 0.5f);
+        whImgSpace = int(float(oh) / float(zoom / 1000) + 0.5f);
         scaledCAX = cax * (zoom / 1000);
         scaledCAY = cay * (zoom / 1000);
     } else {
-        wwImgSpace = int(float(ww) * (float(zoom) / 10.f) + 0.5f);
-        whImgSpace = int(float(wh) * (float(zoom) / 10.f) + 0.5f);
-        // scaledFullW = fullW / zoom;
-        // scaledFullH = fullH / zoom;
+        wwImgSpace = int(float(ow) * (float(zoom) / 10.f) + 0.5f);
+        whImgSpace = int(float(oh) * (float(zoom) / 10.f) + 0.5f);
         scaledCAX = int(float(cax) / (float(zoom) / 10.f));
         scaledCAY = int(float(cay) / (float(zoom) / 10.f));
     }
 
+    scaledCAX /= display_scale_;
+    scaledCAY /= display_scale_;
+    
     imgX = ww / 2 - scaledCAX;
     if (imgX < 0) {
         imgX = 0;
@@ -823,5 +827,22 @@ void CropHandler::compDim()
         cropH = fullH;
     }
 
+    // Update display position
+    if (zoom >= 1000) {
+        scaledCAX = cax * (zoom/1000);
+        scaledCAY = cay * (zoom/1000);
+    } else {
+        scaledCAX = int(float(cax) / (float(zoom)/10.f));
+        scaledCAY = int(float(cay) / (float(zoom)/10.f));
+    }
+
     displayHandler->setDisplayPosition(imgX, imgY);
+}
+
+
+void CropHandler::setDisplayScale(int scale)
+{
+    display_scale_ = scale;
+    compDim();
+    update();
 }

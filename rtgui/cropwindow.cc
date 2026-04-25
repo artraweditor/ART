@@ -117,6 +117,9 @@ CropWindow::CropWindow(ImageArea *parent, bool isLowUpdatePriority_,
 
     cropHandler.setDisplayHandler(this);
     cropHandler.newImage(parent->getImProcCoordinator(), isDetailWindow);
+    if (options.hidpi_preview) {
+        cropHandler.setDisplayScale(RTScalable::getDisplayScale(parent));
+    }
 }
 
 CropWindow::~CropWindow()
@@ -257,8 +260,6 @@ void CropWindow::setSize(int w, int h, bool norefresh)
         ObjectMOBuffer::resize(imgAreaW, imgAreaH);
         cropHandler.setWSize(imgAreaW, imgAreaH);
     }
-
-    // iarea->redraw ();
 }
 
 void CropWindow::getSize(int &w, int &h)
@@ -1013,7 +1014,7 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
     } else if (state == SResizeH1 && cropgl) {
         int oy = cropHandler.cropParams.y;
         cropHandler.cropParams.y =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropHandler.cropParams.h += oy - cropHandler.cropParams.y;
         cropgl->cropHeight1Resized(cropHandler.cropParams.x,
                                    cropHandler.cropParams.y,
@@ -1022,7 +1023,7 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         iarea->redraw();
     } else if (state == SResizeH2 && cropgl) {
         cropHandler.cropParams.h =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropgl->cropHeight2Resized(cropHandler.cropParams.x,
                                    cropHandler.cropParams.y,
                                    cropHandler.cropParams.w,
@@ -1031,7 +1032,7 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
     } else if (state == SResizeW1 && cropgl) {
         int ox = cropHandler.cropParams.x;
         cropHandler.cropParams.x =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropHandler.cropParams.w += ox - cropHandler.cropParams.x;
         cropgl->cropWidth1Resized(cropHandler.cropParams.x,
                                   cropHandler.cropParams.y,
@@ -1040,7 +1041,7 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         iarea->redraw();
     } else if (state == SResizeW2 && cropgl) {
         cropHandler.cropParams.w =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropgl->cropWidth2Resized(cropHandler.cropParams.x,
                                   cropHandler.cropParams.y,
                                   cropHandler.cropParams.w,
@@ -1049,11 +1050,11 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
     } else if (state == SResizeTL && cropgl) {
         int ox = cropHandler.cropParams.x;
         cropHandler.cropParams.x =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropHandler.cropParams.w += ox - cropHandler.cropParams.x;
         int oy = cropHandler.cropParams.y;
         cropHandler.cropParams.y =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropHandler.cropParams.h += oy - cropHandler.cropParams.y;
         cropgl->cropTopLeftResized(cropHandler.cropParams.x,
                                    cropHandler.cropParams.y,
@@ -1062,10 +1063,10 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         iarea->redraw();
     } else if (state == SResizeTR && cropgl) {
         cropHandler.cropParams.w =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         int oy = cropHandler.cropParams.y;
         cropHandler.cropParams.y =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropHandler.cropParams.h += oy - cropHandler.cropParams.y;
         cropgl->cropTopRightResized(
             cropHandler.cropParams.x, cropHandler.cropParams.y,
@@ -1075,10 +1076,10 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
     } else if (state == SResizeBL && cropgl) {
         int ox = cropHandler.cropParams.x;
         cropHandler.cropParams.x =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropHandler.cropParams.w += ox - cropHandler.cropParams.x;
         cropHandler.cropParams.h =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropgl->cropBottomLeftResized(
             cropHandler.cropParams.x, cropHandler.cropParams.y,
             cropHandler.cropParams.w, cropHandler.cropParams.h,
@@ -1086,9 +1087,9 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         iarea->redraw();
     } else if (state == SResizeBR && cropgl) {
         cropHandler.cropParams.w =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropHandler.cropParams.h =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropgl->cropBottomRightResized(
             cropHandler.cropParams.x, cropHandler.cropParams.y,
             cropHandler.cropParams.w, cropHandler.cropParams.h,
@@ -1096,9 +1097,9 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         iarea->redraw();
     } else if (state == SCropMove && cropgl) {
         cropHandler.cropParams.x =
-            action_x + (x - press_x) / zoomSteps[cropZoom].zoom;
+            action_x + (x - press_x) / getScreenZoom();
         cropHandler.cropParams.y =
-            action_y + (y - press_y) / zoomSteps[cropZoom].zoom;
+            action_y + (y - press_y) / getScreenZoom();
         cropgl->cropMoved(cropHandler.cropParams.x, cropHandler.cropParams.y,
                           cropHandler.cropParams.w, cropHandler.cropParams.h);
         iarea->redraw();
@@ -1133,8 +1134,8 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
         int new_action_x = x - press_x;
         int new_action_y = y - press_y;
         observedCropWin->remoteMove(
-            (new_action_x - action_x) / zoomSteps[cropZoom].zoom,
-            (new_action_y - action_y) / zoomSteps[cropZoom].zoom);
+            (new_action_x - action_x) / getScreenZoom(),
+            (new_action_y - action_y) / getScreenZoom());
         action_x = new_action_x;
         action_y = new_action_y;
         iarea->redraw();
@@ -1292,6 +1293,10 @@ void CropWindow::pointerMoved(int bstate, int x, int y, double pressure)
                 vy -= (titleHeight + upperBorderWidth + sepWidth);
             }
 
+            int deviceScale = cropHandler.getDisplayScale();
+            vx *= deviceScale;
+            vy *= deviceScale;
+
             int imwidth = cropHandler.cropPixbuftrue->get_width();
             int imheight = cropHandler.cropPixbuftrue->get_height();
 
@@ -1353,10 +1358,19 @@ bool CropWindow::onArea(CursorArea a, int x, int y)
         return x > xpos && y > ypos && x < xpos + width - 1 &&
                y < ypos + imgAreaY;
 
-    case CropImage:
-        return x >= xpos + imgX + imgAreaX && y >= ypos + imgY + imgAreaY &&
-               x < xpos + imgX + imgAreaX + imgW &&
-               y < ypos + imgY + imgAreaY + imgH;
+    case CropImage: {
+        int deviceScale = cropHandler.getDisplayScale();
+        int dx = x * deviceScale;
+        int dy = y * deviceScale;
+        int tx = (xpos + imgX + imgAreaX) * deviceScale;
+        int ty = (ypos + imgY + imgAreaY) * deviceScale;
+        int bx = tx + imgW;
+        int by = ty + imgH;
+        return dx >= tx && dy >= ty && dx < bx && dy < by;
+        // return x >= xpos + imgX + imgAreaX && y >= ypos + imgY + imgAreaY &&
+        //        x < xpos + imgX + imgAreaX + imgW &&
+        //        y < ypos + imgY + imgAreaY + imgH;
+    }
 
     case ColorPicker:
         for (auto colorPicker : colorPickers) {
@@ -1385,43 +1399,88 @@ bool CropWindow::onArea(CursorArea a, int x, int y)
                x1 <= cropHandler.cropParams.x + CROPRESIZEBORDER &&
                x >= xpos + imgX;
 
-    case CropTopRight:
+    case CropTopRight: {
         screenCoordToImage(x, y, x1, y1);
+        int deviceScale = cropHandler.getDisplayScale();
+        int px = x * deviceScale;
+        int py = y * deviceScale;
+        int tx = (xpos + imgX) * deviceScale;
+        int ty = (ypos + imgY) * deviceScale;
+        int bx = tx + imgW;
+        //int by = ty + imgH;
         return cropHandler.cropParams.enabled &&
                y1 >= cropHandler.cropParams.y - CROPRESIZEBORDER &&
                y1 <= cropHandler.cropParams.y + CROPRESIZEBORDER &&
-               y >= ypos + imgY &&
-               x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
-                         CROPRESIZEBORDER &&
-               x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
-                         CROPRESIZEBORDER &&
-               x < xpos + imgX + imgW;
+               py >= ty &&
+               x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 - CROPRESIZEBORDER &&
+               x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 + CROPRESIZEBORDER &&
+               px < bx;
+        // return cropHandler.cropParams.enabled &&
+        //        y1 >= cropHandler.cropParams.y - CROPRESIZEBORDER &&
+        //        y1 <= cropHandler.cropParams.y + CROPRESIZEBORDER &&
+        //        y >= ypos + imgY &&
+        //        x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
+        //                  CROPRESIZEBORDER &&
+        //        x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
+        //                  CROPRESIZEBORDER &&
+        //        x < xpos + imgX + imgW;
+    }
 
-    case CropBottomLeft:
+    case CropBottomLeft: {
+        int deviceScale = cropHandler.getDisplayScale();
         screenCoordToImage(x, y, x1, y1);
+        int px = x * deviceScale;
+        int py = y * deviceScale;
+        int tx = (xpos + imgX) * deviceScale;
+        int ty = (ypos + imgY) * deviceScale;
+        //int bx = tx + imgW;
+        int by = ty + imgH;
         return cropHandler.cropParams.enabled &&
-               y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
-                         CROPRESIZEBORDER &&
-               y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
-                         CROPRESIZEBORDER &&
-               y < ypos + imgY + imgH &&
+               y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 - CROPRESIZEBORDER &&
+               y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 + CROPRESIZEBORDER &&
+               py < by &&
                x1 >= cropHandler.cropParams.x - CROPRESIZEBORDER &&
                x1 <= cropHandler.cropParams.x + CROPRESIZEBORDER &&
-               x >= xpos + imgX;
+               px >= tx;
+        // return cropHandler.cropParams.enabled &&
+        //        y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
+        //                  CROPRESIZEBORDER &&
+        //        y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
+        //                  CROPRESIZEBORDER &&
+        //        y < ypos + imgY + imgH &&
+        //        x1 >= cropHandler.cropParams.x - CROPRESIZEBORDER &&
+        //        x1 <= cropHandler.cropParams.x + CROPRESIZEBORDER &&
+        //        x >= xpos + imgX;
+    }
 
-    case CropBottomRight:
+    case CropBottomRight: {
+        int deviceScale = cropHandler.getDisplayScale();
         screenCoordToImage(x, y, x1, y1);
+        int px = x * deviceScale;
+        int py = y * deviceScale;
+        int tx = (xpos + imgX) * deviceScale;
+        int ty = (ypos + imgY) * deviceScale;
+        int bx = tx + imgW;
+        int by = ty + imgH;
         return cropHandler.cropParams.enabled &&
-               y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
-                         CROPRESIZEBORDER &&
-               y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
-                         CROPRESIZEBORDER &&
-               y < ypos + imgY + imgH &&
-               x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
-                         CROPRESIZEBORDER &&
-               x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
-                         CROPRESIZEBORDER &&
-               x < xpos + imgX + imgW;
+               y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 - CROPRESIZEBORDER &&
+               y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 + CROPRESIZEBORDER &&
+               py < by &&
+               x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 - CROPRESIZEBORDER &&
+               x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 + CROPRESIZEBORDER &&
+               px < bx;
+        // return cropHandler.cropParams.enabled &&
+        //        y1 >= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
+        //                  CROPRESIZEBORDER &&
+        //        y1 <= cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
+        //                  CROPRESIZEBORDER &&
+        //        y < ypos + imgY + imgH &&
+        //        x1 >= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
+        //                  CROPRESIZEBORDER &&
+        //        x1 <= cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
+        //                  CROPRESIZEBORDER &&
+        //        x < xpos + imgX + imgW;
+    }
 
     case CropTop:
         screenCoordToImage(x, y, x1, y1);
@@ -1433,17 +1492,31 @@ bool CropWindow::onArea(CursorArea a, int x, int y)
                y1 < cropHandler.cropParams.y + CROPRESIZEBORDER &&
                y >= ypos + imgY;
 
-    case CropBottom:
+    case CropBottom: {
+        int deviceScale = cropHandler.getDisplayScale();
         screenCoordToImage(x, y, x1, y1);
+        //int px = x * deviceScale;
+        int py = y * deviceScale;
+        //int tx = (xpos + imgX) * deviceScale;
+        int ty = (ypos + imgY) * deviceScale;
+        //int bx = tx + imgW;
+        int by = ty + imgH;
         return cropHandler.cropParams.enabled &&
                x1 > cropHandler.cropParams.x + CROPRESIZEBORDER &&
-               x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
-                        CROPRESIZEBORDER &&
-               y1 > cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
-                        CROPRESIZEBORDER &&
-               y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
-                        CROPRESIZEBORDER &&
-               y < ypos + imgY + imgH;
+               x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 - CROPRESIZEBORDER &&
+               y1 > cropHandler.cropParams.y + cropHandler.cropParams.h - 1 - CROPRESIZEBORDER &&
+               y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 + CROPRESIZEBORDER &&
+               py < by;
+        // return cropHandler.cropParams.enabled &&
+        //        x1 > cropHandler.cropParams.x + CROPRESIZEBORDER &&
+        //        x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
+        //                 CROPRESIZEBORDER &&
+        //        y1 > cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
+        //                 CROPRESIZEBORDER &&
+        //        y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 +
+        //                 CROPRESIZEBORDER &&
+        //        y < ypos + imgY + imgH;
+    }
 
     case CropLeft:
         screenCoordToImage(x, y, x1, y1);
@@ -1455,17 +1528,31 @@ bool CropWindow::onArea(CursorArea a, int x, int y)
                x1 < cropHandler.cropParams.x + CROPRESIZEBORDER &&
                x >= xpos + imgX;
 
-    case CropRight:
+    case CropRight: {
+        int deviceScale = cropHandler.getDisplayScale();
         screenCoordToImage(x, y, x1, y1);
+        int px = x * deviceScale;
+        //int py = y * deviceScale;
+        int tx = (xpos + imgX) * deviceScale;
+        //int ty = (ypos + imgY) * deviceScale;
+        int bx = tx + imgW;
+        //int by = ty + imgH;
         return cropHandler.cropParams.enabled &&
                y1 > cropHandler.cropParams.y + CROPRESIZEBORDER &&
-               y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
-                        CROPRESIZEBORDER &&
-               x1 > cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
-                        CROPRESIZEBORDER &&
-               x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
-                        CROPRESIZEBORDER &&
-               x < xpos + imgX + imgW;
+               y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 - CROPRESIZEBORDER &&
+               x1 > cropHandler.cropParams.x + cropHandler.cropParams.w - 1 - CROPRESIZEBORDER &&
+               x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 + CROPRESIZEBORDER &&
+               px < bx;
+        // return cropHandler.cropParams.enabled &&
+        //        y1 > cropHandler.cropParams.y + CROPRESIZEBORDER &&
+        //        y1 < cropHandler.cropParams.y + cropHandler.cropParams.h - 1 -
+        //                 CROPRESIZEBORDER &&
+        //        x1 > cropHandler.cropParams.x + cropHandler.cropParams.w - 1 -
+        //                 CROPRESIZEBORDER &&
+        //        x1 < cropHandler.cropParams.x + cropHandler.cropParams.w - 1 +
+        //                 CROPRESIZEBORDER &&
+        //        x < xpos + imgX + imgW;
+    }
 
     case CropInside:
         screenCoordToImage(x, y, x1, y1);
@@ -1765,6 +1852,7 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
     MyMutex::MyLock lock(cropHandler.cimg);
 
     bool isPreviewImg = false;
+    int deviceScale = cropHandler.getDisplayScale();
 
     if (decorated) {
         drawDecoration(cr);
@@ -1832,7 +1920,7 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
 
         Glib::RefPtr<Gdk::Pixbuf> rough =
             iarea->getPreviewHandler()->getRoughImage(
-                cropX, cropY, imgAreaW, imgAreaH, zoomSteps[cropZoom].zoom);
+                cropX, cropY, imgAreaW, imgAreaH, getScreenZoom());
 
         if (rough) {
             int posX = x + imgAreaX + imgX;
@@ -1847,7 +1935,7 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
                 cropHandler.getPosition(cropX, cropY);
                 drawCrop(style, cr, posX, posY, rough->get_width(),
                          rough->get_height(), cropX, cropY,
-                         zoomSteps[cropZoom].zoom, cropParams,
+                         getScreenZoom(), cropParams,
                          (this == iarea->mainCropWindow), editing_crop,
                          cropHandler.isFullDisplay());
                 if (!editing_crop) {
@@ -1917,8 +2005,10 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
                                 showL || showFocusMask || showFalseColors ||
                                 options.viewing_conditions != Options::ViewingConditions::NORMAL);
 
+            Glib::RefPtr<Gdk::Pixbuf> pixbuf;
             if (need_copy) {
                 Glib::RefPtr<Gdk::Pixbuf> tmp = cropHandler.cropPixbuf->copy();
+                pixbuf = tmp;
                 guint8 *pix = tmp->get_pixels();
                 guint8 *pixWrkSpace = cropHandler.cropPixbuftrue->get_pixels();
 
@@ -2113,57 +2203,41 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
                                 }
                             }
 
-                            /*
-                                if (showch &&
-                               (currWS[0]>=options.highlightThreshold ||
-                               currWS[1]>=options.highlightThreshold ||
-                               currWS[2]>=options.highlightThreshold)) curr[0] =
-                               curr[1] = curr[2] = 0; else if (showcs &&
-                               (currWS[0]<=options.shadowThreshold ||
-                               currWS[1]<=options.shadowThreshold ||
-                               currWS[2]<=options.shadowThreshold)) curr[0] =
-                               curr[1] = curr[2] = 255;
-                                //if (showch &&
-                               ((0.299*curr[0]+0.587*curr[1]+0.114*curr[2])>=options.highlightThreshold))
-                                //    curr[0] = curr[1] = curr[2] = 0;
-                                //else if (showcs &&
-                               ((0.299*curr[0]+0.587*curr[1]+0.114*curr[2])<=options.shadowThreshold))
-                                //    curr[0] = curr[1] = curr[2] = 255;
-                            */
-
                             curr += 3;
                             currWS += 3;
                         }
                     }
                 }
 
-                int posX = x + imgAreaX + imgX;
-                int posY = y + imgAreaY + imgY;
-                Gdk::Cairo::set_source_pixbuf(cr, tmp, posX, posY);
-                cr->rectangle(
-                    posX, posY,
-                    rtengine::min(tmp->get_width(), imgAreaW - imgX),
-                    rtengine::min(tmp->get_height(), imgAreaH - imgY));
-                cr->fill();
             } else {
+                pixbuf = cropHandler.cropPixbuf;
+            }
+            {
                 int posX = x + imgAreaX + imgX;
                 int posY = y + imgAreaY + imgY;
-                Gdk::Cairo::set_source_pixbuf(cr, cropHandler.cropPixbuf, posX,
-                                              posY);
-                cr->rectangle(
-                    posX, posY,
-                    rtengine::min(cropHandler.cropPixbuf->get_width(),
-                                  imgAreaW - imgX),
-                    rtengine::min(cropHandler.cropPixbuf->get_height(),
-                                  imgAreaH - imgY));
-                cr->fill();
+
+                int rw = rtengine::min(pixbuf->get_width(), (imgAreaW - imgX) * deviceScale);
+                int rh = rtengine::min(pixbuf->get_height(), (imgAreaH - imgY) * deviceScale);
+                cropbuf_.setDrawRectangle(Cairo::FORMAT_RGB24, 0, 0, rw, rh);
+                auto cr2 = cropbuf_.getContext();
+                RTScalable::setDisplayScale(cropbuf_.getSurface(), 1);
+                Gdk::Cairo::set_source_pixbuf(cr2, pixbuf, 0, 0);
+                cr2->rectangle(0, 0, rw, rh);
+                cr2->fill();
+                RTScalable::setDisplayScale(cropbuf_.getSurface(), deviceScale);
+                cropbuf_.setDestPosition(posX, posY);
+                cropbuf_.copySurface(cr);
+
+                pixbuf.reset();
+                
             }
 
             if (cropParams.enabled) {
                 int cropX, cropY;
                 cropHandler.getPosition(cropX, cropY);
                 drawCrop(style, cr, x + imgAreaX + imgX, y + imgAreaY + imgY,
-                         imgW, imgH, cropX, cropY, zoomSteps[cropZoom].zoom,
+                         std::ceil(float(imgW) / deviceScale), std::ceil(float(imgH) / deviceScale), cropX, cropY,
+                         getScreenZoom(),
                          cropParams, (this == iarea->mainCropWindow),
                          editing_crop, cropHandler.isFullDisplay());
                 if (!editing_crop) {
@@ -2261,7 +2335,8 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
             cropHandler.getPosition(cropX, cropY);
             Glib::RefPtr<Gdk::Pixbuf> rough =
                 iarea->getPreviewHandler()->getRoughImage(
-                    cropX, cropY, imgAreaW, imgAreaH, zoomSteps[cropZoom].zoom);
+                    cropX, cropY, imgAreaW, imgAreaH,
+                    getScreenZoom());
 
             if (rough) {
                 int posX = x + imgAreaX + imgX;
@@ -2277,7 +2352,7 @@ void CropWindow::expose(Cairo::RefPtr<Cairo::Context> cr)
                     drawCrop(style, cr, x + imgAreaX + imgX,
                              y + imgAreaY + imgY, rough->get_width(),
                              rough->get_height(), cropX, cropY,
-                             zoomSteps[cropZoom].zoom, cropParams,
+                             getScreenZoom(), cropParams,
                              (this == iarea->mainCropWindow), editing_crop,
                              cropHandler.isFullDisplay());
                     if (!editing_crop) {
@@ -2345,7 +2420,8 @@ void CropWindow::setEditSubscriber(EditSubscriber *newSubscriber)
 {
     // Delete, create, update all buffers based upon newSubscriber's type
     if (newSubscriber) {
-        ObjectMOBuffer::resize(imgAreaW, imgAreaH);
+        int deviceScale = cropHandler.getDisplayScale();
+        ObjectMOBuffer::resize(imgAreaW * deviceScale, imgAreaH * deviceScale);
     } else {
         ObjectMOBuffer::flush();
     }
@@ -2376,7 +2452,8 @@ void CropWindow::zoomIn(bool toCursor, int cursorX, int cursorY)
 
             zoomVersion = exposeVersion;
         } else {
-            screenCoordToImage(xpos + imgX + imgW / 2, ypos + imgY + imgH / 2,
+            int deviceScale = cropHandler.getDisplayScale();
+            screenCoordToImage(xpos + imgX + imgW / 2 / deviceScale, ypos + imgY + imgH / 2 / deviceScale,
                                x, y);
 
             if (cropHandler.cropParams.enabled) {
@@ -2428,7 +2505,8 @@ void CropWindow::zoomOut(bool toCursor, int cursorX, int cursorY)
         x = cursorX;
         y = cursorY;
     } else {
-        screenCoordToImage(xpos + imgX + imgW / 2, ypos + imgY + imgH / 2, x,
+        int deviceScale = cropHandler.getDisplayScale();
+        screenCoordToImage(xpos + imgX + imgW / 2 / deviceScale, ypos + imgY + imgH / 2 / deviceScale, x,
                            y);
     }
 
@@ -2460,7 +2538,8 @@ void CropWindow::zoom11(bool notify)
 
         zoomVersion = exposeVersion;
     } else {
-        screenCoordToImage(xpos + imgX + imgW / 2, ypos + imgY + imgH / 2, x,
+        int deviceScale = cropHandler.getDisplayScale();
+        screenCoordToImage(xpos + imgX + imgW / 2 / deviceScale, ypos + imgY + imgH / 2 / deviceScale, x,
                            y);
     }
 
@@ -2676,95 +2755,89 @@ void CropWindow::deleteColorPickers()
     colorPickers.clear();
 }
 
-void CropWindow::screenCoordToCropBuffer(int phyx, int phyy, int &cropx,
-                                         int &cropy)
-{
-
-    rtengine::Crop *crop = static_cast<rtengine::Crop *>(cropHandler.getCrop());
-    cropx = phyx - xpos - imgX - imgAreaX;
-    cropy = phyy - ypos - imgY - imgAreaY;
-
-    if (zoomSteps[cropZoom].zoom > 1.) {
-        cropx = int(double(cropx) / zoomSteps[cropZoom].zoom);
-        cropy = int(double(cropy) / zoomSteps[cropZoom].zoom);
-    } else {
-        float czoom = float((zoomSteps[cropZoom].czoom / 10) * 10) /
-                      float(zoomSteps[cropZoom].czoom);
-        cropx = cropx / czoom;
-        cropy = cropy / czoom;
-    }
-
-    cropx += crop->getLeftBorder();
-    cropy += crop->getUpperBorder();
-}
 
 void CropWindow::screenCoordToCropBuffer(double phyx, double phyy,
                                          double &cropx, double &cropy)
 {
-
     rtengine::Crop *crop = static_cast<rtengine::Crop *>(cropHandler.getCrop());
-    cropx = phyx - double(xpos + imgX + imgAreaX);
-    cropy = phyy - double(ypos + imgY + imgAreaY);
+    double x = phyx - xpos - imgX - imgAreaX;
+    double y = phyy - ypos - imgY - imgAreaY;
 
     if (zoomSteps[cropZoom].zoom > 1.) {
-        cropx = double(cropx) / zoomSteps[cropZoom].zoom;
-        cropy = double(cropy) / zoomSteps[cropZoom].zoom;
+        x = x / zoomSteps[cropZoom].zoom;
+        y = y / zoomSteps[cropZoom].zoom;
     } else {
-        double czoom = double((zoomSteps[cropZoom].czoom / 10) * 10) /
-                       float(zoomSteps[cropZoom].czoom);
-        cropx = cropx / czoom;
-        cropy = cropy / czoom;
+        float czoom = float((zoomSteps[cropZoom].czoom / 10) * 10) /
+                      float(zoomSteps[cropZoom].czoom);
+        x = x / czoom;
+        y = y / czoom;
     }
+    int deviceScale = cropHandler.getDisplayScale();
+    x *= deviceScale;
+    y *= deviceScale;
 
-    cropx += double(crop->getLeftBorder());
-    cropy += double(crop->getUpperBorder());
+    x += crop->getLeftBorder();
+    y += crop->getUpperBorder();
+
+    cropx = x;
+    cropy = y;
 }
 
-void CropWindow::screenCoordToImage(int phyx, int phyy, int &imgx, int &imgy)
+
+void CropWindow::screenCoordToCropBuffer(int phyx, int phyy, int &cropx,
+                                         int &cropy)
 {
-
-    int cropX, cropY;
-    cropHandler.getPosition(cropX, cropY);
-    imgx = cropX + (phyx - xpos - imgX - imgAreaX) / zoomSteps[cropZoom].zoom;
-    imgy = cropY + (phyy - ypos - imgY - imgAreaY) / zoomSteps[cropZoom].zoom;
+    double x, y;
+    screenCoordToCropBuffer(phyx, phyy, x, y);
+    cropx = x;
+    cropy = y;
 }
+
 
 void CropWindow::screenCoordToImage(double phyx, double phyy, double &imgx,
                                     double &imgy)
 {
-
     int cropX, cropY;
     cropHandler.getPosition(cropX, cropY);
-    imgx = double(cropX) +
-           (phyx - double(xpos + imgX + imgAreaX)) / zoomSteps[cropZoom].zoom;
-    imgy = double(cropY) +
-           (phyy - double(ypos + imgY + imgAreaY)) / zoomSteps[cropZoom].zoom;
+    double x = (phyx - xpos - imgX - imgAreaX) / zoomSteps[cropZoom].zoom;
+    double y = (phyy - ypos - imgY - imgAreaY) / zoomSteps[cropZoom].zoom;
+
+    int deviceScale = cropHandler.getDisplayScale();
+    imgx = x * deviceScale + cropX;
+    imgy = y * deviceScale + cropY;
 }
 
-void CropWindow::screenCoordToCropCanvas(int phyx, int phyy, int &prevx,
-                                         int &prevy)
+
+void CropWindow::screenCoordToImage(int phyx, int phyy, int &imgx, int &imgy)
 {
-
-    prevx = phyx - xpos - imgAreaX;
-    prevy = phyy - ypos - imgAreaY;
+    double x, y;
+    screenCoordToImage(phyx, phyy, x, y);
+    imgx = std::floor(x);
+    imgy = std::floor(y);
 }
+
 
 void CropWindow::screenCoordToCropCanvas(double phyx, double phyy,
                                          double &prevx, double &prevy)
 {
+    double x = phyx - xpos - imgAreaX;
+    double y = phyy - ypos - imgAreaY;
 
-    prevx = phyx - double(xpos + imgAreaX);
-    prevy = phyy - double(ypos + imgAreaY);
+    int deviceScale = cropHandler.getDisplayScale();
+    prevx = x * deviceScale;
+    prevy = y * deviceScale;
 }
 
-void CropWindow::imageCoordToScreen(int imgx, int imgy, int &phyx, int &phyy)
+
+void CropWindow::screenCoordToCropCanvas(int phyx, int phyy, int &prevx,
+                                         int &prevy)
 {
-
-    int cropX, cropY;
-    cropHandler.getPosition(cropX, cropY);
-    phyx = (imgx - cropX) * zoomSteps[cropZoom].zoom + xpos + imgX + imgAreaX;
-    phyy = (imgy - cropY) * zoomSteps[cropZoom].zoom + ypos + imgY + imgAreaY;
+    double x, y;
+    screenCoordToCropCanvas(phyx, phyy, x, y);
+    prevx = std::floor(x);
+    prevy = std::floor(y);
 }
+
 
 void CropWindow::imageCoordToScreen(double imgx, double imgy, double &phyx,
                                     double &phyy)
@@ -2772,31 +2845,42 @@ void CropWindow::imageCoordToScreen(double imgx, double imgy, double &phyx,
 
     int cropX, cropY;
     cropHandler.getPosition(cropX, cropY);
-    phyx = (imgx - double(cropX)) * zoomSteps[cropZoom].zoom +
+    phyx = (imgx - double(cropX)) * getScreenZoom() +
            double(xpos + imgX + imgAreaX);
-    phyy = (imgy - double(cropY)) * zoomSteps[cropZoom].zoom +
+    phyy = (imgy - double(cropY)) * getScreenZoom() +
            double(ypos + imgY + imgAreaY);
 }
 
-void CropWindow::imageCoordToCropCanvas(int imgx, int imgy, int &phyx,
-                                        int &phyy)
-{
 
-    int cropX, cropY;
-    cropHandler.getPosition(cropX, cropY);
-    phyx = (imgx - cropX) * zoomSteps[cropZoom].zoom + imgX;
-    phyy = (imgy - cropY) * zoomSteps[cropZoom].zoom + imgY;
+void CropWindow::imageCoordToScreen(int imgx, int imgy, int &phyx, int &phyy)
+{
+    double x, y;
+    imageCoordToScreen(imgx, imgy, x, y);
+    phyx = x;
+    phyy = y;
 }
+
 
 void CropWindow::imageCoordToCropCanvas(double imgx, double imgy, double &phyx,
                                         double &phyy)
 {
-
     int cropX, cropY;
     cropHandler.getPosition(cropX, cropY);
-    phyx = (imgx - double(cropX)) * zoomSteps[cropZoom].zoom + double(imgX);
-    phyy = (imgy - double(cropY)) * zoomSteps[cropZoom].zoom + double(imgY);
+    phyx = (imgx - double(cropX)) * getScreenZoom() + double(imgX);
+    phyy = (imgy - double(cropY)) * getScreenZoom() + double(imgY);
 }
+
+
+void CropWindow::imageCoordToCropCanvas(int imgx, int imgy, int &phyx,
+                                        int &phyy)
+{
+    double x, y;
+    imageCoordToCropCanvas(imgx, imgy, x, y);
+    phyx = x;
+    phyy = y;
+}
+
+
 
 void CropWindow::imageCoordToCropBuffer(int imgx, int imgy, int &phyx,
                                         int &phyy)
@@ -2841,32 +2925,38 @@ void CropWindow::imageCoordToCropImage(double imgx, double imgy, double &phyx,
 
 int CropWindow::scaleValueToImage(int value)
 {
-    return int(double(value) / zoomSteps[cropZoom].zoom);
+    int deviceScale = cropHandler.getDisplayScale();
+    return int(double(value) / zoomSteps[cropZoom].zoom * deviceScale);
 }
 
 float CropWindow::scaleValueToImage(float value)
 {
-    return float(double(value) / zoomSteps[cropZoom].zoom);
+    int deviceScale = cropHandler.getDisplayScale();
+    return float(double(value) / zoomSteps[cropZoom].zoom * deviceScale);
 }
 
 double CropWindow::scaleValueToImage(double value)
 {
-    return value / zoomSteps[cropZoom].zoom;
+    int deviceScale = cropHandler.getDisplayScale();
+    return value / zoomSteps[cropZoom].zoom * deviceScale;
 }
 
 int CropWindow::scaleValueToCanvas(int value)
 {
-    return int(double(value) * zoomSteps[cropZoom].zoom);
+    int deviceScale = cropHandler.getDisplayScale();
+    return int(double(value) * zoomSteps[cropZoom].zoom / deviceScale);
 }
 
 float CropWindow::scaleValueToCanvas(float value)
 {
-    return float(double(value) * zoomSteps[cropZoom].zoom);
+    int deviceScale = cropHandler.getDisplayScale();
+    return float(double(value) * zoomSteps[cropZoom].zoom / deviceScale);
 }
 
 double CropWindow::scaleValueToCanvas(double value)
 {
-    return value * zoomSteps[cropZoom].zoom;
+    int deviceScale = cropHandler.getDisplayScale();
+    return value * zoomSteps[cropZoom].zoom / deviceScale;
 }
 
 void CropWindow::drawDecoration(Cairo::RefPtr<Cairo::Context> cr)
@@ -3067,18 +3157,18 @@ void CropWindow::getObservedFrameArea(int &x, int &y, int &w, int &h, int rw,
     // translate it to screen coordinates
     if (rw) { // rw and rh are the rough image's dimension
         x = xpos + imgAreaX + (imgAreaW - rw) / 2 +
-            (observedCropX - mainCropX) * zoomSteps[cropZoom].zoom;
+            (observedCropX - mainCropX) * getScreenZoom();
         y = ypos + imgAreaY + (imgAreaH - rh) / 2 +
-            (observedCropY - mainCropY) * zoomSteps[cropZoom].zoom;
+            (observedCropY - mainCropY) * getScreenZoom();
     } else {
         x = xpos + imgX +
-            (observedCropX - mainCropX) * zoomSteps[cropZoom].zoom;
+            (observedCropX - mainCropX) * getScreenZoom();
         y = ypos + imgY +
-            (observedCropY - mainCropY) * zoomSteps[cropZoom].zoom;
+            (observedCropY - mainCropY) * getScreenZoom();
     }
 
-    w = observedCropW * zoomSteps[cropZoom].zoom;
-    h = observedCropH * zoomSteps[cropZoom].zoom;
+    w = observedCropW * getScreenZoom();
+    h = observedCropH * getScreenZoom();
 }
 
 void CropWindow::drawObservedFrame(Cairo::RefPtr<Cairo::Context> cr, int rw,
@@ -3249,4 +3339,17 @@ void CropWindow::stopRectangleDrawingArea()
         state = SNormal;
         iarea->redraw();
     }
+}
+
+
+void CropWindow::setHiDPI(bool yes)
+{
+    int scale = yes ? RTScalable::getDisplayScale(iarea) : 1;
+    cropHandler.setDisplayScale(scale);
+    if (fitZoom) {
+        zoomFit();
+    } else {
+        iarea->redraw();
+    }
+    options.hidpi_preview = yes;
 }

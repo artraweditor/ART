@@ -141,16 +141,20 @@ void ThumbBrowserEntryBase::addButtonSet(LWButtonSet *bs)
     buttonSet.reset(bs);
 }
 
+
+int ThumbBrowserEntryBase::getPreviewHeight() const
+{
+    return preh * parent->getThumbDisplayScale();
+}
+
 void ThumbBrowserEntryBase::updateBackBuffer()
 {
-
     if (!parent) {
         return;
     }
 
     Gtk::Widget *w = parent->getDrawingArea();
-    int scale =
-        RTScalable::getDeviceScale(); // std::max(w->get_scale_factor(), 1);
+    int scale = RTScalable::getDisplayScale(w);
     int scaled_width = exp_width * scale;
     int scaled_height = exp_height * scale;
 
@@ -171,7 +175,7 @@ void ThumbBrowserEntryBase::updateBackBuffer()
     }
 
     Cairo::RefPtr<Cairo::ImageSurface> surface = backBuffer->getSurface();
-    RTSurface::setDeviceScale(surface, scale);
+    RTSurface::setDisplayScale(surface, scale);
 
     bbSelected = selected;
     bbFramed = framed || (open_in_editor > 0);
@@ -189,14 +193,6 @@ void ThumbBrowserEntryBase::updateBackBuffer()
 
     // clear area, draw frames and background
     style->render_background(cc, 0., 0., exp_width, exp_height);
-    /*
-    cc->set_line_width(0.);
-    cc->set_line_cap(Cairo::LINE_CAP_BUTT);
-    cc->set_antialias(Cairo::ANTIALIAS_NONE);
-    cc->set_source_rgb(bgn.get_red(), bgn.get_green(), bgn.get_blue());
-    cc->rectangle(0., 0., exp_width, exp_height);
-    cc->fill();
-    */
 
     cc->set_antialias(Cairo::ANTIALIAS_SUBPIXEL);
 
@@ -219,29 +215,38 @@ void ThumbBrowserEntryBase::updateBackBuffer()
     // upperMargin+bsHeight, prew+1, preh+1);
     // draw thumbnail image
     if (!preview.empty()) {
-        assert(preview.size() == size_t(prew * 3 * preh));
+        //assert(preview.size() == size_t(prew * 3 * preh));
         prex = borderWidth + (exp_width - prew) / 2;
         int hh = exp_height -
                  (upperMargin + bsHeight + borderWidth + infoh + lowerMargin);
         prey =
             upperMargin + bsHeight + borderWidth + std::max((hh - preh) / 2, 0);
-        if (scale > 1) {
-            if (preview_bb_ && (preview_bb_->getWidth() != prew ||
-                                preview_bb_->getHeight() != preh)) {
-                preview_bb_.reset();
-            }
-            if (!preview_bb_) {
-                preview_bb_ =
-                    Glib::RefPtr<BackBuffer>(new BackBuffer(prew, preh));
-            }
-            preview_bb_->copyRGBCharData(&preview[0], 0, 0, prew, preh,
-                                         prew * 3, 0, 0);
-            preview_bb_->setDestPosition(prex, prey);
-            preview_bb_->copySurface(surface);
-        } else {
-            backBuffer->copyRGBCharData(&preview[0], 0, 0, prew, preh, prew * 3,
-                                        prex, prey);
-        }
+        int thumb_scale = parent->getThumbDisplayScale();
+        int tw = prew * thumb_scale;
+        int th = preh * thumb_scale;
+        preview_bb_.setDrawRectangle(Cairo::FORMAT_RGB24, 0, 0, tw, th);
+        RTScalable::setDisplayScale(preview_bb_.getSurface(), 1);
+        preview_bb_.copyRGBCharData(&preview[0], 0, 0, tw, th, tw * 3, 0, 0);
+        RTScalable::setDisplayScale(preview_bb_.getSurface(), thumb_scale);
+        preview_bb_.setDestPosition(prex, prey);
+        preview_bb_.copySurface(surface);
+        // if (scale > 1) {
+        //     if (preview_bb_ && (preview_bb_->getWidth() != prew ||
+        //                         preview_bb_->getHeight() != preh)) {
+        //         preview_bb_.reset();
+        //     }
+        //     if (!preview_bb_) {
+        //         preview_bb_ =
+        //             Glib::RefPtr<BackBuffer>(new BackBuffer(prew, preh));
+        //     }
+        //     preview_bb_->copyRGBCharData(&preview[0], 0, 0, prew, preh,
+        //                                  prew * 3, 0, 0);
+        //     preview_bb_->setDestPosition(prex, prey);
+        //     preview_bb_->copySurface(surface);
+        // } else {
+        //     backBuffer->copyRGBCharData(&preview[0], 0, 0, prew, preh, prew * 3,
+        //                                 prex, prey);
+        // }
     }
 
     customBackBufferUpdate(cc);
@@ -282,10 +287,10 @@ void ThumbBrowserEntryBase::updateBackBuffer()
         int iheight = 0;
 
         for (size_t i = 0; i < bbIcons.size(); i++) {
-            iwidth += bbIcons[i]->get_width() + (i > 0 ? igap : 0);
+            iwidth += bbIcons[i]->getWidth() + (i > 0 ? igap : 0);
 
-            if (bbIcons[i]->get_height() > iheight) {
-                iheight = bbIcons[i]->get_height();
+            if (bbIcons[i]->getHeight() > iheight) {
+                iheight = bbIcons[i]->getHeight();
             }
         }
 
@@ -311,11 +316,11 @@ void ThumbBrowserEntryBase::updateBackBuffer()
 
         for (size_t i = 0; i < bbIcons.size(); i++) {
             // Draw the image at 110, 90, except for the outermost 10 pixels.
-            Gdk::Cairo::set_source_pixbuf(cc, bbIcons[i], istartx, istarty);
-            cc->rectangle(istartx, istarty, bbIcons[i]->get_width(),
-                          bbIcons[i]->get_height());
+            cc->set_source(bbIcons[i]->surface, istartx, istarty);
+            cc->rectangle(istartx, istarty, bbIcons[i]->getWidth(),
+                          bbIcons[i]->getHeight());
             cc->fill();
-            istartx += bbIcons[i]->get_width() + igap;
+            istartx += bbIcons[i]->getWidth() + igap;
         }
     }
 
@@ -325,31 +330,17 @@ void ThumbBrowserEntryBase::updateBackBuffer()
         int istarty2 = prey + preh - igap - 1;
 
         for (size_t i = 0; i < bbSpecificityIcons.size(); ++i) {
-            istartx2 -= bbSpecificityIcons[i]->get_width() - igap;
-            Gdk::Cairo::set_source_pixbuf(
-                cc, bbSpecificityIcons[i], istartx2,
-                istarty2 - bbSpecificityIcons[i]->get_height());
+            istartx2 -= bbSpecificityIcons[i]->getWidth() - igap;
+            cc->set_source(
+                bbSpecificityIcons[i]->surface, istartx2,
+                istarty2 - bbSpecificityIcons[i]->getHeight());
             cc->rectangle(istartx2,
-                          istarty2 - bbSpecificityIcons[i]->get_height(),
-                          bbSpecificityIcons[i]->get_width(),
-                          bbSpecificityIcons[i]->get_height());
+                          istarty2 - bbSpecificityIcons[i]->getHeight(),
+                          bbSpecificityIcons[i]->getWidth(),
+                          bbSpecificityIcons[i]->getHeight());
             cc->fill();
         }
     }
-    // if (!bbSpecificityIcons.empty()) {
-    //     int igap = 2;
-    //     int istartx2 = prex + prew - 1 + igap;
-    //     int istarty2 = prey + preh - igap - 1;
-
-    //     for (size_t i = 0; i < bbSpecificityIcons.size(); ++i) {
-    //         istartx2 -= bbSpecificityIcons[i]->getWidth() - igap;
-    //         cc->set_source(bbSpecificityIcons[i]->get(), istartx2, istarty2 -
-    //         bbSpecificityIcons[i]->getHeight()); cc->rectangle(istartx2,
-    //         istarty2 - bbSpecificityIcons[i]->getHeight(),
-    //         bbSpecificityIcons[i]->getWidth(),
-    //         bbSpecificityIcons[i]->getHeight()); cc->fill();
-    //     }
-    // }
 
     if (((parent->getLocation() != ThumbBrowserBase::THLOC_EDITOR &&
           options.showFileNames) ||
@@ -454,7 +445,7 @@ void ThumbBrowserEntryBase::updateBackBuffer()
     if (selected) {
         constexpr int radius = 4;
         cc->set_source_rgb(hl.get_red(), hl.get_green(), hl.get_blue());
-        const auto r = 2.5 * radius * RTScalable::getScale();
+        const auto r = 2.5 * radius * RTScalable::getPseudoHiDPIScale();
         constexpr double gap = 1.5;
         cc->move_to(exp_width - gap, exp_height - gap - r);
         cc->line_to(exp_width - gap, exp_height - gap);
@@ -784,16 +775,16 @@ bool ThumbBrowserEntryBase::insideWindow(int x, int y, int w, int h) const
              ofsY + starty > y + h || ofsY + starty + exp_height < y);
 }
 
-std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+std::vector<std::shared_ptr<RTSurface>>
 ThumbBrowserEntryBase::getIconsOnImageArea()
 {
-    return std::vector<Glib::RefPtr<Gdk::Pixbuf>>();
+    return std::vector<std::shared_ptr<RTSurface>>();
 }
 
-std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+std::vector<std::shared_ptr<RTSurface>>
 ThumbBrowserEntryBase::getSpecificityIconsOnImageArea()
 {
-    return std::vector<Glib::RefPtr<Gdk::Pixbuf>>();
+    return std::vector<std::shared_ptr<RTSurface>>();
 }
 
 bool ThumbBrowserEntryBase::motionNotify(int x, int y)

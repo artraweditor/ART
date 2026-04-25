@@ -55,10 +55,10 @@ ExifPanel::ExifPanel(): idata(nullptr), pl_(nullptr)
     exifTree->set_enable_search(false);
     exifTree->set_search_column(0);
 
-    // keepicon = RTImage::createPixbufFromFile("tick-small.svg");
-    editicon = RTImage::createPixbufFromFile("edit-small.svg");
-    open_icon_ = RTImage::createPixbufFromFile("expander-open-small.svg");
-    closed_icon_ = RTImage::createPixbufFromFile("expander-closed-small.svg");
+    icons_.push_back(std::make_shared<RTSurface>("empty.svg"));
+    icons_.push_back(std::make_shared<RTSurface>("edit-small.svg"));
+    icons_.push_back(std::make_shared<RTSurface>("expander-open-small.svg"));
+    icons_.push_back(std::make_shared<RTSurface>("expander-closed-small.svg"));
 
     exif_active_renderer_.property_mode() = Gtk::CELL_RENDERER_MODE_ACTIVATABLE;
     exif_active_renderer_.signal_toggled().connect(
@@ -78,7 +78,10 @@ ExifPanel::ExifPanel(): idata(nullptr), pl_(nullptr)
     render_txt->property_ellipsize() = Pango::ELLIPSIZE_END;
     viewcol->pack_start(*render_pb, false);
     viewcol->pack_start(*render_txt, true);
-    viewcol->add_attribute(*render_pb, "pixbuf", exifColumns.icon);
+    // viewcol->add_attribute(*render_pb, "pixbuf", exifColumns.icon);
+    viewcol->set_cell_data_func(
+        *render_pb, sigc::mem_fun(this, &ExifPanel::setExifTagIcon));
+
     viewcol->add_attribute(*render_txt, "markup", exifColumns.label);
     viewcol->set_expand(true);
     viewcol->set_resizable(true);
@@ -257,7 +260,7 @@ void ExifPanel::addTag(const std::string &key,
     row[exifColumns.activatable] = activatable;
 
     if (edited) {
-        row[exifColumns.icon] = editicon;
+        row[exifColumns.icon] = EDIT_ICON;//editicon;
     }
     row[exifColumns.tooltip] = Glib::ustring::compose(
         M("EXIFPANEL_METADATUM_TOOLTIP"), p.first + " ► " + lbl, key, value);
@@ -652,7 +655,7 @@ void ExifPanel::onExifRowExpanded(const Gtk::TreeModel::iterator &it,
 {
     auto row = *it;
     if (row[exifColumns.is_group]) {
-        row[exifColumns.icon] = open_icon_;
+        row[exifColumns.icon] = OPEN_ICON;//open_icon_;
     }
 }
 
@@ -661,7 +664,7 @@ void ExifPanel::onExifRowCollapsed(const Gtk::TreeModel::iterator &it,
 {
     auto row = *it;
     if (row[exifColumns.is_group]) {
-        row[exifColumns.icon] = closed_icon_;
+        row[exifColumns.icon] = CLOSED_ICON;//closed_icon_;
     }
 }
 
@@ -805,4 +808,17 @@ void ExifPanel::onEditExifTagValue(const Glib::ustring &path,
 void ExifPanel::setProgressListener(rtengine::ProgressListener *pl)
 {
     pl_ = pl;
+}
+
+
+void ExifPanel::setExifTagIcon(Gtk::CellRenderer *renderer,
+                               const Gtk::TreeModel::iterator &iter)
+{
+    Gtk::TreeModel::Row row = *iter;
+
+    int idx = row[exifColumns.icon];
+    Gtk::CellRendererPixbuf *pr = dynamic_cast<Gtk::CellRendererPixbuf *>(renderer);
+    if (pr) {
+        pr->property_surface() = Cairo::RefPtr<Cairo::Surface>(icons_[idx]->surface);
+    }
 }

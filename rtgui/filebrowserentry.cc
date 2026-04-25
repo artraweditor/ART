@@ -32,11 +32,11 @@
 
 #define CROPRESIZEBORDER 4
 
-Glib::RefPtr<Gdk::Pixbuf> FileBrowserEntry::editedIcon;
-Glib::RefPtr<Gdk::Pixbuf> FileBrowserEntry::recentlySavedIcon;
-Glib::RefPtr<Gdk::Pixbuf> FileBrowserEntry::enqueuedIcon;
-Glib::RefPtr<Gdk::Pixbuf> FileBrowserEntry::hdr;
-Glib::RefPtr<Gdk::Pixbuf> FileBrowserEntry::ps;
+std::shared_ptr<RTSurface> FileBrowserEntry::editedIcon;
+std::shared_ptr<RTSurface> FileBrowserEntry::recentlySavedIcon;
+std::shared_ptr<RTSurface> FileBrowserEntry::enqueuedIcon;
+std::shared_ptr<RTSurface> FileBrowserEntry::hdr;
+std::shared_ptr<RTSurface> FileBrowserEntry::ps;
 
 FileBrowserEntry::FileBrowserEntry(Thumbnail *thm, const Glib::ustring &fname)
     : ThumbBrowserEntryBase(fname), wasInside(false), press_x(0), press_y(0),
@@ -85,11 +85,11 @@ FileBrowserEntry::~FileBrowserEntry()
 
 void FileBrowserEntry::init()
 {
-    editedIcon = RTImage::createPixbufFromFile("tick-small.svg");
-    recentlySavedIcon = RTImage::createPixbufFromFile("save-small.svg");
-    enqueuedIcon = RTImage::createPixbufFromFile("gears-small.svg");
-    hdr = RTImage::createPixbufFromFile("filetype-hdr.svg");
-    ps = RTImage::createPixbufFromFile("filetype-ps.svg");
+    editedIcon = std::shared_ptr<RTSurface>(new RTSurface("tick-small.svg"));
+    recentlySavedIcon = std::shared_ptr<RTSurface>(new RTSurface("save-small.svg"));
+    enqueuedIcon = std::shared_ptr<RTSurface>(new RTSurface("gears-small.svg"));
+    hdr = std::shared_ptr<RTSurface>(new RTSurface("filetype-hdr.svg"));
+    ps = std::shared_ptr<RTSurface>(new RTSurface("filetype-ps.svg"));
 }
 
 void FileBrowserEntry::refreshThumbnailImage()
@@ -129,20 +129,21 @@ void FileBrowserEntry::calcThumbnailSize()
     if (thumbnail) {
         int ow = prew, oh = preh;
         thumbnail->getThumbnailSize(prew, preh);
+        int ts = parent->getThumbDisplayScale();
         if (ow != prew || oh != preh ||
-            preview.size() != size_t(prew * preh * 3)) {
+            preview.size() != size_t(prew * ts * preh * ts * 3)) {
             preview.clear();
         }
     }
 }
 
-std::vector<Glib::RefPtr<Gdk::Pixbuf>> FileBrowserEntry::getIconsOnImageArea()
+std::vector<std::shared_ptr<RTSurface>> FileBrowserEntry::getIconsOnImageArea()
 {
     if (!thumbnail) {
         return {};
     }
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> ret;
+    std::vector<std::shared_ptr<RTSurface>> ret;
 
     if (thumbnail->hasProcParams() && editedIcon) {
         ret.push_back(editedIcon);
@@ -159,14 +160,14 @@ std::vector<Glib::RefPtr<Gdk::Pixbuf>> FileBrowserEntry::getIconsOnImageArea()
     return ret;
 }
 
-std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+std::vector<std::shared_ptr<RTSurface>>
 FileBrowserEntry::getSpecificityIconsOnImageArea()
 {
     if (!thumbnail) {
         return {};
     }
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> ret;
+    std::vector<std::shared_ptr<RTSurface>> ret;
 
     if (thumbnail->isHDR() && hdr) {
         ret.push_back(hdr);
@@ -215,8 +216,8 @@ void FileBrowserEntry::customBackBufferUpdate(Cairo::RefPtr<Cairo::Context> c)
 void FileBrowserEntry::getIconSize(int &w, int &h) const
 {
 
-    w = editedIcon->get_width();
-    h = editedIcon->get_height();
+    w = editedIcon->getWidth();
+    h = editedIcon->getHeight();
 }
 
 FileThumbnailButtonSet *FileBrowserEntry::getThumbButtonSet()
@@ -291,12 +292,25 @@ void FileBrowserEntry::_updateImage(
         coarse_rotate = new_coarse_rotate;
     }
 
-    if (preh == img->getHeight()) {
-        prew = img->getWidth();
+    if (getPreviewHeight() == img->getHeight()) {
+        int ts = parent->getThumbDisplayScale();
+        prew = img->getWidth() / ts;
 
-        preview.resize(prew * preh * 3);
-        std::copy(img->getData(), img->getData() + preview.size(),
-                  preview.begin());
+        int istride = img->getWidth() * 3;
+        int pstride = prew * ts * 3;
+        int ih = img->getHeight();
+        preview.resize(pstride * ih);
+
+        if (img->getWidth() % ts == 0) {
+            std::copy(img->getData(), img->getData() + preview.size(),
+                      preview.begin());
+        } else {
+            for (int y = 0; y < ih; ++y) {
+                std::copy(img->getData() + y * istride,
+                          img->getData() + y * istride + pstride,
+                          preview.begin() + y * pstride);
+            }
+        }
         {
             GThreadLock lock;
             updateBackBuffer();

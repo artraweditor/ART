@@ -844,7 +844,7 @@ void HistogramRGBArea::getPreferredThickness(int &min_thickness,
 void HistogramRGBArea::getPreferredLength(int &min_length,
                                           int &natural_length) const
 {
-    int s = RTScalable::getScale();
+    int s = RTScalable::getPseudoHiDPIScale();
     min_length = 60 * s;
     natural_length = 200 * s;
 }
@@ -854,7 +854,7 @@ void HistogramRGBArea::getPreferredThicknessForLength(
 {
     int bThickness = length / 30;
 
-    int s = RTScalable::getScale();
+    int s = RTScalable::getPseudoHiDPIScale();
 
     if (bThickness > (10 * s)) {
         bThickness = 10 * s;
@@ -897,10 +897,12 @@ void HistogramRGBArea::updateBackBuffer(int r, int g, int b,
     int winx, winy, winw, winh;
     window->get_geometry(winx, winy, winw, winh);
 
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
+    const int scale = RTScalable::getDisplayScale(this);
 
     // This will create or update the size of the BackBuffer::surface
-    setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, winw, winh, true);
+    setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, winw * scale, winh * scale, true);
+    RTScalable::setDisplayScale(surface, scale);
 
     if (surface) {
         Cairo::RefPtr<Cairo::Context> cc = Cairo::Context::create(surface);
@@ -1135,7 +1137,7 @@ void HistogramRGBAreaVert::get_preferred_height_vfunc(int &minimum_height,
 void HistogramRGBAreaVert::get_preferred_width_vfunc(int &minimum_width,
                                                      int &natural_width) const
 {
-    minimum_width = 10 * RTScalable::getScale();
+    minimum_width = 10 * RTScalable::getPseudoHiDPIScale();
     natural_width = minimum_width;
 }
 
@@ -1206,7 +1208,7 @@ Gtk::SizeRequestMode HistogramArea::get_request_mode_vfunc() const
 void HistogramArea::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    int s = RTScalable::getScale();
+    int s = RTScalable::getPseudoHiDPIScale();
     minimum_height = 100 * s;
     natural_height = 200 * s;
 }
@@ -1215,7 +1217,7 @@ void HistogramArea::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
 
-    int s = RTScalable::getScale();
+    int s = RTScalable::getPseudoHiDPIScale();
     minimum_width = 200 * s;
     natural_width = 400 * s;
 }
@@ -1356,13 +1358,16 @@ void HistogramArea::updateBackBuffer(int custom_w, int custom_h)
         window->get_geometry(winx, winy, winw, winh);
     }
 
+    const int scale = RTScalable::getDisplayScale(this);
+    
     // This will create or update the size of the BackBuffer::surface
-    setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, winw, winh, true);
+    setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, winw * scale, winh * scale, true);
+    RTScalable::setDisplayScale(surface, scale);
 
     Cairo::RefPtr<Cairo::Context> cr = Cairo::Context::create(surface);
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
 
     // Setup drawing
     set_source_rgba(cr, 0., 0., 0., 0.);
@@ -1403,11 +1408,14 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
 
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
+    const int scale = RTScalable::getDisplayScale(this);
+    const int ww = w / scale;
+    const int hh = h / scale;
 
     // determine the number of h-gridlines based on current h
     int nrOfHGridPartitions =
-        (int)rtengine::min(16.0, pow(2.0, floor((h - 100) / 250) + 2));
+        (int)rtengine::min(16.0, pow(2.0, floor((hh - 100) / 250) + 2));
     int nrOfVGridPartitions =
         8; // always show 8 stops (lines at 1,3,7,15,31,63,127)
 
@@ -1415,20 +1423,20 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
     if (scopeType == ScopeType::HISTOGRAM) {
         if (drawMode == 0) {
             for (int i = 1; i < nrOfVGridPartitions; i++) {
-                cr->move_to((pow(2.0, i) - 1) / 255.0 * w + 0.5, 0.);
-                cr->line_to((pow(2.0, i) - 1) / 255.0 * w + 0.5, h);
+                cr->move_to((pow(2.0, i) - 1) / 255.0 * ww + 0.5, 0.);
+                cr->line_to((pow(2.0, i) - 1) / 255.0 * ww + 0.5, hh);
                 cr->stroke();
             }
         } else {
             for (int i = 1; i < nrOfVGridPartitions; i++) {
                 cr->move_to(HistogramScaling::log(255, pow(2.0, i) - 1) /
-                                    255.0 * w +
+                                    255.0 * ww +
                                 0.5,
                             0.);
                 cr->line_to(HistogramScaling::log(255, pow(2.0, i) - 1) /
-                                    255.0 * w +
+                                    255.0 * ww +
                                 0.5,
-                            h);
+                            hh);
                 cr->stroke();
             }
         }
@@ -1438,9 +1446,9 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
     if (scopeType == ScopeType::PARADE || scopeType == ScopeType::WAVEFORM) {
         for (int i = 0; i <= nrOfVGridPartitions; i++) {
             const double ypos =
-                h - padding - (pow(2.0, i) - 1) * (h - 2 * padding - 1) / 255.0;
+                hh - padding - (pow(2.0, i) - 1) * (hh - 2 * padding - 1) / 255.0;
             cr->move_to(0, ypos);
-            cr->line_to(w, ypos);
+            cr->line_to(ww, ypos);
             cr->stroke();
         }
     } else if (scopeType == ScopeType::VECTORSCOPE_HC ||
@@ -1448,19 +1456,19 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
         // Vectorscope has no gridlines.
     } else if (drawMode != 2) {
         for (int i = 1; i < nrOfHGridPartitions; i++) {
-            cr->move_to(0., i * (double)h / nrOfHGridPartitions + 0.5);
-            cr->line_to(w, i * (double)h / nrOfHGridPartitions + 0.5);
+            cr->move_to(0., i * (double)hh / nrOfHGridPartitions + 0.5);
+            cr->line_to(ww, i * (double)hh / nrOfHGridPartitions + 0.5);
             cr->stroke();
         }
     } else {
         for (int i = 1; i < nrOfHGridPartitions; i++) {
-            cr->move_to(0., h -
+            cr->move_to(0., hh -
                                 HistogramScaling::log(
-                                    h, i * (double)h / nrOfHGridPartitions) +
+                                    hh, i * (double)hh / nrOfHGridPartitions) +
                                 0.5 * s);
-            cr->line_to(w, h -
+            cr->line_to(ww, hh -
                                HistogramScaling::log(
-                                   h, i * (double)h / nrOfHGridPartitions) +
+                                   hh, i * (double)hh / nrOfHGridPartitions) +
                                0.5 * s);
             cr->stroke();
         }
@@ -1531,8 +1539,8 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
 
         int realhistheight = histheight;
 
-        if (realhistheight < h - 2) {
-            realhistheight = h - 2;
+        if (realhistheight < hh - 2) {
+            realhistheight = hh - 2;
         }
 
         cr->set_antialias(Cairo::ANTIALIAS_SUBPIXEL);
@@ -1543,47 +1551,47 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
 
         const bool rawMode = (scopeType == ScopeType::HISTOGRAM_RAW);
         if (needLuma && !rawMode) {
-            drawCurve(cr, lhist, realhistheight, w, h);
+            drawCurve(cr, lhist, realhistheight, ww, hh);
             set_source_rgba(cr, 0.65, 0.65, 0.65, 0.65);
             cr->fill();
-            drawMarks(cr, lhist, scale, w, ui, oi);
+            drawMarks(cr, lhist, scale, ww, ui, oi);
         }
 
         if (needChroma && !rawMode) {
-            drawCurve(cr, chist, realhistheight, w, h);
+            drawCurve(cr, chist, realhistheight, ww, hh);
             set_source_rgb(cr, 0.9, 0.9, 0.);
             cr->stroke();
-            drawMarks(cr, chist, scale, w, ui, oi);
+            drawMarks(cr, chist, scale, ww, ui, oi);
         }
 
         if (needRed) {
-            drawCurve(cr, rh, realhistheight, w, h);
+            drawCurve(cr, rh, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_R[0], rgb_R[1], rgb_R[2]);
             cr->stroke();
-            drawMarks(cr, rh, scale, w, ui, oi);
+            drawMarks(cr, rh, scale, ww, ui, oi);
         }
 
         if (needGreen) {
-            drawCurve(cr, gh, realhistheight, w, h);
+            drawCurve(cr, gh, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_G[0], rgb_G[1], rgb_G[2]);
             cr->stroke();
-            drawMarks(cr, gh, scale, w, ui, oi);
+            drawMarks(cr, gh, scale, ww, ui, oi);
         }
 
         if (needBlue) {
-            drawCurve(cr, bh, realhistheight, w, h);
+            drawCurve(cr, bh, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_B[0], rgb_B[1], rgb_B[2]);
             cr->stroke();
-            drawMarks(cr, bh, scale, w, ui, oi);
+            drawMarks(cr, bh, scale, ww, ui, oi);
         }
 
     } else if (scopeType == ScopeType::PARADE && rwave.width() > 0) {
-        drawParade(cr, w, h);
+        drawParade(cr, ww, hh);
     } else if (scopeType == ScopeType::WAVEFORM && rwave.width() > 0) {
-        drawWaveform(cr, w, h);
+        drawWaveform(cr, ww, hh);
     } else if (scopeType == ScopeType::VECTORSCOPE_HC ||
                scopeType == ScopeType::VECTORSCOPE_HS) {
-        drawVectorscope(cr, w, h);
+        drawVectorscope(cr, ww, hh);
     }
 }
 
@@ -1650,11 +1658,15 @@ bool HistogramArea::updatePointer(int r, int g, int b,
 void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
 {
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
+
+    const int scale = RTScalable::getDisplayScale(this);
+    const int ww = w / scale;
+    const int hh = h / scale;
 
     // determine the number of h-gridlines based on current h
     int nrOfHGridPartitions =
-        (int)rtengine::min(16.0, pow(2.0, floor((h - 100) / 250) + 2));
+        (int)rtengine::min(16.0, pow(2.0, floor((hh - 100) / 250) + 2));
     double sz = 2;
     if (valid) {
         sz = rtengine::max(rhistRaw.getUpperBound(), ghistRaw.getUpperBound(),
@@ -1684,9 +1696,9 @@ void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
             }
             x /= logmax;
         }
-        x *= w;
+        x *= ww;
         cr->move_to(x, 0.);
-        cr->line_to(x, h);
+        cr->line_to(x, hh);
         cr->stroke();
         if (i <= 1.0) {
             break;
@@ -1698,14 +1710,14 @@ void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
         for (int i = 1; i < nrOfHGridPartitions; i++) {
             double y = double(i) / nrOfHGridPartitions;
             y = rtengine::log2lin(y, 10.0);
-            cr->move_to(0., y * h);
-            cr->line_to(w, y * h);
+            cr->move_to(0., y * hh);
+            cr->line_to(ww, y * hh);
             cr->stroke();
         }
     } else {
         for (int i = 1; i < nrOfHGridPartitions; i++) {
-            cr->move_to(0., i * (double)h / nrOfHGridPartitions + 0.5);
-            cr->line_to(w, i * (double)h / nrOfHGridPartitions + 0.5);
+            cr->move_to(0., i * (double)hh / nrOfHGridPartitions + 0.5);
+            cr->line_to(ww, i * (double)hh / nrOfHGridPartitions + 0.5);
             cr->stroke();
         }
     }
@@ -1730,9 +1742,9 @@ void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
             return val;
         };
 
-        // const int delta = std::max(int(ub / std::max(w / 2, 1)), 1);
+        // const int delta = std::max(int(ub / std::max(ww / 2, 1)), 1);
         // const float delta = 1.05f;
-        RawIdxHelper next_raw_idx(logscale, ub, w);
+        RawIdxHelper next_raw_idx(logscale, ub, ww);
         unsigned int next = 1;
         unsigned int histheight = 0;
 
@@ -1762,8 +1774,8 @@ void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
 
         int realhistheight = histheight;
 
-        if (realhistheight < h - 2) {
-            realhistheight = h - 2;
+        if (realhistheight < hh - 2) {
+            realhistheight = hh - 2;
         }
 
         cr->set_antialias(Cairo::ANTIALIAS_SUBPIXEL);
@@ -1773,24 +1785,24 @@ void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
         int ui = 0, oi = 0;
 
         if (needRed) {
-            drawRawCurve(cr, rh, ub, realhistheight, w, h);
+            drawRawCurve(cr, rh, ub, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_R[0], rgb_R[1], rgb_R[2]);
             cr->stroke();
-            drawMarks(cr, rh, 1.0, w, ui, oi);
+            drawMarks(cr, rh, 1.0, ww, ui, oi);
         }
 
         if (needGreen) {
-            drawRawCurve(cr, gh, ub, realhistheight, w, h);
+            drawRawCurve(cr, gh, ub, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_G[0], rgb_G[1], rgb_G[2]);
             cr->stroke();
-            drawMarks(cr, gh, 1.0, w, ui, oi);
+            drawMarks(cr, gh, 1.0, ww, ui, oi);
         }
 
         if (needBlue) {
-            drawRawCurve(cr, bh, ub, realhistheight, w, h);
+            drawRawCurve(cr, bh, ub, realhistheight, ww, hh);
             set_source_rgb(cr, rgb_B[0], rgb_B[1], rgb_B[2]);
             cr->stroke();
-            drawMarks(cr, bh, 1.0, w, ui, oi);
+            drawMarks(cr, bh, 1.0, ww, ui, oi);
         }
 
         // update stats
@@ -1871,7 +1883,7 @@ void HistogramArea::drawRawCurve(Cairo::RefPtr<Cairo::Context> &cr, LUTu &data,
                                  unsigned int ub, double scale, int hsize,
                                  int vsize)
 {
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
 
     cr->set_line_width(s);
     cr->move_to(0, vsize - 1);
@@ -1934,7 +1946,7 @@ void HistogramArea::drawCurve(Cairo::RefPtr<Cairo::Context> &cr,
                               const LUTu &data, double scale, int hsize,
                               int vsize)
 {
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
 
     cr->set_line_width(s);
     cr->move_to(0, vsize - 1);
@@ -1966,7 +1978,7 @@ void HistogramArea::drawMarks(Cairo::RefPtr<Cairo::Context> &cr,
                               const LUTu &data, double scale, int hsize,
                               int &ui, int &oi)
 {
-    int s = 8 * RTScalable::getScale();
+    int s = 8 * RTScalable::getPseudoHiDPIScale();
 
     if (data[0] > scale) {
         cr->rectangle(0, (ui++) * s, s, s);
@@ -2182,7 +2194,7 @@ void HistogramArea::drawVectorscope(Cairo::RefPtr<Cairo::Context> &cr, int w,
             : std::min<float>(w, h) - 2 * padding;
     const float o_x = (w - scope_scale * vect_width) / 2;
     const float o_y = (h - scope_scale * vect_height) / 2;
-    const double s = RTScalable::getScale();
+    const double s = RTScalable::getPseudoHiDPIScale();
     auto orig_matrix = cr->get_matrix();
     const double line_length = scope_size / 2.0;
     std::valarray<double> ch_ds(1);

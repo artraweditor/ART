@@ -37,7 +37,7 @@ bool SplashImage::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
 
     Glib::RefPtr<Gdk::Window> window = get_window();
     cr->set_source(surface, 0., 0.);
-    int s = RTScalable::getDeviceScale();
+    int s = RTScalable::getDisplayScale(this);
     int sw = surface->get_width() / s;
     int sh = surface->get_height() / s;
     cr->rectangle(0, 0, sw, sh);
@@ -80,17 +80,17 @@ Gtk::SizeRequestMode SplashImage::get_request_mode_vfunc() const
 void SplashImage::get_preferred_height_vfunc(int &minimum_height,
                                              int &natural_height) const
 {
-    int s = RTScalable::getDeviceScale();
+    int s = RTScalable::getDisplayScale(this);
     minimum_height = natural_height =
-        surface ? surface->get_height() / s : 100 * RTScalable::getScale();
+        surface ? surface->get_height() / s : 100 * RTScalable::getPseudoHiDPIScale();
 }
 
 void SplashImage::get_preferred_width_vfunc(int &minimum_width,
                                             int &natural_width) const
 {
-    int s = RTScalable::getDeviceScale();
+    int s = RTScalable::getDisplayScale(this);
     minimum_width = natural_width =
-        surface ? surface->get_width() / s : 100 * RTScalable::getScale();
+        surface ? surface->get_width() / s : 100 * RTScalable::getPseudoHiDPIScale();
 }
 
 void SplashImage::get_preferred_height_for_width_vfunc(

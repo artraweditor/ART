@@ -27,17 +27,14 @@
  * theme-related icon sets.
  */
 class RTScalable {
-    static double dpi;
-    static int scale;
-    static int device_scale;
-    static Gtk::TextDirection direction; // cached value for text-direction
-    static void deleteDir(const Glib::ustring &path);
-
-    static void setDPInScale(const double newDPI, const int newScale);
+    static double dpi_;
+    static int pseudo_hidpi_scale_;
+    static int global_display_scale_;
+    static Gtk::TextDirection direction_; // cached value for text-direction
     
 protected:
     static Cairo::RefPtr<Cairo::ImageSurface>
-    loadImage(const Glib::ustring &fname, double dpi);
+    loadImage(const Glib::ustring &fname, double dpi, int scale=0);
     static Gtk::TextDirection getDirection();
 
 public:
@@ -52,14 +49,15 @@ public:
 #endif
 
     static void init(Gtk::Window *window);
-    static void cleanup(bool all = false);
     static double getDPI();
-    static double
-    getTweakedDPI(); // The returned value is tweaked DPI to adapt to main the
-                     // font size. Maybe not an ideal solution.
-    static int getScale();
-    static int getDeviceScale();
+    static double getTweakedDPI(); // The returned value is tweaked
+                                   // DPI to adapt to main the
+                                   // font size. Maybe not an ideal solution.
+    static int getPseudoHiDPIScale();
+    static int getGlobalDisplayScale();
+    static int getDisplayScale(const Gtk::Widget *w);
 
-    static void setDeviceScale(const Cairo::RefPtr<Cairo::Surface> &surface,
-                               int scale);
+    static void setDisplayScale(const Cairo::RefPtr<Cairo::Surface> &surface,
+                                int scale);
+    static int getDisplayScale(const Cairo::RefPtr<Cairo::Surface> &surface);
 };

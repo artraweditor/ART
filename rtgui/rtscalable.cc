@@ -27,171 +27,108 @@
 #include <librsvg/rsvg.h>
 #include <unordered_map>
 
-double RTScalable::dpi = 0.;
-int RTScalable::scale = 0;
-int RTScalable::device_scale = 1;
+double RTScalable::dpi_ = 0.;
+int RTScalable::pseudo_hidpi_scale_ = 0;
+int RTScalable::global_display_scale_ = 1;
 
 extern Options options;
 extern unsigned char initialGdkScale;
 extern float fontScale;
-Gtk::TextDirection RTScalable::direction = Gtk::TextDirection::TEXT_DIR_NONE;
+Gtk::TextDirection RTScalable::direction_ = Gtk::TextDirection::TEXT_DIR_NONE;
 
-void RTScalable::setDPInScale(const double newDPI, const int newScale)
+double RTScalable::getDPI() { return dpi_; }
+
+double RTScalable::getTweakedDPI() { return dpi_ * fontScale; }
+
+int RTScalable::getPseudoHiDPIScale() { return pseudo_hidpi_scale_; }
+
+int RTScalable::getGlobalDisplayScale()
 {
-    if (!options.pseudoHiDPISupport) {
-        scale = 1;
-        dpi = baseDPI;
-        return;
-    }
+    return global_display_scale_;
+}
 
-    if (scale != newScale || (scale == 1 && dpi != newDPI)) {
-        // reload all images
-        scale = newScale;
-        // HOMBRE: On windows, if scale = 2, the dpi is non significant, i.e.
-        // should be considered = 192 ; don't know for linux/macos
-        dpi = newDPI;
-        if (scale == 1) {
-            if (dpi >= baseHiDPI) {
-                scale = 2;
-            }
-        } else if (scale == 2) {
-            if (dpi < baseHiDPI) {
-                dpi *= 2.;
-            }
-        }
+int RTScalable::getDisplayScale(const Gtk::Widget *w)
+{
+    if (options.pseudoHiDPISupport) {
+        return 1;
+    } else {
+        return w ? w->get_scale_factor() : global_display_scale_;
     }
 }
 
-double RTScalable::getDPI() { return dpi; }
 
-double RTScalable::getTweakedDPI() { return dpi * fontScale; }
-
-int RTScalable::getScale() { return scale; }
-
-int RTScalable::getDeviceScale() { return device_scale; }
-
-Gtk::TextDirection RTScalable::getDirection() { return direction; }
+Gtk::TextDirection RTScalable::getDirection() { return direction_; }
 
 void RTScalable::init(Gtk::Window *window)
 {
-    dpi = 0.;
-    scale = 0;
-    device_scale = 1;
+    direction_ = window->get_direction();
 
-    setDPInScale(
-        window->get_screen()->get_resolution(),
-        rtengine::max((int)initialGdkScale, window->get_scale_factor()));
-    direction = window->get_direction();
     if (!options.pseudoHiDPISupport) {
-        device_scale = window->get_scale_factor();
-    }
-}
-
-void RTScalable::deleteDir(const Glib::ustring &path)
-{
-    if (options.rtSettings.verbose > 1) {
-        std::cout << "RTScalable::deleteDir(" << path << ")" << std::endl;
-    }
-
-    int error = 0;
-    try {
-
-        Glib::Dir dir(path);
-
-        // Removing the directory content
-        for (auto entry = dir.begin(); entry != dir.end(); ++entry) {
-            error |= g_remove(Glib::build_filename(path, *entry).c_str());
-        }
-
-        if (error != 0 && options.rtSettings.verbose) {
-            std::cerr << "Failed to delete all entries in '" << path
-                      << "': " << g_strerror(errno) << std::endl;
-        }
-
-    } catch (Glib::Error &exc) {
-        if (options.rtSettings.verbose) {
-            std::cerr << "Error in deleteDir(" << path << "): " << exc.what()
-                      << std::endl;
-        }
-        error = 1;
-    }
-
-    // Removing the directory itself
-    if (!error) {
-        try {
-
-            error = g_remove(path.c_str());
-
-        } catch (Glib::Error &exc) {
-            if (options.rtSettings.verbose) {
-                std::cerr << "Error in deleteDir(" << path
-                          << "): " << exc.what() << std::endl;
+        pseudo_hidpi_scale_ = 1;
+        dpi_ = baseDPI;
+        global_display_scale_ = window->get_scale_factor();
+    } else {
+        double newDPI = window->get_screen()->get_resolution();
+        int newScale = std::max((int)initialGdkScale, window->get_scale_factor());
+        global_display_scale_ = 1;
+        pseudo_hidpi_scale_ = newScale;
+        // HOMBRE: On windows, if scale = 2, the dpi is non significant, i.e.
+        // should be considered = 192 ; don't know for linux/macos
+        dpi_ = newDPI;
+        if (pseudo_hidpi_scale_ == 1) {
+            if (dpi_ >= baseHiDPI) {
+                pseudo_hidpi_scale_ = 2;
             }
-        }
-    }
-}
-
-void RTScalable::cleanup(bool all)
-{
-    Glib::ustring imagesCacheFolder =
-        Glib::build_filename(options.cacheBaseDir, "svg2png");
-    Glib::ustring sDPI = Glib::ustring::compose("%1", (int)getTweakedDPI());
-
-    try {
-        Glib::Dir dir(imagesCacheFolder);
-
-        for (Glib::DirIterator entry = dir.begin(); entry != dir.end();
-             ++entry) {
-            const Glib::ustring fileName = *entry;
-            const Glib::ustring filePath =
-                Glib::build_filename(imagesCacheFolder, fileName);
-            if (fileName == "." || fileName == ".." ||
-                !Glib::file_test(filePath, Glib::FILE_TEST_IS_DIR)) {
-                continue;
+        } else if (pseudo_hidpi_scale_ == 2) {
+            if (dpi_ < baseHiDPI) {
+                dpi_ *= 2.;
             }
-
-            if (all || fileName != sDPI) {
-                deleteDir(filePath);
-            }
-        }
-    } catch (Glib::Exception &exc) {
-        if (options.rtSettings.verbose) {
-            std::cerr << "Error in RTScalable::cleanup: " << exc.what()
-                      << std::endl;
         }
     }
 }
 
 namespace {
 
-std::unordered_map<std::string, Cairo::RefPtr<Cairo::ImageSurface>> image_cache;
+std::map<std::pair<std::string, int>, Cairo::RefPtr<Cairo::ImageSurface>> image_cache;
 
-Cairo::RefPtr<Cairo::ImageSurface>
-cache_put(const Glib::ustring &fname, Cairo::RefPtr<Cairo::ImageSurface> surf)
+Cairo::RefPtr<Cairo::ImageSurface> cache_put(const Glib::ustring &fname, int scale, Cairo::RefPtr<Cairo::ImageSurface> surf)
 {
-    image_cache[fname] = surf;
+    image_cache[std::make_pair(fname, scale)] = surf;
     return surf;
+}
+
+Cairo::RefPtr<Cairo::ImageSurface> cache_get(const Glib::ustring &fname, int scale)
+{
+    Cairo::RefPtr<Cairo::ImageSurface> res;
+    auto it = image_cache.find(std::make_pair(fname, scale));
+    if (it != image_cache.end()) {
+        res = it->second;
+    }
+    return res;
 }
 
 } // namespace
 
 Cairo::RefPtr<Cairo::ImageSurface>
-RTScalable::loadImage(const Glib::ustring &fname, double dpi)
+RTScalable::loadImage(const Glib::ustring &fname, double dpi, int scale)
 {
     Glib::ustring imagesFolder =
         Glib::build_filename(options.ART_base_dir, "images");
 
-    auto it = image_cache.find(fname);
-    if (it != image_cache.end()) {
-        return it->second;
+    if (!scale) {
+        scale = getGlobalDisplayScale();
     }
 
+    auto res = cache_get(fname, scale);
+    if (res) {
+        return res;
+    }
     auto path = Glib::build_filename(imagesFolder, fname);
 
     std::string svgFile;
 
     if (getExtension(fname) == "png") {
-        return cache_put(fname, Cairo::ImageSurface::create_from_png(path));
+        return cache_put(fname, scale, Cairo::ImageSurface::create_from_png(path));
     }
 
     // -------------------- Loading the SVG file --------------------
@@ -231,7 +168,6 @@ RTScalable::loadImage(const Glib::ustring &fname, double dpi)
 
     RsvgDimensionData dim;
     rsvg_handle_get_dimensions(handle, &dim);
-    int scale = getDeviceScale();
     double r = dpi / baseDPI * scale;
     Cairo::RefPtr<Cairo::ImageSurface> surf = Cairo::ImageSurface::create(
         Cairo::FORMAT_ARGB32, (int)(dim.width * r + 0.499),
@@ -245,14 +181,23 @@ RTScalable::loadImage(const Glib::ustring &fname, double dpi)
     rsvg_handle_render_cairo(handle, c->cobj());
     rsvg_handle_free(handle);
 
-    setDeviceScale(surf, scale);
+    setDisplayScale(surf, scale);
 
-    return cache_put(fname, surf);
+    return cache_put(fname, scale, surf);
 }
 
-void RTScalable::setDeviceScale(const Cairo::RefPtr<Cairo::Surface> &surface,
+void RTScalable::setDisplayScale(const Cairo::RefPtr<Cairo::Surface> &surface,
                                 int scale)
 {
     cairo_surface_t *cobj = surface->cobj();
     cairo_surface_set_device_scale(cobj, scale, scale);
+}
+
+
+int RTScalable::getDisplayScale(const Cairo::RefPtr<Cairo::Surface> &surface)
+{
+    cairo_surface_t *cobj = surface->cobj();
+    double scale = 1;
+    cairo_surface_get_device_scale(cobj, &scale, &scale);
+    return scale;
 }

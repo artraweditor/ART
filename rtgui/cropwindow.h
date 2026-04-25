@@ -162,7 +162,11 @@ class CropWindow: public LWButtonListener,
 
     void initZoomSteps();
 
+    double getDeviceZoom() const { return zoomSteps[cropZoom].zoom * cropHandler.getDisplayScale(); }
+    double getScreenZoom() const { return zoomSteps[cropZoom].zoom / cropHandler.getDisplayScale(); }
+
     AreaDrawUpdater *area_updater_;
+    BackBuffer cropbuf_;
 
 public:
     CropHandler cropHandler;
@@ -284,6 +288,8 @@ public:
 
     void startRectangleDrawingArea(AreaDrawUpdater *updater) override;
     void stopRectangleDrawingArea() override;
+
+    void setHiDPI(bool yes);
 };
 
 #endif

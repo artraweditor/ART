@@ -209,9 +209,9 @@ RTWindow::RTWindow()
       is_application_(false)
 {
 
-    if (options.is_new_version()) {
-        RTImage::cleanup(true);
-    }
+    // if (options.is_new_version()) {
+    //     RTImage::cleanup(true);
+    // }
     cacheMgr->init();
     ProfilePanel::init(this);
 
@@ -384,8 +384,6 @@ RTWindow::RTWindow()
     // ------- end loading theme files
 
     RTScalable::init(this);
-    RTSurface::init();
-    RTImage::init();
     WhiteBalance::init();
     MyExpander::init();
     FileBrowserEntry::init();
@@ -650,7 +648,7 @@ RTWindow::~RTWindow()
         delete fpanel;
     }
 
-    RTImage::cleanup();
+    // RTImage::cleanup();
 }
 
 void RTWindow::on_realize()
@@ -729,8 +727,6 @@ bool RTWindow::on_configure_event(GdkEventConfigure *event)
         get_size(options.windowWidth, options.windowHeight);
         get_position(options.windowX, options.windowY);
     }
-
-    RTScalable::init(this);
 
     return Gtk::Widget::on_configure_event(event);
 }

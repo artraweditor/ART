@@ -24,6 +24,7 @@
 
 #include "dirtreeview.h"
 #include "guiutils.h"
+#include "rtsurface.h"
 
 #ifdef WIN32
 #include "windows.h"
@@ -40,8 +41,8 @@ private:
     struct DirTreeColumns: public Gtk::TreeModelColumnRecord {
     public:
         Gtk::TreeModelColumn<Glib::ustring> filename;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> icon1;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> icon2;
+        Gtk::TreeModelColumn<int> icon1;
+        Gtk::TreeModelColumn<int> icon2;
         Gtk::TreeModelColumn<Glib::ustring> dirname;
         Gtk::TreeModelColumn<Glib::RefPtr<Gio::FileMonitor>> monitor;
 
@@ -67,13 +68,16 @@ private:
 
     void fillRoot();
 
-    Glib::RefPtr<Gdk::Pixbuf> openfolder;
-    Glib::RefPtr<Gdk::Pixbuf> closedfolder;
-    Glib::RefPtr<Gdk::Pixbuf> icdrom;
-    Glib::RefPtr<Gdk::Pixbuf> ifloppy;
-    Glib::RefPtr<Gdk::Pixbuf> ihdd;
-    Glib::RefPtr<Gdk::Pixbuf> inetwork;
-    Glib::RefPtr<Gdk::Pixbuf> iremovable;
+    enum class DirIcon {
+        OPENFOLDER,
+        CLOSEDFOLDER,
+        CDROM,
+        FLOPPY,
+        HDD,
+        NETWORK,
+        REMOVABLE
+    };
+    std::vector<std::shared_ptr<RTSurface>> dir_icons_;
 
     bool expandSuccess;
 
@@ -96,6 +100,8 @@ private:
     IdleRegister idle_register;
 
     void on_cell_data_name(Gtk::CellRenderer *renderer,
+                           const Gtk::TreeModel::iterator &iter);
+    void on_cell_data_icon(Gtk::CellRenderer *renderer,
                            const Gtk::TreeModel::iterator &iter);
 
 public:

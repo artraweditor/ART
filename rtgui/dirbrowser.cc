@@ -124,13 +124,20 @@ DirBrowser::~DirBrowser() { idle_register.destroy(); }
 void DirBrowser::fillDirTree()
 {
 
-    openfolder = RTImage::createPixbufFromFile("folder-open-small.svg");
-    closedfolder = RTImage::createPixbufFromFile("folder-closed-small.svg");
-    icdrom = RTImage::createPixbufFromFile("device-optical.svg");
-    ifloppy = RTImage::createPixbufFromFile("device-floppy.svg");
-    ihdd = RTImage::createPixbufFromFile("device-hdd.svg");
-    iremovable = RTImage::createPixbufFromFile("device-usb.svg");
-    inetwork = RTImage::createPixbufFromFile("device-network.svg");
+    // openfolder = RTImage::createPixbufFromFile("folder-open-small.svg");
+    // closedfolder = RTImage::createPixbufFromFile("folder-closed-small.svg");
+    // icdrom = RTImage::createPixbufFromFile("device-optical.svg");
+    // ifloppy = RTImage::createPixbufFromFile("device-floppy.svg");
+    // ihdd = RTImage::createPixbufFromFile("device-hdd.svg");
+    // iremovable = RTImage::createPixbufFromFile("device-usb.svg");
+    // inetwork = RTImage::createPixbufFromFile("device-network.svg");
+    dir_icons_.push_back(std::make_shared<RTSurface>("folder-open-small.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("folder-closed-small.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("device-optical.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("device-floppy.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("device-hdd.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("device-usb.svg"));
+    dir_icons_.push_back(std::make_shared<RTSurface>("device-network.svg"));
 
     // Create the Tree model:
     dirTreeModel = Gtk::TreeStore::create(dtColumns);
@@ -138,12 +145,14 @@ void DirBrowser::fillDirTree()
 
     fillRoot();
 
-    Gtk::CellRendererPixbuf *render_pb =
-        Gtk::manage(new Gtk::CellRendererPixbuf());
-    tvc.pack_start(*render_pb, false);
-    tvc.add_attribute(*render_pb, "pixbuf-expander-closed", dtColumns.icon2);
-    tvc.add_attribute(*render_pb, "pixbuf", dtColumns.icon2);
-    tvc.add_attribute(*render_pb, "pixbuf-expander-open", dtColumns.icon1);
+    // Gtk::CellRendererPixbuf *render_pb =
+    //     Gtk::manage(new Gtk::CellRendererPixbuf());
+    tvc.pack_start(crb, false);
+    // tvc.add_attribute(crb, "pixbuf-expander-closed", dtColumns.icon2);
+    // tvc.add_attribute(crb, "pixbuf", dtColumns.icon2);
+    // tvc.add_attribute(crb, "pixbuf-expander-open", dtColumns.icon1);
+    tvc.set_cell_data_func(
+        crb, sigc::mem_fun(*this, &DirBrowser::on_cell_data_icon));
     tvc.pack_start(crt);
     tvc.add_attribute(crt, "text", dtColumns.filename);
     tvc.set_cell_data_func(
@@ -160,7 +169,7 @@ void DirBrowser::fillDirTree()
                                   options.dirBrowserSortType);
 
     crt.property_ypad() = 0;
-    render_pb->property_ypad() = 0;
+    crb.property_ypad() = 0;
 
     dirtree->signal_row_expanded().connect(
         sigc::mem_fun(*this, &DirBrowser::row_expanded));
@@ -191,6 +200,22 @@ void DirBrowser::on_cell_data_name(Gtk::CellRenderer *renderer,
     }
 }
 
+void DirBrowser::on_cell_data_icon(Gtk::CellRenderer *renderer,
+                                   const Gtk::TreeModel::iterator &iter)
+{
+    // Get the value from the model and show it appropriately in the view:
+    Gtk::TreeModel::Path path = dirTreeModel->get_path(iter);
+    Gtk::TreeModel::Row row = *iter;
+
+    int idx = dirtree->row_expanded(path) ? row[dtColumns.icon1] : row[dtColumns.icon2];
+    Gtk::CellRendererPixbuf *pr =
+        dynamic_cast<Gtk::CellRendererPixbuf *>(renderer);
+    if (pr) {
+        pr->property_surface() = Cairo::RefPtr<Cairo::Surface>(dir_icons_[idx]->surface);
+    }
+}
+
+
 #ifdef WIN32
 void DirBrowser::addRoot(char letter)
 {
@@ -206,22 +231,22 @@ void DirBrowser::addRoot(char letter)
     int type = GetDriveType(volume);
 
     if (type == DRIVE_CDROM) {
-        root->set_value(0, icdrom);
-        root->set_value(1, icdrom);
+        root->set_value(0, int(DirIcon::CDROM));
+        root->set_value(1, int(DirIcon::CDROM));
     } else if (type == DRIVE_REMOVABLE) {
         if (letter - 'A' < 2) {
-            root->set_value(0, ifloppy);
-            root->set_value(1, ifloppy);
+            root->set_value(0, int(DirIcon::FLOPPY));
+            root->set_value(1, int(DirIcon::FLOPPY));
         } else {
-            root->set_value(0, iremovable);
-            root->set_value(1, iremovable);
+            root->set_value(0, int(DirIcon::REMOVABLE));
+            root->set_value(1, int(DirIcon::REMOVABLE));
         }
     } else if (type == DRIVE_REMOTE) {
-        root->set_value(0, inetwork);
-        root->set_value(1, inetwork);
+        root->set_value(0, int(DirIcon::NETWORK));
+        root->set_value(1, int(DirIcon::NETWORK));
     } else if (type == DRIVE_FIXED) {
-        root->set_value(0, ihdd);
-        root->set_value(1, ihdd);
+        root->set_value(0, int(DirIcon::HDD));
+        root->set_value(1, int(DirIcon::HDD));
     }
 
     Gtk::TreeModel::iterator child = dirTreeModel->append(root->children());
@@ -423,8 +448,8 @@ void DirBrowser::addDir(const Gtk::TreeModel::iterator &iter,
 
     Gtk::TreeModel::iterator child = dirTreeModel->append(iter->children());
     child->set_value(dtColumns.filename, dirname);
-    child->set_value(dtColumns.icon1, openfolder);
-    child->set_value(dtColumns.icon2, closedfolder);
+    child->set_value(dtColumns.icon1, int(DirIcon::OPENFOLDER));
+    child->set_value(dtColumns.icon2, int(DirIcon::CLOSEDFOLDER));
     Glib::ustring fullname =
         Glib::build_filename(iter->get_value(dtColumns.dirname), dirname);
     child->set_value(dtColumns.dirname, fullname);

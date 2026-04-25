@@ -47,10 +47,10 @@ void LockableColorPicker::updateBackBuffer()
     constexpr double opacity = 0.62;
     // ---------------------------------------------------------------------
 
-    int scale = RTScalable::getDeviceScale();
+    Gtk::DrawingArea *iArea = cropWindow->getImageArea();
+    int scale = RTScalable::getDisplayScale(iArea);
 
     if (validity == Validity::INSIDE) {
-        Gtk::DrawingArea *iArea = cropWindow->getImageArea();
 
         Glib::RefPtr<Pango::Context> pangoContext = iArea->get_pango_context();
         Pango::FontDescription fontd = pangoContext->get_font_description();
@@ -124,7 +124,7 @@ void LockableColorPicker::updateBackBuffer()
 
         setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, newW * scale, newH * scale,
                          true);
-        RTScalable::setDeviceScale(getSurface(), scale);
+        RTScalable::setDisplayScale(getSurface(), scale);
 
         Cairo::RefPtr<Cairo::Context> bbcr = BackBuffer::getContext();
 
@@ -242,7 +242,7 @@ void LockableColorPicker::updateBackBuffer()
 
         setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, newW * scale, newH * scale,
                          true);
-        RTScalable::setDeviceScale(getSurface(), scale);
+        RTScalable::setDisplayScale(getSurface(), scale);
 
         Cairo::RefPtr<Cairo::Context> bbcr = BackBuffer::getContext();
 

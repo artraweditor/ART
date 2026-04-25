@@ -57,8 +57,6 @@ void PreviewWindow::getObservedFrameArea(int &x, int &y, int &w, int &h)
 
 void PreviewWindow::updatePreviewImage()
 {
-
-    int W = get_width(), H = get_height();
     Glib::RefPtr<Gdk::Window> wind = get_window();
 
     if (!wind) {
@@ -66,11 +64,16 @@ void PreviewWindow::updatePreviewImage()
         return;
     }
 
-    backBuffer =
-        Cairo::RefPtr<BackBuffer>(new BackBuffer(W, H, Cairo::FORMAT_ARGB32));
-    Cairo::RefPtr<Cairo::ImageSurface> surface = backBuffer->getSurface();
+    const int scale = RTScalable::getDisplayScale(this);
+    int W = get_width() * scale, H = get_height() * scale;
+
+    //backBuffer->setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, W, H);
+    backBuffer = Cairo::RefPtr<BackBuffer>(new BackBuffer(W, H, Cairo::FORMAT_ARGB32));
+    // Cairo::RefPtr<Cairo::ImageSurface> surface = backBuffer->getSurface();
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    Cairo::RefPtr<Cairo::Context> cc = Cairo::Context::create(surface);
+    // Cairo::RefPtr<Cairo::Context> cc = Cairo::Context::create(surface);
+    auto cc = backBuffer->getContext();
+    RTScalable::setDisplayScale(backBuffer->getSurface(), 1);
     cc->set_source_rgba(0., 0., 0., 0.);
     cc->set_operator(Cairo::OPERATOR_CLEAR);
     cc->paint();
@@ -97,6 +100,12 @@ void PreviewWindow::updatePreviewImage()
                 drawCrop(cc, imgX, imgY, imgW, imgH, 0, 0, zoom, cparams, true,
                          false);
             }
+
+            imgW /= scale;
+            imgH /= scale;
+            imgX /= scale;
+            imgY /= scale;
+            zoom /= scale;
         }
     }
 }
@@ -127,9 +136,11 @@ bool PreviewWindow::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         return true;
     }
 
+    const int scale = RTScalable::getDisplayScale(this);
+
     int bufferW, bufferH;
-    bufferW = backBuffer->getWidth();
-    bufferH = backBuffer->getHeight();
+    bufferW = backBuffer->getWidth() / scale;
+    bufferH = backBuffer->getHeight() / scale;
 
     if (!mainCropWin && imageArea) {
         mainCropWin = imageArea->getMainCropWindow();
@@ -144,13 +155,14 @@ bool PreviewWindow::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         updatePreviewImage();
     }
 
+    RTScalable::setDisplayScale(backBuffer->getSurface(), scale);
     backBuffer->copySurface(cr, NULL);
 
     if (mainCropWin && zoom > 0.0) {
         int x, y, w, h;
         getObservedFrameArea(x, y, w, h);
         if (x > imgX || y > imgY || w < imgW || h < imgH) {
-            double s = RTScalable::getScale();
+            double s = RTScalable::getPseudoHiDPIScale();
             double rectX = x + 0.5;
             double rectY = y + 0.5;
             double rectW = std::min(w, (int)(imgW - (x - imgX) - 1));
@@ -302,15 +314,15 @@ Gtk::SizeRequestMode PreviewWindow::get_request_mode_vfunc() const
 void PreviewWindow::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getScale();
-    natural_height = 100 * RTScalable::getScale();
+    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_height = 100 * RTScalable::getPseudoHiDPIScale();
 }
 
 void PreviewWindow::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
-    minimum_width = 80 * RTScalable::getScale();
-    natural_width = 120 * RTScalable::getScale();
+    minimum_width = 80 * RTScalable::getPseudoHiDPIScale();
+    natural_width = 120 * RTScalable::getPseudoHiDPIScale();
 }
 
 void PreviewWindow::get_preferred_height_for_width_vfunc(

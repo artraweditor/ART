@@ -73,11 +73,11 @@ protected:
     ThumbBrowserEntryBase *original;
 
     Glib::RefPtr<BackBuffer> backBuffer;
-    Glib::RefPtr<BackBuffer> preview_bb_;
+    BackBuffer preview_bb_;
     bool bbSelected, bbFramed;
     guint8 *bbPreview;
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> bbIcons;
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> bbSpecificityIcons;
+    std::vector<std::shared_ptr<RTSurface>> bbIcons;
+    std::vector<std::shared_ptr<RTSurface>> bbSpecificityIcons;
     CursorShape cursor_type;
 
     void drawFrame(Cairo::RefPtr<Cairo::Context> cr, const Gdk::RGBA &bg,
@@ -126,7 +126,7 @@ public:
 
     int getEffectiveWidth() const { return exp_width; }
     int getEffectiveHeight() const { return exp_height; }
-    int getPreviewHeight() const { return preh; }
+    int getPreviewHeight() const;
     int getStartX() const { return startx; }
     int getStartY() const { return starty; }
     int getX() const { return ofsX + startx; }
@@ -154,8 +154,8 @@ public:
     {
     }
 
-    virtual std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea();
-    virtual std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+    virtual std::vector<std::shared_ptr<RTSurface>> getIconsOnImageArea();
+    virtual std::vector<std::shared_ptr<RTSurface>>
     getSpecificityIconsOnImageArea();
     virtual void getIconSize(int &w, int &h) const = 0;
 

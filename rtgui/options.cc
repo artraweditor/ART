@@ -451,6 +451,7 @@ void Options::setDefaults()
     CPFontFamily = "default";
     CPFontSize = 8;
     pseudoHiDPISupport = false;
+    hidpi_preview = false;
     lastScale = 5;
     panAccelFactor = 5;
     rememberZoomAndPan = true;
@@ -673,6 +674,9 @@ void Options::setDefaults()
     thumbnail_inspector_enable_cms = false;
     thumbnail_inspector_show_histogram = false;
     thumbnail_inspector_hover = false;
+    thumbnail_inspector_hidpi_preview = false;
+
+    thumbnail_browser_hidpi = false;
 
     thumbnail_rating_mode = Options::ThumbnailRatingMode::XMP;
 #if defined WIN32 || defined __APPLE__
@@ -1434,6 +1438,10 @@ void Options::readFromFile(Glib::ustring fname)
                     thumbnail_inspector_hover =
                         keyFile.get_boolean("Inspector", "ThumbnailHover");
                 }
+
+                if (keyFile.has_key("Inspector", "HiDPIPreview")) {
+                    thumbnail_inspector_hidpi_preview = keyFile.get_boolean("Inspector", "HiDPIPreview");
+                }
             }
 
             if (keyFile.has_group("GUI")) {
@@ -1609,6 +1617,9 @@ void Options::readFromFile(Glib::ustring fname)
 #else
                 pseudoHiDPISupport = false;
 #endif
+                if (keyFile.has_key("GUI", "HiDPIPreview")) {
+                    hidpi_preview = keyFile.get_boolean("GUI", "HiDPIPreview");
+                }
 
                 if (keyFile.has_key("GUI", "LastPreviewScale")) {
                     lastScale = keyFile.get_integer("GUI", "LastPreviewScale");
@@ -1796,6 +1807,10 @@ void Options::readFromFile(Glib::ustring fname)
                 if (keyFile.has_key("GUI", "AdjusterForceLinear")) {
                     adjuster_force_linear =
                         keyFile.get_boolean("GUI", "AdjusterForceLinear");
+                }
+
+                if (keyFile.has_key("GUI", "ThumbBrowserHiDPI")) {
+                    thumbnail_browser_hidpi = keyFile.get_boolean("GUI", "ThumbBrowserHiDPI");
                 }
             }
 
@@ -2328,6 +2343,8 @@ void Options::saveToFile(Glib::ustring fname)
                             browser_width_for_inspector);
         keyFile.set_boolean("Inspector", "ThumbnailHover",
                             thumbnail_inspector_hover);
+        keyFile.set_boolean("Inspector", "HiDPIPreview",
+                            thumbnail_inspector_hidpi_preview);
 
         keyFile.set_string("Output", "Format", saveFormat.format);
         keyFile.set_integer("Output", "JpegQuality", saveFormat.jpegQuality);
@@ -2431,7 +2448,11 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_integer("GUI", "FontSize", fontSize);
         keyFile.set_string("GUI", "CPFontFamily", CPFontFamily);
         keyFile.set_integer("GUI", "CPFontSize", CPFontSize);
+#ifndef __APPLE__
         keyFile.set_boolean("GUI", "PseudoHiDPISupport", pseudoHiDPISupport);
+#endif
+        keyFile.set_boolean("GUI", "HiDPIPreview", hidpi_preview);
+        keyFile.set_boolean("GUI", "ThumbBrowserHiDPI", thumbnail_browser_hidpi);
         keyFile.set_integer("GUI", "LastPreviewScale", lastScale);
         keyFile.set_integer("GUI", "PanAccelFactor", panAccelFactor);
         keyFile.set_boolean("GUI", "RememberZoomAndPan", rememberZoomAndPan);

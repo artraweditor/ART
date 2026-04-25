@@ -109,11 +109,10 @@ private:
     void updateHistogram();
     std::shared_ptr<InspectorBuffer>
     doCacheImage(const Glib::ustring &fullPath);
+    int getImageDisplayScale();
 
-    rtengine::Coord center;
-    rtengine::Cache<Glib::ustring, std::shared_ptr<InspectorBuffer>>
-        cache_; // std::vector<InspectorBuffer*> images;
-    // InspectorBuffer* currImage;
+    rtengine::Coord2D center_;
+    rtengine::Cache<Glib::ustring, std::shared_ptr<InspectorBuffer>> cache_;
     std::shared_ptr<InspectorBuffer> cur_image_;
     // double zoom;
     bool active_;
@@ -170,6 +169,7 @@ private:
     void mode_toggled(Gtk::ToggleButton *b);
     void zoom_toggled(Gtk::ToggleButton *b);
     void cms_toggled();
+    void hidpi_toggled();
     bool keyPressed(GdkEventKey *evt);
     void onGrabFocus(GdkEventButton *evt, size_t i);
     void onInspectorResized(Gtk::Allocation &a);
@@ -205,6 +205,7 @@ private:
     Gtk::ToggleButton *zoomfit_;
     Gtk::ToggleButton *zoom11_;
     Gtk::ToggleButton *cms_;
+    Gtk::ToggleButton *hidpi_;
 
     RTImage focusmask_on_;
     RTImage focusmask_off_;

@@ -30,7 +30,7 @@
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-std::vector<Glib::RefPtr<Gdk::Pixbuf>> WhiteBalance::wbPixbufs;
+std::vector<std::shared_ptr<RTSurface>> WhiteBalance::wbPixbufs;
 
 namespace {
 
@@ -44,17 +44,21 @@ const std::vector<std::string> labels = {
 
 void WhiteBalance::init()
 {
-    wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-camera-small.svg"));
-    wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-auto-small.svg"));
-    wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-custom-small.svg"));
-    wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-custom2-small.svg"));
+    // wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-camera-small.svg"));
+    // wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-auto-small.svg"));
+    // wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-custom-small.svg"));
+    // wbPixbufs.push_back(RTImage::createPixbufFromFile("wb-custom2-small.svg"));
+    wbPixbufs.push_back(std::shared_ptr<RTSurface>(new RTSurface("wb-camera-small.svg")));
+    wbPixbufs.push_back(std::shared_ptr<RTSurface>(new RTSurface("wb-auto-small.svg")));
+    wbPixbufs.push_back(std::shared_ptr<RTSurface>(new RTSurface("wb-custom-small.svg")));
+    wbPixbufs.push_back(std::shared_ptr<RTSurface>(new RTSurface("wb-custom2-small.svg")));
 }
 
 void WhiteBalance::cleanup()
 {
-    for (size_t i = 0; i < wbPixbufs.size(); ++i) {
-        wbPixbufs[i].reset();
-    }
+    // for (size_t i = 0; i < wbPixbufs.size(); ++i) {
+    //     wbPixbufs[i].reset();
+    // }
 }
 
 namespace {
@@ -123,7 +127,16 @@ WhiteBalance::WhiteBalance()
 
     // Add the model columns to the Combo (which is a kind of view),
     // rendering them in the default way:
-    method->pack_start(methodColumns.colIcon, false);
+    //method->pack_start(methodColumns.colIcon, false);
+    Gtk::CellRendererPixbuf *renderer_icon = Gtk::manage(new Gtk::CellRendererPixbuf());
+    method->pack_start(*renderer_icon, false);
+    method->set_cell_data_func(
+        *renderer_icon,
+        [=](const Gtk::TreeModel::iterator &iter)
+        {
+            auto row = *iter;
+            renderer_icon->property_surface() = Cairo::RefPtr<Cairo::Surface>(wbPixbufs[row[methodColumns.colIcon]]->surface);
+        });
     method->pack_start(methodColumns.colLabel, true);
 
     std::vector<Gtk::CellRenderer *> cells = method->get_cells();
@@ -701,7 +714,7 @@ void WhiteBalance::fillMethods()
 
     for (size_t i = 0; i < wbPixbufs.size(); ++i) {
         row = *(refTreeModel->append());
-        row[methodColumns.colIcon] = wbPixbufs[i];
+        row[methodColumns.colIcon] = i;//wbPixbufs[i];
         row[methodColumns.colLabel] = M(labels[i]);
         row[methodColumns.colPreset] = -1;
     }
@@ -710,7 +723,7 @@ void WhiteBalance::fillMethods()
         presets = wbp->getWBPresets();
         if (!presets.empty()) {
             row = *(refTreeModel->append());
-            row[methodColumns.colIcon] = wbPixbufs[0];
+            row[methodColumns.colIcon] = 0;//wbPixbufs[0];
             row[methodColumns.colLabel] = M("TP_WBALANCE_PRESET");
             row[methodColumns.colPreset] = -1;
         }

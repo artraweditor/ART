@@ -40,8 +40,8 @@ CurveEditorGroup::CurveEditorGroup(Glib::ustring &curveDir,
                        Gtk::ALIGN_START));
     setExpandAlignProperties(curveGroupLabel, false, false, Gtk::ALIGN_START,
                              Gtk::ALIGN_CENTER);
-    // set_row_spacing(RTScalable::getScale());
-    set_spacing(RTScalable::getScale());
+    // set_row_spacing(RTScalable::getPseudoHiDPIScale());
+    set_spacing(RTScalable::getPseudoHiDPIScale());
 }
 
 CurveEditorGroup::~CurveEditorGroup()
@@ -137,7 +137,7 @@ void CurveEditorGroup::newLine()
         Gtk::Grid *currLine = Gtk::manage(new Gtk::Grid());
         setExpandAlignProperties(currLine, true, false, Gtk::ALIGN_FILL,
                                  Gtk::ALIGN_START);
-        currLine->set_column_spacing(RTScalable::getScale());
+        currLine->set_column_spacing(RTScalable::getPseudoHiDPIScale());
 
         bool isHeader = false;
         int x = 0;

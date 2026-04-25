@@ -47,11 +47,11 @@ RTSurface::RTSurface(Glib::ustring fileName, Glib::ustring rtlFileName)
     Cairo::RefPtr<Cairo::ImageSurface> imgSurf(
         new Cairo::ImageSurface(nullptr, false));
     surface = imgSurf;
-    setImage(fileName, rtlFileName);
-}
+//     setImage(fileName, rtlFileName);
+// }
 
-void RTSurface::setImage(Glib::ustring fileName, Glib::ustring rtlFileName)
-{
+// void RTSurface::setImage(Glib::ustring fileName, Glib::ustring rtlFileName)
+// {
     Glib::ustring imageName;
 
     if (!rtlFileName.empty() && getDirection() == Gtk::TEXT_DIR_RTL) {
@@ -69,7 +69,9 @@ void RTSurface::changeImage(Glib::ustring imageName)
     auto iterator = surfaceCache.find(imageName);
 
     if (iterator == surfaceCache.end()) {
-        surface = loadImage(imageName, getTweakedDPI());
+        // for now, we hardcode the scale to 2 or more
+        int scale = std::max(2, RTScalable::getGlobalDisplayScale());
+        surface = loadImage(imageName, getTweakedDPI(), scale);
         iterator = surfaceCache.emplace(imageName, surface).first;
     }
 
@@ -79,7 +81,7 @@ void RTSurface::changeImage(Glib::ustring imageName)
 int RTSurface::getWidth() const
 {
     if (surface) {
-        return surface->get_width() / RTSurface::getDeviceScale();
+        return surface->get_width() / RTScalable::getDisplayScale(surface); //RTSurface::getDisplayScale();
     } else {
         return -1;
     }
@@ -88,28 +90,28 @@ int RTSurface::getWidth() const
 int RTSurface::getHeight() const
 {
     if (surface) {
-        return surface->get_height() / RTSurface::getDeviceScale();
+        return surface->get_height() / RTScalable::getDisplayScale(surface);//RTSurface::getDisplayScale();
     } else {
         return -1;
     }
 }
 
-void RTSurface::init()
-{
-}
+// void RTSurface::init()
+// {
+// }
 
-void RTSurface::updateImages()
-{
-    double res = getTweakedDPI();
-    for (auto entry : surfaceCache) {
-        entry.second = loadImage(entry.first, res);
-        // printf("RTSurface::updateImages : %s\n", entry.first.c_str());
-    }
-}
+// void RTSurface::updateImages()
+// {
+//     double res = getTweakedDPI();
+//     for (auto entry : surfaceCache) {
+//         entry.second = loadImage(entry.first, res);
+//         // printf("RTSurface::updateImages : %s\n", entry.first.c_str());
+//     }
+// }
 
-void RTSurface::from(Glib::RefPtr<RTSurface> other)
-{
-    surface = other->surface;
-}
+// void RTSurface::from(Glib::RefPtr<RTSurface> other)
+// {
+//     surface = other->surface;
+// }
 
 bool RTSurface::hasSurface() const { return surface ? true : false; }

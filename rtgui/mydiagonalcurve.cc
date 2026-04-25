@@ -221,7 +221,7 @@ void MyDiagonalCurve::draw(int handle)
         return;
     }
 
-    const double s = (double)RTScalable::getScale();
+    const double s = (double)RTScalable::getPseudoHiDPIScale();
 
     // re-calculate curve if dimensions changed
     int currLUTSize = point.getUpperBound();
@@ -560,17 +560,17 @@ void MyDiagonalCurve::draw(int handle)
 bool MyDiagonalCurve::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
 {
     Gtk::Allocation allocation = get_allocation();
-    allocation.set_x(0);
-    allocation.set_y(0);
+    int scale = RTScalable::getDisplayScale(this);
 
     // setDrawRectangle will allocate the backbuffer Surface
-    if (setDrawRectangle(Cairo::FORMAT_ARGB32, allocation)) {
+    if (setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, allocation.get_width() * scale, allocation.get_height() * scale)) {
         setDirty(true);
 
         if (prevGraphW > GRAPH_SIZE || graphW > GRAPH_SIZE) {
             curveIsDirty = true;
         }
     }
+    RTScalable::setDisplayScale(surface, scale);
 
     draw(lit_point);
     copySurface(cr);
@@ -592,7 +592,7 @@ bool MyDiagonalCurve::handleEvents(GdkEvent *event)
         return false;
     }
 
-    double s = RTScalable::getScale();
+    double s = RTScalable::getPseudoHiDPIScale();
 
     double minDistanceX = double(MIN_DISTANCE) / graphW * s;
     double minDistanceY = double(MIN_DISTANCE) / graphH * s;
@@ -1126,7 +1126,7 @@ void MyDiagonalCurve::pipetteMouseOver(CurveEditor *ce,
         return;
     }
 
-    double s = (double)RTScalable::getScale();
+    double s = (double)RTScalable::getPseudoHiDPIScale();
     double minDistanceX = MIN_DISTANCE / graphW * s;
 
     if (curve.type == DCT_Linear || curve.type == DCT_Spline ||
@@ -1184,7 +1184,7 @@ bool MyDiagonalCurve::pipetteButton1Pressed(EditDataProvider *provider,
         return false;
     }
 
-    double s = (double)RTScalable::getScale();
+    double s = (double)RTScalable::getPseudoHiDPIScale();
     double minDistanceX = double(MIN_DISTANCE) * s / graphW;
 
     snapToElmt = -100;
@@ -1263,7 +1263,7 @@ void MyDiagonalCurve::pipetteButton1Released(EditDataProvider *provider)
         return;
     }
 
-    double s = (double)RTScalable::getScale();
+    double s = (double)RTScalable::getPseudoHiDPIScale();
     double minDistanceX = double(MIN_DISTANCE) * s / graphW;
 
     snapToElmt = -100;

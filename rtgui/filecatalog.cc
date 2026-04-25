@@ -605,8 +605,17 @@ FileCatalog::FileCatalog(FilePanel *filepanel)
         sigc::mem_fun(*this, &FileCatalog::exifInfoButtonToggled));
     buttonBar->pack_start(*exifInfo, Gtk::PACK_SHRINK);
 
+    hidpi_ = Gtk::manage(new Gtk::ToggleButton());
+    hidpi_->set_image(*Gtk::manage(new RTImage("hidpi.svg")));
+    hidpi_->signal_pressed().connect(
+        sigc::mem_fun(*this, &FileCatalog::toggleHiDPI));
+    hidpi_->set_relief(Gtk::RELIEF_NONE);
+    hidpi_->set_tooltip_markup(M("HIDPI_PREVIEW"));
+    buttonBar->pack_start(*hidpi_, Gtk::PACK_SHRINK);
+    hidpi_->set_active(options.thumbnail_browser_hidpi);
+
     // thumbnail zoom
-    Gtk::HBox *zoomBox = Gtk::manage(new Gtk::HBox());
+    Gtk::HBox *zoomBox = Gtk::manage(new Gtk::HBox());    
     zoomInButton = Gtk::manage(new Gtk::Button());
     zoomInButton->set_image(*Gtk::manage(new RTImage("magnifier-plus.svg")));
     zoomInButton->signal_pressed().connect(
@@ -693,7 +702,7 @@ FileCatalog::FileCatalog(FilePanel *filepanel)
 
     selection_counter_ = Gtk::manage(new Gtk::Label(""));
     buttonBar->pack_end(*selection_counter_, Gtk::PACK_SHRINK,
-                        4 * RTScalable::getScale());
+                        4 * RTScalable::getPseudoHiDPIScale());
     setExpandAlignProperties(selection_counter_, false, false, Gtk::ALIGN_END,
                              Gtk::ALIGN_END);
 
@@ -726,7 +735,11 @@ FileCatalog::FileCatalog(FilePanel *filepanel)
             dirEFS = options.last_exif_filter_settings;
         }
     }
+
+    property_scale_factor().signal_changed().connect(
+        sigc::mem_fun(*this, &FileCatalog::onScaleChange));
 }
+
 
 FileCatalog::~FileCatalog()
 {
@@ -787,11 +800,11 @@ void FileCatalog::exifInfoButtonToggled()
 
 void FileCatalog::on_realize()
 {
-
     Gtk::VBox::on_realize();
     Pango::FontDescription fontd = get_pango_context()->get_font_description();
     fileBrowser->get_pango_context()->set_font_description(fontd);
     //    batchQueue->get_pango_context()->set_font_description (fontd);
+    onScaleChange();
 }
 
 void FileCatalog::closeDir()
@@ -2116,13 +2129,12 @@ bool FileCatalog::trashIsEmpty()
 
 void FileCatalog::zoomIn()
 {
-
     fileBrowser->zoomIn();
     refreshHeight();
 }
+
 void FileCatalog::zoomOut()
 {
-
     fileBrowser->zoomOut();
     refreshHeight();
 }
@@ -2939,4 +2951,22 @@ void FileCatalog::sessionSavePressed()
             break;
         }
     }
+}
+
+
+void FileCatalog::toggleHiDPI()
+{
+    options.thumbnail_browser_hidpi = !options.thumbnail_browser_hidpi;
+    browsePathRefresh();
+    if (bqueue_) {
+        for (auto e : bqueue_->getEntries()) {
+            e->refreshThumbnailImage();
+        }
+    }
+}
+
+
+void FileCatalog::onScaleChange()
+{
+    hidpi_->set_visible(RTScalable::getDisplayScale(this) > 1);
 }

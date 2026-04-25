@@ -72,11 +72,11 @@ class FileBrowserEntry: public ThumbBrowserEntryBase,
     void update_refresh_status();
 
 public:
-    static Glib::RefPtr<Gdk::Pixbuf> editedIcon;
-    static Glib::RefPtr<Gdk::Pixbuf> recentlySavedIcon;
-    static Glib::RefPtr<Gdk::Pixbuf> enqueuedIcon;
-    static Glib::RefPtr<Gdk::Pixbuf> hdr;
-    static Glib::RefPtr<Gdk::Pixbuf> ps;
+    static std::shared_ptr<RTSurface> editedIcon;
+    static std::shared_ptr<RTSurface> recentlySavedIcon;
+    static std::shared_ptr<RTSurface> enqueuedIcon;
+    static std::shared_ptr<RTSurface> hdr;
+    static std::shared_ptr<RTSurface> ps;
 
     FileBrowserEntry(Thumbnail *thm, const Glib::ustring &fname);
     ~FileBrowserEntry() override;
@@ -89,8 +89,8 @@ public:
     void refreshQuickThumbnailImage() override;
     void calcThumbnailSize() override;
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea() override;
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>>
+    std::vector<std::shared_ptr<RTSurface>> getIconsOnImageArea() override;
+    std::vector<std::shared_ptr<RTSurface>>
     getSpecificityIconsOnImageArea() override;
     void getIconSize(int &w, int &h) const override;
 

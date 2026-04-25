@@ -50,12 +50,13 @@ EditWindow *EditWindow::getInstance(RTWindow *p, bool restore)
 }
 
 EditWindow::EditWindow(RTWindow *p)
-    : resolution(RTScalable::baseDPI), parent(p), isFullscreen(false),
+    : //resolution(RTScalable::baseDPI),
+      parent(p), isFullscreen(false),
       isClosed(true)
 {
 
-    updateResolution();
-    setAppIcon();
+    // updateResolution();
+    // setAppIcon();
     set_title_decorated("");
     set_modal(false);
     set_resizable(true);
@@ -140,59 +141,8 @@ void EditWindow::on_realize()
     editWindowCursorManager.init(get_window());
 }
 
-bool EditWindow::updateResolution()
-{
-    int scale = get_scale_factor();
-    double res = get_screen()->get_resolution();
-    if (scale == 2) {
-        // from Windows' behavior : if scale==2, resolution = 192. (Gtk shows 96
-        // dpi !?), there's no higher value
-        res = RTScalable::baseHiDPI;
-    }
-    bool retVal = res != resolution;
-    resolution = res;
-    return retVal;
-}
-
-void EditWindow::setAppIcon()
-{
-    Glib::ustring fName;
-    bool downsize = false;
-    // findIconAbsolutePath won't be able to select the image based on
-    // resolution with the storage of the images, we're doing the selection here
-    if (resolution == RTScalable::baseDPI) {
-        fName = "ART-logo-24.png";
-    } else {
-        fName = "ART-logo-48.png";
-        if (resolution < RTScalable::baseHiDPI) {
-            downsize = true;
-        }
-    }
-    Glib::ustring icon_path =
-        Glib::build_filename(options.ART_base_dir, "images", fName);
-    const Glib::RefPtr<Gdk::Pixbuf> pixbuf =
-        Gdk::Pixbuf::create_from_file(icon_path);
-    if (!pixbuf) {
-        return;
-    }
-    if (downsize) {
-        int size = int((48. * resolution) / RTScalable::baseHiDPI);
-        pixbuf->scale_simple(size, size, Gdk::InterpType::INTERP_BILINEAR);
-    }
-
-    try {
-        set_default_icon(pixbuf);
-    } catch (Glib::Exception &ex) {
-        printf("%s\n", ex.what().c_str());
-    }
-}
-
 bool EditWindow::on_configure_event(GdkEventConfigure *event)
 {
-    if (updateResolution()) {
-        setAppIcon();
-    }
-
     if (get_realized() && is_visible()) {
         if (!is_maximized()) {
             get_position(options.meowX, options.meowY);

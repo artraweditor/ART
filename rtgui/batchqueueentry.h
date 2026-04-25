@@ -42,8 +42,8 @@ class BatchQueueEntry: public ThumbBrowserEntryBase,
     void customBackBufferUpdate(Cairo::RefPtr<Cairo::Context> c) override;
 
 public:
-    static Glib::RefPtr<Gdk::Pixbuf> savedAsIcon;
-    static Glib::RefPtr<Gdk::Pixbuf> fastExportIcon;
+    static std::shared_ptr<RTSurface> savedAsIcon;
+    static std::shared_ptr<RTSurface> fastExportIcon;
 
     rtengine::ProcessingJob *job;
     rtengine::procparams::ProcParams params;
@@ -71,7 +71,7 @@ public:
 
     void removeButtonSet();
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea() override;
+    std::vector<std::shared_ptr<RTSurface>> getIconsOnImageArea() override;
     void getIconSize(int &w, int &h) const override;
     Glib::ustring getToolTip(int x, int y) const override;
 

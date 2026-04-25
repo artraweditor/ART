@@ -1,4 +1,5 @@
-/*
+/* -*- C++ -*-
+ *  
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2004-2010 Gabor Horvath <hgabor@rawtherapee.com>
@@ -30,6 +31,9 @@ class RTImage: public Gtk::Image, public RTScalable {
 protected:
     Cairo::RefPtr<Cairo::ImageSurface> surface;
     Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+    Glib::ustring path_;
+
+    void updateScale();
 
 public:
     RTImage();
@@ -48,12 +52,12 @@ public:
     int get_width();
     int get_height();
 
-    static void init();
-    static void cleanup(bool all = false);
-    static void updateImages();
+    /* static void init(); */
+    /* static void cleanup(bool all = false); */
+    /* static void updateImages(); */
 
     static Glib::RefPtr<Gdk::Pixbuf>
-    createPixbufFromFile(const Glib::ustring &fileName);
+        createPixbufFromFile(const Glib::ustring &fileName, int scale=0);
     static Cairo::RefPtr<Cairo::ImageSurface>
-    createImgSurfFromFile(const Glib::ustring &fileName);
+        createImgSurfFromFile(const Glib::ustring &fileName, int scale=0);
 };

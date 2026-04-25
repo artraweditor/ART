@@ -2740,7 +2740,7 @@ void Preferences::cancelPressed()
         options.theme_bg_color != moptions.theme_bg_color ||
         options.theme_fg_color != moptions.theme_fg_color ||
         options.theme_hl_color != moptions.theme_hl_color) {
-        RTImage::updateImages();
+        // RTImage::updateImages();
         switchThemeTo(options.theme);
     }
 
@@ -2816,7 +2816,7 @@ void Preferences::themeChanged()
     theme_hl_color->set_visible(theme_color_visible);
     theme_colors_reset->set_visible(theme_color_visible);
 
-    RTImage::cleanup(true);
+    // RTImage::cleanup(true);
     options.svg_color = options.svg_dark_color;
     if (theme_color_visible) {
         options.svg_color = rtengine::get_html_color(
@@ -2827,7 +2827,7 @@ void Preferences::themeChanged()
                       << std::endl;
         }
     }
-    RTImage::updateImages();
+    // RTImage::updateImages();
     switchThemeTo(moptions.theme, &moptions);
 }
 
@@ -3073,11 +3073,11 @@ void Preferences::switchFontTo(const Glib::ustring &newFontFamily,
             // #if GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION < 20
             //             fontcss->load_from_data (Glib::ustring::compose ("* {
             //             font-family: %1; font-size: %2px }", newFontFamily,
-            //             newFontSize * RTScalable::getScale()));
+            //             newFontSize * RTScalable::getPseudoHiDPIScale()));
             // #else
             fontcss->load_from_data(Glib::ustring::compose(
                 "* { font-family: %1; font-size: %2pt }", newFontFamily,
-                newFontSize * RTScalable::getScale()));
+                newFontSize * RTScalable::getPseudoHiDPIScale()));
             // #endif
             // GTK318
         } catch (Glib::Error &err) {

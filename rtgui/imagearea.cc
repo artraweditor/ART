@@ -180,11 +180,11 @@ void ImageArea::setInfoText(Glib::ustring text)
     ilayout->get_pixel_size(iw, ih);
 
     // create BackBuffer
-    int scale = RTScalable::getDeviceScale();
+    int scale = RTScalable::getDisplayScale(this);
     iBackBuffer.setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, (iw + 16) * scale,
                                  (ih + 16) * scale, true);
     iBackBuffer.setDestPosition(8, 8);
-    RTScalable::setDeviceScale(iBackBuffer.getSurface(), scale);
+    RTScalable::setDisplayScale(iBackBuffer.getSurface(), scale);
 
     Cairo::RefPtr<Cairo::Context> cr = iBackBuffer.getContext();
 
@@ -815,15 +815,15 @@ Gtk::SizeRequestMode ImageArea::get_request_mode_vfunc() const
 void ImageArea::get_preferred_height_vfunc(int &minimum_height,
                                            int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getScale();
-    natural_height = 300 * RTScalable::getScale();
+    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_height = 300 * RTScalable::getPseudoHiDPIScale();
 }
 
 void ImageArea::get_preferred_width_vfunc(int &minimum_width,
                                           int &natural_width) const
 {
-    minimum_width = 100 * RTScalable::getScale();
-    natural_width = 400 * RTScalable::getScale();
+    minimum_width = 100 * RTScalable::getPseudoHiDPIScale();
+    natural_width = 400 * RTScalable::getPseudoHiDPIScale();
 }
 
 void ImageArea::get_preferred_height_for_width_vfunc(int width,
@@ -852,4 +852,15 @@ void ImageArea::setAreaDrawListenerProvider(AreaDrawListenerProvider *alp)
 void ImageArea::setToolShortcutManager(ToolShortcutManager *mgr)
 {
     shortcut_mgr_ = mgr;
+}
+
+
+void ImageArea::setHiDPI(bool yes)
+{
+    mainCropWindow->setHiDPI(yes);
+    for (auto w : cropWins) {
+        if (w != mainCropWindow) {
+            w->setHiDPI(yes);
+        }
+    }
 }

@@ -26,6 +26,7 @@ class ImageArea;
 class ZoomPanel: public Gtk::Grid {
 
 protected:
+    Gtk::ToggleButton *hidpi;
     Gtk::Button *zoomOut;
     Gtk::Button *zoomIn;
     Gtk::Button *zoomFit;
@@ -34,6 +35,8 @@ protected:
     Gtk::Button *newCrop;
     Gtk::Label *zoomLabel;
     ImageArea *iarea;
+
+    void onScaleChange();
 
 public:
     explicit ZoomPanel(ImageArea *iarea);
@@ -45,6 +48,9 @@ public:
     void zoom11Clicked();
     void newCropClicked();
     void refreshZoomLabel();
+    void hidpiToggled();
+
+    void on_realize() override;
 };
 
 #endif

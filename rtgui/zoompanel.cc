@@ -25,6 +25,8 @@ ZoomPanel::ZoomPanel(ImageArea *iarea): iarea(iarea)
 {
     set_name("EditorZoomPanel");
 
+    Gtk::Image *image_hidpi = Gtk::manage(new RTImage("hidpi.svg"));
+    image_hidpi->set_padding(0, 0);
     Gtk::Image *imageOut = Gtk::manage(new RTImage("magnifier-minus.svg"));
     imageOut->set_padding(0, 0);
     Gtk::Image *imageIn = Gtk::manage(new RTImage("magnifier-plus.svg"));
@@ -36,6 +38,11 @@ ZoomPanel::ZoomPanel(ImageArea *iarea): iarea(iarea)
     // Gtk::Image* imageFitCrop = Gtk::manage (new RTImage
     // ("magnifier-crop.svg")); imageFit->set_padding(0, 0);
 
+    hidpi = Gtk::manage(new Gtk::ToggleButton());
+    hidpi->add(*image_hidpi);
+    hidpi->set_relief(Gtk::RELIEF_NONE);
+    setExpandAlignProperties(hidpi, false, false, Gtk::ALIGN_CENTER,
+                             Gtk::ALIGN_FILL);
     zoomOut = Gtk::manage(new Gtk::Button());
     zoomOut->add(*imageOut);
     zoomOut->set_relief(Gtk::RELIEF_NONE);
@@ -62,6 +69,7 @@ ZoomPanel::ZoomPanel(ImageArea *iarea): iarea(iarea)
     setExpandAlignProperties(zoom11, false, false, Gtk::ALIGN_CENTER,
                              Gtk::ALIGN_FILL);
 
+    attach_next_to(*hidpi, Gtk::POS_RIGHT, 1, 1);
     attach_next_to(*zoomOut, Gtk::POS_RIGHT, 1, 1);
     attach_next_to(*zoomIn, Gtk::POS_RIGHT, 1, 1);
     attach_next_to(*zoomFit, Gtk::POS_RIGHT, 1, 1);
@@ -84,14 +92,16 @@ ZoomPanel::ZoomPanel(ImageArea *iarea): iarea(iarea)
 
     show_all_children();
 
+    hidpi->set_active(options.hidpi_preview);
+
+    hidpi->signal_toggled().connect(
+        sigc::mem_fun(*this, &ZoomPanel::hidpiToggled));
     zoomIn->signal_clicked().connect(
         sigc::mem_fun(*this, &ZoomPanel::zoomInClicked));
     zoomOut->signal_clicked().connect(
         sigc::mem_fun(*this, &ZoomPanel::zoomOutClicked));
     zoomFit->signal_clicked().connect(
         sigc::mem_fun(*this, &ZoomPanel::zoomFitClicked));
-    // zoomFitCrop->signal_clicked().connect( sigc::mem_fun(*this,
-    // &ZoomPanel::zoomFitCropClicked) );
     zoom11->signal_clicked().connect(
         sigc::mem_fun(*this, &ZoomPanel::zoom11Clicked));
     newCrop->signal_clicked().connect(
@@ -101,10 +111,12 @@ ZoomPanel::ZoomPanel(ImageArea *iarea): iarea(iarea)
     zoomOut->set_tooltip_markup(M("ZOOMPANEL_ZOOMOUT"));
     zoom11->set_tooltip_markup(M("ZOOMPANEL_ZOOM100"));
     zoomFit->set_tooltip_markup(M("ZOOMPANEL_ZOOMFITSCREEN"));
-    // zoomFitCrop->set_tooltip_markup (M("ZOOMPANEL_ZOOMFITCROPSCREEN"));
     newCrop->set_tooltip_markup(M("ZOOMPANEL_NEWCROPWINDOW"));
+    hidpi->set_tooltip_markup(M("HIDPI_PREVIEW"));
 
     zoomLabel->set_text(M("ZOOMPANEL_100"));
+
+    property_scale_factor().signal_changed().connect(sigc::mem_fun(*this, &ZoomPanel::onScaleChange));    
 }
 
 void ZoomPanel::zoomInClicked()
@@ -162,3 +174,21 @@ void ZoomPanel::refreshZoomLabel()
 }
 
 void ZoomPanel::newCropClicked() { iarea->addCropWindow(); }
+
+void ZoomPanel::hidpiToggled()
+{
+    iarea->setHiDPI(hidpi->get_active());
+}
+
+
+void ZoomPanel::onScaleChange()
+{
+    hidpi->set_visible(RTScalable::getDisplayScale(this) > 1);
+}
+
+
+void ZoomPanel::on_realize()
+{
+    onScaleChange();
+    Gtk::Grid::on_realize();
+}
