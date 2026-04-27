@@ -124,6 +124,13 @@
 // updated on Fri Dec 19 08:24:34 2025:
 // CANON EOS R5 MARK II
 
+// updated on Mon Apr 27 08:27:49 2026:
+// NIKON D2HS
+// NIKON DF
+// NIKON Z F
+// RICOH GR IV
+// SONY ILCE-7CR
+
 [
   {
     "make_model" : "CANON EOS 1000D",
@@ -6582,6 +6589,110 @@
       { "name" : "tungsten", "multipliers" : [ 1.3193359375, 1, 2.337890625 ] },
       { "name" : "cool white fluorescent", "multipliers" : [ 1.5703125, 1, 2.2861328125 ] },
       { "name" : "flash", "multipliers" : [ 2.068359375, 1, 1.41015625 ] }
+    ]
+  },
+  {
+    "make_model" : "NIKON D2HS",
+    "presets" : [
+      { "name" : "3700k", "multipliers" : [ 1.84375, 1.0, 1.8046875 ] },
+      { "name" : "3300k", "multipliers" : [ 1.671875, 1.0, 2.02734375 ] },
+      { "name" : "incandescent", "multipliers" : [ 1.53125, 1.0, 2.2578125 ] },
+      { "name" : "flash", "multipliers" : [ 2.59765625, 1.0, 1.31640625 ] },
+      { "name" : "2550k", "multipliers" : [ 1.30078125, 1.0, 2.75 ] },
+      { "name" : "2700k", "multipliers" : [ 1.37890625, 1.0, 2.55859375 ] },
+      { "name" : "6300k", "multipliers" : [ 2.4609375, 1.0, 1.2109375 ] },
+      { "name" : "5000k", "multipliers" : [ 2.2265625, 1.0, 1.43359375 ] },
+      { "name" : "3200k", "multipliers" : [ 1.625, 1.0, 2.09765625 ] },
+      { "name" : "4500k", "multipliers" : [ 2.109375, 1.0, 1.54296875 ] },
+      { "name" : "3800k", "multipliers" : [ 1.875, 1.0, 1.76171875 ] },
+      { "name" : "4300k", "multipliers" : [ 2.05078125, 1.0, 1.59765625 ] },
+      { "name" : "5300k", "multipliers" : [ 2.28515625, 1.0, 1.37890625 ] },
+      { "name" : "9100k", "multipliers" : [ 2.75, 1.0, 1.0 ] },
+      { "name" : "2950k", "multipliers" : [ 1.50390625, 1.0, 2.30078125 ] },
+      { "name" : "3000k", "multipliers" : [ 1.53125, 1.0, 2.2578125 ] },
+      { "name" : "7700k", "multipliers" : [ 2.63671875, 1.0, 1.046875 ] },
+      { "name" : "3400k", "multipliers" : [ 1.71875, 1.0, 1.96484375 ] },
+      { "name" : "2650k", "multipliers" : [ 1.3515625, 1.0, 2.62109375 ] },
+      { "name" : "sunny", "multipliers" : [ 2.26953125, 1.0, 1.38671875 ] },
+      { "name" : "5900k", "multipliers" : [ 2.40234375, 1.0, 1.26953125 ] },
+      { "name" : "2850k", "multipliers" : [ 1.45703125, 1.0, 2.39453125 ] },
+      { "name" : "3100k", "multipliers" : [ 1.578125, 1.0, 2.171875 ] },
+      { "name" : "fluorescent", "multipliers" : [ 2.29296875, 1.0, 2.28125 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.421875, 1.0, 1.24609375 ] },
+      { "name" : "4800k", "multipliers" : [ 2.16796875, 1.0, 1.48828125 ] },
+      { "name" : "10000k", "multipliers" : [ 2.80859375, 1.0, 1.0 ] },
+      { "name" : "3600k", "multipliers" : [ 1.8046875, 1.0, 1.85546875 ] },
+      { "name" : "5600k", "multipliers" : [ 2.34375, 1.0, 1.32421875 ] },
+      { "name" : "8300k", "multipliers" : [ 2.6953125, 1.0, 1.0 ] },
+      { "name" : "7100k", "multipliers" : [ 2.578125, 1.0, 1.1015625 ] },
+      { "name" : "4000k", "multipliers" : [ 1.93359375, 1.0, 1.70703125 ] },
+      { "name" : "shade", "multipliers" : [ 2.65625, 1.0, 1.0234375 ] },
+      { "name" : "2800k", "multipliers" : [ 1.4296875, 1.0, 2.44921875 ] },
+      { "name" : "6700k", "multipliers" : [ 2.51953125, 1.0, 1.15625 ] },
+      { "name" : "4200k", "multipliers" : [ 1.9921875, 1.0, 1.65234375 ] },
+      { "name" : "2500k", "multipliers" : [ 1.2734375, 1.0, 2.82421875 ] }
+    ]
+  },
+  {
+    "make_model" : "NIKON DF",
+    "presets" : [
+      { "name" : "direct sunlight", "multipliers" : [ 2.01953125, 1, 1.4375 ] },
+      { "name" : "shade", "multipliers" : [ 2.51171875, 1, 1.1640625 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.17578125, 1, 1.30078125 ] },
+      { "name" : "incandescent", "multipliers" : [ 1.28125, 1, 2.37109375 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.27734375, 1, 2.109375 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 1.85546875, 1, 2.15625 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 1.8671875, 1, 1.4765625 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.1328125, 1, 1.15625 ] },
+      { "name" : "white fluorescent", "multipliers" : [ 1.48828125, 1, 2.4765625 ] },
+      { "name" : "high temp. mercury-vapor fluorescent", "multipliers" : [ 2.546875, 1, 1.42578125 ] },
+      { "name" : "sodium-vapor fluorescent", "multipliers" : [ 1.1953125, 1, 2.58984375 ] },
+      { "name" : "flash", "multipliers" : [ 2.30078125, 1, 1.25390625 ] }
+    ]
+  },
+  {
+    "make_model" : "NIKON Z F",
+    "presets" : [
+      { "name" : "direct sunlight", "multipliers" : [ 1.7265625, 1, 1.3359375 ] },
+      { "name" : "shade", "multipliers" : [ 2.09765625, 1, 1.08984375 ] },
+      { "name" : "cloudy", "multipliers" : [ 1.83984375, 1, 1.212890625 ] },
+      { "name" : "incandescent", "multipliers" : [ 1.138671875, 1, 2.083984375 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 1.623046875, 1, 1.953125 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 1.62109375, 1, 1.341796875 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 1.837890625, 1, 1.087890625 ] },
+      { "name" : "flash", "multipliers" : [ 1.916015625, 1, 1.1640625 ] }
+    ]
+  },
+  {
+    "make_model" : "RICOH GR IV",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 2.544031311154599, 1, 1.7221135029354206 ] },
+      { "name" : "shade", "multipliers" : [ 3.107632093933464, 1, 1.3033268101761253 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.7945205479452055, 1, 1.5029354207436398 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.5851272015655578, 1, 3.0215264187866926 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.9021526418786692, 1, 3.095890410958904 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 2.493150684931507, 1, 2.015655577299413 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.88454011741683, 1, 1.7651663405088063 ] },
+      { "name" : "white fluorescent", "multipliers" : [ 2.238747553816047, 1, 2.461839530332681 ] }
+    ]
+  },
+  {
+    "make_model" : "SONY ILCE-7CR",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 2.630859375, 1, 1.7158203125 ] },
+      { "name" : "shade", "multipliers" : [ 3.109375, 1, 1.390625 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.8505859375, 1, 1.5732421875 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.6025390625, 1, 3.095703125 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.8837890625, 1, 2.974609375 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 2.427734375, 1, 2.3173828125 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 2.59765625, 1, 1.6943359375 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.87890625, 1, 1.5869140625 ] },
+      { "name" : "flash", "multipliers" : [ 2.9111328125, 1, 1.5078125 ] },
+      { "name" : "2500k", "multipliers" : [ 1.4560546875, 1, 3.4404296875 ] },
+      { "name" : "3200k", "multipliers" : [ 1.8544921875, 1, 2.556640625 ] },
+      { "name" : "4500k", "multipliers" : [ 2.3955078125, 1, 1.890625 ] },
+      { "name" : "6000k", "multipliers" : [ 2.8193359375, 1, 1.56640625 ] },
+      { "name" : "8500k", "multipliers" : [ 3.2353515625, 1, 1.3017578125 ] }
     ]
   }
 ]
