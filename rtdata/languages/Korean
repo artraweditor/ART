@@ -20,6 +20,7 @@
 #19 2025-11-12  Ohnishi, Yasuo, updates for 1.25.11
 #20 2025-12-19  Ohnishi, Yasuo, updates for 1.25.12
 #21 2026-02-16  Ohnishi, Yasuo, updates for 1.26.2
+#22 2026-04-26  Ohnishi, Yasuo, updates for 1.26.4
 ABOUT_TAB_BUILD;버전
 ABOUT_TAB_CREDITS;크레디트
 ABOUT_TAB_LICENSE;저작권
@@ -261,6 +262,10 @@ FILECHOOSER_FILTER_PP;처리 프로파일
 FILECHOOSER_FILTER_SAME;현재 화상과 같은 형식
 FILECHOOSER_FILTER_TIFF;TIFF파일
 FILECHOOSER_FILTER_LUT;대응하는 LUT 파일
+FONTCHOOSER_FAMILY;폰트 패미리
+FONTCHOOSER_PREVIEW_TEXT;게으른 토끼는 거북이에게 뒤처진다
+FONTCHOOSER_SIZE;폰트 크기
+FONTCHOOSER_TITLE;폰트 선택
 GENERAL_ABOUT;ART 에 관하여..
 GENERAL_AFTER;보정후
 GENERAL_APPLY;적용
@@ -299,6 +304,7 @@ GENERAL_WARNING;경고
 GENERAL_DEPRECATED;비추천
 GENERAL_DEPRECATED_TOOLTIP;<b>"비추천 (Deprecated) !"</b> 은 장래 버전에서 삭제됩니다.
 GIMP_PLUGIN_INFO;ART GIMP 플러그인을 쓰시는 것을 환영합니다！\n화상편집이 끝난 후, 그냥 ART을 끝내면, 화상이 자동적으로 GIMP에 이송됩니다.
+HIDPI_PREVIEW;픽셀 1:1 모드 활성화 (화면의 기본 해상도로 이미지 표시).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), peak: %5 (%6)\n    range: %7 EV, values: %8, pixels: %9
 HISTOGRAM_TOOLTIP_B;Blue・히스토그램 표시/비표시
 HISTOGRAM_TOOLTIP_BAR;RGB표시기 바 (bar) 의 표시/비표시\n미리보기 상에서 마우스의 오른쪽 클릭으로 고정/해방

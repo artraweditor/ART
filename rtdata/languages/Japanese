@@ -29,6 +29,7 @@
 #28 2025-11-12  Ohnishi, Yasuo, updates for 1.25.11
 #29 2025-11-19  Ohnishi, Yasuo, updates for 1.25.12
 #30 2026-02-16  Ohnishi, Yasuo, updates for 1.26.2
+#31 2026-04-26  Ohnishi, Yasuo, updates for 1.26.4
 ABOUT_TAB_BUILD;バージョン
 ABOUT_TAB_CREDITS;クレジット
 ABOUT_TAB_LICENSE;ライセンス
@@ -270,6 +271,10 @@ FILECHOOSER_FILTER_PP;処理プロファイル
 FILECHOOSER_FILTER_SAME;現在の画像と同じフォーマット
 FILECHOOSER_FILTER_TIFF;TIFFファイル
 FILECHOOSER_FILTER_LUT;サポートされている LUT ファイル
+FONTCHOOSER_FAMILY;フォントファミリー
+FONTCHOOSER_PREVIEW_TEXT;怠け者のうさぎは亀に追い越される
+FONTCHOOSER_SIZE;サイズ
+FONTCHOOSER_TITLE;フォント選択
 GENERAL_ABOUT;本ソフトウェアについて..
 GENERAL_AFTER;補正後
 GENERAL_APPLY;適用
@@ -308,6 +313,7 @@ GENERAL_WARNING;警告
 GENERAL_DEPRECATED;非推奨
 GENERAL_DEPRECATED_TOOLTIP;<b>非推奨 (Deprecated) !</b> は 将来のバージョンで削除されます.
 GIMP_PLUGIN_INFO;ART GIMPプラグインにようこそ！\n画像編集終了後 単にARTのメインウィンドウを閉じるだけで 画像が自動的にGIMPに送られます.
+HIDPI_PREVIEW;ピクセル 1 対 1 モードを有効にする (ディスプレイの本来の解像度で画像を表示)
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), peak: %5 (%6)\n    range: %7 EV, values: %8, pixels: %9
 HISTOGRAM_TOOLTIP_B;ブルー･ヒストグラム 表示/非表示
 HISTOGRAM_TOOLTIP_BAR;RGBインジケーター･バーの表示/非表示\nプレビュー画像上でマウスの右ボタンクリックで 固定/開放

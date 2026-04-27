@@ -45,6 +45,7 @@
 #44 12-11-2025 update naar ART v1.25.9 door pm
 #45 19-12-2025 update naar ART v1.25.12 door pm
 #46 16-02-2026 update naar ART v1.26.2 door pm
+#47	26-04-2026 update naar ART v1.26.4 door pm
 
 ABOUT_TAB_BUILD;Versie
 ABOUT_TAB_CREDITS;Credits
@@ -284,6 +285,10 @@ FILECHOOSER_FILTER_PP;Verwerkingsprofielen
 FILECHOOSER_FILTER_SAME;Zelfde formaat als huidige foto
 FILECHOOSER_FILTER_TIFF;TIFF-bestanden
 FILECHOOSER_FILTER_LUT;Ondersteunde LUT-bestanden
+FONTCHOOSER_FAMILY;Familie
+FONTCHOOSER_PREVIEW_TEXT;The quick brown fox jumps over the lazy dog
+FONTCHOOSER_SIZE;Grootte
+FONTCHOOSER_TITLE;Selecteer lettertype
 GENERAL_ABOUT;Over ART
 GENERAL_AFTER;Na
 GENERAL_APPLY;Toepassen
@@ -321,6 +326,7 @@ GENERAL_SLIDER;Schuifregelaar
 GENERAL_UNCHANGED;(Onveranderd)
 GENERAL_WARNING;Waarschuwing
 GIMP_PLUGIN_INFO;Welkom bij de ART GIMP plug-in!\nAls uw bewerking gereed is, sluit dan het hoofdvenster van ART en uw afbeelding wordt automatisch in GIMP geladen.
+HIDPI_PREVIEW;Schakel pixel-per-pixel modus in (toon afbeeldingen\nmet de standaardresolutie van het scherm).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), top: %5 (%6)\nbereik: %7 LW, waarden: %8, pixels: %9
 HISTOGRAM_TOOLTIP_BAR;Toon/verberg RGB-indicator
 HISTOGRAM_TOOLTIP_B;Toon/verberg blauw histogram

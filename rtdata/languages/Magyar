@@ -2,7 +2,7 @@
 #01 Developers should add translations to this file and then run the 'generateTranslationDiffs' Bash script to update other locales.
 #02 Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page, e.g.:
 #03 2026-02-15 Bereczky Péter
-# ART version: 1.26.2
+# ART version: 1.26.4
 ABOUT_TAB_BUILD;Verzió
 ABOUT_TAB_CREDITS;Szerzők
 ABOUT_TAB_LICENSE;Licenc
@@ -245,6 +245,10 @@ FILECHOOSER_FILTER_PP;Feldolgozási profilok
 FILECHOOSER_FILTER_SAME;Az aktuális fényképpel megegyező formátumú
 FILECHOOSER_FILTER_TIFF;TIFF fájlok
 FILECHOOSER_FILTER_LUT;Támogatott LUT fájlok
+FONTCHOOSER_FAMILY;Betűtípuscsalád
+FONTCHOOSER_PREVIEW_TEXT;A gyors barna róka átugrik a lusta kutya felett
+FONTCHOOSER_SIZE;Betűméret
+FONTCHOOSER_TITLE;Betűtípus-választó
 GENERAL_ABOUT;Névjegy
 GENERAL_AFTER;Utána
 GENERAL_APPLY;Alkalmaz
@@ -282,6 +286,7 @@ GENERAL_WARNING;Figyelmeztetés
 GENERAL_DEPRECATED;Elavult
 GENERAL_DEPRECATED_TOOLTIP;Elavult! Eltávolításra kerül egy későbbi verzióban.
 GIMP_PLUGIN_INFO;Üdvözöljük az ART GIMP beépülő modulban!\nHa végzett a szerkesztéssel, egyszerűen zárja be az ART-ot, és a kép automatikusan importálásra kerül a GIMP-be.
+HIDPI_PREVIEW;Engedélyezze a képpontonkénti módot (a képek megjelenítése a képernyő natív felbontásával).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), csúcs: %5 (%6)\n    terjedelem: %7 EV, értékek: %8, képpontok: %9
 HISTOGRAM_TOOLTIP_B;Kék hisztogram megjelenítése/elrejtése.
 HISTOGRAM_TOOLTIP_BAR;RGB jelzősáv megjelenítése/elrejtése.
