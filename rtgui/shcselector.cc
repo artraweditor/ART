@@ -27,7 +27,7 @@ SHCSelector::SHCSelector()
       coloredBar(RTO_Left2Right)
 {
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
 
     positions[0] = defaults[0] = 0.25;
     positions[1] = defaults[1] = 0.5;
@@ -66,7 +66,7 @@ void SHCSelector::get_preferred_height_vfunc(int &minimum_height,
 void SHCSelector::get_preferred_width_vfunc(int &minimum_width,
                                             int &natural_width) const
 {
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     minimum_width = 100 * s;
     natural_width = 150 * s;
 }
@@ -74,7 +74,7 @@ void SHCSelector::get_preferred_width_vfunc(int &minimum_width,
 void SHCSelector::get_preferred_height_for_width_vfunc(
     int width, int &minimum_height, int &natural_height) const
 {
-    natural_height = minimum_height = 14 * RTScalable::getPseudoHiDPIScale();
+    natural_height = minimum_height = 14 * 1;
 }
 
 void SHCSelector::get_preferred_width_for_height_vfunc(int height,
@@ -150,7 +150,7 @@ void SHCSelector::updateBackBuffer()
     int w = get_width() - leftMargin - rightMargin;
     int h = get_height();
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     wslider = (double)std::max(h / 5, 10) * s;
     double hwslider = wslider / 2.;
@@ -261,7 +261,7 @@ bool SHCSelector::on_button_press_event(GdkEventButton *event)
     double w = double(get_width() - leftMargin - rightMargin);
     movingPosition = -1;
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     for (int i = 0; i < 3; i++) {
         double currPos =
@@ -308,7 +308,7 @@ bool SHCSelector::on_motion_notify_event(GdkEventMotion *event)
 {
 
     if (movingPosition >= 0) {
-        double s = RTScalable::getPseudoHiDPIScale();
+        double s = 1;
         double innerw = double(get_width() - leftMargin - rightMargin) - 2. * s;
         positions[movingPosition] = tmpPos + (event->x - tmpX) / innerw;
 

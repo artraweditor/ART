@@ -27,33 +27,16 @@
  * theme-related icon sets.
  */
 class RTScalable {
-    static double dpi_;
-    static int pseudo_hidpi_scale_;
     static int global_display_scale_;
     static Gtk::TextDirection direction_; // cached value for text-direction
     
 protected:
     static Cairo::RefPtr<Cairo::ImageSurface>
-    loadImage(const Glib::ustring &fname, double dpi, int scale=0);
+    loadImage(const Glib::ustring &fname, int scale=0);
     static Gtk::TextDirection getDirection();
 
 public:
-#ifdef __APPLE__
-    static constexpr double baseDPI = 72.;
-    static constexpr double baseHiDPI = 144.;
-    static constexpr int baseFontSize = 12;
-#else
-    static constexpr double baseDPI = 96.;
-    static constexpr double baseHiDPI = 192.;
-    static constexpr int baseFontSize = 9;
-#endif
-
     static void init(Gtk::Window *window);
-    static double getDPI();
-    static double getTweakedDPI(); // The returned value is tweaked
-                                   // DPI to adapt to main the
-                                   // font size. Maybe not an ideal solution.
-    static int getPseudoHiDPIScale();
     static int getGlobalDisplayScale();
     static int getDisplayScale(const Gtk::Widget *w);
 

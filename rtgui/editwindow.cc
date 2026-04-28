@@ -49,8 +49,7 @@ EditWindow *EditWindow::getInstance(RTWindow *p, bool restore)
     return &instance_.editWnd;
 }
 
-EditWindow::EditWindow(RTWindow *p)
-    : //resolution(RTScalable::baseDPI),
+EditWindow::EditWindow(RTWindow *p):
       parent(p), isFullscreen(false),
       isClosed(true)
 {

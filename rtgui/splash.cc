@@ -82,7 +82,7 @@ void SplashImage::get_preferred_height_vfunc(int &minimum_height,
 {
     int s = RTScalable::getDisplayScale(this);
     minimum_height = natural_height =
-        surface ? surface->get_height() / s : 100 * RTScalable::getPseudoHiDPIScale();
+        surface ? surface->get_height() / s : 100 * 1;
 }
 
 void SplashImage::get_preferred_width_vfunc(int &minimum_width,
@@ -90,7 +90,7 @@ void SplashImage::get_preferred_width_vfunc(int &minimum_width,
 {
     int s = RTScalable::getDisplayScale(this);
     minimum_width = natural_width =
-        surface ? surface->get_width() / s : 100 * RTScalable::getPseudoHiDPIScale();
+        surface ? surface->get_width() / s : 100 * 1;
 }
 
 void SplashImage::get_preferred_height_for_width_vfunc(

@@ -702,7 +702,7 @@ FileCatalog::FileCatalog(FilePanel *filepanel)
 
     selection_counter_ = Gtk::manage(new Gtk::Label(""));
     buttonBar->pack_end(*selection_counter_, Gtk::PACK_SHRINK,
-                        4 * RTScalable::getPseudoHiDPIScale());
+                        4 * 1);
     setExpandAlignProperties(selection_counter_, false, false, Gtk::ALIGN_END,
                              Gtk::ALIGN_END);
 

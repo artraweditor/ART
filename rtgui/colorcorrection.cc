@@ -335,7 +335,7 @@ public:
     {
         Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
         Gtk::Border padding = getPadding(style); // already scaled
-        int s = RTScalable::getPseudoHiDPIScale();
+        int s = 1;
         int p = padding.get_left() + padding.get_right();
 
         minimum_width = 50 * s + p;
@@ -386,7 +386,7 @@ public:
     void get_preferred_width_vfunc(int &minimum_width,
                                    int &natural_width) const override
     {
-        int s = RTScalable::getPseudoHiDPIScale();
+        int s = 1;
         Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
         Gtk::Border padding = getPadding(style); // already scaled
         int margins = padding.get_left() + padding.get_right();
@@ -398,7 +398,7 @@ public:
     get_preferred_height_for_width_vfunc(int width, int &minimum_height,
                                          int &natural_height) const override
     {
-        int s = RTScalable::getPseudoHiDPIScale();
+        int s = 1;
         Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
         Gtk::Border padding = getPadding(style); // already scaled
         int margins = padding.get_left() + padding.get_right();
@@ -727,7 +727,7 @@ ColorCorrection::ColorCorrection()
         huesat[c] = Gtk::manage(new HueSatColorWheel(sscale));
         huesat[c]->signal_changed().connect(sigc::bind(
             sigc::mem_fun(*this, &ColorCorrection::hslWheelChanged), c));
-        auto s = RTScalable::getPseudoHiDPIScale();
+        auto s = 1;
         huesat[c]->set_size_request(200 * s, -1);
         Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
         hb->pack_start(*Gtk::manage(new Gtk::Label("")),
@@ -1328,7 +1328,7 @@ void ColorCorrection::drawCurve(bool rgb, Cairo::RefPtr<Cairo::Context> cr,
                                 Glib::RefPtr<Gtk::StyleContext> style, int W,
                                 int H)
 {
-    const double s = (double)RTScalable::getPseudoHiDPIScale();
+    const double s = (double)1;
 
     Gtk::StateFlags state =
         !is_sensitive() ? Gtk::STATE_FLAG_INSENSITIVE : Gtk::STATE_FLAG_NORMAL;

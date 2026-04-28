@@ -71,7 +71,7 @@ void RTSurface::changeImage(Glib::ustring imageName)
     if (iterator == surfaceCache.end()) {
         // for now, we hardcode the scale to 2 or more
         int scale = std::max(2, RTScalable::getGlobalDisplayScale());
-        surface = loadImage(imageName, getTweakedDPI(), scale);
+        surface = loadImage(imageName, scale);
         iterator = surfaceCache.emplace(imageName, surface).first;
     }
 
@@ -95,23 +95,5 @@ int RTSurface::getHeight() const
         return -1;
     }
 }
-
-// void RTSurface::init()
-// {
-// }
-
-// void RTSurface::updateImages()
-// {
-//     double res = getTweakedDPI();
-//     for (auto entry : surfaceCache) {
-//         entry.second = loadImage(entry.first, res);
-//         // printf("RTSurface::updateImages : %s\n", entry.first.c_str());
-//     }
-// }
-
-// void RTSurface::from(Glib::RefPtr<RTSurface> other)
-// {
-//     surface = other->surface;
-// }
 
 bool RTSurface::hasSurface() const { return surface ? true : false; }

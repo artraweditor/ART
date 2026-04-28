@@ -127,7 +127,6 @@ class Preferences: public Gtk::Dialog, public ProfileStoreListener {
     /*Gtk::*/MyFontButton *colorPickerFontFB;
     // Gtk::ColorButton* cropMaskColorCB;
     // Gtk::ColorButton* navGuideColorCB;
-    Gtk::CheckButton *pseudoHiDPI;
 
     Gtk::ColorButton *theme_bg_color;
     Gtk::ColorButton *theme_fg_color;

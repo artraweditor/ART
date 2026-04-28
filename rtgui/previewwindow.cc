@@ -162,7 +162,7 @@ bool PreviewWindow::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         int x, y, w, h;
         getObservedFrameArea(x, y, w, h);
         if (x > imgX || y > imgY || w < imgW || h < imgH) {
-            double s = RTScalable::getPseudoHiDPIScale();
+            double s = 1;
             double rectX = x + 0.5;
             double rectY = y + 0.5;
             double rectW = std::min(w, (int)(imgW - (x - imgX) - 1));
@@ -314,15 +314,15 @@ Gtk::SizeRequestMode PreviewWindow::get_request_mode_vfunc() const
 void PreviewWindow::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
-    natural_height = 100 * RTScalable::getPseudoHiDPIScale();
+    minimum_height = 50 * 1;
+    natural_height = 100 * 1;
 }
 
 void PreviewWindow::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
-    minimum_width = 80 * RTScalable::getPseudoHiDPIScale();
-    natural_width = 120 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = 80 * 1;
+    natural_width = 120 * 1;
 }
 
 void PreviewWindow::get_preferred_height_for_width_vfunc(

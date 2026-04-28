@@ -152,7 +152,7 @@ bool ColorWheelArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &crf)
         int width = allocation.get_width();
         int height = allocation.get_height();
 
-        int s = RTScalable::getPseudoHiDPIScale();
+        int s = 1;
 
         cr->set_line_cap(Cairo::LINE_CAP_SQUARE);
 
@@ -327,7 +327,7 @@ bool ColorWheelArea::on_motion_notify_event(GdkEventMotion *event)
 
     bool old_active = point_active_;
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     int width = get_allocated_width() - 2 * inset * s - padding.get_right() -
                 padding.get_left();
     int height = get_allocated_height() - 2 * inset * s - padding.get_top() -
@@ -400,7 +400,7 @@ void ColorWheelArea::get_preferred_width_vfunc(int &minimum_width,
 {
     Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
     Gtk::Border padding = getPadding(style); // already scaled
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     int p = padding.get_left() + padding.get_right();
 
     minimum_width = 50 * s + p;

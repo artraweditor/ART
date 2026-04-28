@@ -142,7 +142,7 @@ public:
     {
         Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
         Gtk::Border padding = getPadding(style); // already scaled
-        int s = RTScalable::getPseudoHiDPIScale();
+        int s = 1;
         int p = padding.get_left() + padding.get_right();
 
         minimum_width = 20 * s + p;

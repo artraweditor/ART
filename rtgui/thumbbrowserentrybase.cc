@@ -445,7 +445,7 @@ void ThumbBrowserEntryBase::updateBackBuffer()
     if (selected) {
         constexpr int radius = 4;
         cc->set_source_rgb(hl.get_red(), hl.get_green(), hl.get_blue());
-        const auto r = 2.5 * radius * RTScalable::getPseudoHiDPIScale();
+        const auto r = 2.5 * radius * 1;
         constexpr double gap = 1.5;
         cc->move_to(exp_width - gap, exp_height - gap - r);
         cc->line_to(exp_width - gap, exp_height - gap);

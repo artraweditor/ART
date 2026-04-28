@@ -75,11 +75,8 @@ void CursorManager::init(Glib::RefPtr<Gdk::Window> mainWindow)
     Glib::RefPtr<Gdk::Pixbuf> wait = RTImage::createPixbufFromFile(
         "gears.svg"); // Currently unused, create *-hicontrast once used.
 
-    double s = RTScalable::getTweakedDPI() /
-               RTScalable::baseDPI; // RTScalable::getDPI() might be preferable,
-                                    // however it imply a lot of work to support
-                                    // this option
-
+    constexpr double s = 1;
+    
     cAdd = add ? Gdk::Cursor::create(display, add, (int)(8. * s), (int)(8. * s))
                : Gdk::Cursor::create(display, Gdk::PLUS);
     cAddPicker = colPickAdd ? Gdk::Cursor::create(display, colPickAdd,

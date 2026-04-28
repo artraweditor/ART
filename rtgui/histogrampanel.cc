@@ -844,7 +844,7 @@ void HistogramRGBArea::getPreferredThickness(int &min_thickness,
 void HistogramRGBArea::getPreferredLength(int &min_length,
                                           int &natural_length) const
 {
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     min_length = 60 * s;
     natural_length = 200 * s;
 }
@@ -854,7 +854,7 @@ void HistogramRGBArea::getPreferredThicknessForLength(
 {
     int bThickness = length / 30;
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
 
     if (bThickness > (10 * s)) {
         bThickness = 10 * s;
@@ -897,7 +897,7 @@ void HistogramRGBArea::updateBackBuffer(int r, int g, int b,
     int winx, winy, winw, winh;
     window->get_geometry(winx, winy, winw, winh);
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
     const int scale = RTScalable::getDisplayScale(this);
 
     // This will create or update the size of the BackBuffer::surface
@@ -1137,7 +1137,7 @@ void HistogramRGBAreaVert::get_preferred_height_vfunc(int &minimum_height,
 void HistogramRGBAreaVert::get_preferred_width_vfunc(int &minimum_width,
                                                      int &natural_width) const
 {
-    minimum_width = 10 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = 10 * 1;
     natural_width = minimum_width;
 }
 
@@ -1208,7 +1208,7 @@ Gtk::SizeRequestMode HistogramArea::get_request_mode_vfunc() const
 void HistogramArea::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     minimum_height = 100 * s;
     natural_height = 200 * s;
 }
@@ -1217,7 +1217,7 @@ void HistogramArea::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     minimum_width = 200 * s;
     natural_width = 400 * s;
 }
@@ -1367,7 +1367,7 @@ void HistogramArea::updateBackBuffer(int custom_w, int custom_h)
     Cairo::RefPtr<Cairo::Context> cr = Cairo::Context::create(surface);
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     // Setup drawing
     set_source_rgba(cr, 0., 0., 0., 0.);
@@ -1408,7 +1408,7 @@ void HistogramArea::updateNonRaw(Cairo::RefPtr<Cairo::Context> cr)
 
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
     const int scale = RTScalable::getDisplayScale(this);
     const int ww = w / scale;
     const int hh = h / scale;
@@ -1658,7 +1658,7 @@ bool HistogramArea::updatePointer(int r, int g, int b,
 void HistogramArea::updateRaw(Cairo::RefPtr<Cairo::Context> cr)
 {
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     const int scale = RTScalable::getDisplayScale(this);
     const int ww = w / scale;
@@ -1883,7 +1883,7 @@ void HistogramArea::drawRawCurve(Cairo::RefPtr<Cairo::Context> &cr, LUTu &data,
                                  unsigned int ub, double scale, int hsize,
                                  int vsize)
 {
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     cr->set_line_width(s);
     cr->move_to(0, vsize - 1);
@@ -1946,7 +1946,7 @@ void HistogramArea::drawCurve(Cairo::RefPtr<Cairo::Context> &cr,
                               const LUTu &data, double scale, int hsize,
                               int vsize)
 {
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     cr->set_line_width(s);
     cr->move_to(0, vsize - 1);
@@ -1978,7 +1978,7 @@ void HistogramArea::drawMarks(Cairo::RefPtr<Cairo::Context> &cr,
                               const LUTu &data, double scale, int hsize,
                               int &ui, int &oi)
 {
-    int s = 8 * RTScalable::getPseudoHiDPIScale();
+    int s = 8 * 1;
 
     if (data[0] > scale) {
         cr->rectangle(0, (ui++) * s, s, s);
@@ -2194,7 +2194,7 @@ void HistogramArea::drawVectorscope(Cairo::RefPtr<Cairo::Context> &cr, int w,
             : std::min<float>(w, h) - 2 * padding;
     const float o_x = (w - scope_scale * vect_width) / 2;
     const float o_y = (h - scope_scale * vect_height) / 2;
-    const double s = RTScalable::getPseudoHiDPIScale();
+    const double s = 1;
     auto orig_matrix = cr->get_matrix();
     const double line_length = scope_size / 2.0;
     std::valarray<double> ch_ds(1);

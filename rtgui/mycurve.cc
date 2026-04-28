@@ -28,7 +28,7 @@ MyCurve::MyCurve()
       snapToMinDistX(0.0), snapToMinDistY(0.0), snapToValX(0.0), snapToValY(0.0)
 {
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     int pointDiameter = (int)(RADIUS * 2.) * s;
     graphW = get_allocation().get_width() - pointDiameter;
     graphH = get_allocation().get_height() - pointDiameter;
@@ -74,7 +74,7 @@ void MyCurve::setRatio(float r)
 void MyCurve::calcDimensions()
 {
     double newRequestedW, newRequestedH;
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
     double r = RADIUS * s;
     double wm = (CBAR_WIDTH + 2. + CBAR_MARGIN) * s;
 
@@ -113,7 +113,7 @@ void MyCurve::get_preferred_height_vfunc(int &minimum_height,
 void MyCurve::get_preferred_width_vfunc(int &minimum_width,
                                         int &natural_width) const
 {
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     natural_width = minimum_width =
         (GRAPH_SIZE + (int)(RADIUS * 2.) +
          (leftBar ? (CBAR_WIDTH + 2 + CBAR_MARGIN) : 0)) *
@@ -126,7 +126,7 @@ void MyCurve::get_preferred_height_for_width_vfunc(int width,
 {
     minimum_height = width * sizeRatio + 0.5;
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     if (leftBar && !bottomBar) {
         minimum_height -= (CBAR_WIDTH + 2 + CBAR_MARGIN) * s;
     }

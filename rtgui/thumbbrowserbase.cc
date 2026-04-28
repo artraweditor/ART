@@ -1066,15 +1066,15 @@ Gtk::SizeRequestMode ThumbBrowserBase::Internal::get_request_mode_vfunc() const
 void ThumbBrowserBase::Internal::get_preferred_height_vfunc(
     int &minimum_height, int &natural_height) const
 {
-    minimum_height = 20 * RTScalable::getPseudoHiDPIScale();
-    natural_height = 80 * RTScalable::getPseudoHiDPIScale();
+    minimum_height = 20 * 1;
+    natural_height = 80 * 1;
 }
 
 void ThumbBrowserBase::Internal::get_preferred_width_vfunc(
     int &minimum_width, int &natural_width) const
 {
-    minimum_width = 200 * RTScalable::getPseudoHiDPIScale();
-    natural_width = 1000 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = 200 * 1;
+    natural_width = 1000 * 1;
 }
 
 void ThumbBrowserBase::Internal::get_preferred_height_for_width_vfunc(

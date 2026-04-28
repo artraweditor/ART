@@ -143,7 +143,7 @@ void MyFlatCurve::draw()
         return;
     }
 
-    double s = (double)RTScalable::getPseudoHiDPIScale();
+    double s = (double)1;
 
     // re-calculate curve if dimensions changed
     int currLUTSize = point.getUpperBound();
@@ -585,7 +585,7 @@ bool MyFlatCurve::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
     allocation.set_x(0);
     allocation.set_y(0);
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
     int scale = RTScalable::getDisplayScale(this);
 
     // setDrawRectangle will allocate the backbuffer Surface
@@ -673,7 +673,7 @@ bool MyFlatCurve::handleEvents(GdkEvent *event)
         return false;
     }
 
-    double s = RTScalable::getPseudoHiDPIScale();
+    double s = 1;
 
     minDistanceX = double(MIN_DISTANCE) / graphW * s;
     minDistanceY = double(MIN_DISTANCE) / graphH * s;
@@ -1440,7 +1440,7 @@ bool MyFlatCurve::pipetteButton1Pressed(EditDataProvider *provider,
     // hide the tangent handles
     tanHandlesDisplayed = false;
 
-    int s = RTScalable::getPseudoHiDPIScale();
+    int s = 1;
 
     // Action on BUTTON_PRESS and no edited point
     switch (area) {

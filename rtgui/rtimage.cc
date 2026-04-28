@@ -182,7 +182,7 @@ RTImage::createImgSurfFromFile(const Glib::ustring &fileName, int scale)
     Cairo::RefPtr<Cairo::ImageSurface> surf;
 
     try {
-        surf = loadImage(fileName, getTweakedDPI(), scale);
+        surf = loadImage(fileName, scale);
     } catch (const Glib::Exception &exception) {
         if (options.rtSettings.verbose) {
             std::cerr << "Failed to load image \"" << fileName

@@ -27,20 +27,10 @@
 #include <librsvg/rsvg.h>
 #include <unordered_map>
 
-double RTScalable::dpi_ = 0.;
-int RTScalable::pseudo_hidpi_scale_ = 0;
 int RTScalable::global_display_scale_ = 1;
 
 extern Options options;
-extern unsigned char initialGdkScale;
-extern float fontScale;
 Gtk::TextDirection RTScalable::direction_ = Gtk::TextDirection::TEXT_DIR_NONE;
-
-double RTScalable::getDPI() { return dpi_; }
-
-double RTScalable::getTweakedDPI() { return dpi_ * fontScale; }
-
-int RTScalable::getPseudoHiDPIScale() { return pseudo_hidpi_scale_; }
 
 int RTScalable::getGlobalDisplayScale()
 {
@@ -49,11 +39,7 @@ int RTScalable::getGlobalDisplayScale()
 
 int RTScalable::getDisplayScale(const Gtk::Widget *w)
 {
-    if (options.pseudoHiDPISupport) {
-        return 1;
-    } else {
-        return w ? w->get_scale_factor() : global_display_scale_;
-    }
+    return w ? w->get_scale_factor() : global_display_scale_;
 }
 
 
@@ -63,28 +49,7 @@ void RTScalable::init(Gtk::Window *window)
 {
     direction_ = window->get_direction();
 
-    if (!options.pseudoHiDPISupport) {
-        pseudo_hidpi_scale_ = 1;
-        dpi_ = baseDPI;
-        global_display_scale_ = window->get_scale_factor();
-    } else {
-        double newDPI = window->get_screen()->get_resolution();
-        int newScale = std::max((int)initialGdkScale, window->get_scale_factor());
-        global_display_scale_ = 1;
-        pseudo_hidpi_scale_ = newScale;
-        // HOMBRE: On windows, if scale = 2, the dpi is non significant, i.e.
-        // should be considered = 192 ; don't know for linux/macos
-        dpi_ = newDPI;
-        if (pseudo_hidpi_scale_ == 1) {
-            if (dpi_ >= baseHiDPI) {
-                pseudo_hidpi_scale_ = 2;
-            }
-        } else if (pseudo_hidpi_scale_ == 2) {
-            if (dpi_ < baseHiDPI) {
-                dpi_ *= 2.;
-            }
-        }
-    }
+    global_display_scale_ = window->get_scale_factor();
 }
 
 namespace {
@@ -110,7 +75,7 @@ Cairo::RefPtr<Cairo::ImageSurface> cache_get(const Glib::ustring &fname, int sca
 } // namespace
 
 Cairo::RefPtr<Cairo::ImageSurface>
-RTScalable::loadImage(const Glib::ustring &fname, double dpi, int scale)
+RTScalable::loadImage(const Glib::ustring &fname, int scale)
 {
     Glib::ustring imagesFolder =
         Glib::build_filename(options.ART_base_dir, "images");
@@ -168,7 +133,7 @@ RTScalable::loadImage(const Glib::ustring &fname, double dpi, int scale)
 
     RsvgDimensionData dim;
     rsvg_handle_get_dimensions(handle, &dim);
-    double r = dpi / baseDPI * scale;
+    double r = scale;
     Cairo::RefPtr<Cairo::ImageSurface> surf = Cairo::ImageSurface::create(
         Cairo::FORMAT_ARGB32, (int)(dim.width * r + 0.499),
         (int)(dim.height * r + 0.499));

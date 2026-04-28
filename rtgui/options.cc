@@ -450,7 +450,6 @@ void Options::setDefaults()
     fontSize = 10;
     CPFontFamily = "default";
     CPFontSize = 8;
-    pseudoHiDPISupport = false;
     hidpi_preview = false;
     lastScale = 5;
     panAccelFactor = 5;
@@ -1609,14 +1608,16 @@ void Options::readFromFile(Glib::ustring fname)
                     CPFontSize = keyFile.get_integer("GUI", "CPFontSize");
                 }
 
-#ifndef __APPLE__
                 if (keyFile.has_key("GUI", "PseudoHiDPISupport")) {
-                    pseudoHiDPISupport =
+                    bool pseudoHiDPISupport =
                         keyFile.get_boolean("GUI", "PseudoHiDPISupport");
+                    if (pseudoHiDPISupport) {
+                        hidpi_preview = true;
+                        thumbnail_inspector_hidpi_preview = true;
+                        thumbnail_browser_hidpi = true;
+                    }
                 }
-#else
-                pseudoHiDPISupport = false;
-#endif
+
                 if (keyFile.has_key("GUI", "HiDPIPreview")) {
                     hidpi_preview = keyFile.get_boolean("GUI", "HiDPIPreview");
                 }
@@ -2448,9 +2449,6 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_integer("GUI", "FontSize", fontSize);
         keyFile.set_string("GUI", "CPFontFamily", CPFontFamily);
         keyFile.set_integer("GUI", "CPFontSize", CPFontSize);
-#ifndef __APPLE__
-        keyFile.set_boolean("GUI", "PseudoHiDPISupport", pseudoHiDPISupport);
-#endif
         keyFile.set_boolean("GUI", "HiDPIPreview", hidpi_preview);
         keyFile.set_boolean("GUI", "ThumbBrowserHiDPI", thumbnail_browser_hidpi);
         keyFile.set_integer("GUI", "LastPreviewScale", lastScale);

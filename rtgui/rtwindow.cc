@@ -31,11 +31,7 @@
 #include "whitebalance.h"
 #include <gtkmm.h>
 
-float fontScale = 1.f;
 Glib::RefPtr<Gtk::CssProvider> cssForced;
-// Glib::RefPtr<Gtk::CssProvider> cssRT;
-
-extern unsigned char initialGdkScale;
 
 //-----------------------------------------------------------------------------
 // MessageWindow
@@ -297,62 +293,14 @@ RTWindow::RTWindow()
 #if GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION < 20 // GTK318
             css = Glib::ustring::compose(
                 "* { font-family: %1; font-size: %2px}", options.fontFamily,
-                options.fontSize * (int)initialGdkScale);
+                options.fontSize);
 #else
             css = Glib::ustring::compose(
                 "* { font-family: %1; font-size: %2pt}", options.fontFamily,
-                options.fontSize * (int)initialGdkScale);
+                options.fontSize);
 #endif // GTK318
-            if (options.pseudoHiDPISupport) {
-                fontScale = options.fontSize / (float)RTScalable::baseFontSize;
-            }
-            if (options.rtSettings.verbose > 1) {
-                printf("\"Non-Default\" font size(%d) * scale(%d) / "
-                       "fontScale(%.3f)\n",
-                       options.fontSize, (int)initialGdkScale, fontScale);
-            }
         } else {
-            Glib::RefPtr<Gtk::StyleContext> style = Gtk::StyleContext::create();
-            Pango::FontDescription pfd =
-                style->get_font(Gtk::STATE_FLAG_NORMAL);
-            int pt;
-            if (pfd.get_set_fields() & Pango::FONT_MASK_SIZE) {
-                int fontSize = pfd.get_size();
-                bool isPix = pfd.get_size_is_absolute();
-                int resolution = (int)style->get_screen()->get_resolution();
-                if (isPix) {
-                    // HOMBRE: guessing here...
-                    // if resolution is lower than baseHiDPI, we're supposing
-                    // that it's already expressed in a scale==1 scenario
-                    if (resolution >= int(RTScalable::baseHiDPI)) {
-                        // converting the resolution to a scale==1 scenario
-                        resolution /= 2;
-                    }
-                    // 1pt =  1/72in @ 96 ppi
-                    // HOMBRE: If the font unit is px, is it alredy scaled up to
-                    // match the resolution ?
-                    //                 px         >inch                 >pt
-                    //                 >"scaled pt"
-                    pt = (int)(double(fontSize) / RTScalable::baseDPI * 72. *
-                                   (96. / (double)resolution) +
-                               0.49);
-                } else {
-                    pt = fontSize / Pango::SCALE;
-                }
-                if (options.pseudoHiDPISupport) {
-                    fontScale = (float)pt / (float)RTScalable::baseFontSize;
-                }
-                if ((int)initialGdkScale > 1 ||
-                    pt != RTScalable::baseFontSize) {
-                    css = Glib::ustring::compose("* { font-size: %1pt}",
-                                                 pt * (int)initialGdkScale);
-                    if (options.rtSettings.verbose > 1) {
-                        printf("\"Default\" font size(%d) * scale(%d) / "
-                               "fontScale(%.3f)\n",
-                               pt, (int)initialGdkScale, fontScale);
-                    }
-                }
-            }
+            css = Glib::ustring::compose("* { font-size: %1pt}", options.fontSize);
         }
         if (!css.empty()) {
             if (options.rtSettings.verbose > 1) {

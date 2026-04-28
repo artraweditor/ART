@@ -217,7 +217,6 @@ public:
     int fontSize;               // RT's main font size (units: pt)
     Glib::ustring CPFontFamily; // ColorPicker font family
     int CPFontSize;             // ColorPicker font size (units: pt)
-    bool pseudoHiDPISupport;
     bool hidpi_preview;
     bool fbShowDateTime;
     bool fbShowBasicExif;

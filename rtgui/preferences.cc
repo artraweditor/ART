@@ -1221,12 +1221,6 @@ Gtk::Widget *Preferences::getGeneralPanel()
     // theme_color_grid->attach(*theme_hl_lbl, 0, 2, 1, 1);
     // theme_color_grid->attach(*theme_hl_color, 1, 2, 1, 1);
 
-    pseudoHiDPI = Gtk::manage(new Gtk::CheckButton(
-        M("PREFERENCES_APPEARANCE_PSEUDOHIDPI") + Glib::ustring(" (") +
-        M("PREFERENCES_APPLNEXTSTARTUP") + ")"));
-    setExpandAlignProperties(pseudoHiDPI, false, false, Gtk::ALIGN_START,
-                             Gtk::ALIGN_BASELINE);
-
     Gtk::VSeparator *vSep = Gtk::manage(new Gtk::VSeparator());
 
     {
@@ -1246,9 +1240,6 @@ Gtk::Widget *Preferences::getGeneralPanel()
         appearanceGrid->attach(*mainFontFB, 1, 1, 1, 1);
         appearanceGrid->attach(*colorPickerFontLbl, 0, 2, 1, 1);
         appearanceGrid->attach(*colorPickerFontFB, 1, 2, 1, 1);
-#ifndef __APPLE__
-        appearanceGrid->attach(*pseudoHiDPI, 0, 3, 2, 1);
-#endif
 
         appearanceGrid->attach(*theme_bg_lbl, 3, 0, 1, 1);
         appearanceGrid->attach(*theme_bg_color, 4, 0, 1, 1);
@@ -2119,10 +2110,6 @@ void Preferences::storePreferences()
         moptions.CPFontSize = cpfd.get_size() / Pango::SCALE;
     }
 
-#ifndef __APPLE__
-    moptions.pseudoHiDPISupport = pseudoHiDPI->get_active();
-#endif
-
 #ifdef WIN32
     moptions.gimpDir = gimpDir->get_filename();
     moptions.psDir = psDir->get_filename();
@@ -2497,8 +2484,6 @@ void Preferences::fillPreferences()
         colorPickerFontFB->set_font_name(Glib::ustring::compose(
             "%1 %2", options.CPFontFamily, options.CPFontSize));
     }
-
-    pseudoHiDPI->set_active(options.pseudoHiDPISupport);
 
     showDateTime->set_active(moptions.fbShowDateTime);
     showBasicExif->set_active(moptions.fbShowBasicExif);
@@ -3073,11 +3058,11 @@ void Preferences::switchFontTo(const Glib::ustring &newFontFamily,
             // #if GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION < 20
             //             fontcss->load_from_data (Glib::ustring::compose ("* {
             //             font-family: %1; font-size: %2px }", newFontFamily,
-            //             newFontSize * RTScalable::getPseudoHiDPIScale()));
+            //             newFontSize * 1));
             // #else
             fontcss->load_from_data(Glib::ustring::compose(
                 "* { font-family: %1; font-size: %2pt }", newFontFamily,
-                newFontSize * RTScalable::getPseudoHiDPIScale()));
+                newFontSize * 1));
             // #endif
             // GTK318
         } catch (Glib::Error &err) {

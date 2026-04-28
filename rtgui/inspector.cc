@@ -220,7 +220,7 @@ bool InspectorArea::on_draw(const ::Cairo::RefPtr<Cairo::Context> &cr)
         }
 
         if (options.thumbnail_inspector_show_histogram) {
-            auto s = RTScalable::getPseudoHiDPIScale();
+            auto s = 1;
             int dscale = RTScalable::getDisplayScale(this);
             double border = 4 * s;
             const int hist_W = hist_bb_.getWidth() / dscale;
@@ -404,15 +404,15 @@ Gtk::SizeRequestMode InspectorArea::get_request_mode_vfunc() const
 void InspectorArea::get_preferred_height_vfunc(int &minimum_height,
                                                int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
-    natural_height = 300 * RTScalable::getPseudoHiDPIScale();
+    minimum_height = 50 * 1;
+    natural_height = 300 * 1;
 }
 
 void InspectorArea::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
-    minimum_width = 50 * RTScalable::getPseudoHiDPIScale();
-    natural_width = 200 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = 50 * 1;
+    natural_width = 200 * 1;
 }
 
 void InspectorArea::get_preferred_height_for_width_vfunc(
@@ -503,8 +503,8 @@ void InspectorArea::updateHistogram()
                     cur_image_->histogram[2], 1, dummy_arr, dummy_arr, 1,
                     dummy_arr, dummy_arr, dummy_arr, dummy_arr);
 
-    int hist_w = RTScalable::getPseudoHiDPIScale() * 300;
-    int hist_h = RTScalable::getPseudoHiDPIScale() * 200;
+    int hist_w = 1 * 300;
+    int hist_h = 1 * 200;
 
     hist_bb_.updateBackBuffer(hist_w, hist_h);
 }

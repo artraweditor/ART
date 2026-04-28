@@ -132,7 +132,7 @@ Gtk::Border getPadding(const Glib::RefPtr<Gtk::StyleContext> style)
         return padding;
     }
 
-    int s = (double)RTScalable::getPseudoHiDPIScale();
+    int s = (double)1;
     padding = style->get_padding();
     if (s > 1) {
         padding.set_left(padding.get_left() * s);
@@ -1095,19 +1095,19 @@ bool MyScrolledWindow::on_scroll_event(GdkEventScroll *event)
 void MyScrolledWindow::get_preferred_width_vfunc(int &minimum_width,
                                                  int &natural_width) const
 {
-    natural_width = minimum_width = 100 * RTScalable::getPseudoHiDPIScale();
+    natural_width = minimum_width = 100 * 1;
 }
 
 void MyScrolledWindow::get_preferred_height_vfunc(int &minimum_height,
                                                   int &natural_height) const
 {
-    natural_height = minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_height = minimum_height = 50 * 1;
 }
 
 void MyScrolledWindow::get_preferred_height_for_width_vfunc(
     int width, int &minimum_height, int &natural_height) const
 {
-    natural_height = minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
+    natural_height = minimum_height = 50 * 1;
 }
 
 /*
@@ -1218,7 +1218,7 @@ bool MyComboBoxText::on_scroll_event(GdkEventScroll *event)
 void MyComboBoxText::setPreferredWidth(int minimum_width, int natural_width)
 {
     if (natural_width == -1 && minimum_width == -1) {
-        naturalWidth = minimumWidth = 70 * RTScalable::getPseudoHiDPIScale();
+        naturalWidth = minimumWidth = 70 * 1;
     } else if (natural_width == -1) {
         naturalWidth = minimumWidth = minimum_width;
     } else if (minimum_width == -1) {
@@ -1234,19 +1234,19 @@ void MyComboBoxText::setPreferredWidth(int minimum_width, int natural_width)
 void MyComboBoxText::get_preferred_width_vfunc(int &minimum_width,
                                                int &natural_width) const
 {
-    natural_width = rtengine::max(naturalWidth, 10 * RTScalable::getPseudoHiDPIScale());
-    minimum_width = rtengine::max(minimumWidth, 10 * RTScalable::getPseudoHiDPIScale());
+    natural_width = rtengine::max(naturalWidth, 10 * 1);
+    minimum_width = rtengine::max(minimumWidth, 10 * 1);
 }
 void MyComboBoxText::get_preferred_width_for_height_vfunc(
     int height, int &minimum_width, int &natural_width) const
 {
-    natural_width = rtengine::max(naturalWidth, 10 * RTScalable::getPseudoHiDPIScale());
-    minimum_width = rtengine::max(minimumWidth, 10 * RTScalable::getPseudoHiDPIScale());
+    natural_width = rtengine::max(naturalWidth, 10 * 1);
+    minimum_width = rtengine::max(minimumWidth, 10 * 1);
 }
 
 MyComboBox::MyComboBox()
 {
-    minimumWidth = naturalWidth = 70 * RTScalable::getPseudoHiDPIScale();
+    minimumWidth = naturalWidth = 70 * 1;
 }
 
 bool MyComboBox::on_scroll_event(GdkEventScroll *event)
@@ -1265,7 +1265,7 @@ bool MyComboBox::on_scroll_event(GdkEventScroll *event)
 void MyComboBox::setPreferredWidth(int minimum_width, int natural_width)
 {
     if (natural_width == -1 && minimum_width == -1) {
-        naturalWidth = minimumWidth = 70 * RTScalable::getPseudoHiDPIScale();
+        naturalWidth = minimumWidth = 70 * 1;
     } else if (natural_width == -1) {
         naturalWidth = minimumWidth = minimum_width;
     } else if (minimum_width == -1) {
@@ -1281,15 +1281,15 @@ void MyComboBox::setPreferredWidth(int minimum_width, int natural_width)
 void MyComboBox::get_preferred_width_vfunc(int &minimum_width,
                                            int &natural_width) const
 {
-    natural_width = rtengine::max(naturalWidth, 10 * RTScalable::getPseudoHiDPIScale());
-    minimum_width = rtengine::max(minimumWidth, 10 * RTScalable::getPseudoHiDPIScale());
+    natural_width = rtengine::max(naturalWidth, 10 * 1);
+    minimum_width = rtengine::max(minimumWidth, 10 * 1);
 }
 void MyComboBox::get_preferred_width_for_height_vfunc(int height,
                                                       int &minimum_width,
                                                       int &natural_width) const
 {
-    natural_width = rtengine::max(naturalWidth, 10 * RTScalable::getPseudoHiDPIScale());
-    minimum_width = rtengine::max(minimumWidth, 10 * RTScalable::getPseudoHiDPIScale());
+    natural_width = rtengine::max(naturalWidth, 10 * 1);
+    minimum_width = rtengine::max(minimumWidth, 10 * 1);
 }
 
 MySpinButton::MySpinButton()
@@ -1561,12 +1561,12 @@ bool MyFileChooserButton::on_scroll_event(GdkEventScroll *event)
 void MyFileChooserButton::get_preferred_width_vfunc(int &minimum_width,
                                                     int &natural_width) const
 {
-    minimum_width = natural_width = 35 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = natural_width = 35 * 1;
 }
 void MyFileChooserButton::get_preferred_width_for_height_vfunc(
     int height, int &minimum_width, int &natural_width) const
 {
-    minimum_width = natural_width = 35 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = natural_width = 35 * 1;
 }
 
 TextOrIcon::TextOrIcon(const Glib::ustring &fname, const Glib::ustring &labelTx,
@@ -1607,21 +1607,21 @@ const RTImage *MyImageMenuItem::getImage() const { return image; }
 const Gtk::Label *MyImageMenuItem::getLabel() const { return label; }
 
 MyProgressBar::MyProgressBar(int width)
-    : w(rtengine::max(width, 10 * RTScalable::getPseudoHiDPIScale()))
+    : w(rtengine::max(width, 10 * 1))
 {
 }
-MyProgressBar::MyProgressBar(): w(200 * RTScalable::getPseudoHiDPIScale()) {}
+MyProgressBar::MyProgressBar(): w(200 * 1) {}
 
 void MyProgressBar::setPreferredWidth(int width)
 {
-    w = rtengine::max(width, 10 * RTScalable::getPseudoHiDPIScale());
+    w = rtengine::max(width, 10 * 1);
 }
 
 void MyProgressBar::get_preferred_width_vfunc(int &minimum_width,
                                               int &natural_width) const
 {
-    minimum_width = rtengine::max(w / 2, 50 * RTScalable::getPseudoHiDPIScale());
-    natural_width = rtengine::max(w, 50 * RTScalable::getPseudoHiDPIScale());
+    minimum_width = rtengine::max(w / 2, 50 * 1);
+    natural_width = rtengine::max(w, 50 * 1);
 }
 
 void MyProgressBar::get_preferred_width_for_height_vfunc(

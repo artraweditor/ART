@@ -815,15 +815,15 @@ Gtk::SizeRequestMode ImageArea::get_request_mode_vfunc() const
 void ImageArea::get_preferred_height_vfunc(int &minimum_height,
                                            int &natural_height) const
 {
-    minimum_height = 50 * RTScalable::getPseudoHiDPIScale();
-    natural_height = 300 * RTScalable::getPseudoHiDPIScale();
+    minimum_height = 50 * 1;
+    natural_height = 300 * 1;
 }
 
 void ImageArea::get_preferred_width_vfunc(int &minimum_width,
                                           int &natural_width) const
 {
-    minimum_width = 100 * RTScalable::getPseudoHiDPIScale();
-    natural_width = 400 * RTScalable::getPseudoHiDPIScale();
+    minimum_width = 100 * 1;
+    natural_width = 400 * 1;
 }
 
 void ImageArea::get_preferred_height_for_width_vfunc(int width,
