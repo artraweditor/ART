@@ -23,7 +23,8 @@ import copy
 from scipy.optimize import least_squares
 from contextlib import redirect_stdout, redirect_stderr
 try:
-    from spektrafilm import photo_params, AgXPhoto
+    from spektrafilm import init_params as photo_params
+    from spektrafilm import simulate as spektrafilm_simulate
     from spektrafilm.model.stocks import FilmStocks, PrintPapers
     spektrafilm_legacy = False
 except ImportError:
@@ -312,17 +313,14 @@ class LUTCreator:
                         print_cmy = photo._develop_print(log_raw)
                         out = photo._scan(print_cmy)
                         r, g, b = out.flatten()
-                        return (abs(b-g), abs(r-g), abs(r-b))                    
+                        return (abs(b-g), abs(r-g), abs(r-b))
                 else:
-                    photo = AgXPhoto(par)
-                    density_cmy = photo.process(image)
-
                     def func(x):
                         y_shift, m_shift = x
-                        photo = AgXPhoto(par)
-                        photo.enlarger.y_filter_shift = y_shift
-                        photo.enlarger.m_filter_shift = m_shift
-                        out = photo.process(image)
+                        pp = copy.copy(par)
+                        pp.enlarger.y_filter_shift = y_shift
+                        pp.enlarger.m_filter_shift = m_shift
+                        out = spektrafilm_simulate(image, pp)
                         r, g, b = out.flatten()
                         return (abs(b-g), abs(r-g), abs(r-b))
 
@@ -393,11 +391,10 @@ class LUTCreator:
     def __call__(self, opts):
         start = time.time()
         params = self.get_params(opts)
-        photo = AgXPhoto(params)
         def identity(rgb, *args, **kwds): return rgb
         if spektrafilm_legacy:
+            photo = AgXPhoto(params)
             photo.print_paper._apply_cctf_encoding_and_clip = identity
-        if spektrafilm_legacy:
             image = self._get('full', opts, photo, self.image)
             if image is None:
                 image = self._get('film', opts, photo, self.image)
@@ -406,7 +403,7 @@ class LUTCreator:
                 image = photo._scan(density_cmy)
                 self.cache[self._key('full', opts)] = image
         else:
-            image = photo.process(self.image)
+            image = spektrafilm_simulate(self.image, params)
         self.make_lut(opts, image)
         end = time.time()
         sys.stderr.write('total time: %.3f\n' % (end - start))
