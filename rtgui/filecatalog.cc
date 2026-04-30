@@ -144,7 +144,7 @@ Options::ThumbnailOrder index_to_thumb_order(int index)
 #define CHECKTIME 2000
 
 FileCatalog::FileCatalog(FilePanel *filepanel)
-    : filepanel(filepanel), selectedDirectoryId(1), refresh_counter_(1),
+    : filepanel(filepanel), selectedDirectoryId(1), 
       actionNextPrevious(NAV_NONE), listener(nullptr), fslistener(nullptr),
       hbToolBar1STB(nullptr), hasValidCurrentEFS(false), filterPanel(nullptr),
       filter_panel_update_(false), previewsToLoad(0), previewsLoaded(0),
@@ -820,10 +820,12 @@ void FileCatalog::closeDir()
     if (dirMonitor) {
         dirMonitor->cancel();
     }
+    if (thumb_refresh_conn_.connected()) {
+        thumb_refresh_conn_.disconnect();
+    }
 
     // ignore old requests
     ++selectedDirectoryId;
-    refresh_counter_ = 1;
 
     // terminate thumbnail preview loading
     previewLoader->removeAllJobs();
@@ -1223,8 +1225,13 @@ void FileCatalog::previewReady(int dir_id, FileBrowserEntry *fdn)
     // put it into the "full directory" browser
     fileBrowser->addEntry(fdn);
     if (!options.thumb_delay_update) {
-        if (++refresh_counter_ % 20 == 0) {
-            fileBrowser->enableThumbRefresh();
+        if (!thumb_refresh_conn_.connected()) {
+            const auto doit = [this]() -> bool {
+                fileBrowser->enableThumbRefresh();
+                return true;
+            };
+            thumb_refresh_conn_ = Glib::signal_timeout().connect(
+                sigc::slot<bool>(doit), options.adjusterMaxDelay * 10);
         }
     }
     if (filename_to_open_ == fdn->filename) {
@@ -1323,6 +1330,9 @@ void FileCatalog::previewsFinishedUI()
     {
         GThreadLock lock; // All GUI access from idle_add callbacks or separate
                           // thread HAVE to be protected
+        if (thumb_refresh_conn_.connected()) {
+            thumb_refresh_conn_.disconnect();
+        }
         fileBrowser->enableThumbRefresh();
         // redrawAll ();
         previewsToLoad = 0;
@@ -2026,7 +2036,7 @@ void FileCatalog::on_dir_changed(const Glib::RefPtr<Gio::File> &file,
             dir_refresh_conn_.disconnect();
         }
         dir_refresh_conn_ = Glib::signal_timeout().connect(
-            sigc::slot<bool>(doit), DIR_REFRESH_DELAY);
+            sigc::slot<bool>(doit), options.adjusterMaxDelay * 10);
     }
 }
 

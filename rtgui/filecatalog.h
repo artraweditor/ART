@@ -151,9 +151,9 @@ private:
     std::set<Glib::ustring> editedFiles;
     guint modifierKey; // any modifiers held when rank button was pressed
 
-    static const unsigned int DIR_REFRESH_DELAY = 2000;
     Glib::RefPtr<Gio::FileMonitor> dirMonitor;
     sigc::connection dir_refresh_conn_;
+    sigc::connection thumb_refresh_conn_;
 
     IdleRegister idle_register;
 
