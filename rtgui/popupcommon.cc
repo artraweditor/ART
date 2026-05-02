@@ -98,6 +98,7 @@ bool PopUpCommon::addEntry(const Glib::ustring &fileName,
         button->get_style_context()->add_class("Left");
         arrowButton->get_style_context()->add_class("Right");
         arrowButton->get_style_context()->add_class("popupbutton-arrow");
+        menu->attach_to_widget(*arrowButton);
         hasMenu = true;
     }
 
@@ -151,7 +152,6 @@ bool PopUpCommon::setSelected(int entryNum)
 
 void PopUpCommon::show()
 {
-    menu->reposition();
     setButtonHint();
     menu->show_all();
     buttonGroup->show_all();
@@ -184,7 +184,7 @@ void PopUpCommon::setButtonHint()
 void PopUpCommon::showMenu(GdkEventButton *event)
 {
     if (event->button == 1) {
-        menu->popup(event->button, event->time);
+    	menu->popup_at_widget(arrowButton, Gdk::Gravity::GRAVITY_SOUTH_EAST, Gdk::Gravity::GRAVITY_NORTH_EAST, (GdkEvent*)event);
     }
 }
 
