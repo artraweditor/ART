@@ -26,6 +26,7 @@
 #26 2024-07-28 alvaro
 #27 2025-01-16 alvaro
 #28 2026-02-18 v1.26.2 - alvaro
+#29 2026-05-03 v1.26.4 - alvaro
 # Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page
 
 ABOUT_TAB_BUILD;Versione
@@ -33,7 +34,7 @@ ABOUT_TAB_CREDITS;Riconoscimenti
 ABOUT_TAB_LICENSE;Licenza
 ABOUT_TAB_RELEASENOTES;Note di rilascio
 ABOUT_TAB_SPLASH;Logo
-ADJUSTER_RESET_TO_DEFAULT;<b>Click</b> - reimposta il valore di default.\n<b>Ctrl</b>+<b>click</b> - reimposta l'ultimo valore salvato.
+ADJUSTER_RESET_TO_DEFAULT;<b>Clic</b> - reimposta il valore di default.\n<b>Ctrl</b>+<b>clic</b> - reimposta l'ultimo valore salvato.
 CTL_SIGMOID;Tone mapper sigmoide
 CTL_SIGMOID_BASE_PRIMARIES;Primari base
 CTL_SIGMOID_INSET;Attenuazione
@@ -49,7 +50,7 @@ CURVEEDITOR_CATMULLROM;Flessibile
 CURVEEDITOR_CURVE;Curva
 CURVEEDITOR_CURVES;Curve
 CURVEEDITOR_CUSTOM;Personalizzata
-CURVEEDITOR_DARKS;Toni Scuri
+CURVEEDITOR_DARKS;Toni scuri
 CURVEEDITOR_EDITPOINT_HINT;Abilita la modifica dei valori in/out dei nodi.\n\nClicca col destro su un nodo per selezionarlo.\nClicca col destro su una parte vuota per deselezionare il nodo.
 CURVEEDITOR_HIGHLIGHTS;Alte luci
 CURVEEDITOR_LIGHTS;Toni chiari
@@ -88,7 +89,7 @@ DYNPROFILEEDITOR_NEW_RULE;Nuova regola profilo dinamico
 DYNPROFILEEDITOR_PROFILE;Profilo di sviluppo
 EDITWINDOW_TITLE;Modifica immagine
 EDIT_OBJECT_TOOLTIP;Mostra un widget sull'immagine che ti permette di configurare questo strumento.
-EDIT_PIPETTE_TOOLTIP;Per aggiungere un punto di regolazione alla curva, tieni premuto il tasto Ctrl e fai click sul punto desiderato nell'anteprima dell'immagine.\nPer sistemare il punto, tieni premuto il tasto Ctrl mentre fai click sulla corrispondente area nell'anteprima, poi lascia il tasto Ctrl (a meno che non desideri un controllo fine) e mentre tieni premuto il tasto sinistro del mouse, muovilo in su e in giù per muovere il punto su e giù sulla curva.
+EDIT_PIPETTE_TOOLTIP;Per aggiungere un punto di regolazione alla curva, tieni premuto il tasto Ctrl e fai clic sul punto desiderato nell'anteprima dell'immagine.\nPer sistemare il punto, tieni premuto il tasto Ctrl mentre fai clic sulla corrispondente area nell'anteprima, poi lascia il tasto Ctrl (a meno che non desideri un controllo fine) e mentre tieni premuto il tasto sinistro del mouse, muovilo in su e in giù per muovere il punto su e giù sulla curva.
 ERROR_MSG_FILE_READ;Errore lettura file: %1
 ERROR_MSG_INVALID_LUT_PARAMS;Parametri LUT non validi per: %1
 ERROR_MSG_INVALID_PROFILE;Profilo non valido: %1
@@ -154,9 +155,9 @@ FILEBROWSER_APPLYPROFILE;Applica
 FILEBROWSER_APPLYPROFILE_PARTIAL;Applica (parziale)
 FILEBROWSER_AUTODARKFRAME;Dark Frame automatico
 FILEBROWSER_AUTOFLATFIELD;Flat Field automatico
-FILEBROWSER_BROWSEPATH_RECURSIVE_TOOLTIP;Trova immagini ricorsivamente nelle sottocartelle.
 FILEBROWSER_BROWSEPATHBUTTONHINT;Aggiorna la lista delle miniature.\nScorciatoia: <b>F5</b>
 FILEBROWSER_BROWSEPATHHINT;Inserisci il percorso da aprire\n<b>Ctrl-o</b> seleziona il percorso\n<b>Invio</b>, <b>Ctrl-Invio</b> (solo nel Navigatore) per sfogliare da qui;\nScorciatoie:\n <b>~</b> - Cartella home\n <b>!</b> - Cartella Immagini
+FILEBROWSER_BROWSEPATH_RECURSIVE_TOOLTIP;Trova immagini ricorsivamente nelle sottocartelle.
 FILEBROWSER_CACHE;Memoria cache
 FILEBROWSER_CACHECLEARFROMFULL;Cancella tutto, compresi i profili in cache
 FILEBROWSER_CACHECLEARFROMPARTIAL;Cancella tutto tranne i profili in cache
@@ -195,32 +196,32 @@ FILEBROWSER_POPUPOPENINEDITOR;Apri in Editor
 FILEBROWSER_POPUPPROCESS;Aggiungi alla Coda
 FILEBROWSER_POPUPPROCESSFAST;Aggiungi alla Coda (Esportazione Rapida)
 FILEBROWSER_POPUPPROFILEOPERATIONS;Operazioni sui Profili di Sviluppo
-FILEBROWSER_POPUPRANK;Classificazione
-FILEBROWSER_POPUPRANK1;Punteggio 1 *
-FILEBROWSER_POPUPRANK2;Punteggio 2 **
-FILEBROWSER_POPUPRANK3;Punteggio 3 ***
-FILEBROWSER_POPUPRANK4;Punteggio 4 ****
-FILEBROWSER_POPUPRANK5;Punteggio 5 *****
+FILEBROWSER_POPUPRANK;Valutazione
+FILEBROWSER_POPUPRANK1;Valuta 1 *
+FILEBROWSER_POPUPRANK2;Valuta 2 **
+FILEBROWSER_POPUPRANK3;Valuta 3 ***
+FILEBROWSER_POPUPRANK4;Valuta 4 ****
+FILEBROWSER_POPUPRANK5;Valuta 5 *****
 FILEBROWSER_POPUPREMOVE;Elimina
 FILEBROWSER_POPUPREMOVEINCLPROC;Rimuovi dalla Coda
 FILEBROWSER_POPUPRENAME;Rinomina/sposta
 FILEBROWSER_POPUPSELECTALL;Seleziona tutto
 FILEBROWSER_POPUPTRASH;Sposta nel cestino
-FILEBROWSER_POPUPUNRANK;Rimuovi il punteggio
+FILEBROWSER_POPUPUNRANK;Rimuovi la valutazione
 FILEBROWSER_POPUPUNTRASH;Rimuovi dal cestino
 FILEBROWSER_QUERYBUTTONHINT;Azzera la ricerca
 FILEBROWSER_QUERYHINT;Scrivi i nomi di file da cercare. Supporta nomi parziali. Separa i termini di ricerca con una virgola, ad esempio:\n<i>1001,1004,1199</i>\n\nEscludi i termini di ricerca anteponendo ad essi <b>!=</b>\nad esempio:\n<i>!=1001,1004,1199</i>\n\nScorciatoie:\n<b>Ctrl-f</b> - posizionati nella casella di ricerca,\n<b>Invio</b> - cerca,\n<b>Shift-Esc</b> - cancella la casella di ricerca,\n<b>Esc</b> - toglie il focus dalla casella di ricerca.
 FILEBROWSER_QUERYLABEL; Cerca:
-FILEBROWSER_RANK1_TOOLTIP;Punteggio 1 *\nScorciatoia: <b>Shift-1</b>
-FILEBROWSER_RANK2_TOOLTIP;Punteggio 2 *\nScorciatoia: <b>Shift-2</b>
-FILEBROWSER_RANK3_TOOLTIP;Punteggio 3 *\nScorciatoia: <b>Shift-3</b>
-FILEBROWSER_RANK4_TOOLTIP;Punteggio 4 *\nScorciatoia: <b>Shift-4</b>
-FILEBROWSER_RANK5_TOOLTIP;Punteggio 5 *\nScorciatoia: <b>Shift-5</b>
+FILEBROWSER_RANK1_TOOLTIP;Valutazione 1 *\nScorciatoia: <b>Shift-1</b>
+FILEBROWSER_RANK2_TOOLTIP;Valutazione 2 *\nScorciatoia: <b>Shift-2</b>
+FILEBROWSER_RANK3_TOOLTIP;Valutazione 3 *\nScorciatoia: <b>Shift-3</b>
+FILEBROWSER_RANK4_TOOLTIP;Valutazione 4 *\nScorciatoia: <b>Shift-4</b>
+FILEBROWSER_RANK5_TOOLTIP;Valutazione 5 *\nScorciatoia: <b>Shift-5</b>
+FILEBROWSER_RENAMEDLGLABEL;Rinomina/sposta file
 FILEBROWSER_RENAME_DIALOG_COPY_LABEL;Copia file
 FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Copia impostazioni da file
 FILEBROWSER_RENAME_DIALOG_RESET_TIP;Reimposta a valori di default
 FILEBROWSER_RENAME_DIALOG_SAVE_TIP;Salva impostazioni su file
-FILEBROWSER_RENAMEDLGLABEL;Rinomina/sposta file
 FILEBROWSER_RESETDEFAULTPROFILE;Reimposta predefinito
 FILEBROWSER_SELECTDARKFRAME;Seleziona un Dark Frame...
 FILEBROWSER_SELECTFLATFIELD;Seleziona un Flat Field...
@@ -240,16 +241,16 @@ FILEBROWSER_SHOWEDITEDNOTHINT;Mostra immagini non modificate.\nScorciatoia: <b>6
 FILEBROWSER_SHOWEXIFINFO;Mostra informazioni Exif.\nScorciatoie:\n<b>i</b> - Modalità a Schede Multiple,\n<b>Alt-i</b> - Modalità a Schede Singole.
 FILEBROWSER_SHOWNOTTRASHHINT;Mostra solo le immagini non cancellate.
 FILEBROWSER_SHOWORIGINALHINT;Mostra solo le immagini originali.\n\nQuando sono presenti più immagini con lo stesso nome ma differente estensione, l'immagine considerata originale è quella la cui estensione è più in alto nella lista delle estensioni gestite in Preferenze > Navigatore > Estensioni gestite.
-FILEBROWSER_SHOWRANK1HINT;Mostra le immagini classificate con 1 stella.\nScorciatoia: <b>1</b>
-FILEBROWSER_SHOWRANK2HINT;Mostra le immagini classificate con 2 stelle.\nScorciatoia: <b>2</b>
-FILEBROWSER_SHOWRANK3HINT;Mostra le immagini classificate con 3 stelle.\nScorciatoia: <b>3</b>
-FILEBROWSER_SHOWRANK4HINT;Mostra le immagini classificate con 4 stelle.\nScorciatoia: <b>4</b>
-FILEBROWSER_SHOWRANK5HINT;Mostra le immagini classificate con 5 stelle.\nScorciatoia: <b>5</b>
+FILEBROWSER_SHOWRANK1HINT;Mostra le immagini valutate 1 stella.\nScorciatoia: <b>1</b>
+FILEBROWSER_SHOWRANK2HINT;Mostra le immagini valutate 2 stelle.\nScorciatoia: <b>2</b>
+FILEBROWSER_SHOWRANK3HINT;Mostra le immagini valutate 3 stelle.\nScorciatoia: <b>3</b>
+FILEBROWSER_SHOWRANK4HINT;Mostra le immagini valutate 4 stelle.\nScorciatoia: <b>4</b>
+FILEBROWSER_SHOWRANK5HINT;Mostra le immagini valutate 5 stelle.\nScorciatoia: <b>5</b>
 FILEBROWSER_SHOWRECENTLYSAVEDHINT;Mostra le immagini salvate.\nScorciatoia: <b>Alt-7</b>
 FILEBROWSER_SHOWRECENTLYSAVEDNOTHINT;Mostra le immagini non salvate.\nScorciatoia: <b>Alt-6</b>
 FILEBROWSER_SHOWTRASHHINT;Mostra il contenuto del cestino.\nScorciatoia: <b>Ctrl-t</b>
 FILEBROWSER_SHOWUNCOLORHINT;Mostra le immagini senza etichetta colorata.\nScorciatoia: <b>Alt-0</b>
-FILEBROWSER_SHOWUNRANKHINT;Mostra le immagini non classificate.\nScorciatoia: <b>0</b>
+FILEBROWSER_SHOWUNRANKHINT;Mostra le immagini non valutate.\nScorciatoia: <b>0</b>
 FILEBROWSER_SORT_DATE;Data
 FILEBROWSER_SORT_DATE_REV;Data (invertita)
 FILEBROWSER_SORT_FILENAME;Nome file
@@ -260,7 +261,7 @@ FILEBROWSER_SORT_MODTIME_REV;Ora di modifica del file (invertita)
 FILEBROWSER_SORT_PROCTIME;Ora ultimo salvataggio
 FILEBROWSER_SORT_PROCTIME_REV;Ora ultimo salvataggio (invertita)
 FILEBROWSER_THUMBSIZE;Dimensione miniature
-FILEBROWSER_UNRANK_TOOLTIP;Nessun Punteggio.\nScorciatoia: <b>Shift-0</b>
+FILEBROWSER_UNRANK_TOOLTIP;Nessuna valutazione.\nScorciatoia: <b>Shift-0</b>
 FILEBROWSER_ZOOMINHINT;Aumenta la dimensione delle miniature.\n\nScorciatoie:\n<b>+</b> - Modalità a Schede Multiple,\n<b>Alt</b>-<b>+</b> - Modalità a Schede Singole.
 FILEBROWSER_ZOOMOUTHINT;Riduce la dimensione delle miniature.\n\nScorciatoie:\n<b>-</b> - Modalità a Schede Multiple,\n<b>Alt</b>-<b>-</b> - Modalità a Schede Singole.
 FILECHOOSER_FILTER_ANY;Tutti i file
@@ -273,6 +274,10 @@ FILECHOOSER_FILTER_LUT;File LUT supportati
 FILECHOOSER_FILTER_PP;Profili sviluppo
 FILECHOOSER_FILTER_SAME;Stesso formato come foto attuale
 FILECHOOSER_FILTER_TIFF;File TIFF
+FONTCHOOSER_FAMILY;Carattere
+FONTCHOOSER_PREVIEW_TEXT;Ma la volpe col bianco balzo riprende le vecchie abitudini
+FONTCHOOSER_SIZE;Dimensione
+FONTCHOOSER_TITLE;Seleziona font
 GENERAL_ABOUT;Informazioni
 GENERAL_AFTER;Dopo
 GENERAL_APPLY;Applica
@@ -297,7 +302,7 @@ GENERAL_LANDSCAPE;Paesaggio
 GENERAL_LOAD;Carica
 GENERAL_LOW;Basso
 GENERAL_MEDIUM;Medio
-GENERAL_NA;n/a
+GENERAL_NA;n.d.
 GENERAL_NO;No
 GENERAL_NONE;Nessuno
 GENERAL_OK;OK
@@ -311,6 +316,7 @@ GENERAL_UNCHANGED;(Invariato)
 GENERAL_UNKNOWN;Sconosciuto
 GENERAL_WARNING;Attenzione
 GIMP_PLUGIN_INFO;Benvenuti nel plugin Gimp di ART!\nQuando hai terminato le modifiche, chiudi semplicemente la finestra principale di ART e l'immagine sara automaticamente importata in GIMP.
+HIDPI_PREVIEW;Attiva modalità pixel per pixel (visualizza le immagini alla risoluzione nativa dello schermo).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), peak: %5 (%6)\n    range: %7 EV, valori: %8, pixel: %9
 HISTOGRAM_TOOLTIP_B;Mostra/Nascondi l'istogramma del Blu.
 HISTOGRAM_TOOLTIP_BAR;Mostra/Nascondi la barra RGB.\nPremi il tasto destro del mouse sull'anteprima dell'immagine per bloccarla/sbloccarla.
@@ -347,7 +353,7 @@ HISTORY_MSG_11;Curva Tono 1
 HISTORY_MSG_14;Lab - Luminosità
 HISTORY_MSG_15;Lab - Contrasto
 HISTORY_MSG_19;Curva per 'L'
-HISTORY_MSG_20;Nitidezza di cattura
+HISTORY_MSG_20;Nitidezza di acquisizione
 HISTORY_MSG_21;MdC - Raggio
 HISTORY_MSG_22;MdC - Quantità
 HISTORY_MSG_23;MdC - Soglia
@@ -356,7 +362,7 @@ HISTORY_MSG_25;MdC - Raggio di rilevamento bordi
 HISTORY_MSG_26;MdC - Tolleranza bordi
 HISTORY_MSG_27;MdC - Controllo alone
 HISTORY_MSG_28;MdC - Quantità controllo alone
-HISTORY_MSG_29;Nitidezza di cattura - Metodo
+HISTORY_MSG_29;Nitidezza di acquisiz. - Metodo
 HISTORY_MSG_30;RLD - Raggio
 HISTORY_MSG_31;RLD - Quantità
 HISTORY_MSG_32;RLD - Smorzamento
@@ -695,13 +701,13 @@ HISTORY_MSG_RESIZE_ALLOWUPSCALING;Ridimensiona - Permetti ingrandimento
 HISTORY_MSG_RESIZE_PPI;Ridimensiona - PPI
 HISTORY_MSG_RESIZE_UNIT;Ridimensiona - Unità
 HISTORY_MSG_SATURATION_VIBRANCE;S/V - Vividezza
-HISTORY_MSG_SHARPENING_AUTORADIUS;Nitidezza di cattura - Raggio Auto RLD
-HISTORY_MSG_SHARPENING_BLUR;Nitidezza di cattura - Raggio sfocatura
-HISTORY_MSG_SHARPENING_CONTRAST;Nitidezza di cattura - Soglia di contrasto
-HISTORY_MSG_SHARPENING_PSF_ITERATIONS;Nitidezza di cattura - Iterazioni PSF
-HISTORY_MSG_SHARPENING_PSF_KERNEL;Nitidezza di cattura - File PSF
-HISTORY_MSG_SHARPENING_RLD_CORNERLATITUDE;Nitidezza di cattura - Latitudine angolo RLD
-HISTORY_MSG_SHARPENING_RLD_CORNERRADIUS;Nitidezza di cattura - Incremento raggio angolo RLD
+HISTORY_MSG_SHARPENING_AUTORADIUS;Nitidezza di acquisiz. - Raggio Auto RLD
+HISTORY_MSG_SHARPENING_BLUR;Nitidezza di acquisiz. - Raggio sfocatura
+HISTORY_MSG_SHARPENING_CONTRAST;Nitidezza di acquisiz. - Soglia di contrasto
+HISTORY_MSG_SHARPENING_PSF_ITERATIONS;Nitidezza di acquisiz. - Iterazioni PSF
+HISTORY_MSG_SHARPENING_PSF_KERNEL;Nitidezza di acquisiz. - File PSF
+HISTORY_MSG_SHARPENING_RLD_CORNERLATITUDE;Nitidezza di acquisiz. - Latitudine angolo RLD
+HISTORY_MSG_SHARPENING_RLD_CORNERRADIUS;Nitidezza di acquisiz. - Incremento raggio angolo RLD
 HISTORY_MSG_SH_COLORSPACE;S/H - Spazio colore
 HISTORY_MSG_SMOOTHING_ANGLE;Sfocatura - angolo
 HISTORY_MSG_SMOOTHING_AREAMASK;Sfocatura - maschera area
@@ -1032,7 +1038,7 @@ PARTIALPASTE_ROTATION;Rotazione
 PARTIALPASTE_SATURATION;Saturazione/Vividezza
 PARTIALPASTE_SHADOWSHIGHLIGHTS;Ombre/Alte luci
 PARTIALPASTE_SHARPENEDGE;Bordi
-PARTIALPASTE_SHARPENING;Nitidezza di cattura
+PARTIALPASTE_SHARPENING;Nitidezza di acquisizione
 PARTIALPASTE_SHARPENMICRO;Microcontrasto
 PARTIALPASTE_SMOOTHING;Levigatura
 PARTIALPASTE_SOFTLIGHT;Luce morbida
@@ -1095,7 +1101,7 @@ PREFERENCES_DATEFORMAT;Formato della data
 PREFERENCES_DATEFORMATHINT;<i>Puoi usare le seguenti stringhe di formattazione:</i>\n<b>%y</b><i> : anno</i>\n<b>%m</b><i> : mese</i>\n<b>%d</b><i> : giorno</i>\n<i>\nPer esempio, il formato italiano per la data è:</i>\n<b>%d/%m/%y</b>
 PREFERENCES_DENOISE_ZOOM_OUT;Mostra effetti di riduzione di rumore nell'anteprima con zoom <100%
 PREFERENCES_DENOISE_ZOOM_OUT_TOOLTIP;Nota che comunque la visualizzazione non sarà completamente accurata
-PREFERENCES_DIRBROWSER_SINGLECLICK;Apertura delle cartelle nel Navigatore con singolo click
+PREFERENCES_DIRBROWSER_SINGLECLICK;Apertura delle cartelle nel Navigatore con singolo clic
 PREFERENCES_DIRDARKFRAMES;Cartella immagini di fondo (Dark Frame)
 PREFERENCES_DIRECTORIES;Cartelle
 PREFERENCES_DIRHOME;Cartella personale dell'utente (home directory)
@@ -1200,10 +1206,10 @@ PREFERENCES_PROFILE_SAVE_OUTPUT_SIDECAR;Salva il file a fianco (output.ext.arp p
 PREFERENCES_PRTINTENT;Intento di resa
 PREFERENCES_PRTPROFILE;Profilo colore
 PREFERENCES_PSPATH;Cartella d'installazione di Adobe Photoshop
-PREFERENCES_REMEMBER_RENAME_OPTIONS;Ricorda impostazioni di rinomina/copia file
 PREFERENCES_REMEMBERZOOMPAN;Ricorda % zoom e scostamento pan
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Ricorda percentuale zoom e scostamento pan dell'immagine attuale quando si apre una nuova immagine.\n\nQuesta opzione funziona solo in "Modalità a Scheda Singola" e quando "Metodo di demosaic. usato per anteprima con zoom <100%" è impostato "Come in ARP".
 PREFERENCES_REMEMBER_METADATA_FILTERS;Ricorda filtri metadati
+PREFERENCES_REMEMBER_RENAME_OPTIONS;Ricorda impostazioni di rinomina/copia file
 PREFERENCES_SAVE_TP_OPEN_NOW;Salva adesso lo stato degli strumenti
 PREFERENCES_SELECTLANG;Seleziona la lingua
 PREFERENCES_SERIALIZE_TIFF_READ;Impostazioni lettura TIFF
@@ -1278,9 +1284,9 @@ PROFILEPANEL_PLASTSAVED;Ultimo salvato
 PROFILEPANEL_SAVEDLGLABEL;Salvo i parametri di sviluppo...
 PROFILEPANEL_SAVEPPASTE;Parametri da salvare
 PROFILEPANEL_TOOLTIPCOPY;Copia il profilo corrente negli appunti.
-PROFILEPANEL_TOOLTIPLOAD;Carica profilo da file.\n<b>Ctrl-click</b> per selezionare i parametri da caricare.
-PROFILEPANEL_TOOLTIPPASTE;Incolla il profilo dagli appunti.\n<b>Ctrl-click</b> per selezionare i parametri da incollare.
-PROFILEPANEL_TOOLTIPSAVE;Salva il profilo corrente.\n<b>Ctrl-click</b> per selezionare i parametri da salvare.
+PROFILEPANEL_TOOLTIPLOAD;Carica profilo da file.\n<b>Ctrl-clic</b> per selezionare i parametri da caricare.
+PROFILEPANEL_TOOLTIPPASTE;Incolla il profilo dagli appunti.\n<b>Ctrl-clic</b> per selezionare i parametri da incollare.
+PROFILEPANEL_TOOLTIPSAVE;Salva il profilo corrente.\n<b>Ctrl-clic</b> per selezionare i parametri da salvare.
 PROGRESSBAR_DENOISING;Riduzione di rumore...
 PROGRESSBAR_FILE_COPY;Sto copiando i file...
 PROGRESSBAR_FILE_DELETE;Sto eliminando i file...
@@ -1313,7 +1319,7 @@ QUEUE_DESTFILENAME;Percorso e nome file
 QUEUE_FORMAT_TITLE;Formato file
 QUEUE_LOCATION_FOLDER;Salva nella cartella
 QUEUE_LOCATION_TEMPLATE;Usa lo schema
-QUEUE_LOCATION_TEMPLATE_TOOLTIP;Definisce il percorso e il nome file in base alla posizione dell'immagine sorgente, il punteggio, il cestino, la posizione nella coda di sviluppo e altro.\n\nPer esempio, se la foto sviluppata si trovasse nel seguente percorso:\n<b><i>/home/mario/foto/31-10-2010/dsc0042.nef</i></b>\nil significato delle stringhe di formattazione sarebbe:\n<b>%d4</b> = <i>home</i>\n<b>%d3</b> = <i>mario</i>\n<b>%d2</b> = <i>foto</i>\n<b>%d1</b> = <i>31-10-2010</i>\n<b>%f</b> = <i>dsc0042</i>\n<b>%p1</b> = <i>/home/mario/foto/31-10-2010/</i>\n<b>%p2</b> = <i>/home/mario/foto/</i>\n<b>%p3</b> = <i>/home/mario/</i>\n<b>%p4</b> = <i>/home/</i>\n\n<b>%r</b> sarà sostituito dal punteggio della foto. Se la foto non è valutata, è usato '<i>0</i>'. Se la foto è nel cestino, è usato '<i>x</i>'.\n\n<b>%s1</b>, ..., <b>%s9</b> sarà sostituito dalla posizione iniziale della foto nella coda di sviluppo nel momento in cui la coda è avviata. Il numero indica le cifre, p.es. <b>%s3</b> per ottenere '<i>001</i>'.\n\n<b>%n</b> sarà sostituito dal nome dell'istantanea applicata correntemente. Se nessuna istantanea esiste o è selezionata, sarà usata una stringa vuota. <b>%u</b> può essere usato al posto di <b>%n</b> se vogliamo gli underscore al posto degli spazi nel nome dell'istantanea.\n\nSe vuoi salvare l'immagine in uscita insieme all'immagine sorgente, scrivi:\n<b>%p1/%f</b>\n\nSe vuoi salvare l'immagine in uscita in una cartella '<i>convertite</i>' posta dentro la cartella dell'immagine sorgente, scrivi:\n<b>%p1/convertite/%f</b>\n\nSe vuoi salvare l'immagine in uscita  in\n'<i>/home/mario/foto/convertite/2010-10-31</i>', scrivi:\n<b>%p2/convertite/%d1/%f</b>
+QUEUE_LOCATION_TEMPLATE_TOOLTIP;Definisce il percorso e il nome file in base alla posizione dell'immagine sorgente, la valutazione, il cestino, la posizione nella coda di sviluppo e altro.\n\nPer esempio, se la foto sviluppata si trovasse nel seguente percorso:\n<b><i>/home/mario/foto/31-10-2010/dsc0042.nef</i></b>\nil significato delle stringhe di formattazione sarebbe:\n<b>%d4</b> = <i>home</i>\n<b>%d3</b> = <i>mario</i>\n<b>%d2</b> = <i>foto</i>\n<b>%d1</b> = <i>31-10-2010</i>\n<b>%f</b> = <i>dsc0042</i>\n<b>%p1</b> = <i>/home/mario/foto/31-10-2010/</i>\n<b>%p2</b> = <i>/home/mario/foto/</i>\n<b>%p3</b> = <i>/home/mario/</i>\n<b>%p4</b> = <i>/home/</i>\n\n<b>%r</b> sarà sostituito dalla valutazione della foto. Se la foto non è valutata, è usato '<i>0</i>'. Se la foto è nel cestino, è usato '<i>x</i>'.\n\n<b>%s1</b>, ..., <b>%s9</b> sarà sostituito dalla posizione iniziale della foto nella coda di sviluppo nel momento in cui la coda è avviata. Il numero indica le cifre, p.es. <b>%s3</b> per ottenere '<i>001</i>'.\n\n<b>%n</b> sarà sostituito dal nome dell'istantanea applicata correntemente. Se nessuna istantanea esiste o è selezionata, sarà usata una stringa vuota. <b>%u</b> può essere usato al posto di <b>%n</b> se vogliamo gli underscore al posto degli spazi nel nome dell'istantanea.\n\nSe vuoi salvare l'immagine in uscita insieme all'immagine sorgente, scrivi:\n<b>%p1/%f</b>\n\nSe vuoi salvare l'immagine in uscita in una cartella '<i>convertite</i>' posta dentro la cartella dell'immagine sorgente, scrivi:\n<b>%p1/convertite/%f</b>\n\nSe vuoi salvare l'immagine in uscita  in\n'<i>/home/mario/foto/convertite/2010-10-31</i>', scrivi:\n<b>%p2/convertite/%d1/%f</b>
 QUEUE_LOCATION_TITLE;Destinazione
 QUEUE_STARTSTOP_TOOLTIP;Avvia o ferma l'elaborazione delle immagini nella coda.\n\nScorciatoia: <b>Ctrl-s</b>
 RENAME_DIALOG_ALLOW_WHITESPACE;Permette spazi nei nomi file destinazione
@@ -1364,10 +1370,10 @@ SAVEDLG_SUBSAMP_TOOLTIP;Migliore compressione:\nJ:a:b 4:2:0\nh/v 2/2\nCrominanza
 SAVEDLG_TIFFUNCOMPRESSED;TIFF non compresso
 SAVEDLG_WARNFILENAME;Il file verrà chiamato
 SESSION_LABEL;Sessione
-SHCSELECTOR_TOOLTIP;Click destro per ripristinare la posizione di questi tre cursori.
+SHCSELECTOR_TOOLTIP;Clic destro per ripristinare la posizione di questi tre cursori.
 SOFTPROOF_GAMUTCHECK_MONITOR_TOOLTIP;Evidenzia i pixel con colori fuori dal gamut rispetto al profilo del monitor.
 SOFTPROOF_GAMUTCHECK_TOOLTIP;Evidenzia i pixel con colori fuori dal gamut rispetto a:\n- profilo soft-proofing, se impostato e se il soft-proofing è abilitato,\n- profilo di uscita, se il soft-proofing è disabilitato.
-SOFTPROOF_TOOLTIP;Il soft-proofing simula l'apparenza dell'immagine quando viene riprodotta da una specifica stampante o monitor, se un profilo corretto è impostato in Preferenze > Gestione Colore.\n(Premi <b>Ctrl</b> + click per cambiare i profili soft-proofing.)
+SOFTPROOF_TOOLTIP;Il soft-proofing simula l'apparenza dell'immagine quando viene riprodotta da una specifica stampante o monitor, se un profilo corretto è impostato in Preferenze > Gestione Colore.\n(Premi <b>Ctrl</b> + clic per cambiare i profili soft-proofing.)
 THRESHOLDSELECTOR_B;Basso
 THRESHOLDSELECTOR_BL;Basso-Sinistra
 THRESHOLDSELECTOR_BR;Basso-Destra
@@ -1375,8 +1381,8 @@ THRESHOLDSELECTOR_HINT;Tieni premuto <b>Shift</b> per muovere un singolo punto d
 THRESHOLDSELECTOR_T;Alto
 THRESHOLDSELECTOR_TL;Alto-Sinistra
 THRESHOLDSELECTOR_TR;Alto-Destra
-TOOLBAR_TOOLTIP_COLORPICKER;Prelievo colore bloccabile\n\nQuando lo strumento è attivo:\n- Aggiungi un prelievo: <b>click sx</b>.\n- Sposta un prelievo: <b>click sx e trascina</b>.\n- Cancella un prelievo: <b>click dx</b>.\n- Cancella tutti i prelievi: <b>Ctrl</b>+<b>Shift</b>+<b>click dx</b>.\n- Torna allo strumento mano: <b>click dx</b> fuori dal prelievo.
-TOOLBAR_TOOLTIP_CROP;<b>Ritaglia</b> la selezione.\nScorciatoia: <b>Shift-c</b>\nSposta l'area di ritaglio tenendo premuto <b>click sx</b> mentre muovi il mouse
+TOOLBAR_TOOLTIP_COLORPICKER;Prelievo colore bloccabile\n\nQuando lo strumento è attivo:\n- Aggiungi un prelievo: <b>clic sx</b>.\n- Sposta un prelievo: <b>clic sx e trascina</b>.\n- Cancella un prelievo: <b>clic dx</b>.\n- Cancella tutti i prelievi: <b>Ctrl</b>+<b>Shift</b>+<b>clic dx</b>.\n- Torna allo strumento mano: <b>clic dx</b> fuori dal prelievo.
+TOOLBAR_TOOLTIP_CROP;<b>Ritaglia</b> la selezione.\nScorciatoia: <b>Shift-c</b>\nSposta l'area di ritaglio tenendo premuto <b>clic sx</b> mentre muovi il mouse
 TOOLBAR_TOOLTIP_HAND;Strumento mano.\nScorciatoia: <b>h</b>
 TOOLBAR_TOOLTIP_PERSPECTIVE;<b>Correzione prospettiva</b>.\nScorciatoia: <b>Shift-p</b>\n\nModifica le linee di controllo per correggere la distorsione prospettica. Clicca di nuovo sul pulsante per applicare la correzione.
 TOOLBAR_TOOLTIP_STRAIGHTEN;<b>Linea Dritta</b>/<b>Rotazione Precisa</b>.\nScorciatoia: <b>Shift-s</b>\n\nTraccia il verticale o l'orizzontale disegnando una linea sull'anteprima dell'immagine. L'angolo di rotazione verrà mostrato accanto alla linea guida. Il centro della rotazione è il centro geometrico dell'immagine.
@@ -1655,13 +1661,13 @@ TP_ICM_APPLYHUESATMAP_TOOLTIP;Utilizza la tabella base del DCP incorporato (HueS
 TP_ICM_APPLYLOOKTABLE;Tabella di consultazione
 TP_ICM_APPLYLOOKTABLE_TOOLTIP;Utilizza la tabella di consultazione del DCP incorporato. L'impostazione è disponibile se il DCP selezionato ne ha uno.
 TP_ICM_BPC;Compensazione punto del nero
+TP_ICM_DCPILLUMINANT;Illuminante
+TP_ICM_DCPILLUMINANT_INTERPOLATED;Interpolato
+TP_ICM_DCPILLUMINANT_TOOLTIP;Seleziona quale illuminante DCP utilizzare. Il predefinito è "interpolato", un mix tra i due basato sul bilanciamento del bianco. Questa impostazione è abilitata solo se è selezionato un DCP a doppio illuminante con supporto interpolato.
 TP_ICM_DCP_LOOK_PIPELINE_POS;Applicazione del Look
 TP_ICM_DCP_LOOK_PIPELINE_POS_EARLY;All'inizio della pipeline
 TP_ICM_DCP_LOOK_PIPELINE_POS_LATE;Alla fine della pipeline
 TP_ICM_DCP_LOOK_PIPELINE_POS_TOOLTIP;Indica quando applicare i modificatori del look del profilo DCP (Tabella di look, esposizione di base e curva di tono) nella pipeline di elaborazione. Applicare il look all'inizio (prima della correzione Colore/Tono) è più conforme alle specifiche originali del DNG di Adobe, ma si potrebbero ottenere luci bruciate che non possono essere recuperate dagli strumenti di editing locale
-TP_ICM_DCPILLUMINANT;Illuminante
-TP_ICM_DCPILLUMINANT_INTERPOLATED;Interpolato
-TP_ICM_DCPILLUMINANT_TOOLTIP;Seleziona quale illuminante DCP utilizzare. Il predefinito è "interpolato", un mix tra i due basato sul bilanciamento del bianco. Questa impostazione è abilitata solo se è selezionato un DCP a doppio illuminante con supporto interpolato.
 TP_ICM_INPUTCAMERA;Predefinito della fotocamera
 TP_ICM_INPUTCAMERAICC;Specifico della fotocamera
 TP_ICM_INPUTCAMERAICC_TOOLTIP;Utilizza i profili colore di ingresso DCP o ICC di ART specifici per la fotocamera. Questi profili sono più precisi dei semplici matrix. Non sono però disponibili per tutte le fotocamere. Questi profili sono archiviati nelle cartelle /iccprofiles/input e /dcpprofiles e sono recuperati automaticamente in base all'esatta corrispondenza tra nome del file e modello di fotocamera.
@@ -1752,7 +1758,7 @@ TP_LABMASKS_DRAWNMASK_PEN_SETTINGS;Impostazioni pennello
 TP_LABMASKS_DRAWNMASK_RADIUS;Raggio
 TP_LABMASKS_DRAWNMASK_RESET_TIP;Cancella tutti i tratti
 TP_LABMASKS_DRAWNMASK_SMOOTHNESS;Morbidezza
-TP_LABMASKS_DRAWNMASK_TOGGLE_TIP;Abilita il disegno sull'immagine con il pennello.\n\n<i>Se usi il mouse:</i>\n- Premi <b>Alt</b> per azionare temporaneamente la "modalità gomma";\n- Premi <b>Shift</b> per disegnare una linea dritta;\n- Use <b>Ctrl+rotella</b> per cambiare il raggio del pennello;\n- <b>Ctrl+Shift+rotella</b> per cambiare la durezza del pennello;\n- <b>Ctrl+click</b> per iniziare un nuovo gruppo di tratti senza cambiare parametri\n(così tratti multipli sulla stessa area si sommano);\n- Usa il <b>terzo pulsante</b> per disattivare il disegno su area.\n\n<i>Quando si usa un dispositivo sensibile al tocco:</i>\n- Usa il <b>primo pulsante</b> per invertire la "modalità gomma";\n- Premi <b>Shift</b> per disegnare una linea dritta;\n- Usa <b>Alt+primo pulsante</b> per aumentare il raggio del pennello, e\n- <b>Alt+secondo pulsante</b> per decrementarlo;\n- Usa il <b>secondo pulsante</b> per cambiare le modalità di sensibilità al tocco disponibili: off, durezza, raggio (premi <b>Shift</b> per invertire la direzione);\n- Usa <b>Ctrl+secondo pulsante</b> per disattivare il disegno sull'area.
+TP_LABMASKS_DRAWNMASK_TOGGLE_TIP;Abilita il disegno sull'immagine con il pennello.\n\n<i>Se usi il mouse:</i>\n- Premi <b>Alt</b> per azionare temporaneamente la "modalità gomma";\n- Premi <b>Shift</b> per disegnare una linea dritta;\n- Use <b>Ctrl+rotella</b> per cambiare il raggio del pennello;\n- <b>Ctrl+Shift+rotella</b> per cambiare la durezza del pennello;\n- <b>Ctrl+clic</b> per iniziare un nuovo gruppo di tratti senza cambiare parametri\n(così tratti multipli sulla stessa area si sommano);\n- Usa il <b>terzo pulsante</b> per disattivare il disegno su area.\n\n<i>Quando si usa un dispositivo sensibile al tocco:</i>\n- Usa il <b>primo pulsante</b> per invertire la "modalità gomma";\n- Premi <b>Shift</b> per disegnare una linea dritta;\n- Usa <b>Alt+primo pulsante</b> per aumentare il raggio del pennello, e\n- <b>Alt+secondo pulsante</b> per decrementarlo;\n- Usa il <b>secondo pulsante</b> per cambiare le modalità di sensibilità al tocco disponibili: off, durezza, raggio (premi <b>Shift</b> per invertire la direzione);\n- Usa <b>Ctrl+secondo pulsante</b> per disattivare il disegno sull'area.
 TP_LABMASKS_DRAWNMASK_UNDO_TIP;Rimuovi l'ultimo gruppo di tratti
 TP_LABMASKS_EXTERNALMASK;Maschera esterna
 TP_LABMASKS_EXTERNALMASK_FILENAME;File maschera
@@ -1819,7 +1825,7 @@ TP_PERSPECTIVE_AUTO_BOTH_TOOLTIP;Orizzontale e verticale
 TP_PERSPECTIVE_AUTO_HORIZONTAL_TOOLTIP;Orizzontale
 TP_PERSPECTIVE_AUTO_VERTICAL_TOOLTIP;Verticale
 TP_PERSPECTIVE_CONTROL_LINES;Linee di controllo
-TP_PERSPECTIVE_CONTROL_LINES_TOOLTIP;<b>Ctrl</b>+<b>trascina</b>: Disegna una nuova linea\n<b>click col destro</b>: Cancella linea
+TP_PERSPECTIVE_CONTROL_LINES_TOOLTIP;<b>Ctrl</b>+<b>trascina</b>: Disegna una nuova linea\n<b>clic col destro</b>: Cancella linea
 TP_PERSPECTIVE_CROPFACTOR;Fattore di crop
 TP_PERSPECTIVE_FLENGTH;Lunghezza focale
 TP_PERSPECTIVE_HORIZONTAL;Orizzontale
