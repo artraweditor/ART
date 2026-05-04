@@ -107,6 +107,9 @@ def getopts():
     p.add_argument('--json', nargs=2)
     p.add_argument('--server', action='store_true')
     p.add_argument('--auto-ym-shifts', action='store_true')
+    p.add_argument('--preflash-exposure', type=float, default=0)
+    p.add_argument('--preflash-y-shift', type=float, default=0)
+    p.add_argument('--preflash-m-shift', type=float, default=0)
     opts = p.parse_args()
     if opts.json:
         with open(opts.json[0]) as f:
@@ -136,6 +139,12 @@ def update_opts(opts, params, output):
     opts.output_black_offset = params.get(
         "output_black_offset", opts.output_black_offset)
     opts.output = output
+    opts.preflash_exposure = params.get("preflash_exposure",
+                                        opts.preflash_exposure)
+    opts.preflash_y_shift = params.get("preflash_y_shift",
+                                       opts.preflash_y_shift)
+    opts.preflash_m_shift = params.get("preflash_m_shift",
+                                       opts.preflash_m_shift)
 
 
 def srgb(a, inv):
@@ -246,6 +255,9 @@ class LUTCreator:
         params.enlarger.print_exposure = opts.print_exposure
         params.enlarger.print_exposure_compensation = True
         params.enlarger.y_filter_shift = opts.y_shift
+        params.enlarger.preflash_exposure = opts.preflash_exposure
+        params.enlarger.preflash_y_filter_shift = opts.preflash_y_shift
+        params.enlarger.preflash_m_filter_shift = opts.preflash_m_shift
         params.io.compute_negative = False
         params.io.crop = False
         params.io.full_image = True
@@ -298,7 +310,11 @@ class LUTCreator:
                     [0.184, 0.184, 0.184],
                 ]])
 
-                par = copy.copy(params)
+                par = copy.deepcopy(params)
+                par.enlarger.preflash_exposure = 0
+                par.enlarger.preflash_y_filter_shift = 0
+                par.enlarger.preflash_m_filter_shift = 0
+                
                 if spektrafilm_legacy:
                     par.debug.return_negative_density_cmy = True
 
@@ -479,6 +495,7 @@ def main():
             o = sys.stdin.readline().strip()
             with open(p) as f:
                 params = json.load(f)
+            os.system(f"cp {p} /tmp/params.json")
             update_opts(opts, params, o)
             buf = io.StringIO()
             with redirect_stdout(buf):

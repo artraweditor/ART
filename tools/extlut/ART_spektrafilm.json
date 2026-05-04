@@ -55,7 +55,12 @@
          "Print filter shift"],
         ["dir_couplers_amount", "Dir couplers amount", 0, 2, 1, 0.01],
         ["film_gamma", "Film gamma factor", 0.01, 2.0, 1.0, 0.01],
-        ["print_gamma", "Print gamma factor", 0.01, 2.0, 1.0, 0.01]
+        ["print_gamma", "Print gamma factor", 0.01, 2.0, 1.0, 0.01],
+        ["preflash_exposure", "Exposure", 0.0, 1.0, 0.0, 0.001, "Preflash"],
+        ["preflash_y_shift", "Y filter shift (yellow/blue)", -20, 20, 0, 0.1,
+         "Preflash"],
+        ["preflash_m_shift", "M filter shift (magenta/green)", -20, 20, 0, 0.1,
+         "Preflash"]
     ],
     "label" : "Spektrafilm Film Simulation"
 }}
