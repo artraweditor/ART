@@ -26,17 +26,12 @@
             ["Fuji C200 (Negative)", 1],
             ["Fuji Eterna 500 (Negative)", 2],
             ["Fuji Eterna 500 Vivid (Negative)", 3],
-            ["Fuji FP-100C (Positive)", 4],
-            ["Fuji Instax color (Positive)", 5],
             ["Fuji Natura 1600 (Negative)", 6],
             ["Fuji Pro 160C (Negative)", 7],
             ["Fuji Pro 160S (Negative)", 8],
             ["Fuji Pro 400H (Negative)", 9],
-            ["Fuji Provia 100F (Positive)", 10],
             ["Fuji Superia Reala (Negative)", 11],
             ["Fuji Superia X-Tra 400 (Negative)", 12],
-            ["Fuji Velvia 50 (Positive)", 13],
-            ["Kodachrome 64 (Positive)", 14],
             ["Kodak 5222 (Negative)", 20],
             ["Kodak 5222 Dev 12 (Negative)", 17],
             ["Kodak 5222 Dev 4 (Negative)", 18],
@@ -47,13 +42,11 @@
             ["Kodak 5247 II Alt (Negative)", 53],
             ["Kodak 5248 (Negative)", 24],
             ["Kodak 5250 (Negative)", 25],
-            ["Kodak Aerochrome III Infrared Film 1443 (Positive)", 28],
             ["Kodak Aerocolor IV 2460 (Negative)", 29],
             ["Kodak Aerocolor IV 2460 High (Negative)", 30],
             ["Kodak Aerocolor IV 2460 Low (Negative)", 31],
             ["Kodak EXR 100T 5248 (Negative)", 33],
             ["Kodak EXR 200T 5293 (Negative)", 27],
-            ["Kodak Ektachrome 100D (Positive)", 34],
             ["Kodak Ektar 100 (Negative)", 35],
             ["Kodak Gold 200 (Negative)", 36],
             ["Kodak Portra 160 (Negative)", 37],
@@ -71,13 +64,21 @@
             ["Kodak Vision3 200T 5213 (Negative)", 52],
             ["Kodak Vision3 250D 5207 (Negative)", 15],
             ["Kodak Vision3 500T 5219 (Negative)", 16],
-            ["Kodak Vision3 50D 5203 (Negative)", 51]
+            ["Kodak Vision3 50D 5203 (Negative)", 51],
+            ["Fuji FP-100C (Positive)", 4],
+            ["Fuji Instax color (Positive)", 5],
+            ["Fuji Provia 100F (Positive)", 10],
+            ["Fuji Velvia 50 (Positive)", 13],
+            ["Kodachrome 64 (Positive)", 14],
+            ["Kodak Aerochrome III Infrared Film 1443 (Positive)", 28],
+            ["Kodak Ektachrome 100D (Positive)", 34]            
             // the following are not available anymore in 0.2
             // ["KodakDyeTransferSeparation", -1],
             // ["Technicolor IV", -1],
             // ["Technicolor IV Alt. 1", -1],
             // ["Technicolor IV Alt. 2", -1]
         ], 0],
+        ["push_pull", "Push/Pull", -4.0, 4.0, 0.0, 0.05],
         ["red_light", "Red printer light", -1, 1, 0, 0.01],
         ["green_light", "Green printer light", -1, 1, 0, 0.01],
         ["blue_light", "Blue printer light", -1, 1, 0, 0.01],
@@ -90,8 +91,6 @@
             ["Fuji Eterna-CP Type 3513DI (Negative)", 0],
             ["Fujiflex Crystal Archive New Version (Negative)", 4],
             ["Fujiflex Crystal Archive Old Version (Negative)", 5],
-            ["Ilfochrome Micrographic M (Positive)", 34],
-            ["Ilfochrome Micrographic P (Positive)", 35],
             ["Kodak 2302 (Negative)", 39],
             ["Kodak 2302 Dev 2 (Negative)", 6],
             ["Kodak 2302 Dev 3 (Negative)", 7],
@@ -103,7 +102,6 @@
             ["Kodak 5384 (Negative)", 15],
             ["Kodak Duraflex Plus (Negative)", 16],
             ["Kodak EXR 5386 (Negative)", 20],
-            ["Kodak Ektachrome Radiance III Paper (Positive)", 37],
             ["Kodak Endura Premier Paper (Negative)", 19],
             ["Kodak Polymax Fine-Art Paper Grade -1 (Negative)", 28],
             ["Kodak Polymax Fine-Art Paper Grade 0 (Negative)", 22],
@@ -117,6 +115,9 @@
             ["Kodak Vision 2383 (Negative)", 11],
             ["Kodak Vision Premier 2393 (Negative)", 12],
             ["Kodka Supra Endura Paper (Negative)", 30],
+            ["Ilfochrome Micrographic M (Positive)", 34],
+            ["Ilfochrome Micrographic P (Positive)", 35],
+            ["Kodak Ektachrome Radiance III Paper (Positive)", 37],
             ["None", 32]
             // the following are not available anymore in 0.2
             // ["KodakDyeTransferKodachrome", -1],
@@ -125,9 +126,9 @@
             // ["Technicolor V", -1]
         ], 0],
         ["projector_wb", "Projector wb", 2700, 16000, 6500, 1],
-        ["white_point", "White point", 0.5, 2.0, 1.0, 0.001],
+        //["white_point", "White point", 0.5, 2.0, 1.0, 0.001],
         ["sat", "Sat", 0, 2, 1, 0.01],
-        ["black_offset", "Black offset", -2, 2, 0, 0.01]
+        ["black_offset", "Shadow compensation", -2, 2, 0, 0.01]
     ],
     "label" : "Spectral Film Simulation"
 }}

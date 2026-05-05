@@ -9,8 +9,14 @@ from contextlib import redirect_stdout, redirect_stderr
 try:
     from spectral_film_lut.film_data import FilmData
     HAS_FILM_DATA = True
+    try:
+        from spectral_film_lut.utils import film_conversion
+        HAS_FILM_CONVERSION = True
+    except ImportError:
+        HAS_FILM_CONVERSION = False
 except ImportError:
     HAS_FILM_DATA = False
+    HAS_FILM_CONVERSION = False
 
 
 if HAS_FILM_DATA:
@@ -249,6 +255,7 @@ def getopts():
     p.add_argument('--black-offset', type=float, default=0)
     p.add_argument('--print-stocks', action='store_true')
     p.add_argument('--print-stocks-verbose', action='store_true')
+    p.add_argument('--push-pull', type=float, default=0)
     p.add_argument('params', nargs='?')
     p.add_argument('output', nargs='?')
     res = p.parse_args()
@@ -324,6 +331,7 @@ def get_params(opts):
         'white_point' : opts.white_point,
         'sat' : opts.sat,
         'black_offset' : opts.black_offset,
+        'push_pull' : opts.push_pull,
     }
     if opts.params:
         params = update_params(params, opts.params)
@@ -332,26 +340,50 @@ def get_params(opts):
 
 def mklut(params, output):
     def default(): return None
+    if HAS_FILM_CONVERSION:
+        kwargs = dict(
+            lut_size=33,
+            cube=False,
+            input_colorspace='ACEScct',
+            output_gamut='ACES AP0',
+            gamma_func='Linear',
+            projector_kelvin=params['projector_wb'],
+            exp_comp=params['exposure'],
+            exp_kelvin=params['wb'],
+            mode='full',
+            red_light=params['red_light'],
+            green_light=params['green_light'],
+            blue_light=params['blue_light'],
+            shadow_comp=params['black_offset'],
+            color_masking=1,
+            tint=params['tint'],
+            sat_adjust=params['sat'],
+            push_pull=params['push_pull']
+        )
+    else:
+        kwargs = dict(
+            lut_size=33,
+            cube=False,
+            input_colourspace='ACEScct',
+            output_colourspace='ACES2065-1',
+            projector_kelvin=params['projector_wb'],
+            exp_comp=params['exposure'],
+            #white_point=params['white_point'],
+            exposure_kelvin=params['wb'],
+            mode='full',
+            red_light=params['red_light'],
+            green_light=params['green_light'],
+            blue_light=params['blue_light'],
+            black_offset=params['black_offset'],
+            color_masking=1,
+            tint=params['tint'],
+            sat_adjust=params['sat'],
+            matrix_method=False
+        )
+            
     lut = create_lut(FILMSTOCKS.get(params['film'], default)(),
                      FILMSTOCKS.get(params['paper'], default)(),
-                     lut_size=33,
-                     cube=False,
-                     input_colourspace='ACEScct',
-                     output_colourspace='ACES2065-1',
-                     projector_kelvin=params['projector_wb'],
-                     exp_comp=params['exposure'],
-                     white_point=params['white_point'],
-                     exposure_kelvin=params['wb'],
-                     mode='full',
-                     red_light=params['red_light'],
-                     green_light=params['green_light'],
-                     blue_light=params['blue_light'],
-                     black_offset=params['black_offset'],
-                     color_masking=1,
-                     tint=params['tint'],
-                     sat_adjust=params['sat'],
-                     matrix_method=False,
-                     )
+                     **kwargs)
     lut = to_numpy(lut)[...,:3]
     dx, dy, dz = lut.shape[:-1]
     table = lut.reshape((-1, 3))
