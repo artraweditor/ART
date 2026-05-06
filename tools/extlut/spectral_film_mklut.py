@@ -107,7 +107,7 @@ if HAS_FILM_DATA:
         "Kodak Polymax Fine-Art Paper Grade 5",
         "Kodak Polymax Fine-Art Paper Grade -1",
         "Kodak Portra Endura Paper",
-        "Kodka Supra Endura Paper",
+        "Kodak Supra Endura Paper",
         "Technicolor V",
         "None",
         "Fuji Crystal Archive Pro PDII",
