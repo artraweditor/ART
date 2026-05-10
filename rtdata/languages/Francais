@@ -175,7 +175,7 @@ FILEBROWSER_POPUPRANK4;Rang 4 ****
 FILEBROWSER_POPUPRANK5;Rang 5 *****
 FILEBROWSER_POPUPREMOVE;Effacer
 FILEBROWSER_POPUPREMOVEINCLPROC;Retirer de la file
-FILEBROWSER_POPUPRENAME;Renommer
+FILEBROWSER_POPUPRENAME;Renommer/déplacer
 FILEBROWSER_POPUPSELECTALL;Sélectionner tout
 FILEBROWSER_POPUPTRASH;Déplacer dans la corbeille
 FILEBROWSER_POPUPUNRANK;Effacer le rang
@@ -188,7 +188,10 @@ FILEBROWSER_RANK2_TOOLTIP;Assigner le rang 2 *\nRaccourci : <b>Shift-2</b>
 FILEBROWSER_RANK3_TOOLTIP;Assigner le rang 3 *\nRaccourci : <b>Shift-3</b>
 FILEBROWSER_RANK4_TOOLTIP;Assigner le rang 4 *\nRaccourci : <b>Shift-4</b>
 FILEBROWSER_RANK5_TOOLTIP;Assigner le rang 5 *\nRaccourci : <b>Shift-5</b>
-FILEBROWSER_RENAMEDLGLABEL;Renommer le(s) fichier(s)
+FILEBROWSER_RENAMEDLGLABEL;Renommer/déplacer le(s) fichier(s)
+FILEBROWSER_RENAME_DIALOG_LOAD_TIP;Charger les réglages depuis un fichier
+FILEBROWSER_RENAME_DIALOG_SAVE_TIP;Sauvegarder les réglages dans un fichier
+FILEBROWSER_RENAME_DIALOG_RESET_TIP;Réinitialiser les réglages aux valeurs par défaut
 FILEBROWSER_RESETDEFAULTPROFILE;Réinitialiser au profil par défaut
 FILEBROWSER_SELECTION_COUNTER;%1 Fichiers sélectionnés
 FILEBROWSER_SELECTDARKFRAME;Choisir une image de Trame Noire...
@@ -198,6 +201,10 @@ FILEBROWSER_SESSION_REMOVE_LABEL;Supprimer la sélection de la session
 FILEBROWSER_SESSION_LOAD_LABEL;Charger une session depuis un fichier
 FILEBROWSER_SESSION_SAVE_LABEL;Sauvegarder la session dans un fichier
 FILECHOOSER_FILTER_ARS;ART Fichiers de session (*.ars)
+FONTCHOOSER_FAMILY;Famille
+FONTCHOOSER_PREVIEW_TEXT;Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+FONTCHOOSER_SIZE;Taille
+FONTCHOOSER_TITLE;Sélection de police
 FILEBROWSER_SHOWCOLORLABEL1HINT;Afficher les images avec un label Rouge\nRaccourci : <b>Alt-1</b>
 FILEBROWSER_SHOWCOLORLABEL2HINT;Afficher les images avec un label Jaune\nRaccourci : <b>Alt-2</b>
 FILEBROWSER_SHOWCOLORLABEL3HINT;Afficher les images avec un label Vert\nRaccourci : <b>Alt-3</b>
@@ -236,6 +243,7 @@ FILECHOOSER_FILTER_ANY;Tous les fichiers
 FILECHOOSER_FILTER_COLPROF;Profils coulorimétriques (*.icc)
 FILECHOOSER_FILTER_CURVE;Fichiers de courbe
 FILECHOOSER_FILTER_LCP;Profils de correction d'objectif
+FILECHOOSER_FILTER_INI;Fichiers de configuration (*.ini)
 FILECHOOSER_FILTER_PP;Profils de traitement
 FILECHOOSER_FILTER_SAME;Même format que la photo courante
 FILECHOOSER_FILTER_TIFF;Fichiers TIFF
@@ -257,7 +265,11 @@ GENERAL_DISABLED;Désactivé
 GENERAL_ENABLE;Activer
 GENERAL_ENABLED;Activé
 GENERAL_FILE;Fichier
+GENERAL_HIGH;Haut
 GENERAL_LANDSCAPE;Paysage
+GENERAL_LOAD;Charger
+GENERAL_LOW;Bas
+GENERAL_MEDIUM;Moyen
 GENERAL_NA;Non assigné
 GENERAL_NO;Non
 GENERAL_NONE;Aucun
@@ -274,6 +286,7 @@ GENERAL_WARNING;Attention
 GENERAL_DEPRECATED;Obsolète
 GENERAL_DEPRECATED_TOOLTIP;Obsolète ! sera éliminée dans une prochaine version.
 GIMP_PLUGIN_INFO;Bienvenue dans le plugin ART de GIMP !\nUne fois l'édition terminée, fermez simplement la fenêtre principale de ART et l'image sera importée automatiquement dans GIMP.
+HIDPI_PREVIEW;Activer le mode pixel-pour-pixel (affiche les images\nen utilisant la résolution native de l'écran).
 HISTOGRAM_RAW_STATS_TOOLTIP;min: %1 (%2), max: %3 (%4), pic: %5 (%6)\n    gamme: %7 EV, valeurs: %8, pixels: %9
 HISTOGRAM_TOOLTIP_B;Montrer/Cacher l'histogramme du bleu.
 HISTOGRAM_TOOLTIP_BAR;Montrer/Cacher la barre indicateur RVB.
@@ -555,6 +568,7 @@ HISTORY_MSG_COLORCORRECTION_LUT;CC - LUT
 HISTORY_MSG_COLORCORRECTION_LUT_PARAMS;CC - LUT paramétres
 HISTORY_MSG_COLORCORRECTION_HSL_GAMMA;CC - Gamma
 HISTORY_MSG_COLORCORRECTION_LINKEDMASK;CC - Masque lié
+HISTORY_MSG_COLORCORRECTION_EXTERNALMASK;CC - Mask externe
 HISTORY_MSG_COLORTONING_LABGRID_VALUE;CC - Correction de Couleur
 HISTORY_MSG_DENOISE_CHROMINANCE_AUTO_FACTOR;RdB - Force Chroma auto.
 HISTORY_MSG_DENOISE_GUIDED_CHROMA_RADIUS;NR - Lissage final C
@@ -588,6 +602,7 @@ HISTORY_MSG_EPD_DRAWNMASK;TB - masque au pinceau
 HISTORY_MSG_EPD_PARAMETRICMASK;TB - masque paramétrique
 HISTORY_MSG_EPD_MASK_POSTPROCESS;TB - Post-traitement du masque
 HISTORY_MSG_EPD_LINKEDMASK;TB - Masque lié
+HISTORY_MSG_EPD_EXTERNALMASK;TB - Masque externe
 HISTORY_MSG_EXPOSURE_BLACK;Exposition - Point noir
 HISTORY_MSG_EXPOSURE_HRBLUR;Exposition - Propagation de la couleur, adoucissement
 HISTORY_MSG_FILMNEGATIVE_ENABLED;Film Négatif
@@ -604,6 +619,7 @@ HISTORY_MSG_GRAIN_STRENGTH;Grain d'émulsion - Force
 HISTORY_MSG_GRAIN_SCALE;Grain d'émulsion - Echelle
 HISTORY_MSG_HISTMATCHING;Courbe tonale auto. adaptée
 HISTORY_MSG_HSL_SMOOTHING;Égaliseur couleur - Lissage
+HISTORY_MSG_ICM_DCP_LOOK_PIPELINE_POS;Profil d'entrée - Application du look DCP
 HISTORY_MSG_ICM_INPUT_CAT;Profil d'entrée (ADC)
 HISTORY_MSG_ICM_OUTPUT_PRIMARIES;Profil de sortie - Primaires
 HISTORY_MSG_ICM_OUTPUT_TEMP;Profil de sortie - Illuminant D ICC-v4
@@ -623,6 +639,7 @@ HISTORY_MSG_LOCALCONTRAST_DRAWNMASK;Contraste Local - Masque au pinceau
 HISTORY_MSG_LOCALCONTRAST_PARAMETRICMASK;Contraste Local - Masque paramétrique
 HISTORY_MSG_LOCALCONTRAST_MASK_POSTPROCESS;Contraste Local - Post-traitement du masque
 HISTORY_MSG_LOCALCONTRAST_LINKEDMASK;Contraste Local - Masque lié
+HISTORY_MSG_LOCALCONTRAST_EXTERNALMASK;Contraste Local - Masque externe
 HISTORY_MSG_LOGENC_AUTO;Log - Auto
 HISTORY_MSG_LOGENC_AUTOGAIN;Log - Gain auto
 HISTORY_MSG_LOGENC_REGULARIZATION;Log - Régularisation
@@ -690,6 +707,7 @@ HISTORY_MSG_SMOOTHING_HALATION_SIZE;Lissage - Force du halo
 HISTORY_MSG_SMOOTHING_HALATION_COLOR;Lissage - Teinte du halo
 HISTORY_MSG_SMOOTHING_NOISE_COARSENESS;Lissage - Dureté du bruit
 HISTORY_MSG_SMOOTHING_LINKEDMASK;Lissage - Masque lié
+HISTORY_MSG_SMOOTHING_EXTERNALMASK;Lissage - Masque externe
 HISTORY_MSG_SOFTLIGHT_ENABLED;Lumière douce
 HISTORY_MSG_SOFTLIGHT_STRENGTH;Lumière douce - Force
 HISTORY_MSG_SPOT;Retrait de taches
@@ -879,6 +897,7 @@ MAIN_TOOLTIP_BACKCOLOR2;Couleur de fond de l'aperçu: <b>Blanc</b>\nRaccourci : 
 MAIN_TOOLTIP_BACKCOLOR3;Couleur de fond de l'aperçu: <b>Gris moyen</b>\nRaccourci : <b>9</b>
 MAIN_TOOLTIP_BEFOREAFTERLOCK;<b>Vérouiller</b> / <b>Déverouiller</b> la vue <b>Avant</b>\n\n<b>Vérouiller</b>: garder la vue <b>Avant</b> inchangée.\n<b>Déverouiller</b>: la vue <b>avant</b> est conservée en synchronisation avec la vue après <b>After</b>.
 MAIN_TOOLTIP_FALSECOLORS;Indicateur d'expositions utilisant de fausses couleurs.\nRaccourci : <b>Shift-e</b>\n\nClés (Plage IRE) : \n%1
+MAIN_TOOLTIP_GRIDOVERLAY;Basculer l'affichage de la grille.\nRaccourci : <b>Ctrl-g</b>
 MAIN_TOOLTIP_HIDEHP;Montrer/Cacher le panneau gauche (incluant l'historique)\nRaccourci : <b>l</b>
 MAIN_TOOLTIP_INDCLIPPEDH;Indication des zones Hautes Lumières écrêtées\nRaccourci : <b>&gt;</b>
 MAIN_TOOLTIP_INDCLIPPEDS;Indication des zones Ombres écrêtées\nRaccourci : <b>&lt;</b>
@@ -1043,7 +1062,7 @@ PREFERENCES_DARKFRAMEFOUND;Trouvé
 PREFERENCES_DARKFRAMESHOTS;Image(s)
 PREFERENCES_DARKFRAMETEMPLATES;Modèle(s)
 PREFERENCES_DATEFORMAT;Format date
-PREFERENCES_DATEFORMATHINT;Vous pouvez utiliser les chaînes de formatage suivantes :\n<b>%y</b>	- année\n<b>%m</b>	- mois\n<b>%d</b>	- jour\n\nPar exemple, le format de date française est :</i>\n<b>%d-%m-%y</b>
+PREFERENCES_DATEFORMATHINT;Vous pouvez utiliser les chaînes de formatage suivantes :\n<b>%y</b>	- année\n<b>%m</b>	- mois\n<b>%d</b>	- jour\n\nPar exemple, le format de date française est :\n<b>%d-%m-%y</b>
 PREFERENCES_DENOISE_ZOOM_OUT;Montre les effets de la réduction du bruit dans l'aperçu à un zoom <100%
 PREFERENCES_DENOISE_ZOOM_OUT_TOOLTIP;Notez que cela ne sera pas toujours parfaitement précis
 PREFERENCES_DIRBROWSER_SINGLECLICK;Ouverture des dossiers par un simple clic
@@ -1076,6 +1095,7 @@ PREFERENCES_FORRAW;Pour les images raw
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT;Taille de vignette identique entre la Pellicule et le Navigateur de Fichiers
 PREFERENCES_FSTRIP_SAME_THUMB_HEIGHT_HINT;Avoir une hauteur de vignettes différente demandera plus de temp de traitement à chaque fois que vous baculerez entre le mode Éditeur Onglet Unique et le Navigateur de Fichiers.
 PREFERENCES_GIMPPATH;Dossier d'intallation de GIMP
+PREFERENCES_HIGHLIGHT_SELECTED_THUMBNAILS;Mettre en surbrillance les vignettes sélectionnées
 PREFERENCES_HISTOGRAMPOSITIONLEFT;Histogramme dans le panneau de gauche
 PREFERENCES_HISTOGRAM_TOOLTIP;Si activé, le profil colorimétrique de travail est utilisé pour les données d'histogramme et le panneau Navigateur, sinon le profil colorimétrique de travail de sortie "gamma-corrigé" est utilisé.
 PREFERENCES_HLTHRESHOLD;Seuil pour l'écrêtage des Hautes Lumières
@@ -1130,6 +1150,7 @@ PREFERENCES_PREVDEMO;Précision de l'aperçu
 PREFERENCES_PREVDEMO_FAST;Rapide
 PREFERENCES_PREVDEMO_LABEL;Méthode de dématriçage utilisée pour l'aperçu à un zoom <100%:
 PREFERENCES_PREVDEMO_SIDECAR;Comme le profil ARP
+PREFERENCES_PREVIEW_RESAMPLING_QUALITY;Qualité de rééchantillonnage pour l'aperçu à un zoom <100%:
 PREFERENCES_PRINTER;Épreuvage à l'écran
 PREFERENCES_PROFILEHANDLING;Gestion des profils de traitement
 PREFERENCES_PROFILELOADPR;Priorité de chargement des profils de traitement
@@ -1149,6 +1170,7 @@ PREFERENCES_PSPATH;Dossier d'installation d'Adobe Photoshop
 PREFERENCES_REMEMBERZOOMPAN;Se souvenir du niveau de zoom et de la position de l'image
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Retient le niveau de zoom et la position de l'image courante lors de l'ouverture d'une nouvelle image.\n\nCette option ne fonctionne que dans le mode "Onglet Éditeur Unique" et quand "Méthode de dématriçage utilisée pour l'aperçu à un zoom <100%" est fixé à "Comme dans profil ARP"
 PREFERENCES_REMEMBER_METADATA_FILTERS;Se souvenir des filtres des metadonnées
+PREFERENCES_REMEMBER_RENAME_OPTIONS;Se souvenir des réglages de renommage/copie
 PREFERENCES_SAVE_TP_OPEN_NOW;Sauver l'état replié/déplié maintenant
 PREFERENCES_SELECTLANG;Choix de la langue
 PREFERENCES_SERIALIZE_TIFF_READ;Réglages de lecture des images TIFF
@@ -1167,6 +1189,11 @@ PREFERENCES_SND_LNGEDITPROCDONE;Traitement de la Prévisualisation terminé
 PREFERENCES_SND_BATCHQUEUEDONE;File de traitement terminée
 PREFERENCES_SND_THRESHOLDSECS;après (secondes)
 PREFERENCES_STARTUPIMDIR;Répertoire au démarrage
+PREFERENCES_SURROUND_VERYBRIGHT;Compensation de la lumière ambiante: environnement très clair
+PREFERENCES_SURROUND_BRIGHT;Compensation de la lumière ambiante: environnement clair
+PREFERENCES_SURROUND_OFF;Compensation de la lumière ambiante: aucune
+PREFERENCES_SURROUND_DIM;Compensation de la lumière ambiante: ambiance tamisé
+PREFERENCES_SURROUND_DARK;Compensation de la lumière ambiante: environnement sombre
 PREFERENCES_TAB_BROWSER;Navigateur de fichiers
 PREFERENCES_TAB_COLORMGR;Gestion de la colorimétrie
 PREFERENCES_TAB_DYNAMICPROFILE;Règles de Profil Dynamique
@@ -1189,7 +1216,7 @@ PREFERENCES_TP_LABEL;Panneau Outils :
 PREFERENCES_TP_DISABLE;Griser les outils inactifs
 PREFERENCES_TP_VSCROLLBAR;Cacher la barre de défilement vertical
 PREFERENCES_USEBUNDLEDPROFILES;Utiliser les profils de traitement fournis
-PREFERENCES_WBPREVIEW_LABEL;Position de la balance des blancs dans la chaîne de traitement de l'aperçu :
+PREFERENCES_WBPREVIEW_LABEL;Position de la balance des blancs dans la chaîne de traitement de l'aperçu:
 PREFERENCES_WBPREVIEW_AFTER;Après le dématriçage (plus rapide)
 PREFERENCES_WBPREVIEW_BEFORE;Avant le dématriçage (plus précis)
 PREFERENCES_WBPREVIEW_BEFORE_HIGH_DETAIL;Avant le dématriçage si le zoom >=100% sinon après
@@ -1585,6 +1612,10 @@ TP_ICM_APPLYHUESATMAP_TOOLTIP;Utiliser la table de base (HueSatMap) contenue dan
 TP_ICM_APPLYLOOKTABLE;Table de correspondance
 TP_ICM_APPLYLOOKTABLE_TOOLTIP;Utiliser la table de correspondance (LUT) contenu dans le profil DCP. Ce réglage n'est possible que si le profil DCP sélectionné en contient une.
 TP_ICM_BPC;Compensation du  Point Noir
+TP_ICM_DCP_LOOK_PIPELINE_POS;Application du look
+TP_ICM_DCP_LOOK_PIPELINE_POS_EARLY;Tôt dans le pipeline
+TP_ICM_DCP_LOOK_PIPELINE_POS_LATE;Tard dans le pipeline
+TP_ICM_DCP_LOOK_PIPELINE_POS_TOOLTIP;Contrôle quand appliquer les données de 'look' du profil DCP (table de correspondance, niveau de base et courbe tonale) dnas le pipeline de traitement. Appliquer le look plus tôt (avant Correction Couleur/Teinte) est plus conforme aux spécifications Adobe DNG originales, mais il peut en résulter des hautes lumière brûlées qui ne pourrons pas être récupérer par les outils d'édition locale.
 TP_ICM_DCPILLUMINANT;Illuminant
 TP_ICM_DCPILLUMINANT_INTERPOLATED;Interpolé
 TP_ICM_DCPILLUMINANT_TOOLTIP;Sélectionne quel illuminant DCP inclus utiliser. La valeur par défaut est "Interpolé", qui est un mix entre les 2 profils inclus, selon la Balance des Blancs choisie. Ce paramètre n'est actif que si un fichier DCP double-illuminant avec support de l'interpolation est choisi.
@@ -1694,6 +1725,9 @@ TP_LABMASKS_POSTPROCESS_CURVE;Courbe tonale
 TP_LABMASKS_POSTPROCESS_POSTERIZATION;Postérisation
 TP_LABMASKS_POSTPROCESS_SMOOTHING;Lissage
 TP_LABMASKS_LINKEDMASK;Masque lié
+TP_LABMASKS_EXTERNALMASK;Masque externe
+TP_LABMASKS_EXTERNALMASK_SELECT;Sélectionnez le fichier externe...
+TP_LABMASKS_EXTERNALMASK_FILENAME;Fichier externe
 TP_LENSGEOM_AUTOCROP;Rognage auto
 TP_LENSGEOM_FILL;Remplir automatiquement
 TP_GEOM_LABEL;Geométrie
