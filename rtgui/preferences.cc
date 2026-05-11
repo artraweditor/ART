@@ -822,7 +822,6 @@ Gtk::Widget *Preferences::getColorManPanel()
             ++row;
         }
     } else {
-        gmonitor->attach(*mplabel, 0, row, 1, 1);
         gmonitor->attach(*monProfile, 1, row, 1, 1);
         ++row;
         gmonitor->attach(*cbAutoMonProfile, 1, row, 1, 1);
