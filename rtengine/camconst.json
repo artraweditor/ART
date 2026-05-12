@@ -2828,6 +2828,13 @@ Camera constants:
     },
 
     { // Quality C
+        "make_model": "Sony ILCE-7M5",
+        "raw_crop": [
+            { "frame" : [7168, 5120], "crop" : [12, 8, 7006, 4672] }
+        ]
+    },
+
+    { // Quality C
         "make_model": [ "Sony DSC-HX99" ],
         "raw_crop": [ 0, 0, -8, 0 ] // 8 rightmost columns are garbage
     },
