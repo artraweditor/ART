@@ -145,6 +145,12 @@ Resize::Resize()
     ppisubgrid->attach(*ppilab, 0, 0, 1, 1);
     ppisubgrid->attach(*ppi, 1, 0, 1, 1);
 
+    copy_ppi_btn_ = Gtk::manage(new Gtk::Button(M("TP_RESIZE_COPY_PPI_TO_EXIF")));
+    setExpandAlignProperties(copy_ppi_btn_, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
+    ppisubgrid->attach(*copy_ppi_btn_, 0, 1, 2, 1);
+    copy_ppi_btn_->signal_clicked().connect(
+        sigc::mem_fun(*this, &Resize::copyPPIToExif));
+
     size_info_1 = Gtk::manage(
         new Gtk::Label(M("GENERAL_NA") + " cm x " + M("GENERAL_NA") + " cm"));
     setExpandAlignProperties(size_info_1, false, false, Gtk::ALIGN_CENTER,
@@ -736,6 +742,12 @@ void Resize::ppiChanged()
                                Glib::ustring::format(ppi->get_value_as_int()));
     }
 }
+
+void Resize::copyPPIToExif()
+{
+    signal_ppi_to_exif_.emit(ppi->get_value_as_int());
+}
+
 
 void Resize::unitChanged()
 {

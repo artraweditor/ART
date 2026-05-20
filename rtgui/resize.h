@@ -47,6 +47,7 @@ public:
     void specChanged();
     void update(bool isCropped, int cw, int ch, int ow = 0, int oh = 0);
     void setGUIFromCrop(bool isCropped, int cw, int ch);
+    sigc::signal<void, int> &signal_ppi_to_exif() { return signal_ppi_to_exif_; }
     void sizeChanged(int w, int h, int ow, int oh) override;
     void setDimensions();
     void enabledChanged() override;
@@ -66,6 +67,9 @@ private:
     void unitChanged();
     void updateInfoLabels();
     void setRanges();
+    void copyPPIToExif();
+    sigc::signal<void, int> signal_ppi_to_exif_;
+    Gtk::Button *copy_ppi_btn_;
 
     double from_px(int p, rtengine::procparams::ResizeParams::Unit u);
     double from_px(int p);
