@@ -346,36 +346,6 @@ ToolPanelCoordinator::ToolPanelCoordinator(bool batch)
     localContrast->setDeltaEColorProvider(this);
     textureBoost->setDeltaEColorProvider(this);
 
-    {
-        const auto ev = ProcEventMapper::getInstance()->newEvent(
-           rtengine::M_VOID, "HISTORY_MSG_RESIZE_COPY_PPI_TO_EXIF");
-        resize->signal_ppi_to_exif().connect([this, ev](int ppi) {
-            if (!ipc) return;
-            ProcParams *params = ipc->beginUpdateParams();
-            for (auto tp : toolPanels) {
-                tp->write(params);
-            }
-            const Glib::ustring val = Glib::ustring::format(ppi) + "/1";
-            params->metadata.exif["Exif.Image.XResolution"] = val;
-            params->metadata.exif["Exif.Image.YResolution"] = val;
-            params->metadata.exif["Exif.Image.ResolutionUnit"] = "2"; // inch
-            for (const std::string k : {"Exif.Image.XResolution",
-                                         "Exif.Image.YResolution"}) {
-                auto &keys = params->metadata.exifKeys;
-                if (std::find(keys.begin(), keys.end(), k) == keys.end()) {
-                    keys.push_back(k);
-                }
-            }
-            metadata->read(params);
-            ipc->endUpdateParams(ev);
-            hasChanged = true;
-            for (auto &l : paramcListeners) {
-                l->procParamsChanged(params, ev,
-                                     Glib::ustring::format(ppi) + " PPI");
-            }
-        });
-    }
-
     toolBar = new ToolBar();
     toolBar->setToolBarListener(this);
 }
@@ -513,6 +483,7 @@ void ToolPanelCoordinator::panelChanged(const rtengine::ProcEvent &event,
     int changeFlags = rtengine::RefreshMapper::getInstance()->getAction(event);
 
     ProcParams *params = ipc->beginUpdateParams();
+    const bool prev_copyPPIToExif = params->resize.copyPPIToExif;
 
     for (auto toolPanel : toolPanels) {
         toolPanel->write(params);
@@ -572,6 +543,26 @@ void ToolPanelCoordinator::panelChanged(const rtengine::ProcEvent &event,
     } else if (event == rtengine::EvCrop) {
         resize->update(params->crop.enabled, params->crop.w, params->crop.h);
         resize->write(params);
+    }
+
+    if (params->resize.copyPPIToExif) {
+        const Glib::ustring val =
+            Glib::ustring::format(params->resize.ppi) + "/1";
+        params->metadata.exif["Exif.Image.XResolution"] = val;
+        params->metadata.exif["Exif.Image.YResolution"] = val;
+        params->metadata.exif["Exif.Image.ResolutionUnit"] = "2";
+        for (const char *k :
+             {"Exif.Image.XResolution", "Exif.Image.YResolution"}) {
+            auto &keys = params->metadata.exifKeys;
+            if (std::find(keys.begin(), keys.end(), k) == keys.end()) {
+                keys.push_back(k);
+            }
+        }
+        metadata->read(params);
+    } else if (prev_copyPPIToExif) {
+        params->metadata.exif.erase("Exif.Image.XResolution");
+        params->metadata.exif.erase("Exif.Image.YResolution");
+        metadata->read(params);
     }
 
     ipc->endUpdateParams(changeFlags); // starts the IPC processing

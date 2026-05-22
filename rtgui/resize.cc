@@ -38,6 +38,8 @@ Resize::Resize()
         m->newEvent(rtengine::RESIZE, "HISTORY_MSG_RESIZE_ALLOWUPSCALING");
     EvUnit = m->newEvent(rtengine::RESIZE, "HISTORY_MSG_RESIZE_UNIT");
     EvPPI = m->newEvent(rtengine::RESIZE, "HISTORY_MSG_RESIZE_PPI");
+    EvCopyPPIToExif =
+        m->newEvent(rtengine::M_VOID, "HISTORY_MSG_RESIZE_COPY_PPI_TO_EXIF");
     EvToolReset.set_action(rtengine::RESIZE);
 
     cropw = 0;
@@ -145,11 +147,13 @@ Resize::Resize()
     ppisubgrid->attach(*ppilab, 0, 0, 1, 1);
     ppisubgrid->attach(*ppi, 1, 0, 1, 1);
 
-    copy_ppi_btn_ = Gtk::manage(new Gtk::Button(M("TP_RESIZE_COPY_PPI_TO_EXIF")));
-    setExpandAlignProperties(copy_ppi_btn_, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
-    ppisubgrid->attach(*copy_ppi_btn_, 0, 1, 2, 1);
-    copy_ppi_btn_->signal_clicked().connect(
-        sigc::mem_fun(*this, &Resize::copyPPIToExif));
+    copy_ppi_to_exif_cb_ =
+        Gtk::manage(new Gtk::CheckButton(M("TP_RESIZE_COPY_PPI_TO_EXIF")));
+    setExpandAlignProperties(copy_ppi_to_exif_cb_, true, false, Gtk::ALIGN_FILL,
+                             Gtk::ALIGN_CENTER);
+    ppisubgrid->attach(*copy_ppi_to_exif_cb_, 0, 1, 2, 1);
+    ppitoexifconn = copy_ppi_to_exif_cb_->signal_toggled().connect(
+        sigc::mem_fun(*this, &Resize::ppiToExifToggled));
 
     size_info_1 = Gtk::manage(
         new Gtk::Label(M("GENERAL_NA") + " cm x " + M("GENERAL_NA") + " cm"));
@@ -231,6 +235,7 @@ void Resize::read(const ProcParams *pp)
     ConnectionBlocker sb(sconn);
     ConnectionBlocker ub(unitconn);
     ConnectionBlocker pb(ppiconn);
+    ConnectionBlocker peb(ppitoexifconn);
     scale->block(true);
 
     prev_unit = pp->resize.unit;
@@ -243,6 +248,7 @@ void Resize::read(const ProcParams *pp)
     allowUpscaling->set_active(pp->resize.allowUpscaling);
     unit->set_active(int(pp->resize.unit));
     ppi->set_value(pp->resize.ppi);
+    copy_ppi_to_exif_cb_->set_active(pp->resize.copyPPIToExif);
 
     updateInfoLabels();
     updateGUI();
@@ -287,6 +293,7 @@ void Resize::write(ProcParams *pp)
 
     pp->resize.unit = ResizeParams::Unit(unit->get_active_row_number());
     pp->resize.ppi = ppi->get_value_as_int();
+    pp->resize.copyPPIToExif = copy_ppi_to_exif_cb_->get_active();
 }
 
 void Resize::setDefaults(const ProcParams *defParams)
@@ -737,17 +744,21 @@ void Resize::trimValues(rtengine::procparams::ProcParams *pp)
 void Resize::ppiChanged()
 {
     updateInfoLabels();
-    if (listener && getEnabled()) {
+    if (listener) {
         listener->panelChanged(EvPPI,
                                Glib::ustring::format(ppi->get_value_as_int()));
     }
 }
 
-void Resize::copyPPIToExif()
+void Resize::ppiToExifToggled()
 {
-    signal_ppi_to_exif_.emit(ppi->get_value_as_int());
+    if (listener) {
+        listener->panelChanged(
+            EvCopyPPIToExif,
+            copy_ppi_to_exif_cb_->get_active() ? M("GENERAL_ENABLED")
+                                                : M("GENERAL_DISABLED"));
+    }
 }
-
 
 void Resize::unitChanged()
 {
