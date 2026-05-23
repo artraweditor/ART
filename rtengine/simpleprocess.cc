@@ -446,8 +446,15 @@ private:
         case MetaDataParams::TUNNEL:
             readyImg->setMetadata(info);
             break;
-        case MetaDataParams::EDIT:
-            info.setExif(params.metadata.exif);
+        case MetaDataParams::EDIT: {
+            auto exifpairs = params.metadata.exif;
+            if (params.resize.enabled && params.resize.copyPPIToExif) {
+                const Glib::ustring val = Glib::ustring::format(params.resize.ppi) + "/1";
+                exifpairs["Exif.Image.XResolution"] = val;
+                exifpairs["Exif.Image.YResolution"] = val;
+                exifpairs["Exif.Image.ResolutionUnit"] = "2";
+            }
+            info.setExif(exifpairs);
             info.setIptc(params.metadata.iptc);
             if (!(params.metadata.exifKeys.size() == 1 &&
                   params.metadata.exifKeys[0] == "*")) {
@@ -457,7 +464,7 @@ private:
                                  options.thumbnail_rating_mode !=
                                      Options::ThumbnailRatingMode::PROCPARAMS);
             readyImg->setMetadata(info);
-            break;
+        }   break;
         default: // case MetaDataParams::STRIP
             // nothing to do
             break;

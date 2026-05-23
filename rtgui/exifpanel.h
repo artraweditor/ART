@@ -23,12 +23,14 @@
 #include <gtkmm.h>
 #include <unordered_set>
 
-class ExifPanel: public Gtk::VBox, public ToolPanel {
+class ExifPanel:
+    public Gtk::VBox, public ToolPanel, public PParamsChangeListener {
 
 private:
     const rtengine::FramesMetaData *idata;
     rtengine::procparams::ExifPairs changeList;
     rtengine::procparams::ExifPairs defChangeList;
+    rtengine::procparams::ExifPairs override_list_;
 
     class ExifColumns: public Gtk::TreeModelColumnRecord {
     public:
@@ -141,4 +143,11 @@ public:
     void notifyListener();
 
     void setProgressListener(rtengine::ProgressListener *pl);
+
+//    PParamsChangeListener *getPParamsChangeListener() override { return this; }
+    void procParamsChanged(const rtengine::procparams::ProcParams *params,
+                           const rtengine::ProcEvent &ev,
+                           const Glib::ustring &descr,
+                           const ParamsEdited *paramsEdited=nullptr) override;
+    void clearParamChanges() override {}
 };

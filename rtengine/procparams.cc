@@ -2189,7 +2189,8 @@ bool CACorrParams::operator!=(const CACorrParams &other) const
 
 ResizeParams::ResizeParams()
     : enabled(false), scale(1.0), appliesTo("Cropped area"), dataspec(3),
-      width(900), height(900), allowUpscaling(false), ppi(300), unit(PX)
+      width(900), height(900), allowUpscaling(false), ppi(300),
+      copyPPIToExif(false), unit(PX)
 {
 }
 
@@ -2199,7 +2200,7 @@ bool ResizeParams::operator==(const ResizeParams &other) const
            appliesTo == other.appliesTo && dataspec == other.dataspec &&
            width == other.width && height == other.height &&
            allowUpscaling == other.allowUpscaling && ppi == other.ppi &&
-           unit == other.unit;
+           copyPPIToExif == other.copyPPIToExif && unit == other.unit;
 }
 
 bool ResizeParams::operator!=(const ResizeParams &other) const
@@ -2729,7 +2730,8 @@ std::vector<std::string> MetaDataParams::basicExifKeys = {
     "Exif.Photo.Flash",
     "Exif.Photo.DateTimeOriginal",
     "Exif.Image.XResolution",
-    "Exif.Image.YResolution"};
+    "Exif.Image.YResolution"
+};
 
 MetaDataParams::MetaDataParams()
     : mode(MetaDataParams::EDIT), exifKeys{}, exif{}, iptc{}, notes("")
@@ -3472,6 +3474,8 @@ int ProcParams::save(ProgressListener *pl, bool save_general, KeyFile &keyFile,
             saveToKeyfile("Resize", "AllowUpscaling", resize.allowUpscaling,
                           keyFile);
             saveToKeyfile("Resize", "PPI", resize.ppi, keyFile);
+            saveToKeyfile("Resize", "CopyPPIToExif", resize.copyPPIToExif,
+                          keyFile);
             const char *u = "px";
             switch (resize.unit) {
             case ResizeParams::CM:
@@ -5016,6 +5020,8 @@ int ProcParams::load(ProgressListener *pl, bool load_general,
                 resize.allowUpscaling = false;
             }
             assignFromKeyfile(keyFile, "Resize", "PPI", resize.ppi);
+            assignFromKeyfile(keyFile, "Resize", "CopyPPIToExif",
+                              resize.copyPPIToExif);
             if (ppVersion < 1004) {
                 resize.unit = ResizeParams::PX;
             } else {

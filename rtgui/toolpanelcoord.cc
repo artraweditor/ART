@@ -212,9 +212,17 @@ ToolPanelCoordinator::ToolPanelCoordinator(bool batch)
         }
     }
 
-    toolPanels.push_back(coarse);
-    toolPanels.push_back(metadata);
-    toolPanels.push_back(lenspanel);
+    const auto add = [&](ToolPanel *p) -> void {
+        toolPanels.push_back(p);
+        auto l = p->getPParamsChangeListener();
+        if (l) {
+            addPParamsChangeListener(l);
+        }
+    };
+
+    add(coarse);
+    add(metadata);
+    add(lenspanel);
 
     toolPanelNotebook = new Gtk::Notebook();
     toolPanelNotebook->set_name("ToolPanelNotebook");

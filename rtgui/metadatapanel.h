@@ -31,13 +31,13 @@ public:
 
     void read(const rtengine::procparams::ProcParams *pp) override;
     void write(rtengine::procparams::ProcParams *pp) override;
-    void
-    setDefaults(const rtengine::procparams::ProcParams *defParams) override;
+    void setDefaults(const rtengine::procparams::ProcParams *defParams) override;
 
     void setImageData(const rtengine::FramesMetaData *id);
     void setListener(ToolPanelListener *tpl) override;
 
     void setProgressListener(rtengine::ProgressListener *pl);
+    PParamsChangeListener *getPParamsChangeListener() override { return exifpanel; }
 
 private:
     rtengine::ProcEvent EvMetaDataMode;

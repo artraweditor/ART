@@ -182,6 +182,13 @@ void ExifPanel::read(const ProcParams *pp)
     disableListener();
 
     changeList = pp->metadata.exif;
+    override_list_.clear();
+    if (pp->resize.enabled && pp->resize.copyPPIToExif) {
+        const Glib::ustring val = Glib::ustring::format(pp->resize.ppi) + "/1";
+        override_list_["Exif.Image.XResolution"] = val;
+        override_list_["Exif.Image.YResolution"] = val;
+        override_list_["Exif.Image.ResolutionUnit"] = "2";
+    }
     initial_active_keys_.clear();
     initial_active_keys_.insert(pp->metadata.exifKeys.begin(),
                                 pp->metadata.exifKeys.end());
@@ -204,6 +211,13 @@ void ExifPanel::write(ProcParams *pp)
 void ExifPanel::setDefaults(const ProcParams *defParams)
 {
     defChangeList = defParams->metadata.exif;
+    override_list_.clear();
+    if (defParams->resize.enabled && defParams->resize.copyPPIToExif) {
+        const Glib::ustring val = Glib::ustring::format(defParams->resize.ppi) + "/1";
+        override_list_["Exif.Image.XResolution"] = val;
+        override_list_["Exif.Image.YResolution"] = val;
+        override_list_["Exif.Image.ResolutionUnit"] = "2";
+    }
 }
 
 void ExifPanel::setImageData(const FramesMetaData *id) { idata = id; }
@@ -333,19 +347,25 @@ void ExifPanel::refreshTags()
             fd->fillBasicTags(exif);
         }
 
-        for (auto &p : changeList) {
-            try {
-                auto &datum = exif[p.first];
-                if (datum.setValue(p.second) != 0) {
+        const rtengine::procparams::ExifPairs *cl[2] = {
+            &changeList,
+            &override_list_
+        };
+        for (int c = 0; c < 2; ++c) {
+            for (auto &p : *cl[c]) {
+                try {
+                    auto &datum = exif[p.first];
+                    if (datum.setValue(p.second) != 0) {
+                        if (pl_) {
+                            pl_->error(Glib::ustring::compose(
+                                           M("ERROR_MSG_METADATA_VALUE"), p.first, p.second));
+                        }
+                    }
+                } catch (std::exception &exc) {
                     if (pl_) {
                         pl_->error(Glib::ustring::compose(
-                            M("ERROR_MSG_METADATA_VALUE"), p.first, p.second));
+                                       M("ERROR_MSG_METADATA_VALUE"), p.first, p.second));
                     }
-                }
-            } catch (std::exception &exc) {
-                if (pl_) {
-                    pl_->error(Glib::ustring::compose(
-                        M("ERROR_MSG_METADATA_VALUE"), p.first, p.second));
                 }
             }
         }
@@ -357,14 +377,16 @@ void ExifPanel::refreshTags()
             Glib::ustring value = "";
             auto lbl = std::make_pair(M("EXIFPANEL_BASIC_GROUP"), k.tagLabel());
             p.second = k.tagLabel();
+            bool editable = true;
             if (pos != exif.end() && pos->size()) {
                 edited = changeList.find(pos->key()) != changeList.end();
                 value = escapeHtmlChars(pos->print(&exif));
                 if (!value.validate()) {
                     value = "???";
                 }
+                editable = (override_list_.find(pos->key()) == override_list_.end());
             }
-            addTag(p.first, lbl, value, true, edited);
+            addTag(p.first, lbl, value, editable, editable && edited);
         }
         struct KeyLt {
             KeyLt()
@@ -820,5 +842,30 @@ void ExifPanel::setExifTagIcon(Gtk::CellRenderer *renderer,
     Gtk::CellRendererPixbuf *pr = dynamic_cast<Gtk::CellRendererPixbuf *>(renderer);
     if (pr) {
         pr->property_surface() = Cairo::RefPtr<Cairo::Surface>(icons_[idx]->surface);
+    }
+}
+
+
+void ExifPanel::procParamsChanged(
+    const rtengine::procparams::ProcParams *params,
+    const rtengine::ProcEvent &ev,
+    const Glib::ustring &descr,
+    const ParamsEdited *paramsEdited)
+{
+    if (params->resize.enabled && params->resize.copyPPIToExif) {
+        Glib::ustring prev;
+        if (!override_list_.empty()) {
+            prev = override_list_["Exif.Image.XResolution"];
+        }
+        const Glib::ustring val = Glib::ustring::format(params->resize.ppi) + "/1";
+        override_list_["Exif.Image.XResolution"] = val;
+        override_list_["Exif.Image.YResolution"] = val;
+        override_list_["Exif.Image.ResolutionUnit"] = "2";
+        if (prev != val) {
+            refreshTags();
+        }
+    } else if (!override_list_.empty()) {
+        override_list_.clear();
+        refreshTags();
     }
 }

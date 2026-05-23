@@ -66,6 +66,10 @@ private:
     void unitChanged();
     void updateInfoLabels();
     void setRanges();
+    void ppiToExifToggled();
+    rtengine::ProcEvent EvCopyPPIToExif;
+    Gtk::CheckButton *copy_ppi_to_exif_cb_;
+    sigc::connection ppitoexifconn;
 
     double from_px(int p, rtengine::procparams::ResizeParams::Unit u);
     double from_px(int p);

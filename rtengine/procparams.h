@@ -1076,6 +1076,7 @@ struct ResizeParams {
     double height;
     bool allowUpscaling;
     int ppi;
+    bool copyPPIToExif;
     enum Unit { PX, CM, INCHES };
     Unit unit;
 
