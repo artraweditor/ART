@@ -1043,9 +1043,10 @@ bool ExternalMaskManager::apply_mask(
 
     if (feather > 0) {
         int radius = int(
-            feather / 100.0 * std::min(full_width, full_height) * scale * 0.1 + 0.5);
+            feather / 100.0 * std::min(full_width, full_height) * scale * 0.01 + 0.5);
+        float epsilon = 0.001f * feather;
         if (radius > 0) {
-            guidedFilter(guide, *out, *out, radius, 1e-7, multithread);
+            guidedFilter(guide, *out, *out, radius, epsilon, multithread);
         }
     }
 

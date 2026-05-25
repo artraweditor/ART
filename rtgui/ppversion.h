@@ -2,10 +2,12 @@
 
 // This number has to be incremented whenever the ARP file format is modified or
 // the behaviour of a tool changes
-#define PPVERSION 1044
+#define PPVERSION 1045
 
 /*
   Log of version changes
+  1045  2026-05-25
+        improve feathering formula for external masks
   1044  2025-11-11
         added option to apply DCP look early in the pipeline
   1043  2025-02-25
