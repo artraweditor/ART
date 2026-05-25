@@ -157,10 +157,13 @@ void Thumbnail::_generateThumbnailImage(bool save_in_cache, bool info_only)
             cfs.format = FT_Raw;
             cfs.thumbImgType = quick ? CacheImageData::QUICK_THUMBNAIL
                                      : CacheImageData::FULL_THUMBNAIL;
-            infoFromImage(fname);
+            int deg = infoFromImage(fname);
             if (!quick) {
                 cfs.width = tpp->full_width;
                 cfs.height = tpp->full_height;
+                if (deg == 90 || deg == 270) {
+                    std::swap(cfs.width, cfs.height);
+                }
             }
         }
     }
@@ -915,7 +918,9 @@ int Thumbnail::infoFromImage(const Glib::ustring &fname)
         cfs.filetype = "";
     }
 
-    idata->getDimensions(cfs.width, cfs.height);
+    if (cfs.width < 0) {
+        idata->getDimensions(cfs.width, cfs.height);
+    }
 
     delete idata;
     return deg;
