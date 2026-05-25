@@ -1311,7 +1311,7 @@ bool Mask::load(int ppVersion, const KeyFile &keyfile,
                           prefix + "ExternalMaskFeather" + suffix,
                           externalMask.feather)) {
         if (ppVersion < 1045) {
-            externalMask.feather = std::max(externalMask.feather * 10, 100.0);
+            externalMask.feather = std::min(externalMask.feather * 10, 100.0);
         }
         ret = true;
     }
