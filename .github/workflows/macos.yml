@@ -130,13 +130,40 @@ jobs:
           sudo port install librsvg-devel
           sudo port install lensfun
           sudo port install exiv2
-          sudo port install fftw-3-single +openmp
           sudo port install openexr
           sudo port install lcms2
           sudo port install adwaita-icon-theme
           sudo port install meson
           sudo port install dbus
           sudo port install simde
+
+      - name: Install fftw
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          wget https://www.fftw.org/fftw-3.3.11.tar.gz
+          tar xzf fftw-3.3.11.tar.gz
+          cd fftw-3.3.11
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
+            -DENABLE_FLOAT=1 \
+            -DENABLE_OPENMP=0 \
+            -DENABLE_THREADS=1 \
+            -DWITH_COMBINED_THREADS=1 \
+            -DBUILD_TESTS=0 \
+            -DENABLE_SSE=1 \
+            -DENABLE_SSE2=1 \
+            -DENABLE_AVX=1 \
+            -DENABLE_AVX2=1 \
+            -DDISABLE_FORTRAN=1 \
+            ..
+          make -j$(nproc)
+          sudo make install
 
       - name: Install gtk-osx-application-gtk3
         run: |
