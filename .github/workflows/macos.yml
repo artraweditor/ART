@@ -15,12 +15,43 @@ on:
         description: 'Use executable launcher'
         required: true
         type: boolean
+      intel:
+        description: 'Intel build'
+        required: true
+        type: boolean
+        default: true
+      arm:
+        description: 'ARM build'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-os: ${{ steps.set-matrix.outputs.os-list }}
+    steps:
+      - id: set-matrix
+        run: |
+          OS_LIST='[]'
+          
+          # If boolean is true, append Windows
+          if [ "${{ inputs.intel }}" = "true" -a "${{ inputs.arm }}" = "true" ]; then
+            OS_LIST='["macos-15-intel", "macos-14"]'
+          elif [ "${{ inputs.intel }}" = "true" ]; then
+            OS_LIST='["macos-15-intel"]'
+          elif [ "${{ inputs.arm }}" = "true" ]; then
+            OS_LIST='["macos-14"]'            
+          fi
+          
+          echo "os-list=$OS_LIST" >> $GITHUB_OUTPUT  
   build:
+    needs: setup-matrix
     strategy:
       matrix:
-        os: [macos-15-intel, macos-14]
+        # os: [macos-15-intel, macos-14]
+        os: ${{ fromJson(needs.setup-matrix.outputs.matrix-os) }}
         include:
           - os: macos-15-intel
             arch: x64
@@ -72,14 +103,14 @@ jobs:
       - if: ${{ matrix.os == 'macos-15-intel' }}
         name: Install MacPorts (x64)
         run: |          
-          wget https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-15-Sequoia.pkg
-          sudo installer -pkg MacPorts-2.11.6-15-Sequoia.pkg -target /
+          wget https://github.com/macports/macports-base/releases/download/v2.12.5/MacPorts-2.12.5-15-Sequoia.pkg
+          sudo installer -pkg MacPorts-2.12.5-15-Sequoia.pkg -target /
 
       - if: ${{ matrix.os == 'macos-14' }}
         name: Install MacPorts (arm64)
         run: |          
-          wget https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-14-Sonoma.pkg
-          sudo installer -pkg MacPorts-2.11.6-14-Sonoma.pkg -target /
+          wget https://github.com/macports/macports-base/releases/download/v2.12.5/MacPorts-2.12.5-14-Sonoma.pkg
+          sudo installer -pkg MacPorts-2.12.5-14-Sonoma.pkg -target /
           export
           PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           
@@ -95,7 +126,7 @@ jobs:
           sudo port install glib2 +quartz
           sudo port install gtkmm3 +quartz
           sudo port install libomp
-          sudo port install clang-19
+          sudo port install clang-21
           sudo port install librsvg-devel
           sudo port install lensfun
           sudo port install exiv2
@@ -114,8 +145,8 @@ jobs:
           wget https://distfiles.macports.org/gtk-osx-application/gtk-mac-integration-3.0.2.tar.xz
           xzcat gtk-mac-integration-3.0.2.tar.xz | tar x
           cd gtk-mac-integration-3.0.2
-          CC=/opt/local/bin/clang-mp-19 \
-            CXX=/opt/local/bin/clang++-mp-19 \
+          CC=/opt/local/bin/clang-mp-21 \
+            CXX=/opt/local/bin/clang++-mp-21 \
             ./configure --prefix=$INSTDIR --with-gtk3
           make -j$(nproc)
           sudo make install
@@ -132,8 +163,8 @@ jobs:
           mkdir build
           cd build
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DENABLE_X3FTOOLS=1 \
@@ -149,8 +180,8 @@ jobs:
           mkdir build-CTL
           cd build-CTL
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DCMAKE_BUILD_TYPE=Release \
             ../CTL
@@ -161,7 +192,7 @@ jobs:
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           INSTDIR=/opt/art-deps
-          OCIO_VERSION='2.4.0'
+          OCIO_VERSION='2.4.2'
           mkdir ocio
           cd ocio
           wget https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v${OCIO_VERSION}.tar.gz
@@ -169,8 +200,8 @@ jobs:
           mkdir build
           cd build
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DCMAKE_BUILD_TYPE=Release \
             -DOCIO_BUILD_PYTHON=OFF \
@@ -215,8 +246,8 @@ jobs:
           fi
           export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
             -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_SAN="${WITH_SAN}" \
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
@@ -261,7 +292,7 @@ jobs:
           cd build/${BUILD_TYPE}/ART.app
           python "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/art-deps/lib \
-            -r /opt/local/libexec/llvm-19/lib/clang/19/lib/darwin -e -I \
+            -r /opt/local/libexec/llvm-21/lib/clang/21/lib/darwin -e -I \
             ${DBG_FLAG} ${LAUNCHER_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
