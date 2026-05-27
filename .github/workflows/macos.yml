@@ -95,7 +95,7 @@ jobs:
           sudo port install glib2 +quartz
           sudo port install gtkmm3 +quartz
           sudo port install libomp
-          sudo port install clang-17
+          sudo port install clang-19
           sudo port install librsvg-devel
           sudo port install lensfun
           sudo port install exiv2
@@ -114,8 +114,8 @@ jobs:
           wget https://distfiles.macports.org/gtk-osx-application/gtk-mac-integration-3.0.2.tar.xz
           xzcat gtk-mac-integration-3.0.2.tar.xz | tar x
           cd gtk-mac-integration-3.0.2
-          CC=/opt/local/bin/clang-mp-17 \
-            CXX=/opt/local/bin/clang++-mp-17 \
+          CC=/opt/local/bin/clang-mp-19 \
+            CXX=/opt/local/bin/clang++-mp-19 \
             ./configure --prefix=$INSTDIR --with-gtk3
           make -j$(nproc)
           sudo make install
@@ -132,8 +132,8 @@ jobs:
           mkdir build
           cd build
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DENABLE_X3FTOOLS=1 \
@@ -149,8 +149,8 @@ jobs:
           mkdir build-CTL
           cd build-CTL
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DCMAKE_BUILD_TYPE=Release \
             ../CTL
@@ -169,8 +169,8 @@ jobs:
           mkdir build
           cd build
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
             -DCMAKE_BUILD_TYPE=Release \
             -DOCIO_BUILD_PYTHON=OFF \
@@ -215,8 +215,8 @@ jobs:
           fi
           export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
           /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-19 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-19 \
             -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_SAN="${WITH_SAN}" \
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
@@ -261,7 +261,7 @@ jobs:
           cd build/${BUILD_TYPE}/ART.app
           python "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/art-deps/lib \
-            -r /opt/local/libexec/llvm-17/lib/clang/17/lib/darwin -e -I \
+            -r /opt/local/libexec/llvm-19/lib/clang/19/lib/darwin -e -I \
             ${DBG_FLAG} ${LAUNCHER_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
