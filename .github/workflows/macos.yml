@@ -100,7 +100,6 @@ jobs:
           sudo port install lensfun
           sudo port install exiv2
           sudo port install openexr
-          sudo port install lcms2
           sudo port install adwaita-icon-theme
           sudo port install meson
           sudo port install dbus
@@ -130,6 +129,19 @@ jobs:
             -DENABLE_AVX2=0 \
             -DDISABLE_FORTRAN=1 \
             ..
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install lcms2
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          wget https://downloads.sourceforge.net/project/lcms/lcms/2.17/lcms2-2.17.tar.gz
+          tar xzf lcms2-2.17.tar.gz
+          cd lcms2-2.17
+          CC=/opt/local/bin/clang-mp-21 \
+            CXX=/opt/local/bin/clang++-mp-21 \
+            ./configure --prefix=$INSTDIR 
           make -j$(nproc)
           sudo make install
 
