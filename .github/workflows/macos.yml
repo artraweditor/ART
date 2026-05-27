@@ -135,7 +135,7 @@ jobs:
       - name: Install lcms2
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
+          INSTDIR=/opt/local
           wget https://downloads.sourceforge.net/project/lcms/lcms/2.17/lcms2-2.17.tar.gz
           tar xzf lcms2-2.17.tar.gz
           cd lcms2-2.17
