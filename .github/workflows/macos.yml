@@ -15,43 +15,12 @@ on:
         description: 'Use executable launcher'
         required: true
         type: boolean
-      intel:
-        description: 'Intel build'
-        required: true
-        type: boolean
-        default: true
-      arm:
-        description: 'ARM build'
-        required: true
-        type: boolean
-        default: true
 
 jobs:
-  setup-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix-os: ${{ steps.set-matrix.outputs.os-list }}
-    steps:
-      - id: set-matrix
-        run: |
-          OS_LIST='[]'
-          
-          # If boolean is true, append Windows
-          if [ "${{ inputs.intel }}" = "true" -a "${{ inputs.arm }}" = "true" ]; then
-            OS_LIST='["macos-15-intel", "macos-14"]'
-          elif [ "${{ inputs.intel }}" = "true" ]; then
-            OS_LIST='["macos-15-intel"]'
-          elif [ "${{ inputs.arm }}" = "true" ]; then
-            OS_LIST='["macos-14"]'            
-          fi
-          
-          echo "os-list=$OS_LIST" >> $GITHUB_OUTPUT  
   build:
-    needs: setup-matrix
     strategy:
       matrix:
-        # os: [macos-15-intel, macos-14]
-        os: ${{ fromJson(needs.setup-matrix.outputs.matrix-os) }}
+        os: [macos-15-intel, macos-14]
         include:
           - os: macos-15-intel
             arch: x64
