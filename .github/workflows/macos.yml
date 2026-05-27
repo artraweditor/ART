@@ -127,7 +127,7 @@ jobs:
             -DENABLE_SSE=1 \
             -DENABLE_SSE2=1 \
             -DENABLE_AVX=1 \
-            -DENABLE_AVX2=1 \
+            -DENABLE_AVX2=0 \
             -DDISABLE_FORTRAN=1 \
             ..
           make -j$(nproc)
@@ -246,7 +246,7 @@ jobs:
           mkdir build
           cd build
           if [ "${{ matrix.arch }}" = "arm64" ]; then
-              ART_SIMDE=1
+              ART_SIMDE=0
           else
               ART_SIMDE=0
           fi
