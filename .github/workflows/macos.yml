@@ -104,7 +104,6 @@ jobs:
           sudo port install adwaita-icon-theme
           sudo port install meson
           sudo port install dbus
-          sudo port install simde
 
       - name: Install fftw
         run: |
@@ -230,6 +229,17 @@ jobs:
           sudo cp -a $INSTDIR/include/gtk-3.0/gdk/quartz/gdkquartzwindow.h /opt/local/include/gtk-3.0/gdk/quartz
           sudo cp -a $INSTDIR/lib/libgdk-3.0.dylib /opt/local/lib/libgdk-3.0.dylib
 
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
+          tar xzf v0.8.2.tar.gz
+          cd simde-0.8.2
+          meson setup build -Dbuildtype=release -Dtests=false -Dprefix=$INSTDIR
+          sudo meson install -C build
+          
       - name: Configure build
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
