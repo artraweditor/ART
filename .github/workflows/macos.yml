@@ -246,7 +246,7 @@ jobs:
           mkdir build
           cd build
           if [ "${{ matrix.arch }}" = "arm64" ]; then
-              ART_SIMDE=0
+              ART_SIMDE=1
           else
               ART_SIMDE=0
           fi
