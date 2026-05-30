@@ -34,6 +34,10 @@
     </screenshots>
     <update_contact>_hub_AT_figuiere_net_</update_contact>
     <releases>
+        <release version="1.26.5" date="2026-05-27"></release>
+        <release version="1.26.4" date="2026-04-27"></release>
+        <release version="1.26.3" date="2026-03-13"></release>
+        <release version="1.26.2" date="2026-02-20"></release>
         <release version="1.26.1" date="2026-01-13"></release>
         <release version="1.25.12" date="2025-12-23"></release>
         <release version="1.25.11" date="2025-11-17"></release>
