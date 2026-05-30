@@ -61,7 +61,8 @@ film_stocks = _enum(FilmStocks,
                     'kodak_ektachrome_100',
                     'kodak_kodachrome_64',
                     'fujifilm_velvia_100',
-                    'fujifilm_provia_100f')
+                    'fujifilm_provia_100f',
+                    'kodak_verita_200d')
                     
 
 print_papers = _enum(PrintPapers,
@@ -495,7 +496,6 @@ def main():
             o = sys.stdin.readline().strip()
             with open(p) as f:
                 params = json.load(f)
-            os.system(f"cp {p} /tmp/params.json")
             update_opts(opts, params, o)
             buf = io.StringIO()
             with redirect_stdout(buf):
