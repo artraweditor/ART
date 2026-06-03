@@ -2823,9 +2823,9 @@ void CropWindow::screenCoordToCropCanvas(double phyx, double phyy,
     double x = phyx - xpos - imgAreaX;
     double y = phyy - ypos - imgAreaY;
 
-    int deviceScale = cropHandler.getDisplayScale();
-    prevx = x * deviceScale;
-    prevy = y * deviceScale;
+    // int deviceScale = cropHandler.getDisplayScale();
+    prevx = x;// * deviceScale;
+    prevy = y;// * deviceScale;
 }
 
 
