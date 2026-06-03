@@ -53,11 +53,11 @@ int get_luminance(const Imagefloat &img, int y, int x)
     return (int(CLIP(Color::rgbLuminance(img.r(y, x), img.g(y, x), img.b(y, x)))) * 255) / 65535;
 }
 
-int get_r(const Imagefloat &img, int y, int x) { return LIM01(img.r(y, x) / 65535.f) * 255; }
+// int get_r(const Imagefloat &img, int y, int x) { return LIM01(img.r(y, x) / 65535.f) * 255; }
 
-int get_g(const Imagefloat &img, int y, int x) { return LIM01(img.g(y, x) / 65535.f) * 255; }
+// int get_g(const Imagefloat &img, int y, int x) { return LIM01(img.g(y, x) / 65535.f) * 255; }
 
-int get_b(const Imagefloat &img, int y, int x) { return LIM01(img.b(y, x) / 65535.f) * 255; }
+// int get_b(const Imagefloat &img, int y, int x) { return LIM01(img.b(y, x) / 65535.f) * 255; }
 
 CdfInfo getCdf(const Imagefloat &img, PixelGetter getpix, float expcomp = 0)
 {
