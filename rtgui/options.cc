@@ -734,6 +734,7 @@ void Options::setDefaults()
     rtSettings.os_monitor_profile = rtengine::Settings::StdMonitorProfile::SRGB;
 
     viewing_conditions = ViewingConditions::NORMAL;
+    quick_inspect_popup_size_percent = 66;
 }
 
 Options *Options::copyFrom(Options *other)
@@ -1333,6 +1334,11 @@ void Options::readFromFile(Glib::ustring fname)
                 if (keyFile.has_key("Performance", "InspectorDelay")) {
                     inspectorDelay =
                         keyFile.get_integer("Performance", "InspectorDelay");
+                }
+
+                if (keyFile.has_key("Performance", "QuickInspectPopupSize")) {
+                    quick_inspect_popup_size_percent =
+                        keyFile.get_integer("Performance", "QuickInspectPopupSize");
                 }
 
                 if (keyFile.has_key("Performance",
@@ -2306,6 +2312,7 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_integer("Performance", "MaxInspectorBuffers",
                             maxInspectorBuffers);
         keyFile.set_integer("Performance", "InspectorDelay", inspectorDelay);
+        keyFile.set_integer("Performance", "QuickInspectPopupSize", quick_inspect_popup_size_percent);
         keyFile.set_integer("Performance", "PreviewDemosaicFromSidecar",
                             prevdemo);
         keyFile.set_boolean("Performance", "SerializeTiffRead",

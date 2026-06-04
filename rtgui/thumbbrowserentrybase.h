@@ -115,6 +115,7 @@ public:
     virtual ~ThumbBrowserEntryBase();
 
     void setParent(ThumbBrowserBase *l) { parent = l; }
+    const ThumbBrowserBase *getParent() const { return parent; }
 
     void updateBackBuffer();
     void resize(int h);

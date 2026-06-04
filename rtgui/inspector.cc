@@ -278,7 +278,7 @@ void InspectorArea::mouseMove(rtengine::Coord2D pos, int transform)
 }
 
 void InspectorArea::switchImage(const Glib::ustring &fullPath, bool recenter,
-                                rtengine::Coord2D newcenter)
+                                rtengine::Coord2D newcenter, int w, int h)
 {
     if (!active_) {
         return;
@@ -290,11 +290,11 @@ void InspectorArea::switchImage(const Glib::ustring &fullPath, bool recenter,
 
     next_image_path_ = fullPath;
     if (!options.inspectorDelay) {
-        doSwitchImage(recenter, newcenter);
+        doSwitchImage(recenter, newcenter, w, h);
     } else {
         delayconn_ = Glib::signal_timeout().connect(
             sigc::bind(sigc::mem_fun(*this, &InspectorArea::doSwitchImage),
-                       recenter, newcenter),
+                       recenter, newcenter, w, h),
             options.inspectorDelay);
     }
 }
@@ -309,14 +309,15 @@ int InspectorArea::getImageDisplayScale()
 }
     
 
-bool InspectorArea::doSwitchImage(bool recenter, rtengine::Coord2D newcenter)
+bool InspectorArea::doSwitchImage(bool recenter, rtengine::Coord2D newcenter,
+                                  int w, int h)
 {
     Glib::ustring fullPath = next_image_path_;
 
     if (fullPath.empty()) {
         cur_image_.reset();
     } else {
-        cur_image_ = doCacheImage(fullPath);
+        cur_image_ = doCacheImage(fullPath, w, h);
     }
 
     if (cur_image_ && recenter) {
@@ -338,14 +339,17 @@ bool InspectorArea::doSwitchImage(bool recenter, rtengine::Coord2D newcenter)
 }
 
 std::shared_ptr<InspectorBuffer>
-InspectorArea::doCacheImage(const Glib::ustring &fullPath)
+InspectorArea::doCacheImage(const Glib::ustring &fullPath, int w, int h)
 {
     std::shared_ptr<InspectorBuffer> res;
     if (!cache_.get(fullPath, res)) {
         Glib::RefPtr<Gdk::Window> win = get_window();
         int width = -1, height = -1;
-        if (win && options.thumbnail_inspector_zoom_fit) {
-            int scale = getImageDisplayScale();
+        int scale = getImageDisplayScale();
+        if (w > 0 && h > 0) {
+            width = w * scale;
+            height = h * scale;
+        } else if (win && options.thumbnail_inspector_zoom_fit) {
             width = win->get_width() * scale;
             height = win->get_height() * scale;
         }
@@ -366,7 +370,7 @@ InspectorArea::doCacheImage(const Glib::ustring &fullPath)
 void InspectorArea::preloadImage(const Glib::ustring &fullPath)
 {
     // std::cout << "PRELOAD: " << fullPath << std::endl;
-    doCacheImage(fullPath);
+    doCacheImage(fullPath, -1, -1);
 }
 
 void InspectorArea::deleteBuffers()
@@ -1199,4 +1203,75 @@ void Inspector::onInspectorResized(Gtk::Allocation &a)
                                                     options.adjusterMaxDelay);
     }
     hidpi_->set_visible(RTScalable::getDisplayScale(this) > 1);
+}
+
+
+void Inspector::popover(const ThumbBrowserEntryBase *entry)
+{
+    auto w = entry->getParent();
+    if (!w || !entry->thumbnail) {
+        return;
+    }
+    Gtk::Popover p(*w);
+    p.set_pointing_to(
+        Gdk::Rectangle(entry->getX(), entry->getY(),
+                       entry->getEffectiveWidth(), entry->getEffectiveHeight()));
+
+    auto &top = getToplevelWindow(const_cast<ThumbBrowserBase *>(w));
+    int topw, toph;
+    top.get_size(topw, toph);
+
+    class InspectorOptionsSetter {
+    public:
+        InspectorOptionsSetter():
+            fit(options.thumbnail_inspector_zoom_fit),
+            hist(options.thumbnail_inspector_show_histogram)
+        {
+            options.thumbnail_inspector_show_histogram = false;
+            options.thumbnail_inspector_zoom_fit = true;
+        }
+
+        ~InspectorOptionsSetter()
+        {
+            options.thumbnail_inspector_show_histogram = hist;
+            options.thumbnail_inspector_zoom_fit = fit;
+        }
+    private:
+        bool fit;
+        bool hist;
+    };
+    InspectorOptionsSetter setopts;
+
+    int bb = std::min(toph, topw) * (float(options.quick_inspect_popup_size_percent)/100.f);
+    int tw, th;
+    entry->thumbnail->getOriginalSize(tw, th, true);
+    float ratio = float(tw)/float(th);
+    int ah = bb;
+    int aw = ah * ratio + 0.5f;
+    if (ratio > 1.f) {
+        aw = bb;
+        ah = aw / ratio + 0.5f;
+    }
+    
+    InspectorArea a;
+    a.setActive(true);
+    a.setInfoText("");
+    a.switchImage(entry->filename, false, rtengine::Coord2D(-1, -1), aw, ah);
+    a.set_size_request(aw, ah);
+    p.add(a);
+
+    bool done = false;
+    p.signal_closed().connect([&]() { done = true; });
+    p.add_events(Gdk::KEY_PRESS_MASK);
+    p.signal_key_press_event().connect(
+        [&](GdkEventKey *) { done = true; p.hide(); return true; }
+        );
+
+    p.show_all_children();
+    p.set_modal(true);
+    p.show();
+
+    while (!done) {
+        gtk_main_iteration();
+    }
 }

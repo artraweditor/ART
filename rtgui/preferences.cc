@@ -560,7 +560,18 @@ Gtk::Widget *Preferences::getPerformancePanel()
     maxIBuffersHB->pack_end(*maxInspectorBuffersSB, Gtk::PACK_SHRINK, 0);
 
     Gtk::VBox *inspectorvb = Gtk::manage(new Gtk::VBox());
-    inspectorvb->add(*maxIBuffersHB);
+    inspectorvb->pack_start(*maxIBuffersHB);
+    {
+        Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
+        hb->pack_start(*Gtk::manage(new Gtk::Label(M("PREFERENCES_QINSPECT_POPUP_SIZE") + ":", Gtk::ALIGN_START)), Gtk::PACK_SHRINK, 0);
+        qinspect_size_ = Gtk::manage(new Gtk::SpinButton());
+        qinspect_size_->set_digits(0);
+        qinspect_size_->set_increments(1, 5);
+        qinspect_size_->set_max_length(3);
+        qinspect_size_->set_range(30, 100);
+        hb->pack_end(*qinspect_size_, Gtk::PACK_SHRINK, 0);
+        inspectorvb->pack_start(*hb);
+    }
 
     finspect->add(*inspectorvb);
     vbPerformance->pack_start(*finspect, Gtk::PACK_SHRINK, 4);
@@ -2297,6 +2308,7 @@ void Preferences::storePreferences()
     moptions.rgbDenoiseThreadLimit = threadsSpinBtn->get_value_as_int();
     moptions.clutCacheSize = clutCacheSizeSB->get_value_as_int();
     moptions.maxInspectorBuffers = maxInspectorBuffersSB->get_value_as_int();
+    moptions.quick_inspect_popup_size_percent = qinspect_size_->get_value_as_int();
     moptions.rtSettings.thread_pool_size =
         thumbUpdateThreadLimit->get_value_as_int();
     moptions.thumb_delay_update = thumbDelayUpdate->get_active();
@@ -2606,6 +2618,7 @@ void Preferences::fillPreferences()
     threadsSpinBtn->set_value(moptions.rgbDenoiseThreadLimit);
     clutCacheSizeSB->set_value(moptions.clutCacheSize);
     maxInspectorBuffersSB->set_value(moptions.maxInspectorBuffers);
+    qinspect_size_->set_value(moptions.quick_inspect_popup_size_percent);
     thumbUpdateThreadLimit->set_value(moptions.rtSettings.thread_pool_size);
     thumbDelayUpdate->set_active(moptions.thumb_delay_update);
     thumbLazyCaching->set_active(moptions.thumb_lazy_caching);

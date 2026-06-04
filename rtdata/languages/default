@@ -166,6 +166,7 @@ FILEBROWSER_POPUPOPENINEDITOR;Open in Editor
 FILEBROWSER_POPUPPROCESS;Put to queue
 FILEBROWSER_POPUPPROCESSFAST;Put to queue (Fast export)
 FILEBROWSER_POPUPPROFILEOPERATIONS;Processing profile operations
+FILEBROWSER_POPUPQINSPECT;Quick inspect
 FILEBROWSER_POPUPRANK;Rank
 FILEBROWSER_POPUPRANK0;Unrank
 FILEBROWSER_POPUPRANK1;Rank 1 *
@@ -1174,6 +1175,7 @@ PREFERENCES_PROFILE_SAVE_OUTPUT_EMBEDDED;Embed in the metadata
 PREFERENCES_PRTINTENT;Rendering intent
 PREFERENCES_PRTPROFILE;Color profile
 PREFERENCES_PSPATH;Adobe Photoshop installation directory
+PREFERENCES_QINSPECT_POPUP_SIZE;Quick inspect popup size (as % of window size)
 PREFERENCES_REMEMBERZOOMPAN;Remember zoom % and pan offset
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Remember the zoom % and pan offset of the current image when opening a new image.\n\nThis option only works in "Single Editor Tab Mode" and when "Demosaicing method used for the preview at <100% zoom" is set to "As in ARP".
 PREFERENCES_REMEMBER_METADATA_FILTERS;Remember metadata filters

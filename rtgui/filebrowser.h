@@ -77,6 +77,7 @@ protected:
     Gtk::MenuItem *rename;
     Gtk::MenuItem *remove;
     Gtk::MenuItem *open;
+    Gtk::MenuItem *qinspect;
     Gtk::MenuItem *selall;
     Gtk::MenuItem *copyTo;
     Gtk::MenuItem *moveTo;

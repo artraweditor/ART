@@ -273,6 +273,10 @@ void FileBrowser::build_menu()
         *Gtk::manage(open = new Gtk::MenuItem(M("FILEBROWSER_POPUPOPEN"))), 0,
         1, p, p + 1);
     p++;
+    pmenu->attach(
+        *Gtk::manage(qinspect = new Gtk::MenuItem(M("FILEBROWSER_POPUPQINSPECT"))), 0,
+        1, p, p + 1);
+    p++;
     pmenu->attach(*Gtk::manage(develop = new MyImageMenuItem(
                                    M("FILEBROWSER_POPUPPROCESS"), "gears.svg")),
                   0, 1, p, p + 1);
@@ -634,6 +638,8 @@ void FileBrowser::build_menu()
                              Gdk::SHIFT_MASK, Gtk::ACCEL_VISIBLE);
     open->add_accelerator("activate", pmaccelgroup, GDK_KEY_Return,
                           (Gdk::ModifierType)0, Gtk::ACCEL_VISIBLE);
+    qinspect->add_accelerator("activate", pmaccelgroup, GDK_KEY_space,
+                              Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     develop->add_accelerator("activate", pmaccelgroup, GDK_KEY_B,
                              Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     developfast->add_accelerator("activate", pmaccelgroup, GDK_KEY_B,
@@ -663,6 +669,8 @@ void FileBrowser::build_menu()
     // Bind to event handlers
     open->signal_activate().connect(sigc::bind(
         sigc::mem_fun(*this, &FileBrowser::menuItemActivated), open));
+    qinspect->signal_activate().connect(sigc::bind(
+        sigc::mem_fun(*this, &FileBrowser::menuItemActivated), qinspect));
 
     for (int i = 0; i < 6; i++) {
         rank[i]->signal_activate().connect(sigc::bind(
@@ -1039,7 +1047,12 @@ void FileBrowser::menuItemActivated(Gtk::MenuItem *m)
         }
     }
 
-    if (m == open) {
+    if (m == qinspect) {
+        if (!mselected.empty()) {
+            ThumbBrowserEntryBase *sel = mselected.size() == 1 ? mselected.front() : (anchor ? anchor : (lastClicked ? lastClicked : mselected.front()));
+            Inspector::popover(sel);
+        }
+    } else if (m == open) {
         openRequested(mselected);
     } else if (m == remove) {
         tbl->deleteRequested(mselected, true);
@@ -1381,7 +1394,16 @@ bool FileBrowser::keyPressed(GdkEventKey *event)
 
     auto keyval = getKeyval(event);
 
-    if ((keyval == GDK_KEY_C || keyval == GDK_KEY_c) && ctrl && shift) {
+    if (keyval == GDK_KEY_space && ctrl) {
+        const ThumbBrowserEntryBase *sel = nullptr;
+        if (!selected.empty()) {
+            sel = selected.size() == 1 ? selected.front() : (anchor ? anchor : (lastClicked ? lastClicked : selected.front()));
+        }
+        if (sel) {
+            Inspector::popover(sel);
+        }
+        return true;
+    } else if ((keyval == GDK_KEY_C || keyval == GDK_KEY_c) && ctrl && shift) {
         menuItemActivated(copyTo);
         return true;
     } else if ((keyval == GDK_KEY_M || keyval == GDK_KEY_m) && ctrl && shift) {

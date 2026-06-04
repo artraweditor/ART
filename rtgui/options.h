@@ -488,6 +488,8 @@ public:
     };
     ViewingConditions viewing_conditions;
 
+    int quick_inspect_popup_size_percent;
+
     Options();
 
     Options *copyFrom(Options *other);

@@ -23,6 +23,7 @@
 #include "../rtengine/coord.h"
 #include "guiutils.h"
 #include "histogrampanel.h"
+#include "thumbbrowserentrybase.h"
 #include <gtkmm.h>
 
 class InspectorBuffer;
@@ -45,7 +46,8 @@ public:
      * an empty string if out of any image.
      */
     void switchImage(const Glib::ustring &fullPath, bool recenter = false,
-                     rtengine::Coord2D newcenter = rtengine::Coord2D(-1, -1));
+                     rtengine::Coord2D newcenter = rtengine::Coord2D(-1, -1),
+                     int w=-1, int h=-1);
 
     /** @brief Set the new coarse rotation transformation
      * @param transform A semi-bitfield coarse transformation using #defines
@@ -105,10 +107,10 @@ private:
     bool onMouseRelease(GdkEventButton *evt);
 
     void deleteBuffers();
-    bool doSwitchImage(bool recenter, rtengine::Coord2D newcenter);
+    bool doSwitchImage(bool recenter, rtengine::Coord2D newcenter, int w, int h);
     void updateHistogram();
     std::shared_ptr<InspectorBuffer>
-    doCacheImage(const Glib::ustring &fullPath);
+    doCacheImage(const Glib::ustring &fullPath, int w, int h);
     int getImageDisplayScale();
 
     rtengine::Coord2D center_;
@@ -161,6 +163,8 @@ public:
     void setZoomFit(bool yes);
 
     bool handleShortcutKey(GdkEventKey *event);
+
+    static void popover(const ThumbBrowserEntryBase *entry);
 
 private:
     Gtk::HBox *get_toolbar();
