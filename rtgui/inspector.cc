@@ -355,15 +355,17 @@ InspectorArea::doCacheImage(const Glib::ustring &fullPath, int w, int h)
 {
     std::shared_ptr<InspectorBuffer> res;
     if (!cache_.get(fullPath, res)) {
-        Glib::RefPtr<Gdk::Window> win = get_window();
         int width = -1, height = -1;
-        int scale = getImageDisplayScale();
-        if (w > 0 && h > 0) {
-            width = w * scale;
-            height = h * scale;
-        } else if (win && options.thumbnail_inspector_zoom_fit) {
-            width = win->get_width() * scale;
-            height = win->get_height() * scale;
+        if (options.thumbnail_inspector_zoom_fit) {
+            Glib::RefPtr<Gdk::Window> win = get_window();
+            int scale = getImageDisplayScale();
+            if (w > 0 && h > 0) {
+                width = w * scale;
+                height = h * scale;
+            } else if (win) {
+                width = win->get_width() * scale;
+                height = win->get_height() * scale;
+            }
         }
 
         // Loading a new image
@@ -1256,10 +1258,27 @@ void Inspector::popover(const ThumbBrowserEntryBase *entry)
 
     bool done = false;
     p.signal_closed().connect([&]() { done = true; });
-    p.add_events(Gdk::KEY_PRESS_MASK);
+    p.add_events(Gdk::KEY_PRESS_MASK|Gdk::BUTTON_PRESS_MASK);
     p.signal_key_press_event().connect(
         [&](GdkEventKey *) { done = true; p.hide(); return true; }
         );
+    a.set_can_focus(true);
+
+    bool zoomfit = true;
+
+    const auto toggle_zoom =
+        [&](rtengine::Coord2D pos)
+        {
+            zoomfit = !zoomfit;
+            rtengine::TempVarSetter<bool> setzoomfit(options.thumbnail_inspector_zoom_fit, zoomfit);
+            a.flushBuffers();
+            a.switchImage(entry->filename, true, pos, aw, ah);
+            a.queue_draw();
+        };
+    
+    a.signal_pressed().connect([&](rtengine::Coord2D pos) { toggle_zoom(pos); });
+    a.signal_released().connect([&]() { toggle_zoom(rtengine::Coord2D(-1, -1)); });
+    a.signal_moved().connect([&](rtengine::Coord2D pos) { a.mouseMove(pos, 0); });
 
     p.show_all_children();
     p.set_modal(true);
