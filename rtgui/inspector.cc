@@ -63,11 +63,23 @@ InspectorBuffer::InspectorBuffer(const Glib::ustring &imagePath, int width,
             return;
         }
 
-        rtengine::PreviewImage pi(imagePath, ext, width, height,
-                                  options.thumbnail_inspector_enable_cms,
-                                  options.thumbnail_inspector_show_histogram);
-        Cairo::RefPtr<Cairo::ImageSurface> imageSurface = pi.getImage();
-        pi.getHistogram(histogram[0], histogram[1], histogram[2]);
+        const auto load =
+            [&]() -> Cairo::RefPtr<Cairo::ImageSurface>
+            {
+                rtengine::PreviewImage pi(imagePath, ext, width, height,
+                                          options.thumbnail_inspector_enable_cms,
+                                          options.thumbnail_inspector_show_histogram);
+                Cairo::RefPtr<Cairo::ImageSurface> imageSurface = pi.getImage();
+                pi.getHistogram(histogram[0], histogram[1], histogram[2]);
+                return imageSurface;
+            };
+        
+        auto imageSurface = load();
+        if (!imageSurface && options.rtSettings.thumbnail_inspector_mode == rtengine::Settings::ThumbnailInspectorMode::JPEG) {
+            rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorMode> setraw(options.rtSettings.thumbnail_inspector_mode, rtengine::Settings::ThumbnailInspectorMode::RAW);
+            rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorRawCurve> setfilmcurve(options.rtSettings.thumbnail_inspector_raw_curve, rtengine::Settings::ThumbnailInspectorRawCurve::FILM);
+            imageSurface = load();
+        }
 
         if (imageSurface) {
             imgBuffer.setSurface(imageSurface);
@@ -1221,26 +1233,8 @@ void Inspector::popover(const ThumbBrowserEntryBase *entry)
     int topw, toph;
     top.get_size(topw, toph);
 
-    class InspectorOptionsSetter {
-    public:
-        InspectorOptionsSetter():
-            fit(options.thumbnail_inspector_zoom_fit),
-            hist(options.thumbnail_inspector_show_histogram)
-        {
-            options.thumbnail_inspector_show_histogram = false;
-            options.thumbnail_inspector_zoom_fit = true;
-        }
-
-        ~InspectorOptionsSetter()
-        {
-            options.thumbnail_inspector_show_histogram = hist;
-            options.thumbnail_inspector_zoom_fit = fit;
-        }
-    private:
-        bool fit;
-        bool hist;
-    };
-    InspectorOptionsSetter setopts;
+    rtengine::TempVarSetter<bool> setzoomfit(options.thumbnail_inspector_zoom_fit, true);
+    rtengine::TempVarSetter<bool> setnohist(options.thumbnail_inspector_show_histogram, false);
 
     int bb = std::min(toph, topw) * (float(options.quick_inspect_popup_size_percent)/100.f);
     int tw, th;

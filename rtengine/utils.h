@@ -62,6 +62,25 @@ std::string getMD5(const Glib::ustring &fname, bool extended = false);
 
 std::string get_html_color(int r, int g, int b);
 
+template <class T>
+class TempVarSetter {
+public:
+    TempVarSetter(T &target, const T &value):
+        target_(target),
+        oldval_(target)
+    {
+        target_ = value;
+    }
+
+    ~TempVarSetter()
+    {
+        target_ = oldval_;
+    }
+private:
+    T &target_;
+    T oldval_;
+};
+
 } // namespace rtengine
 
 #if __SIZEOF_WCHAR_T__ == 4
