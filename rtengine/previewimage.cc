@@ -492,14 +492,17 @@ private:
             return false;
         }
 
+        int fW, fH;
+        RawImageSource::getFullSize(fW, fH);
+        
         // (w, h) is a bounding box
-        double sw = std::max(double(W) / bbox_W_, 1.0);
-        double sh = std::max(double(H) / bbox_H_, 1.0);
+        double sw = std::max(double(fW) / bbox_W_, 1.0);
+        double sh = std::max(double(fH) / bbox_H_, 1.0);
         int skip = std::max(sw, sh);
 
         if (settings->verbose > 1) {
-            std::cout << "  skip calculation: W = " << W
-                      << ", bbox_W = " << bbox_W_ << ", H = " << H
+            std::cout << "  skip calculation: W = " << fW
+                      << ", bbox_W = " << bbox_W_ << ", H = " << fH
                       << ", bbox_H_ = " << bbox_H_ << ", skip = " << skip
                       << std::endl;
         }
@@ -510,8 +513,8 @@ private:
 
         if (ri->getSensorType() == ST_BAYER) {
             if (settings->verbose > 1) {
-                std::cout << "SKIP: " << skip << ", FROM: " << W << "x" << H
-                          << " to " << (W / skip) << "x" << (H / skip)
+                std::cout << "SKIP: " << skip << ", FROM: " << fW << "x" << fH
+                          << " to " << (fW / skip) << "x" << (fH / skip)
                           << std::endl;
             }
 
@@ -608,8 +611,8 @@ private:
             }
 
             if (settings->verbose > 1) {
-                std::cout << "SKIP: " << skip << ", FROM: " << W << "x" << H
-                          << " to " << (W / skip) << "x" << (H / skip)
+                std::cout << "SKIP: " << skip << ", FROM: " << fW << "x" << fH
+                          << " to " << (fW / skip) << "x" << (fH / skip)
                           << std::endl;
             }
 
