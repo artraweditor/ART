@@ -65,6 +65,12 @@ std::string get_html_color(int r, int g, int b);
 template <class T>
 class TempVarSetter {
 public:
+    explicit TempVarSetter(T &target):
+        target_(target),
+        oldval_(target)
+    {
+    }
+    
     TempVarSetter(T &target, const T &value):
         target_(target),
         oldval_(target)
