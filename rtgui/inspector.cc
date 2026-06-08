@@ -1035,14 +1035,6 @@ void Inspector::toggleShowHistogram()
     histogram_->set_active(!histogram_->get_active());
 }
 
-enum class DisplayMode {
-    JPG,
-    RAW_LINEAR,
-    RAW_FILM_CURVE,
-    RAW_SHADOW_BOOST,
-    RAW_CLIP_WARNING
-};
-
 void Inspector::setDisplayMode(DisplayMode m)
 {
     switch (m) {
@@ -1259,8 +1251,63 @@ void Inspector::popover(const ThumbBrowserEntryBase *entry)
     bool done = false;
     p.signal_closed().connect([&]() { done = true; });
     p.add_events(Gdk::KEY_PRESS_MASK|Gdk::BUTTON_PRESS_MASK);
+
+    const auto toggle_mode =
+        [&](Inspector::DisplayMode m) -> bool
+        {
+            auto &mode = options.rtSettings.thumbnail_inspector_mode;
+            auto &curve = options.rtSettings.thumbnail_inspector_raw_curve;
+            rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorMode> setmode(mode, rtengine::Settings::ThumbnailInspectorMode::RAW);
+            rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorRawCurve> setcurve(curve, rtengine::Settings::ThumbnailInspectorRawCurve::LINEAR);
+
+            switch (m) {
+            case Inspector::DisplayMode::JPG:
+                mode = rtengine::Settings::ThumbnailInspectorMode::JPEG;
+                break;
+            case Inspector::DisplayMode::RAW_LINEAR:
+                curve = rtengine::Settings::ThumbnailInspectorRawCurve::LINEAR;
+                break;
+            case Inspector::DisplayMode::RAW_FILM_CURVE:
+                curve = rtengine::Settings::ThumbnailInspectorRawCurve::FILM;
+                break;
+            case Inspector::DisplayMode::RAW_SHADOW_BOOST:
+                curve = rtengine::Settings::ThumbnailInspectorRawCurve::SHADOW_BOOST;
+                break;
+            case Inspector::DisplayMode::RAW_CLIP_WARNING:
+                curve = rtengine::Settings::ThumbnailInspectorRawCurve::RAW_CLIPPING;
+                break;
+            }
+
+            a.flushBuffers();
+            a.switchImage(entry->filename, false, rtengine::Coord2D(-1, -1), aw, ah);
+            a.queue_draw();
+            
+            return true;
+        };
+    
     p.signal_key_press_event().connect(
-        [&](GdkEventKey *) { done = true; p.hide(); return true; }
+        [&](GdkEventKey *event)
+        {
+            static const std::unordered_map<int, Inspector::DisplayMode> mm = {
+                { GDK_KEY_j, Inspector::DisplayMode::JPG },
+                { GDK_KEY_r, Inspector::DisplayMode::RAW_LINEAR },
+                { GDK_KEY_f, Inspector::DisplayMode::RAW_FILM_CURVE },
+                { GDK_KEY_s, Inspector::DisplayMode::RAW_SHADOW_BOOST },
+                { GDK_KEY_w, Inspector::DisplayMode::RAW_CLIP_WARNING }
+            };
+
+            auto modified = event->state;          
+
+            if (!modified) {
+                auto it = mm.find(getKeyval(event));
+                if (it != mm.end()) {
+                    return toggle_mode(it->second);
+                }
+            }
+            done = true;
+            p.hide();
+            return true;
+        }
         );
     a.set_can_focus(true);
 
