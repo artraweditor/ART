@@ -1229,7 +1229,7 @@ void Inspector::popover(const ThumbBrowserEntryBase *entry)
 
     rtengine::TempVarSetter<bool> setzoomfit(options.thumbnail_inspector_zoom_fit, true);
     rtengine::TempVarSetter<bool> setnohist(options.thumbnail_inspector_show_histogram, false);
-    rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorMode> setmode(options.rtSettings.thumbnail_inspector_mode);
+    rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorMode> setmode(options.rtSettings.thumbnail_inspector_mode, rtengine::Settings::ThumbnailInspectorMode::JPEG);
     rtengine::TempVarSetter<rtengine::Settings::ThumbnailInspectorRawCurve> setcurve(options.rtSettings.thumbnail_inspector_raw_curve);
 
     int bb = std::min(toph, topw) * (float(options.quick_inspect_popup_size_percent)/100.f);
