@@ -296,7 +296,14 @@ class LUTCreator:
             params.film_render.dir_couplers.active = \
                 opts.dir_couplers_amount > 0
             params.film_render.dir_couplers.amount = opts.dir_couplers_amount
-            params.print_render.density_curve_gamma = opts.print_gamma
+            if hasattr(params.print_render, 'density_curve_gamma'):
+                params.print_render.density_curve_gamma = opts.print_gamma
+            elif opts.print_gamma != 1.0:
+                from spektrafilm.runtime.params_schema \
+                    import PrintCurvesMorphParams
+                params.print_render.density_curves_morph = \
+                    PrintCurvesMorphParams(active=True,
+                                           gamma_factor=opts.print_gamma)
             params.scanner.unsharp_mask = (0.0, 0.0)
             params.debug.deactivate_stochastic_effects = True
             if isinstance(print_papers[opts.paper], NoPaper):
