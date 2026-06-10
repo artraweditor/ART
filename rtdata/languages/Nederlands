@@ -30,6 +30,7 @@
 #29 2021-12-18 update naar ART v1.12 by pm
 #30 2022-01-28 update naar ART v1.12.1 by pm
 #31 2022-04-01 update naar ART v1.13 by pm
+
 #32 27-05-2022 update naar ART v1.14 by pm
 #33 13-07-2022 update naar ART v1.15 by pm
 #34 24-08-2022 update naar ART v1.16 by pm
@@ -46,6 +47,7 @@
 #45 19-12-2025 update naar ART v1.25.12 door pm
 #46 16-02-2026 update naar ART v1.26.2 door pm
 #47	26-04-2026 update naar ART v1.26.4 door pm
+#48 10-06-2026 update naar ART v1.26.6 door pm
 
 ABOUT_TAB_BUILD;Versie
 ABOUT_TAB_CREDITS;Credits
@@ -207,7 +209,8 @@ FILEBROWSER_POPUPOPEN;Open
 FILEBROWSER_POPUPPROCESSFAST;Plaats in verwerkingsrij (snelle export)
 FILEBROWSER_POPUPPROCESS;Plaats in verwerkingsrij
 FILEBROWSER_POPUPPROFILEOPERATIONS;Profielbewerkingen
-FILEBROWSER_POPUPRANK0;Geen
+FILEBROWSER_POPUPQINSPECT;Snel bekijken
+FILEBROWSER_POPUPRANK0;Wis waardering
 FILEBROWSER_POPUPRANK1;Waardering 1 *
 FILEBROWSER_POPUPRANK2;Waardering 2 **
 FILEBROWSER_POPUPRANK3;Waardering 3 ***
@@ -1181,6 +1184,7 @@ PREFERENCES_PROFILE_SAVE_OUTPUT;Verwerkingsprofielen voor uitvoerbeelden
 PREFERENCES_PRTINTENT;Weergave-intentie
 PREFERENCES_PRTPROFILE;Kleurprofiel
 PREFERENCES_PSPATH;Installatiemap Adobe Photoshop
+PREFERENCES_QINSPECT_POPUP_SIZE;Venstergrootte Snel bekijken (als % van ART-venster)
 PREFERENCES_REMEMBERZOOMPAN;Onthoud zoom% en pan-verschuiving
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Onthoud het zoom-% en pan-startpunt van de huidige afbeelding als er een nieuwe afbeelding wordt geopend.\n\nDeze optie werkt alleen in 'Enkel-tab modus' en wanneer 'Demozaïekmethode van het voorbeeld bij <100% zoom' is ingesteld als 'Als in arp'.
 PREFERENCES_REMEMBER_METADATA_FILTERS;Onthoud metadatafilters
