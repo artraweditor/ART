@@ -27,6 +27,7 @@
 #27 2025-01-16 alvaro
 #28 2026-02-18 v1.26.2 - alvaro
 #29 2026-05-03 v1.26.4 - alvaro
+#30 2026-06-10 v1.26.6 - alvaro
 # Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page
 
 ABOUT_TAB_BUILD;Versione
@@ -181,6 +182,7 @@ FILEBROWSER_PARTIALPASTEPROFILE;Incolla - parziale
 FILEBROWSER_PASTEPROFILE;Incolla
 FILEBROWSER_POPUPCANCELJOB;Annulla lavoro
 FILEBROWSER_POPUPCOLORLABEL;Etichetta colore
+FILEBROWSER_POPUPCOLORLABEL0;Etichetta: nessuna
 FILEBROWSER_POPUPCOLORLABEL1;Etichetta: Rosso
 FILEBROWSER_POPUPCOLORLABEL2;Etichetta: Giallo
 FILEBROWSER_POPUPCOLORLABEL3;Etichetta: Verde
@@ -196,7 +198,9 @@ FILEBROWSER_POPUPOPENINEDITOR;Apri in Editor
 FILEBROWSER_POPUPPROCESS;Aggiungi alla Coda
 FILEBROWSER_POPUPPROCESSFAST;Aggiungi alla Coda (Esportazione Rapida)
 FILEBROWSER_POPUPPROFILEOPERATIONS;Operazioni sui Profili di Sviluppo
+FILEBROWSER_POPUPQINSPECT;Ispezione veloce
 FILEBROWSER_POPUPRANK;Valutazione
+FILEBROWSER_POPUPRANK0;Non valutare
 FILEBROWSER_POPUPRANK1;Valuta 1 *
 FILEBROWSER_POPUPRANK2;Valuta 2 **
 FILEBROWSER_POPUPRANK3;Valuta 3 ***
@@ -275,7 +279,7 @@ FILECHOOSER_FILTER_PP;Profili sviluppo
 FILECHOOSER_FILTER_SAME;Stesso formato come foto attuale
 FILECHOOSER_FILTER_TIFF;File TIFF
 FONTCHOOSER_FAMILY;Carattere
-FONTCHOOSER_PREVIEW_TEXT;Ma la volpe col bianco balzo riprende le vecchie abitudini
+FONTCHOOSER_PREVIEW_TEXT;Ma che bel gufo spenzola da quei travi
 FONTCHOOSER_SIZE;Dimensione
 FONTCHOOSER_TITLE;Seleziona font
 GENERAL_ABOUT;Informazioni
@@ -698,6 +702,7 @@ HISTORY_MSG_RAWCACORR_AUTOIT;Correzione AC raw - Iterazioni
 HISTORY_MSG_RAWCACORR_COLORSHIFT;Correzione AC raw - Evita scostamento di colore
 HISTORY_MSG_RAW_BORDER;Bordo raw
 HISTORY_MSG_RESIZE_ALLOWUPSCALING;Ridimensiona - Permetti ingrandimento
+HISTORY_MSG_RESIZE_COPY_PPI_TO_EXIF;Ridimensiona - Copia PPI su EXIF
 HISTORY_MSG_RESIZE_PPI;Ridimensiona - PPI
 HISTORY_MSG_RESIZE_UNIT;Ridimensiona - Unità
 HISTORY_MSG_SATURATION_VIBRANCE;S/V - Vividezza
@@ -1206,6 +1211,7 @@ PREFERENCES_PROFILE_SAVE_OUTPUT_SIDECAR;Salva il file a fianco (output.ext.arp p
 PREFERENCES_PRTINTENT;Intento di resa
 PREFERENCES_PRTPROFILE;Profilo colore
 PREFERENCES_PSPATH;Cartella d'installazione di Adobe Photoshop
+PREFERENCES_QINSPECT_POPUP_SIZE;Dimensione pop-up ispezione veloce (% della dim. finestra)
 PREFERENCES_REMEMBERZOOMPAN;Ricorda % zoom e scostamento pan
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Ricorda percentuale zoom e scostamento pan dell'immagine attuale quando si apre una nuova immagine.\n\nQuesta opzione funziona solo in "Modalità a Scheda Singola" e quando "Metodo di demosaic. usato per anteprima con zoom <100%" è impostato "Come in ARP".
 PREFERENCES_REMEMBER_METADATA_FILTERS;Ricorda filtri metadati
@@ -1948,6 +1954,7 @@ TP_RESET_SAVED;Reimposta l'ultimo salvato
 TP_RESIZE_ALLOW_UPSCALING;Consenti ingrandimento
 TP_RESIZE_APPLIESTO;Applica a:
 TP_RESIZE_CM;cm
+TP_RESIZE_COPY_PPI_TO_EXIF;Copia PPI su EXIF
 TP_RESIZE_CROPPEDAREA;Zona ritagliata
 TP_RESIZE_FITBOX;Riquadro delimitato
 TP_RESIZE_FULLIMAGE;Tutta l'immagine

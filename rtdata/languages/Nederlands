@@ -695,6 +695,7 @@ HISTORY_MSG_RAWCACORR_COLORSHIFT;Raw CA-correctie - vermijd kleurverschuiving
 HISTORY_MSG_RESIZE_ALLOWUPSCALING;Schalen - sta vergroting toe
 HISTORY_MSG_RESIZE_PPI;Schalen - PPI
 HISTORY_MSG_RESIZE_UNIT;Schalen - eenheid
+HISTORY_MSG_RESIZE_COPY_PPI_TO_EXIF;Schalen - Kopieer PPI naar EXIF
 HISTORY_MSG_SHARPENING_AUTORADIUS;Opnameverscherping - auto RLD-radius
 HISTORY_MSG_SATURATION_VIBRANCE;Levendigheid
 HISTORY_MSG_SHARPENING_BLUR;Opnameverscherping - vervagingsradius
