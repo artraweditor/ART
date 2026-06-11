@@ -95,11 +95,12 @@ def getdlls(opts):
             lib = bits[0].strip()
             if lib.startswith('@rpath/'):
                 bn = lib[7:]
-                for p in opts.rpath:
-                    plib = os.path.join(p, bn)
-                    if os.path.exists(plib):
-                        lib = plib
-                        break
+                if opts.rpath:
+                    for p in opts.rpath:
+                        plib = os.path.join(p, bn)
+                        if os.path.exists(plib):
+                            lib = plib
+                            break
             if not any(lib.startswith(p) for p in blacklist):
                 if opts.verbose:
                     print(f'   {lib}')
@@ -398,7 +399,7 @@ if [ $? -ne 0 ]; then
     /bin/rm -f $DBUS_SOCK_FILE
     DBUS_PID=$("$d/Resources/dbus-daemon" --fork --print-pid --config-file="$d/Resources/dbus-1/session.conf" --address "$DBUS_SESSION_BUS_ADDRESS")
 
-    "$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader-svg.so > "$t/loader.cache"
+    "$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader*svg.so > "$t/loader.cache"
     "$d/Resources/gtk-query-immodules-3.0" "$d"/Frameworks/im-*.so > "$t/gtk.immodules"
 fi
 export GDK_PIXBUF_MODULE_FILE="$t/loader.cache"
@@ -428,7 +429,7 @@ d=$(dirname "$0")/..
 t=$(/usr/bin/mktemp -d)
 export DYLD_LIBRARY_PATH="$d/Frameworks"
 export GTK_CSD=0
-"$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader-svg.so > "$t/loader.cache"
+"$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader*svg.so > "$t/loader.cache"
 "$d/Resources/gtk-query-immodules-3.0" "$d"/Frameworks/im-*.so > "$t/gtk.immodules"
 export GDK_PIXBUF_MODULE_FILE="$t/loader.cache"
 export GTK_IM_MODULE_FILE="$t/gtk.immodules"
@@ -477,14 +478,18 @@ def main():
     if not os.path.exists(os.path.join(opts.outdir, 'Contents/Frameworks')):
         os.mkdir(os.path.join(opts.outdir, 'Contents/Frameworks'))
     for lib in getdlls(opts):
-        if opts.verbose:
-            print('copying: %s' % lib)
-        try:
-            shutil.copy2(lib,
-                         os.path.join(opts.outdir, 'Contents/Frameworks',
-                                      os.path.basename(lib)))
-        except FileNotFoundError as e:
-            sys.stderr.write(f'WARNING: {lib} not found, skipping\n')
+        dest = os.path.join(opts.outdir, 'Contents/Frameworks',
+                            os.path.basename(lib))
+        if os.path.exists(dest):
+            if opts.verbose:
+                print('SKIPPING already copied: %s' % lib)
+        else:
+            if opts.verbose:
+                print('copying: %s' % lib)
+            try:
+                shutil.copy2(lib, dest)
+            except FileNotFoundError as e:
+                sys.stderr.write(f'WARNING: {lib} not found, skipping\n')
     with tempfile.TemporaryDirectory() as d:
         opts.tempdir = d
         for key, elems in extra_files(opts):
