@@ -1,8 +1,8 @@
 #00 Hungary - Hungarian
 #01 Developers should add translations to this file and then run the 'generateTranslationDiffs' Bash script to update other locales.
 #02 Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page, e.g.:
-#03 2026-02-15 Bereczky Péter
-# ART version: 1.26.4
+#03 2026-06-11 Bereczky Péter
+# ART version: 1.26.6
 ABOUT_TAB_BUILD;Verzió
 ABOUT_TAB_CREDITS;Szerzők
 ABOUT_TAB_LICENSE;Licenc
@@ -166,6 +166,7 @@ FILEBROWSER_POPUPOPENINEDITOR;Megnyitás szerkesztésre
 FILEBROWSER_POPUPPROCESS;Feldolgozási sorba helyezés
 FILEBROWSER_POPUPPROCESSFAST;Feldolgozási sorba helyezés (Gyors exportálás)
 FILEBROWSER_POPUPPROFILEOPERATIONS;Feldolgozási profil műveletek
+FILEBROWSER_POPUPQINSPECT;Gyors ellenőrzés
 FILEBROWSER_POPUPRANK;Értékelés
 FILEBROWSER_POPUPRANK0;Értékelés nélküli
 FILEBROWSER_POPUPRANK1;Értékelés 1 *
@@ -663,6 +664,7 @@ HISTORY_MSG_RAW_BORDER;Raw határ
 HISTORY_MSG_RESIZE_ALLOWUPSCALING;Átméretezés - Megengedi a méret növelését
 HISTORY_MSG_RESIZE_PPI;Átméretezés - PPI
 HISTORY_MSG_RESIZE_UNIT;Átméretezés - Mértékegység
+HISTORY_MSG_RESIZE_COPY_PPI_TO_EXIF;Átméretezés - PPI másolása EXIF-be
 HISTORY_MSG_SHARPENING_AUTORADIUS;Élesítés - Auto RLD sugár
 HISTORY_MSG_SHARPENING_BLUR;Élesítés - Elmosási sugár
 HISTORY_MSG_SHARPENING_CONTRAST;Élesítés - Kontrasztküszöb
@@ -1161,6 +1163,7 @@ PREFERENCES_PROFILE_SAVE_OUTPUT_EMBEDDED;Beágyazza a metaadatokba
 PREFERENCES_PRTINTENT;Renderelési szándék
 PREFERENCES_PRTPROFILE;Színprofil
 PREFERENCES_PSPATH;Adobe Photoshop telepítési könyvtára
+PREFERENCES_QINSPECT_POPUP_SIZE;Gyors ellenőrző felugró ablak mérete (az ablak méretének %-ában)
 PREFERENCES_REMEMBERZOOMPAN;Emlékezzen nagyítás %-ára és az eltolásra
 PREFERENCES_REMEMBERZOOMPAN_TOOLTIP;Megőrzi az aktuális kép előnézetének nagyítási szintjét és pozícióját új kép megnyitásakor.\n\nCsak Egy szerkesztőlap módban működik, és amikor a színrekonstrukciós eljárást  <100% nagyításnál alkalmazzuk, akkor "A kísérőfájl szerint" van beállítva.
 PREFERENCES_REMEMBER_METADATA_FILTERS;Emlékezzen a metaadat szűrőkre
