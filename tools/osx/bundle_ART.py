@@ -488,6 +488,7 @@ def main():
                 print('copying: %s' % lib)
             try:
                 shutil.copy2(lib, dest)
+                assert os.path.exists(dest)
             except FileNotFoundError as e:
                 sys.stderr.write(f'WARNING: {lib} not found, skipping\n')
     with tempfile.TemporaryDirectory() as d:

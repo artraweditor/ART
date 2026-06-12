@@ -99,6 +99,15 @@ jobs:
         run: |
           echo "HOMEBREW_PREFIX=/usr/local" >> $GITHUB_ENV
           
+      - name: Install lcms2-2.17
+        run: |
+          curl -O https://downloads.sourceforge.net/project/lcms/lcms/2.17/lcms2-2.17.tar.gz
+          tar xzf lcms2-2.17.tar.gz
+          cd lcms2-2.17
+          ./configure --prefix=/opt/local
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+
       - name: Install LibRaw
         run: |
           export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
@@ -107,6 +116,7 @@ jobs:
           cd LibRaw
           ln -s ../LibRaw-cmake/CMakeLists.txt
           ln -s ../LibRaw-cmake/cmake
+          export PKG_CONFIG_PATH=/opt/local/lib/pkgconfig
           mkdir build
           cd build
           cmake .. \
@@ -203,6 +213,8 @@ jobs:
             ${DBG_FLAG} ${LAUNCHER_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
+          echo "Contents of the ART.app bundle:"
+          find ART.app -type f -print0 | xargs -0 ls -l | sort
 
       - name: Prepare artifact name
         run: |
