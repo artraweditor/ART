@@ -139,6 +139,7 @@ jobs:
           tar xJf gtk%2B-3.24.43.tar.xz
           cd gtk+-3.24.43
           patch -p1 < ../repo/tools/osx/gdk-window-quartz-colorspace.patch
+          export PKG_CONFIG_PATH="${HOMEBREW_PREFIX}/opt/expat/lib/pkgconfig"
           meson setup build \
              -Dbuildtype=release \
              -Dprefix=/opt/local \
@@ -162,7 +163,8 @@ jobs:
           else
               ART_SIMDE=0
           fi
-          export PKG_CONFIG_PATH=/opt/local/lib/pkgconfig
+          export PKG_CONFIG_PATH="/opt/local/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/expat/lib/pkgconfig"
+
           export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
           cmake ../repo \
             -DCMAKE_BUILD_TYPE=Release \
