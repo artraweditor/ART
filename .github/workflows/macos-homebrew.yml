@@ -1,0 +1,220 @@
+name: macOS Builds (with Homebrew)
+
+on:
+  # push:
+  #   tags:
+  #     - '[1-9].[0-9]+'
+  #     - '[1-9].[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Debug build'
+        required: true
+        type: boolean
+      exelauncher:
+        description: 'Use executable launcher'
+        required: true
+        type: boolean
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-15-intel, macos-14]
+        include:
+          - os: macos-15-intel
+            arch: x64
+          - os: macos-14
+            arch: arm64
+      fail-fast: false
+        
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Get OS version
+        run: |
+          echo "OS_VERSION=$(sw_vers -productVersion | cut -d . -f 1,2)" >> $GITHUB_ENV
+
+      - name: Get version
+        run: |
+          cd repo
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "ART_VERSION=$GITHUB_REF_NAME" >> $GITHUB_ENV
+          else
+              echo "ART_VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
+
+      - name: Set build type
+        run: |
+          if [ "${{ inputs.debug }}" = "true" ]; then
+              echo "BUILD_TYPE=Debug" >> $GITHUB_ENV
+              echo "WITH_SAN=address -fsanitize-recover=address" >> $GITHUB_ENV
+              echo "BUILD_SUFFIX=-debug-asan" >> $GITHUB_ENV
+          else
+              echo "BUILD_TYPE=Release" >> $GITHUB_ENV
+              echo "WITH_SAN=OFF" >> $GITHUB_ENV
+          fi
+          if [ "${{ inputs.exelauncher }}" = "true" ]; then
+              BUILD_SUFFIX="${BUILD_SUFFIX}-launcher"
+          fi
+          if [ "$BUILD_SUFFIX" != "" ]; then
+              echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_ENV
+          fi
+          
+      - name: Install base packages
+        run: |          
+          brew install \
+          	gtkmm3 \
+          	gtk-mac-integration \
+          	little-cms2 \
+          	meson \
+          	cmake \
+          	fftw \
+          	exiv2 \
+          	lensfun \
+          	pkgconfig \
+          	automake \
+          	libtool \
+          	opencolorio \
+          	librsvg \
+          	adwaita-icon-theme \
+          	libomp \
+          	ctl
+
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          brew install simde
+          
+      - name: Install LibRaw
+        run: |
+          export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
+          git clone --depth 1 https://github.com/LibRaw/LibRaw.git
+          git clone --depth 1 https://github.com/LibRaw/LibRaw-cmake.git
+          cd LibRaw
+          ln -s ../LibRaw-cmake/CMakeLists.txt
+          ln -s ../LibRaw-cmake/cmake
+          mkdir build
+          cd build
+          cmake .. \
+             -DCMAKE_BUILD_TYPE=Release \
+             -DENABLE_X3FTOOLS=1 \
+             -DCMAKE_INSTALL_PREFIX=/opt/local \
+             -DOpenMP_C_FLAGS="$C_FLAGS" \
+             -DOpenMP_CXX_FLAGS="$C_FLAGS" \
+             -DOpenMP_C_LIB_NAMES=libomp \
+             -DOpenMP_CXX_LIB_NAMES=libomp \
+             -DOpenMP_libomp_LIBRARY=${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib \
+             -DCMAKE_CXX_FLAGS="-Wno-unused-command-line-argument -Wno-deprecated-register -Wno-unknown-warning-option"
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+
+      - name: Install custom GTK+ with colorspaces support
+        run: |
+          curl -O https://download.gnome.org/sources/gtk+/3.24/gtk%2B-3.24.43.tar.xz
+          tar xJf gtk%2B-3.24.43.tar.xz
+          cd gtk+-3.24.43
+          patch -p1 < ../repo/tools/osx/gdk-window-quartz-colorspace.patch
+          meson setup build \
+             -Dbuildtype=release \
+             -Dprefix=/opt/local \
+             -Ddemos=false \
+             -Dexamples=false \
+             -Dtests=false \
+             -Dx11_backend=false \
+             -Dintrospection=false \
+             -Dc_args=-I${HOMEBREW_PREFIX}/include \
+             -Dc_link_args=-I${HOMEBREW_PREFIX}/lib
+          cd build
+          meson compile
+          sudo meson install
+
+      - name: Configure build
+        run: |
+          mkdir build
+          cd build
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+              ART_SIMDE=1
+          else
+              ART_SIMDE=0
+          fi
+          export PKG_CONFIG_PATH=/opt/local/lib/pkgconfig
+          export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
+          cmake ../repo \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_CTL=1 \
+            -DENABLE_LIBRAW=1 \
+            -DENABLE_SIMDE=${ART_SIMDE} \
+            -DOpenMP_C_FLAGS="$C_FLAGS" \
+            -DOpenMP_CXX_FLAGS="$C_FLAGS" \
+            -DOpenMP_C_LIB_NAMES=libomp \
+            -DOpenMP_CXX_LIB_NAMES=libomp \
+            -DOpenMP_libomp_LIBRARY=${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib \
+            -DCTL_INCLUDE_DIR=${HOMEBREW_PREFIX}/include/CTL \
+            -DCMAKE_CXX_FLAGS="-I${HOMEBREW_PREFIX}/include -Wno-unused-command-line-argument -Wno-deprecated-register -Wno-unknown-warning-option"
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(sysctl -n hw.ncpu)
+          make install
+
+      - name: Include Lensfun
+        run: |
+          lensfun-update-data
+
+      - name: Install exiftool
+        run: |
+          wget https://exiftool.org/ver.txt
+          wget https://exiftool.org/ExifTool-$(cat ver.txt).pkg
+          sudo installer -pkg ExifTool-$(cat ver.txt).pkg -target /
+
+      - name: Create bundle
+        env:
+          GITHUB_AUTH: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ART_NAME="ART-${ART_VERSION}"
+          OUTDIR=$(pwd)
+          if [ "${{ inputs.debug }}" = "true" ]; then
+             DBG_FLAG=--debug
+          fi
+          if [ "${{ inputs.exelauncher }}" = "true" ]; then
+             LAUNCHER_FLAG=--use-launcher
+          fi
+          cd build/${BUILD_TYPE}/ART.app
+          python3 "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
+            -o "${OUTDIR}" -v -r /opt/local/lib \
+            -r /opt/local/libexec/llvm-21/lib/clang/21/lib/darwin -e -I \
+            -p ${HOMEBREW_PREFIX} \
+            ${DBG_FLAG} ${LAUNCHER_FLAG} \
+            -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
+          cd "${OUTDIR}"
+
+      - name: Prepare artifact name
+        run: |
+          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.dmg"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "RELEASE_TAG=${ART_VERSION}" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=true" >> $GITHUB_ENV
+          else
+              echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          body: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: ${{ env.RELEASE_MAKE_LATEST }}
+          artifacts: ${{ env.ARTIFACT_NAME }}
