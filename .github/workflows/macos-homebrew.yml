@@ -97,7 +97,7 @@ jobs:
       - if: ${{ matrix.arch == 'x64' }}
         name: Set homebrew prefix
         run: |
-          echo "HOMEBREW_PREFIX=/usr/local" >> >> $GITHUB_ENV
+          echo "HOMEBREW_PREFIX=/usr/local" >> $GITHUB_ENV
           
       - name: Install LibRaw
         run: |
