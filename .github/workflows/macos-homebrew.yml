@@ -93,6 +93,11 @@ jobs:
         name: Install SIMDE
         run: |
           brew install simde
+
+      - if: ${{ matrix.arch == 'x64' }}
+        name: Set homebrew prefix
+        run: |
+          echo "HOMEBREW_PREFIX=/usr/local" >> >> $GITHUB_ENV
           
       - name: Install LibRaw
         run: |
@@ -192,8 +197,9 @@ jobs:
           cd build/${BUILD_TYPE}/ART.app
           python3 "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/local/lib \
-            -r /opt/local/libexec/llvm-21/lib/clang/21/lib/darwin -e -I \
+            -r ${HOMEBREW_PREFIX}/lib \
             -p ${HOMEBREW_PREFIX} \
+            -e -I \
             ${DBG_FLAG} ${LAUNCHER_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
