@@ -87,7 +87,8 @@ jobs:
           	librsvg \
           	adwaita-icon-theme \
           	libomp \
-          	ctl
+          	ctl \
+                expat
 
       - if: ${{ matrix.arch == 'arm64' }}
         name: Install SIMDE
