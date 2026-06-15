@@ -69,192 +69,93 @@ jobs:
               echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_ENV
           fi
           
-      - if: ${{ matrix.os == 'macos-15-intel' }}
-        name: Install MacPorts (x64)
+      - name: Install base packages
         run: |          
-          wget https://github.com/macports/macports-base/releases/download/v2.12.5/MacPorts-2.12.5-15-Sequoia.pkg
-          sudo installer -pkg MacPorts-2.12.5-15-Sequoia.pkg -target /
+          brew install \
+                gtkmm3 \
+                gtk-mac-integration \
+                little-cms2 \
+                meson \
+                cmake \
+                fftw \
+                exiv2 \
+                lensfun \
+                pkgconfig \
+                automake \
+                libtool \
+                opencolorio \
+                librsvg \
+                adwaita-icon-theme \
+                libomp \
+                ctl \
+                expat
 
-      - if: ${{ matrix.os == 'macos-14' }}
-        name: Install MacPorts (arm64)
-        run: |          
-          wget https://github.com/macports/macports-base/releases/download/v2.12.5/MacPorts-2.12.5-14-Sonoma.pkg
-          sudo installer -pkg MacPorts-2.12.5-14-Sonoma.pkg -target /
-          export
-          PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+      - if: ${{ matrix.arch == 'arm64' }}
+        name: Install SIMDE
+        run: |
+          brew install simde
+
+      - if: ${{ matrix.arch == 'x64' }}
+        name: Set homebrew prefix
+        run: |
+          echo "HOMEBREW_PREFIX=/usr/local" >> $GITHUB_ENV
           
-      - name: Install base ports
-        run: |          
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port selfupdate
-          sudo port install pkgconfig
-          sudo port install automake
-          sudo port install autoconf
-          sudo port install libtool
-          sudo port install cmake
-          sudo port install glib2 +quartz
-          sudo port install gtkmm3 +quartz
-          sudo port install libomp
-          sudo port install clang-21
-          sudo port install librsvg-devel
-          sudo port install lensfun
-          sudo port install exiv2
-          sudo port install openexr
-          sudo port install adwaita-icon-theme
-          sudo port install meson
-          sudo port install dbus
-
-      - name: Install fftw
+      - name: Install lcms2-2.17
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
-          wget https://www.fftw.org/fftw-3.3.11.tar.gz
-          tar xzf fftw-3.3.11.tar.gz
-          cd fftw-3.3.11
-          mkdir build
-          cd build
-          /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
-            -DENABLE_FLOAT=1 \
-            -DENABLE_OPENMP=0 \
-            -DENABLE_THREADS=1 \
-            -DWITH_COMBINED_THREADS=1 \
-            -DBUILD_TESTS=0 \
-            -DENABLE_SSE=1 \
-            -DENABLE_SSE2=1 \
-            -DENABLE_AVX=1 \
-            -DENABLE_AVX2=0 \
-            -DDISABLE_FORTRAN=1 \
-            ..
-          make -j$(nproc)
-          sudo make install
-
-      - name: Install lcms2
-        run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/local
-          wget https://downloads.sourceforge.net/project/lcms/lcms/2.17/lcms2-2.17.tar.gz
+          curl -O -L https://downloads.sourceforge.net/project/lcms/lcms/2.17/lcms2-2.17.tar.gz
           tar xzf lcms2-2.17.tar.gz
           cd lcms2-2.17
-          CC=/opt/local/bin/clang-mp-21 \
-            CXX=/opt/local/bin/clang++-mp-21 \
-            ./configure --prefix=$INSTDIR 
-          make -j$(nproc)
-          sudo make install
-
-      - name: Install gtk-osx-application-gtk3
-        run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
-          wget https://distfiles.macports.org/gtk-osx-application/gtk-mac-integration-3.0.2.tar.xz
-          xzcat gtk-mac-integration-3.0.2.tar.xz | tar x
-          cd gtk-mac-integration-3.0.2
-          CC=/opt/local/bin/clang-mp-21 \
-            CXX=/opt/local/bin/clang++-mp-21 \
-            ./configure --prefix=$INSTDIR --with-gtk3
-          make -j$(nproc)
+          ./configure --prefix=/opt/local
+          make -j$(sysctl -n hw.ncpu)
           sudo make install
 
       - name: Install LibRaw
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
+          export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
           git clone --depth 1 https://github.com/LibRaw/LibRaw.git
           git clone --depth 1 https://github.com/LibRaw/LibRaw-cmake.git
           cd LibRaw
           ln -s ../LibRaw-cmake/CMakeLists.txt
           ln -s ../LibRaw-cmake/cmake
+          export PKG_CONFIG_PATH=/opt/local/lib/pkgconfig
           mkdir build
           cd build
-          /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
-            -DENABLE_X3FTOOLS=1 \
-            ..
-          make -j$(nproc)
-          sudo make install
-
-      - name: Install CTL
-        run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
-          git clone --depth 1 https://github.com/ampas/CTL.git
-          mkdir build-CTL
-          cd build-CTL
-          /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
-            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
-            -DCMAKE_BUILD_TYPE=Release \
-            ../CTL
-          make -j$(nproc)
-          sudo make install
-
-      - name: Install OpenColorIO
-        run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
-          OCIO_VERSION='2.4.2'
-          mkdir ocio
-          cd ocio
-          wget https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v${OCIO_VERSION}.tar.gz
-          tar xzf v${OCIO_VERSION}.tar.gz
-          mkdir build
-          cd build
-          /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
-            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DOCIO_BUILD_PYTHON=OFF \
-            -DOCIO_BUILD_APPS=0 \
-            -DOCIO_BUILD_TESTS=0 \
-            -DOCIO_BUILD_GPU_TESTS=0 \
-            ../OpenColorIO-${OCIO_VERSION}
-          make -j$(nproc)
+          cmake .. \
+             -DCMAKE_BUILD_TYPE=Release \
+             -DENABLE_X3FTOOLS=1 \
+             -DCMAKE_INSTALL_PREFIX=/opt/local \
+             -DOpenMP_C_FLAGS="$C_FLAGS" \
+             -DOpenMP_CXX_FLAGS="$C_FLAGS" \
+             -DOpenMP_C_LIB_NAMES=libomp \
+             -DOpenMP_CXX_LIB_NAMES=libomp \
+             -DOpenMP_libomp_LIBRARY=${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib \
+             -DCMAKE_CXX_FLAGS="-Wno-unused-command-line-argument -Wno-deprecated-register -Wno-unknown-warning-option"
+          make -j$(sysctl -n hw.ncpu)
           sudo make install
 
       - name: Install custom GTK+ with colorspaces support
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          wget https://download.gnome.org/sources/gtk+/3.24/gtk%2B-3.24.43.tar.xz
-          tar xzf gtk+-3.24.43.tar.xz
+          curl -O https://download.gnome.org/sources/gtk+/3.24/gtk%2B-3.24.43.tar.xz
+          tar xJf gtk%2B-3.24.43.tar.xz
           cd gtk+-3.24.43
           patch -p1 < ../repo/tools/osx/gdk-window-quartz-colorspace.patch
-          INSTDIR=/opt/art-deps/gtk 
-          meson setup build
-          meson configure build \
-            --prefix $INSTDIR \
-            --buildtype release \
-            -Ddebug=false \
-            -Ddemos=false \
-            -Dexamples=false \
-            -Dtests=false \
-            -Dx11_backend=false
-          meson compile -C build
-          sudo meson install -C build
-          sudo cp -a $INSTDIR/include/gtk-3.0/gdk/quartz/gdkquartzwindow.h /opt/local/include/gtk-3.0/gdk/quartz
-          sudo cp -a $INSTDIR/lib/libgdk-3.0.dylib /opt/local/lib/libgdk-3.0.dylib
+          export PKG_CONFIG_PATH="${HOMEBREW_PREFIX}/opt/expat/lib/pkgconfig"
+          meson setup build \
+             -Dbuildtype=release \
+             -Dprefix=/opt/local \
+             -Ddemos=false \
+             -Dexamples=false \
+             -Dtests=false \
+             -Dx11_backend=false \
+             -Dintrospection=false \
+             -Dc_args=-I${HOMEBREW_PREFIX}/include \
+             -Dc_link_args=-I${HOMEBREW_PREFIX}/lib
+          cd build
+          meson compile
+          sudo meson install
 
-      - if: ${{ matrix.arch == 'arm64' }}
-        name: Install SIMDE
-        run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          INSTDIR=/opt/art-deps
-          wget https://github.com/simd-everywhere/simde/archive/refs/tags/v0.8.2.tar.gz
-          tar xzf v0.8.2.tar.gz
-          cd simde-0.8.2
-          meson setup build -Dbuildtype=release -Dtests=false -Dprefix=$INSTDIR
-          sudo meson install -C build
-          
       - name: Configure build
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           mkdir build
           cd build
           if [ "${{ matrix.arch }}" = "arm64" ]; then
@@ -262,31 +163,30 @@ jobs:
           else
               ART_SIMDE=0
           fi
-          export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
-          /opt/local/bin/cmake \
-            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-21 \
-            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-21 \
-            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_SAN="${WITH_SAN}" \
+          export PKG_CONFIG_PATH="/opt/local/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/expat/lib/pkgconfig"
+
+          export C_FLAGS="-Xpreprocessor -fopenmp ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib -I${HOMEBREW_PREFIX}/opt/libomp/include"
+          cmake ../repo \
+            -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
-            -DCTL_INCLUDE_DIR=/opt/art-deps/include/CTL \
-            -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
-            -DMACOS_LEGACY_BUNDLE=0 \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=$OS_VERSION \
             -DENABLE_SIMDE=${ART_SIMDE} \
-            ../repo
-          cd ..
+            -DOpenMP_C_FLAGS="$C_FLAGS" \
+            -DOpenMP_CXX_FLAGS="$C_FLAGS" \
+            -DOpenMP_C_LIB_NAMES=libomp \
+            -DOpenMP_CXX_LIB_NAMES=libomp \
+            -DOpenMP_libomp_LIBRARY=${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib \
+            -DCTL_INCLUDE_DIR=${HOMEBREW_PREFIX}/include/CTL \
+            -DCMAKE_CXX_FLAGS="-I${HOMEBREW_PREFIX}/include -Wno-unused-command-line-argument -Wno-deprecated-register -Wno-unknown-warning-option"
 
       - name: Build
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           cd build
-          make -j$(nproc)
+          make -j$(sysctl -n hw.ncpu)
           make install
 
       - name: Include Lensfun
         run: |
-          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           lensfun-update-data
 
       - name: Install exiftool
@@ -308,12 +208,16 @@ jobs:
              LAUNCHER_FLAG=--use-launcher
           fi
           cd build/${BUILD_TYPE}/ART.app
-          python "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
-            -o "${OUTDIR}" -v -r /opt/art-deps/lib \
-            -r /opt/local/libexec/llvm-21/lib/clang/21/lib/darwin -e -I \
+          python3 "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
+            -o "${OUTDIR}" -v -r /opt/local/lib \
+            -r ${HOMEBREW_PREFIX}/lib \
+            -p ${HOMEBREW_PREFIX} \
+            -e -I \
             ${DBG_FLAG} ${LAUNCHER_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
+          echo "Contents of the ART.app bundle:"
+          find ART.app -type f -print0 | xargs -0 ls -l | sort
 
       - name: Prepare artifact name
         run: |
