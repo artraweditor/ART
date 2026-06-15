@@ -153,6 +153,7 @@ option(ENABLE_LIBRAW "Use libraw for decoding" ON)
 option(ENABLE_OCIO "Use OpenColorIOv2 for LUT application" ON)
 option(ENABLE_CTL "Enable support for the ACES Color Transformation Language" OFF)
 option(ENABLE_SIMDE "Build with SIMD Everywhere support" OFF)
+option(ENABLE_LCMS_FAST_FLOAT "Enable the fast-float plugin of LCMS2 (if available)" ON)
 
 option(MACOS_LEGACY_BUNDLE "Use legacy method for building a macOS bundle using the tools/osx/macos_bundle.sh script" OFF)
 
@@ -618,8 +619,9 @@ foreach(l ${LCMS_LIBRARIES})
     find_library(_f ${l} PATHS ${LCMS_LIBRARY_DIRS} NO_DEFAULT_PATH)
     set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${_f})
 endforeach()
-check_c_source_compiles(
-"#include <lcms2.h>
+if(ENABLE_LCMS_FAST_FLOAT)
+    check_c_source_compiles(
+        "#include <lcms2.h>
 #include <lcms2_fast_float.h>
 #if LCMS2_FAST_FLOAT_VERSION < 1500
 #  error \"fast float too old\"
@@ -630,10 +632,11 @@ int main()
     cmsPlugin(cmsFastFloatExtensions());
     return 0;
 }" _lcms2_fast_float)
-if(_lcms2_fast_float)
-    add_definitions(-DART_LCMS2_FAST_FLOAT)
-    message(STATUS "using LCMS2 fast float plugin")
-    set(ART_LCMS_VERSION_INFO "${ART_LCMS_VERSION_INFO}-fastfloat")
+    if(_lcms2_fast_float)
+        add_definitions(-DART_LCMS2_FAST_FLOAT)
+        message(STATUS "using LCMS2 fast float plugin")
+        set(ART_LCMS_VERSION_INFO "${ART_LCMS_VERSION_INFO}-fastfloat")
+    endif()
 endif()
 
 set(ART_MIMALLOC_VERSION_INFO "N/A")
