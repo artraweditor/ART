@@ -1399,6 +1399,69 @@ SAMSUNG GALAXY Z FOLD7 UNDER DISPLAY CAMERA
 SONY DSC-RX1RM3
 SONY ILME-FX2
 SONY ILME-FX3A
+
+Updated on Mon Jun 15 13:04:55 2026 (with Adobe DNG converter 18.3.2.2585):
+CANON EOS R6 MARK III
+FUJIFILM X-T30 III
+GOOGLE PIXEL 10 FRONT CAMERA
+GOOGLE PIXEL 10 PRO FOLD FRONT CAMERA
+GOOGLE PIXEL 10 PRO FOLD TELEPHOTO CAMERA
+GOOGLE PIXEL 10 PRO FOLD ULTRAWIDE CAMERA
+GOOGLE PIXEL 10 PRO FOLD WIDE CAMERA
+GOOGLE PIXEL 10 TELEPHOTO CAMERA
+GOOGLE PIXEL 10 ULTRAWIDE CAMERA
+GOOGLE PIXEL 10 WIDE CAMERA
+IPHONE18,5 BACK CAMERA
+IPHONE18,5 FRONT CAMERA
+LEICA M EV1
+OPPO FIND X8 PRO TELE CAMERA 135MM F/4.3
+OPPO FIND X8 PRO TELE CAMERA 73MM F/2.6
+OPPO FIND X8 PRO ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X8 PRO WIDE CAMERA 23MM F/1.6
+OPPO FIND X8 TELE CAMERA 73MM F/2.6
+OPPO FIND X8 ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X8 WIDE CAMERA 23MM F/1.8
+OPPO FIND X8S TELE CAMERA 85MM F/2.8
+OPPO FIND X8S ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X8S WIDE CAMERA 24MM F/1.8
+OPPO FIND X8S+ TELE CAMERA 73MM F/2.6
+OPPO FIND X8S+ ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X8S+ WIDE CAMERA 23MM F/1.8
+OPPO FIND X9 PRO TELE CAMERA 70MM F/2.1
+OPPO FIND X9 PRO ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X9 PRO WIDE CAMERA 23MM F/1.5
+OPPO FIND X9 TELE CAMERA 73MM F/2.6
+OPPO FIND X9 ULTRA TELE CAMERA 230MM F/3.5
+OPPO FIND X9 ULTRA TELE CAMERA 70MM F/2.2
+OPPO FIND X9 ULTRA ULTRA WIDE CAMERA 14MM F/2.0
+OPPO FIND X9 ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X9 ULTRA WIDE CAMERA 23MM F/1.5
+OPPO FIND X9 WIDE CAMERA 23MM F/1.6
+OPPO FIND X9S PRO TELE CAMERA 65MM F/2.6
+OPPO FIND X9S PRO ULTRA WIDE CAMERA 15MM F/2.0
+OPPO FIND X9S PRO WIDE CAMERA 23MM F/1.6
+RICOH GR IV HDF
+SAMSUNG GALAXY S26 FRONT CAMERA
+SAMSUNG GALAXY S26 REAR TELEPHOTO CAMERA
+SAMSUNG GALAXY S26 REAR ULTRAWIDE CAMERA
+SAMSUNG GALAXY S26 REAR WIDE CAMERA
+SAMSUNG GALAXY S26 ULTRA FRONT CAMERA
+SAMSUNG GALAXY S26 ULTRA REAR SUPER TELEPHOTO CAMERA
+SAMSUNG GALAXY S26 ULTRA REAR TELEPHOTO CAMERA
+SAMSUNG GALAXY S26 ULTRA REAR ULTRAWIDE CAMERA
+SAMSUNG GALAXY S26 ULTRA REAR WIDE CAMERA
+SAMSUNG GALAXY S26+ FRONT CAMERA
+SAMSUNG GALAXY S26+ REAR TELEPHOTO CAMERA
+SAMSUNG GALAXY S26+ REAR ULTRAWIDE CAMERA
+SAMSUNG GALAXY S26+ REAR WIDE CAMERA
+SAMSUNG GALAXY Z TRIFOLD FRONT CAMERA
+SAMSUNG GALAXY Z TRIFOLD REAR TELEPHOTO CAMERA
+SAMSUNG GALAXY Z TRIFOLD REAR ULTRAWIDE CAMERA
+SAMSUNG GALAXY Z TRIFOLD REAR WIDE CAMERA
+SONY ILCE-7M5
+XIAOMI 17 ULTRA REAR TELEPHOTO CAMERA
+XIAOMI 17 ULTRA REAR ULTRAWIDE CAMERA
+XIAOMI 17 ULTRA REAR WIDE CAMERA
 */
 {"camera_constants": [
     {
@@ -1680,6 +1743,10 @@ SONY ILME-FX3A
     {
         "make_model" : "CANON EOS R6 MARK II",
         "dcraw_matrix" : [9539, -2795, -1224, -4175, 11998, 2458, -465, 1755, 6048]
+    },
+    {
+        "make_model" : "CANON EOS R6 MARK III",
+        "dcraw_matrix" : [8309, -1786, -1095, -4851, 12736, 2353, -956, 1911, 5534]
     },
     {
         "make_model" : "CANON EOS R7",
@@ -2294,6 +2361,10 @@ SONY ILME-FX3A
         "dcraw_matrix" : [13426, -6334, -1177, -4244, 12136, 2371, -580, 1303, 5980]
     },
     {
+        "make_model" : "FUJIFILM X-T30 III",
+        "dcraw_matrix" : [12836, -5909, -1032, -3086, 11132, 2236, -35, 872, 5330]
+    },
+    {
         "make_model" : "FUJIFILM X-T4",
         "dcraw_matrix" : [13426, -6334, -1177, -4244, 12136, 2371, -580, 1303, 5980]
     },
@@ -2354,6 +2425,26 @@ SONY ILME-FX3A
         "dcraw_matrix" : [9252, -2703, -1064, -5893, 14265, 1717, -1101, 2341, 4349]
     },
     {
+        "make_model" : "GOOGLE PIXEL 10 FRONT CAMERA",
+        "dcraw_matrix" : [9308, -3244, -951, -3560, 12250, 1434, -373, 2407, 5296]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 PRO FOLD FRONT CAMERA",
+        "dcraw_matrix" : [11364, -4982, -1218, -3924, 12736, 1271, -170, 1557, 5709]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 PRO FOLD TELEPHOTO CAMERA",
+        "dcraw_matrix" : [11452, -4308, -1269, -3555, 12655, 937, -160, 2118, 5023]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 PRO FOLD ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [6415, -818, -600, -4026, 12947, 1134, -1096, 3624, 4263]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 PRO FOLD WIDE CAMERA",
+        "dcraw_matrix" : [11862, -5171, -979, -2529, 11618, 995, 109, 1850, 4873]
+    },
+    {
         "make_model" : "GOOGLE PIXEL 10 PRO FRONT CAMERA",
         "dcraw_matrix" : [11129, -4522, -926, -3711, 11955, 1969, -478, 2036, 5169]
     },
@@ -2384,6 +2475,18 @@ SONY ILME-FX3A
     {
         "make_model" : "GOOGLE PIXEL 10 PRO XL WIDE CAMERA",
         "dcraw_matrix" : [11061, -4782, -817, -2162, 11128, 1160, 222, 1696, 4771]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 TELEPHOTO CAMERA",
+        "dcraw_matrix" : [11452, -4308, -1269, -3555, 12655, 937, -160, 2118, 5023]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [10035, -4060, -703, -3922, 12065, 2079, -361, 1385, 5506]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 10 WIDE CAMERA",
+        "dcraw_matrix" : [11862, -5171, -979, -2529, 11618, 995, 109, 1850, 4873]
     },
     {
         "make_model" : "GOOGLE PIXEL 3 FRONT STANDARD CAMERA",
@@ -3382,6 +3485,14 @@ SONY ILME-FX3A
         "dcraw_matrix" : [9333, -3263, -1253, -4053, 13008, 1092, -1014, 2397, 4775]
     },
     {
+        "make_model" : "IPHONE18,5 BACK CAMERA",
+        "dcraw_matrix" : [11529, -4264, -1229, -3399, 11629, 1998, -205, 1661, 4991]
+    },
+    {
+        "make_model" : "IPHONE18,5 FRONT CAMERA",
+        "dcraw_matrix" : [8421, -2562, -877, -4309, 12738, 1717, -903, 2172, 4701]
+    },
+    {
         "make_model" : ["IPHONE8,1 BACK CAMERA", "APPLE IPHONE8,1 BACK CAMERA"],
         "dcraw_matrix" : [9631, -3743, -905, -3330, 11838, 1664, -281, 1395, 5153]
     },
@@ -3584,6 +3695,10 @@ SONY ILME-FX3A
     {
         "make_model" : "LEICA M (TYP 262)",
         "dcraw_matrix" : [7199, -2140, -712, -4005, 13327, 649, -810, 2521, 6673]
+    },
+    {
+        "make_model" : "LEICA M EV1",
+        "dcraw_matrix" : [4654, -1104, -579, -5975, 13798, 2378, -1336, 2371, 5838]
     },
     {
         "make_model" : "LEICA M-D (TYP 262)",
@@ -4634,6 +4749,26 @@ SONY ILME-FX3A
         "dcraw_matrix" : [10360, -4483, -1424, -5547, 15466, -147, 119, 405, 5326]
     },
     {
+        "make_model" : "OPPO FIND X8 PRO TELE CAMERA 135MM F/4.3",
+        "dcraw_matrix" : [10778, -4336, -1025, -4123, 13084, 1080, -10, 1320, 4998]
+    },
+    {
+        "make_model" : "OPPO FIND X8 PRO TELE CAMERA 73MM F/2.6",
+        "dcraw_matrix" : [10206, -3876, -1398, -4330, 14192, -50, 164, 1218, 5053]
+    },
+    {
+        "make_model" : "OPPO FIND X8 PRO ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12626, -4995, -1500, -4064, 13669, 187, 63, 1395, 5404]
+    },
+    {
+        "make_model" : "OPPO FIND X8 PRO WIDE CAMERA 23MM F/1.6",
+        "dcraw_matrix" : [10771, -4915, -940, -3689, 11863, 2053, -153, 1399, 5262]
+    },
+    {
+        "make_model" : "OPPO FIND X8 TELE CAMERA 73MM F/2.6",
+        "dcraw_matrix" : [10303, -4094, -1272, -4587, 14123, 363, 11, 1319, 5042]
+    },
+    {
         "make_model" : "OPPO FIND X8 ULTRA BACK CAMERA 16.53MM F/2.1",
         "dcraw_matrix" : [8247, -3150, -623, -3559, 11742, 2047, -549, 1881, 4622]
     },
@@ -4648,6 +4783,90 @@ SONY ILME-FX3A
     {
         "make_model" : "OPPO FIND X8 ULTRA BACK CAMERA 8.67MM F/1.8",
         "dcraw_matrix" : [9116, -3442, -931, -4055, 12197, 2076, -701, 1936, 5097]
+    },
+    {
+        "make_model" : "OPPO FIND X8 ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [11714, -4487, -1307, -4813, 14484, 99, -497, 1892, 5417]
+    },
+    {
+        "make_model" : "OPPO FIND X8 WIDE CAMERA 23MM F/1.8",
+        "dcraw_matrix" : [11467, -5333, -1010, -2859, 11289, 1781, 208, 1003, 5028]
+    },
+    {
+        "make_model" : "OPPO FIND X8S TELE CAMERA 85MM F/2.8",
+        "dcraw_matrix" : [11137, -4321, -989, -2847, 11934, 983, 225, 1697, 5249]
+    },
+    {
+        "make_model" : "OPPO FIND X8S ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12819, -5239, -1396, -2810, 12392, 386, 691, 902, 5359]
+    },
+    {
+        "make_model" : "OPPO FIND X8S WIDE CAMERA 24MM F/1.8",
+        "dcraw_matrix" : [8415, -2675, -876, -4282, 12477, 2002, -956, 2218, 4965]
+    },
+    {
+        "make_model" : "OPPO FIND X8S+ TELE CAMERA 73MM F/2.6",
+        "dcraw_matrix" : [10269, -4063, -1236, -4145, 13629, 445, 172, 1209, 5041]
+    },
+    {
+        "make_model" : "OPPO FIND X8S+ ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12436, -4738, -1502, -3608, 13536, -80, 340, 1219, 5296]
+    },
+    {
+        "make_model" : "OPPO FIND X8S+ WIDE CAMERA 23MM F/1.8",
+        "dcraw_matrix" : [10814, -4899, -934, -3353, 11635, 1937, -111, 1366, 4885]
+    },
+    {
+        "make_model" : "OPPO FIND X9 PRO TELE CAMERA 70MM F/2.1",
+        "dcraw_matrix" : [8743, -2871, -828, -3511, 12515, 1055, -668, 2325, 4869]
+    },
+    {
+        "make_model" : "OPPO FIND X9 PRO ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12626, -4995, -1500, -4064, 13669, 187, 63, 1395, 5404]
+    },
+    {
+        "make_model" : "OPPO FIND X9 PRO WIDE CAMERA 23MM F/1.5",
+        "dcraw_matrix" : [9622, -3940, -1235, -5439, 14941, 368, -108, 966, 5346]
+    },
+    {
+        "make_model" : "OPPO FIND X9 TELE CAMERA 73MM F/2.6",
+        "dcraw_matrix" : [10303, -4094, -1272, -4587, 14123, 363, 11, 1319, 5042]
+    },
+    {
+        "make_model" : "OPPO FIND X9 ULTRA TELE CAMERA 230MM F/3.5",
+        "dcraw_matrix" : [8333, -2188, -756, -3341, 12357, 1048, -419, 2605, 4635]
+    },
+    {
+        "make_model" : "OPPO FIND X9 ULTRA TELE CAMERA 70MM F/2.2",
+        "dcraw_matrix" : [7778, -1837, -772, -4348, 12743, 1757, -685, 2032, 4169]
+    },
+    {
+        "make_model" : "OPPO FIND X9 ULTRA ULTRA WIDE CAMERA 14MM F/2.0",
+        "dcraw_matrix" : [9163, -3303, -913, -3892, 12043, 2073, -675, 2345, 4421]
+    },
+    {
+        "make_model" : "OPPO FIND X9 ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12626, -4995, -1500, -4064, 13669, 187, 63, 1395, 5404]
+    },
+    {
+        "make_model" : "OPPO FIND X9 ULTRA WIDE CAMERA 23MM F/1.5",
+        "dcraw_matrix" : [10023, -4298, -859, -2847, 11122, 1968, -148, 1518, 4983]
+    },
+    {
+        "make_model" : "OPPO FIND X9 WIDE CAMERA 23MM F/1.6",
+        "dcraw_matrix" : [8539, -3263, -673, -3382, 11541, 2084, -365, 1764, 5066]
+    },
+    {
+        "make_model" : "OPPO FIND X9S PRO TELE CAMERA 65MM F/2.6",
+        "dcraw_matrix" : [12372, -5497, -1613, -4134, 14608, -754, 529, 153, 5377]
+    },
+    {
+        "make_model" : "OPPO FIND X9S PRO ULTRA WIDE CAMERA 15MM F/2.0",
+        "dcraw_matrix" : [12626, -4995, -1500, -4064, 13669, 187, 63, 1395, 5404]
+    },
+    {
+        "make_model" : "OPPO FIND X9S PRO WIDE CAMERA 23MM F/1.6",
+        "dcraw_matrix" : [12189, -5177, -1251, -3757, 12943, 825, -334, 1865, 5073]
     },
     {
         "make_model" : "PANASONIC DC-FZ1000M2",
@@ -5298,6 +5517,10 @@ SONY ILME-FX3A
         "dcraw_matrix" : [7115, -2705, -929, -4779, 12936, 2026, -449, 1322, 5479]
     },
     {
+        "make_model" : "RICOH GR IV HDF",
+        "dcraw_matrix" : [7115, -2705, -929, -4779, 12936, 2026, -449, 1322, 5479]
+    },
+    {
         "make_model" : "RICOH GR LENS A12 28MM F2.5",
         "dcraw_matrix" : [10228, -3159, -932, -5304, 13158, 2371, -943, 1873, 6685]
     },
@@ -5614,6 +5837,58 @@ SONY ILME-FX3A
         "dcraw_matrix" : [12696, -5678, -1102, -2785, 11850, 1013, 168, 1487, 4593]
     },
     {
+        "make_model" : "SAMSUNG GALAXY S26 FRONT CAMERA",
+        "dcraw_matrix" : [12544, -5607, -1295, -2157, 10915, 1413, 110, 1394, 4515]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 REAR TELEPHOTO CAMERA",
+        "dcraw_matrix" : [12494, -5636, -1489, -3552, 13113, 379, 206, 961, 5168]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 REAR ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [12407, -5800, -1112, -2467, 11222, 1402, 27, 1393, 4681]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 REAR WIDE CAMERA",
+        "dcraw_matrix" : [12696, -5678, -1102, -2785, 11850, 1013, 168, 1487, 4593]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 ULTRA FRONT CAMERA",
+        "dcraw_matrix" : [11659, -4954, -1144, -2854, 11757, 1206, 5, 1797, 4493]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 ULTRA REAR SUPER TELEPHOTO CAMERA",
+        "dcraw_matrix" : [13543, -5648, -1666, -3896, 14010, -253, 311, 1032, 4510]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 ULTRA REAR TELEPHOTO CAMERA",
+        "dcraw_matrix" : [11414, -4626, -1422, -3644, 14468, -1157, 182, 1139, 4588]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 ULTRA REAR ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [13402, -6058, -1098, -2965, 12367, 597, -184, 2094, 4549]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26 ULTRA REAR WIDE CAMERA",
+        "dcraw_matrix" : [11989, -5201, -969, -2564, 11727, 903, -91, 2046, 4527]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26+ FRONT CAMERA",
+        "dcraw_matrix" : [12544, -5607, -1295, -2157, 10915, 1413, 110, 1394, 4515]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26+ REAR TELEPHOTO CAMERA",
+        "dcraw_matrix" : [11414, -4626, -1422, -3644, 14468, -1157, 182, 1139, 4588]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26+ REAR ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [12407, -5800, -1112, -2467, 11222, 1402, 27, 1393, 4681]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY S26+ REAR WIDE CAMERA",
+        "dcraw_matrix" : [13686, -6509, -1055, -2380, 10853, 1747, -224, 1575, 4666]
+    },
+    {
         "make_model" : "SAMSUNG GALAXY S6",
         "dcraw_matrix" : [13698, -5767, -1384, -4449, 13879, 499, -467, 1691, 5891]
     },
@@ -5768,6 +6043,22 @@ SONY ILME-FX3A
     {
         "make_model" : "SAMSUNG GALAXY Z FOLD7 UNDER DISPLAY CAMERA",
         "dcraw_matrix" : [11454, -5083, -1109, -3184, 11733, 1620, -23, 1098, 4791]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY Z TRIFOLD FRONT CAMERA",
+        "dcraw_matrix" : [11454, -5083, -1109, -3184, 11733, 1620, -23, 1098, 4791]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY Z TRIFOLD REAR TELEPHOTO CAMERA",
+        "dcraw_matrix" : [12494, -5636, -1489, -3552, 13113, 379, 206, 961, 5168]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY Z TRIFOLD REAR ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [12407, -5800, -1112, -2467, 11222, 1402, 27, 1393, 4681]
+    },
+    {
+        "make_model" : "SAMSUNG GALAXY Z TRIFOLD REAR WIDE CAMERA",
+        "dcraw_matrix" : [13795, -6405, -1091, -1751, 11029, 800, 324, 1690, 4377]
     },
     {
         "make_model" : "SAMSUNG GX-1L",
@@ -6136,6 +6427,10 @@ SONY ILME-FX3A
     {
         "make_model" : "SONY ILCE-7M4",
         "dcraw_matrix" : [7460, -2365, -588, -5687, 13442, 2474, -624, 1156, 6584]
+    },
+    {
+        "make_model" : "SONY ILCE-7M5",
+        "dcraw_matrix" : [9089, -3577, -787, -3563, 11326, 2557, -114, 927, 5904]
     },
     {
         "make_model" : "SONY ILCE-7R",
@@ -6696,6 +6991,18 @@ SONY ILME-FX3A
     {
         "make_model" : "XIAOMI 15 ULTRA REAR WIDE CAMERA",
         "dcraw_matrix" : [8569, -3516, -954, -4348, 12444, 2119, -399, 1421, 4942]
+    },
+    {
+        "make_model" : "XIAOMI 17 ULTRA REAR TELEPHOTO CAMERA",
+        "dcraw_matrix" : [11446, -5031, -1117, -3605, 12770, 856, -8, 1340, 5537]
+    },
+    {
+        "make_model" : "XIAOMI 17 ULTRA REAR ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [8287, -2303, -927, -5059, 14170, 859, -1237, 3380, 4409]
+    },
+    {
+        "make_model" : "XIAOMI 17 ULTRA REAR WIDE CAMERA",
+        "dcraw_matrix" : [10634, -4661, -1184, -4129, 12392, 1926, -266, 1839, 5461]
     },
     {
         "make_model" : "XIAOMI CIVI 4 PRO REAR TELEPHOTO CAMERA",
