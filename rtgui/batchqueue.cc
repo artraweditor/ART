@@ -958,6 +958,8 @@ Glib::ustring calcAutoFileNameBase(const Glib::ustring &origFileName,
 
 rtengine::ProcessingJob *BatchQueue::imageReady(rtengine::IImagefloat *img)
 {
+    GThreadLock glock;
+    
     // save image img
     Glib::ustring fname;
     SaveFormat saveFormat;
@@ -1082,7 +1084,7 @@ rtengine::ProcessingJob *BatchQueue::imageReady(rtengine::IImagefloat *img)
     if (remove_button_set) {
         // ButtonSet have Cairo::Surface which might be rendered while we're
         // trying to delete them
-        GThreadLock lock;
+        // GThreadLock lock;
         processing->removeButtonSet();
     }
 
