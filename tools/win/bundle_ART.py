@@ -94,7 +94,9 @@ def extra_files(opts, msys_env, tempdir):
             with urlopen('https://exiftool.org/ver.txt') as f:
                 ver = f.read().strip().decode('utf-8')
         name = 'exiftool-%s_64' % ver
-        with urlopen('https://exiftool.org/' + name + '.zip') as f:
+        url = f'https://sourceforge.net/projects/' + \
+            f'exiftool/files/{name}.zip/download'
+        with urlopen(url) as f:
             if opts.verbose:
                 print('downloading %s.zip from https://exiftool.org ...' % name)
             zf = zipfile.ZipFile(io.BytesIO(f.read()))

@@ -97,7 +97,9 @@ def extra_files(opts):
         with urlopen('https://exiftool.org/ver.txt') as f:
             ver = f.read().strip().decode('utf-8')
         name = 'Image-ExifTool-%s.tar.gz' % ver
-        with urlopen('https://exiftool.org/' + name) as f:
+        url = f'https://sourceforge.net/projects/' + \
+            f'exiftool/files/{name}/download'
+        with urlopen(url) as f:
             if opts.verbose:
                 print('downloading %s from https://exiftool.org ...' % name)
             tf = tarfile.open(fileobj=io.BytesIO(f.read()))

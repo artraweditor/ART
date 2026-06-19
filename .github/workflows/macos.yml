@@ -192,8 +192,9 @@ jobs:
       - name: Install exiftool
         run: |
           wget https://exiftool.org/ver.txt
-          wget https://exiftool.org/ExifTool-$(cat ver.txt).pkg
-          sudo installer -pkg ExifTool-$(cat ver.txt).pkg -target /
+          pkgname=ExifTool-$(cat ver.txt).pkg
+          wget https://sourceforge.net/projects/exiftool/files/${pkgname}/download -O ${pkgname}
+          sudo installer -pkg ${pkgname} -target /
 
       - name: Create bundle
         env:
