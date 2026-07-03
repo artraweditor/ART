@@ -571,7 +571,7 @@ void nlmeans_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
 
 void add_noise(array2D<float> &R, array2D<float> &G, array2D<float> &B,
                const TMatrix &ws, int strength, int coarseness, double scale,
-               Channel chan, bool multithread)
+               Channel chan, bool multithread, int oX, int oY, int fW, int fH)
 {
     BENCHFUN
 
@@ -582,7 +582,7 @@ void add_noise(array2D<float> &R, array2D<float> &G, array2D<float> &B,
         LIM01(float(strength) / (chan == Channel::L ? 200.f : 100.f)) / scale;
     const float radius = (0.5f + 1.75f * float(coarseness) / 100.f) / scale;
 
-    RandomNumberGenerator rng(42 + int(chan) + coarseness);
+    RandomNumberGenerator rng(42 + int(chan) + coarseness + oY * fW + oX);
 
     array2D<float> kernel;
     {
@@ -1023,7 +1023,8 @@ bool ImProcFunctions::guidedSmoothing(Imagefloat *rgb)
                 if (cur_pipeline == Pipeline::OUTPUT ||
                     cur_pipeline == Pipeline::PREVIEW) {
                     add_noise(R, G, B, ws, r.noise_strength, r.noise_coarseness,
-                              scale, ch, multiThread);
+                              scale, ch, multiThread,
+                              offset_x, offset_y, full_width, full_height);
                 }
             } else if (r.mode == SmoothingParams::Region::Mode::NLMEANS) {
                 nlmeans_smoothing(R, G, B, ws, iws, ch, r.nlstrength,

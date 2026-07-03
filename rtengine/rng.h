@@ -25,34 +25,60 @@
 #include <inttypes.h>
 #include <limits>
 #include <math.h>
+#include <stdint.h>
 
 namespace rtengine {
 
+// xoshiro++128 from https://en.wikipedia.org/wiki/Xorshift
 class RandomNumberGenerator {
 public:
-    RandomNumberGenerator(uint32_t seed): seed_(seed) { assert(seed_); }
+    explicit RandomNumberGenerator(uint32_t seed)
+    {
+        assert(seed);
+        state_[0] = seed;
+        for (int i = 1; i < 3; ++i) { state_[i] = 0; }
+    }
 
     uint32_t
     randint(uint32_t upper_bound = std::numeric_limits<uint32_t>::max())
     {
-        seed_ = next();
-        return uint32_t(seed_ >> 16U) % upper_bound;
+        uint32_t res = next32();
+        return res % upper_bound;
     }
 
     float randfloat()
     {
         uint32_t ub = std::numeric_limits<int>::max();
-        return float(randint(ub)) / float(ub);
+        return float(double(randint(ub)) / double(ub));
+    }
+    
+private:
+    uint32_t rotl(const uint32_t x, int k)
+    {
+        return (x << k) | (x >> (32 - k));
     }
 
-private:
-    uint64_t next() const { return ((seed_ * a_) + c_) & mask_; }
+    uint32_t next32()
+    {
+        const uint32_t result = rotl(state_[0] + state_[3], 7) + state_[0];
 
-    static constexpr uint64_t a_ = 25214903917ULL;
-    static constexpr uint64_t c_ = 11U;
-    static constexpr uint64_t mask_ = ~(2ULL << 48);
-    uint64_t seed_;
+        const uint32_t t = state_[1] << 9;
+
+        state_[2] ^= state_[0];
+        state_[3] ^= state_[1];
+        state_[1] ^= state_[2];
+        state_[0] ^= state_[3];
+
+        state_[2] ^= t;
+
+        state_[3] = rotl(state_[3], 11);
+
+        return result;
+    }
+
+    uint32_t state_[4];
 };
+
 
 // see https://en.wikipedia.org/wiki/Marsaglia_polar_method
 class NormalDistribution {
@@ -74,7 +100,7 @@ public:
                 v = rng.randfloat() * 2.f - 1.f;
                 s = u * u + v * v;
             } while (s >= 1.f || s == 0.f);
-            s = sqrtf(-2.f * xlogf(s) / s);
+            s = std::sqrt(-2.f * std::log(s) / s);
             spare_ = v * s;
             has_spare_ = true;
             return mean_ + std_dev_ * u * s;
