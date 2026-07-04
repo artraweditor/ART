@@ -71,7 +71,7 @@ def get_imageio_releases():
 
 def getdlls(opts):
     blacklist = ['/System/', '/usr/lib/']
-    res = set()
+    res = {}
     d = os.path.join(os.getcwd(), 'Contents/MacOS')
     to_process = [os.path.join(d, 'ART'),
                   os.path.join(getprefix(opts), 'bin/dbus-daemon')]
@@ -102,13 +102,15 @@ def getdlls(opts):
                             lib = plib
                             break
             if not any(lib.startswith(p) for p in blacklist):
-                if opts.verbose:
-                    print(f'   {lib}')
-                res.add(lib)
-                to_process.append(lib)
+                key = os.path.basename(lib)
+                if key not in res:
+                    if opts.verbose:
+                        print(f'   {lib}')
+                    res[key] = lib
+                    to_process.append(lib)
     if opts.verbose:
         print('=============================')
-    return sorted(res)
+    return sorted(res.values())
 
 
 def getprefix(opts):
