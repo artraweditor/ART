@@ -123,13 +123,18 @@
 //
 // updated on Fri Dec 19 08:24:34 2025:
 // CANON EOS R5 MARK II
-
 // updated on Mon Apr 27 08:27:49 2026:
 // NIKON D2HS
 // NIKON DF
 // NIKON Z F
 // RICOH GR IV
 // SONY ILCE-7CR
+
+// updated on Mon Jul 13 10:59:24 2026:
+// CANON EOS 90D
+// PANASONIC DC-L10
+// SONY ILCE-1M2
+// SONY ILCE-9M2
 
 [
   {
@@ -6693,6 +6698,68 @@
       { "name" : "4500k", "multipliers" : [ 2.3955078125, 1, 1.890625 ] },
       { "name" : "6000k", "multipliers" : [ 2.8193359375, 1, 1.56640625 ] },
       { "name" : "8500k", "multipliers" : [ 3.2353515625, 1, 1.3017578125 ] }
+    ]
+  },
+  {
+    "make_model" : "CANON EOS 90D",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 1.7412109375, 1, 1.5419921875 ] },
+      { "name" : "shade", "multipliers" : [ 2.0361328125, 1, 1.3232421875 ] },
+      { "name" : "cloudy", "multipliers" : [ 1.87890625, 1, 1.427734375 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.2001953125, 1, 2.2861328125 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 1.4794921875, 1, 2.15625 ] },
+      { "name" : "flash", "multipliers" : [ 1.939453125, 1, 1.412109375 ] }
+    ]
+  },
+  {
+    "make_model" : "PANASONIC DC-L10",
+    "presets" : [
+      { "name" : "direct sunlight", "multipliers" : [ 2.75390625, 1, 1.46875 ] },
+      { "name" : "daylight", "multipliers" : [ 2.7890625, 1, 1.46484375 ] },
+      { "name" : "d55", "multipliers" : [ 2.6328125, 1, 1.48828125 ] },
+      { "name" : "shade", "multipliers" : [ 3.23046875, 1, 1.30859375 ] },
+      { "name" : "cloudy", "multipliers" : [ 3.02734375, 1, 1.37109375 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.8671875, 1, 2.06640625 ] },
+      { "name" : "incandescent", "multipliers" : [ 1.89453125, 1, 2.05859375 ] },
+      { "name" : "flash", "multipliers" : [ 3.1015625, 1, 1.27734375 ] }
+    ]
+  },
+  {
+    "make_model" : "SONY ILCE-1M2",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 2.0712890625, 1, 1.6259765625 ] },
+      { "name" : "shade", "multipliers" : [ 2.474609375, 1, 1.3154296875 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.255859375, 1, 1.48828125 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.232421875, 1, 2.9609375 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.498046875, 1, 2.9638671875 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 1.9921875, 1, 2.248046875 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 2.1005859375, 1, 1.599609375 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.3486328125, 1, 1.4755859375 ] },
+      { "name" : "flash", "multipliers" : [ 2.30859375, 1, 1.4150390625 ] },
+      { "name" : "2500k", "multipliers" : [ 1.0947265625, 1, 3.416015625 ] },
+      { "name" : "3200k", "multipliers" : [ 1.4111328125, 1, 2.484375 ] },
+      { "name" : "4500k", "multipliers" : [ 1.853515625, 1, 1.8076171875 ] },
+      { "name" : "6000k", "multipliers" : [ 2.2138671875, 1, 1.5078125 ] },
+      { "name" : "8500k", "multipliers" : [ 2.5849609375, 1, 1.28125 ] }
+    ]
+  },
+  {
+    "make_model" : "SONY ILCE-9M2",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 2.4375, 1, 1.50390625 ] },
+      { "name" : "shade", "multipliers" : [ 2.88671875, 1, 1.25 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.62890625, 1, 1.3828125 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.51953125, 1, 2.625 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.72265625, 1, 2.58984375 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 2.18359375, 1, 2.15234375 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 2.31640625, 1, 1.59765625 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.57421875, 1, 1.46875 ] },
+      { "name" : "flash", "multipliers" : [ 2.78125, 1, 1.3828125 ] },
+      { "name" : "2500k", "multipliers" : [ 1.32421875, 1, 3.1171875 ] },
+      { "name" : "3200k", "multipliers" : [ 1.6953125, 1, 2.296875 ] },
+      { "name" : "4500k", "multipliers" : [ 2.203125, 1, 1.68359375 ] },
+      { "name" : "6000k", "multipliers" : [ 2.60546875, 1, 1.3984375 ] },
+      { "name" : "8500k", "multipliers" : [ 3.03125, 1, 1.18359375 ] }
     ]
   }
 ]
