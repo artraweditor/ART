@@ -65,6 +65,11 @@ public:
 
     void startProcessing();
 
+    // Show or hide the reorder/cancel buttons on every queued thumbnail.
+    // The buttons are hidden while the queue is running and shown again when
+    // it is stopped or paused.
+    void setButtonSetsVisible(bool visible);
+
     bool hasJobs()
     {
         MYREADERLOCK(l, entryRW);

@@ -300,6 +300,12 @@ void BatchQueue::addEntries(const std::vector<BatchQueueEntry *> &entries,
     if (save)
         saveBatchQueue();
 
+    // if the queue is currently running, keep the reorder/cancel buttons
+    // hidden on the freshly added entries as well
+    if (processing) {
+        setButtonSetsVisible(false);
+    }
+
     redraw();
     notifyListener();
 }
@@ -713,6 +719,10 @@ void BatchQueue::startProcessing()
             // remove button set
             next->removeButtonSet();
 
+            // hide the reorder/cancel buttons on the remaining entries while
+            // the queue is running
+            setButtonSetsVisible(false);
+
             // start batch processing
             rtengine::startBatchProcessing(next->job, this);
             queue_draw();
@@ -720,6 +730,30 @@ void BatchQueue::startProcessing()
             notifyListener();
         }
     }
+}
+
+void BatchQueue::setButtonSetsVisible(bool visible)
+{
+    {
+        MYWRITERLOCK(l, entryRW);
+
+        for (const auto fdEntry : fd) {
+            const auto entry = static_cast<BatchQueueEntry *>(fdEntry);
+
+            if (visible) {
+                // never show buttons on the entry that is being processed
+                if (!entry->processing && !entry->hasButtonSet()) {
+                    const auto bqbs = new BatchQueueButtonSet(entry);
+                    bqbs->setButtonListener(this);
+                    entry->addButtonSet(bqbs);
+                }
+            } else if (entry->hasButtonSet()) {
+                entry->removeButtonSet();
+            }
+        }
+    }
+
+    redraw();
 }
 
 void BatchQueue::setProgress(double p)
@@ -751,6 +785,9 @@ void BatchQueue::error(const Glib::ustring &descr)
             processing->filename, processing->thumbnail->getType() == FT_Raw,
             processing->params);
         processing = nullptr;
+        // the queue has stopped: restore the reorder/cancel buttons on all
+        // remaining entries
+        setButtonSetsVisible(true);
         redraw();
     }
 
@@ -1086,6 +1123,10 @@ rtengine::ProcessingJob *BatchQueue::imageReady(rtengine::IImagefloat *img)
         // trying to delete them
         // GThreadLock lock;
         processing->removeButtonSet();
+    } else {
+        // no next job was started: the queue has stopped or was paused, so
+        // bring back the reorder/cancel buttons on the remaining entries
+        setButtonSetsVisible(true);
     }
 
     if (saveBatchQueue()) {

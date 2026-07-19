@@ -70,6 +70,7 @@ public:
                          int h) override;
 
     void removeButtonSet();
+    bool hasButtonSet() const { return static_cast<bool>(buttonSet); }
 
     std::vector<std::shared_ptr<RTSurface>> getIconsOnImageArea() override;
     void getIconSize(int &w, int &h) const override;
