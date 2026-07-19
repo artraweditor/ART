@@ -568,7 +568,7 @@ float MadRgb(float *DataList, const int datalen)
     int i;
 
     for (i = 0; i < datalen; ++i) {
-        histo[min(65535, abs(static_cast<int>(DataList[i])))]++;
+        histo[min(65535, static_cast<int>(abs(DataList[i])))]++;
     }
 
     // find median of histogram
