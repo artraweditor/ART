@@ -17,6 +17,7 @@
  */
 
 #include "pathutils.h"
+#include <giomm/file.h>
 
 #ifndef WIN32
 #include <glib.h>
@@ -118,4 +119,12 @@ Glib::ustring getExecutablePath(const char *argv0)
 
     Glib::ustring exePath = Glib::path_get_dirname(exname);
     return exePath;
+}
+
+
+bool isSubdir(const Glib::ustring &parent, const Glib::ustring &child)
+{
+    auto p = Gio::File::create_for_path(parent);
+    auto c = Gio::File::create_for_path(child);
+    return c->has_prefix(p);
 }

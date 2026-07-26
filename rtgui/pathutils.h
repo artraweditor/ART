@@ -26,3 +26,4 @@ Glib::ustring removeExtension(const Glib::ustring &filename);
 Glib::ustring getExtension(const Glib::ustring &filename);
 Glib::ustring fname_to_utf8(const std::string &fname);
 Glib::ustring getExecutablePath(const char *argv0);
+bool isSubdir(const Glib::ustring &parent, const Glib::ustring &child);

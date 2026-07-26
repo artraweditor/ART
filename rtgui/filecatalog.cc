@@ -2442,8 +2442,12 @@ void FileCatalog::openNextPreviousEditorImage(Glib::ustring fname,
                                               bool clearFilters,
                                               eRTNav nextPrevious)
 {
-
+    const bool is_session = art::session::check(selectedDirectory);
+    const bool recursive = !is_session && button_recurse_->get_active();    
     Glib::ustring dirname = Glib::path_get_dirname(fname);
+    if (is_session || (recursive && !dirname.empty() && isSubdir(selectedDirectory, dirname))) {
+        dirname = selectedDirectory;
+    }
 
     if (!dirname.empty()) {
         BrowsePath->set_text(dirname);
