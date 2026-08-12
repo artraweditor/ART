@@ -444,17 +444,20 @@ static gboolean osx_open_file_cb(GtkosxApplication *a, gchar *pth,
                                  gpointer data)
 {
     GThreadLock lck;
+
+    if (options.rtSettings.verbose > 1) {
+        std::cout << "osx_open_file_cb: " << pth << std::endl;
+    }
+    
     RTApplication *app = (RTApplication *)data;
     int argc = 2;
-    char *argv[2] = {nullptr, pth};
-    is_session = false;
-    if (art::session::check(app->get_selected_dir())) {
-        std::vector<Glib::ustring> fnames = {fname_to_utf8(pth)};
-        art::session::add(fnames);
-        return false;
-    } else {
-        return app->process_command_line(argc, argv);
+    auto fname = pth;
+    if (strstr(pth, "file://") == pth) {
+        fname = pth+7;
     }
+    char *argv[2] = {nullptr, fname};
+    is_session = false;
+    return app->process_command_line(argc, argv);
 }
 
 #endif // __APPLE__

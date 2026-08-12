@@ -11,10 +11,6 @@ on:
         description: 'Debug build'
         required: true
         type: boolean
-      exelauncher:
-        description: 'Use executable launcher'
-        required: true
-        type: boolean
 
 jobs:
   build:
@@ -62,13 +58,7 @@ jobs:
               echo "BUILD_TYPE=Release" >> $GITHUB_ENV
               echo "WITH_SAN=OFF" >> $GITHUB_ENV
           fi
-          if [ "${{ inputs.exelauncher }}" = "true" ]; then
-              BUILD_SUFFIX="${BUILD_SUFFIX}-launcher"
-          fi
-          if [ "$BUILD_SUFFIX" != "" ]; then
-              echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_ENV
-          fi
-          
+
       - name: Install base packages
         run: |          
           brew install \
@@ -205,16 +195,13 @@ jobs:
           if [ "${{ inputs.debug }}" = "true" ]; then
              DBG_FLAG=--debug
           fi
-          if [ "${{ inputs.exelauncher }}" = "true" ]; then
-             LAUNCHER_FLAG=--use-launcher
-          fi
           cd build/${BUILD_TYPE}/ART.app
           python3 "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/local/lib \
             -r ${HOMEBREW_PREFIX}/lib \
             -p ${HOMEBREW_PREFIX} \
             -e -I \
-            ${DBG_FLAG} ${LAUNCHER_FLAG} \
+            ${DBG_FLAG} \
             -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
           echo "Contents of the ART.app bundle:"
