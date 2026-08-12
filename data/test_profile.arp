@@ -1,0 +1,16 @@
+[Version]
+AppVersion=1.0
+Version=343
+
+[General]
+Rank=5
+ColorLabel=1
+InTrash=false
+
+[Exposure]
+Auto=false
+Clip=false
+Compensation=1.5
+Lightness=0
+Contrast=10
+Black=0
