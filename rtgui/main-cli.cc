@@ -597,28 +597,7 @@ int processLineParams(int argc, char **argv)
                     }
 
                     if (Glib::file_test(argument, Glib::FILE_TEST_IS_REGULAR)) {
-                        bool notAll = allExtensions &&
-                                      !options.is_parse_extention(argument);
-                        bool notRetained =
-                            !allExtensions &&
-                            !options.has_retained_extention(argument);
-
-                        if (notAll || notRetained) {
-                            if (notAll) {
-                                std::cout << "\"" << argument
-                                          << "\"  is not one of the parsed "
-                                             "extensions. Image skipped."
-                                          << std::endl;
-                            } else if (notRetained) {
-                                std::cout << "\"" << argument
-                                          << "\"  is not one of the selected "
-                                             "parsed extensions. Image skipped."
-                                          << std::endl;
-                            }
-                        } else {
-                            inputFiles.emplace_back(argument);
-                        }
-
+                        inputFiles.emplace_back(argument);
                         continue;
                     }
 
