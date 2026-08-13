@@ -453,11 +453,18 @@ static gboolean osx_open_file_cb(GtkosxApplication *a, gchar *pth,
     int argc = 2;
     auto fname = pth;
     if (strstr(pth, "file://") == pth) {
-        fname = pth+7;
+        fname = g_filename_from_uri(pth, nullptr, nullptr);
+        if (!fname) {
+            return false;
+        }
     }
     char *argv[2] = {nullptr, fname};
     is_session = false;
-    return app->process_command_line(argc, argv);
+    auto ret = app->process_command_line(argc, argv);
+    if (fname != pth) {
+        g_free(fname);
+    }
+    return ret;
 }
 
 #endif // __APPLE__
