@@ -1413,6 +1413,11 @@ int RawImageSource::load(const Glib::ustring &fname, bool firstFrameOnly)
     int errCode = ri->loadRaw(false, 0, false);
 
     if (errCode) {
+        // numFrames is still 0 here, so ~RawImageSource would not free ri (and
+        // hence would not close the file handle it holds) -- do it now, so that
+        // a failed decode doesn't keep the file locked (see issue #398)
+        delete ri;
+        ri = nullptr;
         return errCode;
     }
 

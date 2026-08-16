@@ -99,6 +99,12 @@ public:
     static void embedProcParamsData(const Glib::ustring &fname,
                                     const std::string &data);
 
+    // Drops any cached data for the given file. Call this before renaming or
+    // deleting a file, both so that the cached Exiv2::Image cannot be holding a
+    // handle on it (see issue #398) and because the entry would otherwise be
+    // left behind under the old name.
+    static void removeFromCache(const Glib::ustring &fname);
+
 private:
     static std::unordered_map<std::string, std::string>
     getExiftoolMakernotes(const Glib::ustring &path);

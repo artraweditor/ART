@@ -17,6 +17,7 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "myfile.h"
+#include "utils.h"
 #include <cstdarg>
 #include <glibmm.h>
 
@@ -75,30 +76,10 @@ int munmap(void *start, size_t length)
 
 IMFILE *fopen(const char *fname)
 {
-    int fd;
-
-#ifdef WIN32
-
-    fd = -1;
-    // First convert UTF8 to UTF16, then use Windows function to open the file
-    // and convert back to file descriptor.
-    std::unique_ptr<wchar_t, GFreeFunc> wfname(
-        reinterpret_cast<wchar_t *>(
-            g_utf8_to_utf16(fname, -1, NULL, NULL, NULL)),
-        g_free);
-
-    HANDLE hFile =
-        CreateFileW(wfname.get(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile != INVALID_HANDLE_VALUE) {
-        fd = _open_osfhandle((intptr_t)hFile, 0);
-    }
-
-#else
-
-    fd = ::g_open(fname, O_RDONLY);
-
-#endif
+    // Opens the file with FILE_SHARE_DELETE and a non-inheritable handle on
+    // Windows, so that keeping it mmap'd never blocks a rename or delete of the
+    // file (see issue #398).
+    int fd = rtengine::g_open_shared_read(fname);
 
     if (fd < 0) {
         return nullptr;
@@ -139,7 +120,7 @@ IMFILE *gfopen(const char *fname) { return fopen(fname); }
 IMFILE *fopen(const char *fname)
 {
 
-    FILE *f = g_fopen(fname, "rb");
+    FILE *f = rtengine::g_fopen_shared_read(fname);
 
     if (!f) {
         return NULL;
@@ -162,7 +143,7 @@ IMFILE *fopen(const char *fname)
 IMFILE *gfopen(const char *fname)
 {
 
-    FILE *f = g_fopen(fname, "rb");
+    FILE *f = rtengine::g_fopen_shared_read(fname);
 
     if (!f) {
         return NULL;

@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <cstdio>
 #include <glibmm/ustring.h>
 #include <type_traits>
 
@@ -59,6 +60,17 @@ bool hasPngExtension(const Glib::ustring &filename);
 void swab(const void *from, void *to, ssize_t n);
 
 std::string getMD5(const Glib::ustring &fname, bool extended = false);
+
+// Open a source file for binary reading. On Windows this uses CreateFileW with
+// FILE_SHARE_DELETE and a non-inheritable handle, so that having the file open
+// never prevents it from being renamed or deleted, and the handle is not
+// duplicated into child processes (see issue #398). Everywhere else this is
+// just g_fopen(fname, "rb").
+FILE *g_fopen_shared_read(const Glib::ustring &fname);
+
+// Same as above, but returns a raw file descriptor (-1 on failure). The caller
+// owns it and must close() it.
+int g_open_shared_read(const Glib::ustring &fname);
 
 std::string get_html_color(int r, int g, int b);
 

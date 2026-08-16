@@ -55,6 +55,8 @@ public:
     void addEditorPanel(EditorPanel *ep, const std::string &name);
     void remEditorPanel(EditorPanel *ep);
     bool selectEditorPanel(const std::string &name);
+    void renameEditorPanel(const Glib::ustring &oldname,
+                           const Glib::ustring &newname);
     bool closeOpenEditors();
     bool isProcessing();
 

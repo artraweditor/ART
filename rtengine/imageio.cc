@@ -42,6 +42,7 @@
 #include "iccjpeg.h"
 #include "imagedata.h"
 #include "settings.h"
+#include "utils.h"
 
 #include "rtjpeg.h"
 
@@ -86,6 +87,23 @@ FILE *g_fopen_withBinaryAndLock(const Glib::ustring &fname)
 
     return f;
 }
+
+// Closes the wrapped FILE* when going out of scope
+class FileCloser {
+public:
+    explicit FileCloser(FILE *f): f_(f) {}
+    ~FileCloser()
+    {
+        if (f_) {
+            ::fclose(f_);
+        }
+    }
+    FileCloser(const FileCloser &) = delete;
+    FileCloser &operator=(const FileCloser &) = delete;
+
+private:
+    FILE *f_;
+};
 
 } // namespace
 
@@ -132,7 +150,7 @@ int ImageIO::getPNGSampleFormat(const Glib::ustring &fname,
                                 IIOSampleFormat &sFormat,
                                 IIOSampleArrangement &sArrangement)
 {
-    FILE *file = g_fopen(fname.c_str(), "rb");
+    FILE *file = g_fopen_shared_read(fname);
 
     if (!file) {
         return IMIO_CANNOTREADFILE;
@@ -207,7 +225,7 @@ int ImageIO::getPNGSampleFormat(const Glib::ustring &fname,
 int ImageIO::loadPNG(const Glib::ustring &fname)
 {
 
-    FILE *file = g_fopen(fname.c_str(), "rb");
+    FILE *file = g_fopen_shared_read(fname);
 
     if (!file) {
         return IMIO_CANNOTREADFILE;
@@ -499,11 +517,15 @@ int ImageIO::loadJPEGFromMemory(const char *buffer, int bufsize)
 
 int ImageIO::loadJPEG(const Glib::ustring &fname, int maxw_hint, int maxh_hint)
 {
-    FILE *file = g_fopen(fname.c_str(), "rb");
+    FILE *file = g_fopen_shared_read(fname);
 
     if (!file) {
         return IMIO_CANNOTREADFILE;
     }
+
+    // make sure the file is closed on all the exit paths below, including the
+    // error ones (see issue #398)
+    FileCloser file_closer(file);
 
     jpeg_decompress_struct cinfo;
     rt_jpeg_error_mgr jerr;
@@ -595,7 +617,6 @@ int ImageIO::loadJPEG(const Glib::ustring &fname, int maxw_hint, int maxh_hint)
 
         jpeg_finish_decompress(&cinfo);
         jpeg_destroy_decompress(&cinfo);
-        fclose(file);
 
         if (pl) {
             pl->setProgressStr("PROGRESSBAR_READY");
@@ -774,11 +795,19 @@ int ImageIO::loadTIFF(const Glib::ustring &fname)
     }
 
     IMFILE *src = fopen(fname.c_str());
+
+    if (src == nullptr) {
+        return IMIO_CANNOTREADFILE;
+    }
+
     TIFF *in = TIFFClientOpen(fname.c_str(), "r", static_cast<thandle_t>(src),
                               tiff_Read, tiff_Write, tiff_Seek, tiff_Close,
                               tiff_Size, tiff_Map, tiff_Unmap);
 
     if (in == nullptr) {
+        // TIFFClientOpen didn't take ownership of src, so we have to release it
+        // ourselves (see issue #398)
+        fclose(src);
         return IMIO_CANNOTREADFILE;
     }
 
