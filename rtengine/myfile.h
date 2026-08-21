@@ -24,7 +24,6 @@
 #include <cstring>
 #include <glib/gstdio.h>
 struct IMFILE {
-    int fd;
     ssize_t pos;
     ssize_t size;
     char *data;

@@ -42,6 +42,10 @@ public:
 
     void load() const;
 
+    // Drops our reference to the (possibly cached) Exiv2::Image, together with
+    // its cache entry. The next accessor call reloads it from disk.
+    void release() const;
+
     Exiv2::ExifData &exifData()
     {
         return image_.get() ? image_->exifData() : exif_data_;
@@ -100,9 +104,14 @@ public:
                                     const std::string &data);
 
     // Drops any cached data for the given file. Call this before renaming or
-    // deleting a file, both so that the cached Exiv2::Image cannot be holding a
-    // handle on it (see issue #398) and because the entry would otherwise be
-    // left behind under the old name.
+    // deleting a file, so that the entry is not left behind under the old name.
+    //
+    // Note that this cannot release an Exiv2::Image that is still referenced
+    // elsewhere: an Exiv2Metadata living in an open editor holds a shared_ptr
+    // to the very same object (see load() below), so for the file that is
+    // currently being edited the cache entry is not the last owner. This is why
+    // source files are opened through rtengine::SharedReadIo instead, whose
+    // handles never prevent a rename or a delete (see exiv2io.h, issue #398).
     static void removeFromCache(const Glib::ustring &fname);
 
 private:

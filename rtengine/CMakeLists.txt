@@ -171,6 +171,8 @@ set(RTENGINESOURCEFILES
     compress.cc
     LUT3D.cc
     clutparams.cc
+    exiv2io.cc
+    win_fileinuse.cc
     )
 
 

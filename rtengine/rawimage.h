@@ -82,8 +82,16 @@ protected:
 
     bool use_internal_decoder_;
 #ifdef ART_USE_LIBRAW
+    // libraw_->open_buffer() keeps a LibRaw_buffer_datastream pointing into the
+    // IMFILE data, and libraw_ lives as long as this RawImage does, so the
+    // buffer has to outlive the IMFILE (issue #398). Declared before libraw_,
+    // so that it is destroyed after it.
+    std::unique_ptr<char[]> libraw_buffer_;
     std::unique_ptr<LibRaw> libraw_;
 #endif // ART_USE_LIBRAW
+
+    // Closes ifp, taking care of the buffer libraw may still be reading from
+    void close_ifp();
 
     int do_loadRaw(const Glib::ustring &fname, bool loadData,
                    unsigned int imageNum, bool closeFile,

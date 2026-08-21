@@ -47,10 +47,7 @@ RawImage::RawImage(const Glib::ustring &name)
 
 RawImage::~RawImage()
 {
-    if (ifp) {
-        fclose(ifp);
-        ifp = nullptr;
-    }
+    close_ifp();
 
     if (image && use_internal_decoder_) {
         free(image);
@@ -515,6 +512,27 @@ void RawImage::get_colorsCoeff(float *pre_mul_, float *scale_mul_,
     }
 }
 
+// Closes the raw file. libraw_->open_buffer() keeps a LibRaw_buffer_datastream
+// pointing into ifp->data, and libraw_ outlives the IMFILE, so when libraw is
+// the decoder in use we take the buffer over instead of letting fclose() free
+// it from under libraw's feet (issue #398).
+void RawImage::close_ifp()
+{
+    if (!ifp) {
+        return;
+    }
+
+#ifdef ART_USE_LIBRAW
+    if (libraw_ && !use_internal_decoder_) {
+        libraw_buffer_.reset(ifp->data);
+        ifp->data = nullptr;
+    }
+#endif // ART_USE_LIBRAW
+
+    fclose(ifp);
+    ifp = nullptr;
+}
+
 int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
                          unsigned int imageNum, bool closeFile,
                          ProgressListener *plistener, double progressRange,
@@ -526,7 +544,7 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
     oprof = nullptr;
 
     if (!ifp) {
-        ifp = gfopen(ifname); // Maps to either file map or direct fopen
+        ifp = gfopen(ifname); // reads the whole file into a heap buffer
     } else {
         fseek(ifp, 0, SEEK_SET);
     }
@@ -534,6 +552,17 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
     if (!ifp) {
         return 3;
     }
+
+    // several of the error returns below used to leak the IMFILE (issue #398)
+    struct Guard {
+        RawImage *ri;
+        ~Guard()
+        {
+            if (ri) {
+                ri->close_ifp();
+            }
+        }
+    } guard = {this};
 
     imfile_set_plistener(ifp, plistener, 0.9 * progressRange);
 
@@ -554,6 +583,9 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
 
 #ifdef ART_USE_LIBRAW
     libraw_.reset(new LibRaw());
+    // the old LibRaw is gone, so whatever buffer we were keeping alive for it
+    // can go too
+    libraw_buffer_.reset();
     {
         use_internal_decoder_ = false;
         libraw_->imgdata.params.use_camera_wb = 1;
@@ -738,8 +770,7 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
     const auto is_mosaic = isBayer() || isXtrans();
     if (!is_raw || (colors != 1 && colors != 3 &&
                     !(!is_mosaic && colors == 4 && !use_internal_decoder_))) {
-        fclose(ifp);
-        ifp = nullptr;
+        close_ifp();
 
         if (plistener) {
             plistener->setProgress(1.0 * progressRange);
@@ -1206,9 +1237,10 @@ int RawImage::do_loadRaw(const Glib::ustring &fname, bool loadData,
         }
     }
 
+    guard.ri = nullptr;
+
     if (closeFile) {
-        fclose(ifp);
-        ifp = nullptr;
+        close_ifp();
     }
 
     if (plistener) {
@@ -1508,7 +1540,9 @@ Image8 *RawImage::getThumbnail()
         return img;
     }
 #ifdef ART_USE_LIBRAW
-    if (!ifp) {
+    // the raw file may already be closed, but libraw can still work off the
+    // buffer we kept alive for it (issue #398)
+    if (!libraw_ || (!ifp && !libraw_buffer_)) {
         return nullptr;
     } else {
         int err = libraw_->unpack_thumb();

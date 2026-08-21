@@ -19,6 +19,7 @@
  */
 #include "../rtengine/imagedata.h"
 #include "../rtengine/metadata.h"
+#include "../rtengine/win_fileinuse.h"
 #include "filecatalog.h"
 #include "filepanel.h"
 #include "multilangmgr.h"
@@ -31,6 +32,7 @@
 #include <glibmm/regex.h>
 #include <gtkmm.h>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <time.h>
 
@@ -1060,8 +1062,8 @@ void run_with_progress(const std::vector<FileBrowserEntry *> &args, Func func,
     done = true;
 }
 
-// Clears the OS error state, so that a later get_error_reason() cannot pick up
-// a stale value left over from an unrelated call
+// Clears the OS error state, so that a later os_error::capture() cannot pick
+// up a stale value left over from an unrelated call
 void clear_error_state()
 {
     errno = 0;
@@ -1070,16 +1072,42 @@ void clear_error_state()
 #endif
 }
 
-// Returns a human-readable description of the last failure, so that we can tell
-// the user *why* a rename or delete failed instead of just that it did
+// The OS error left behind by a failed file operation, captured at the call
+// site. On Windows GetLastError() is thread-global state that any later call --
+// down to a g_usleep() or one of glib's internal g_free()s -- can overwrite, so
+// reading it from the error reporting code is too late: that is why the first
+// attempt at issue #398 could only ever report "Permission denied", losing the
+// one value that says whether the file is held by another process (32), by a
+// mapped section (1224) or by an ACL (5).
+struct os_error {
+    int err;            // errno
+    unsigned long werr; // GetLastError(), always 0 outside Windows
+
+    os_error(): err(0), werr(0) {}
+
+    // Must be called immediately after the failing call, before anything else
+    // has had a chance to run
+    static os_error capture()
+    {
+        os_error e;
+#ifdef WIN32
+        e.werr = GetLastError();
+#endif
+        e.err = errno;
+        return e;
+    }
+};
+
+// Returns a human-readable description of a failure, so that we can tell the
+// user *why* a rename or delete failed instead of just that it did
 // (issue #398). On Windows the errno the CRT reports is far too coarse (EACCES
 // covers both "read-only file" and "some process has the file open"), so we
-// prefer GetLastError() there.
-Glib::ustring get_error_reason(int err)
+// prefer the Win32 code there.
+Glib::ustring get_error_reason(const os_error &e)
 {
 #ifdef WIN32
 
-    const DWORD werr = GetLastError();
+    const DWORD werr = e.werr;
 
     if (werr != ERROR_SUCCESS) {
         wchar_t *buf = nullptr;
@@ -1124,10 +1152,181 @@ Glib::ustring get_error_reason(int err)
 
 #endif // WIN32
 
-    if (err) {
-        return Glib::ustring(g_strerror(err));
+    if (e.err) {
+        return Glib::ustring(g_strerror(e.err));
     }
     return Glib::ustring();
+}
+
+// True if the failure looks like "somebody else has this file open", i.e. if it
+// is worth asking the OS who that somebody is
+bool is_sharing_error(const os_error &e)
+{
+#ifdef WIN32
+    switch (e.werr) {
+    case ERROR_SHARING_VIOLATION:
+    case ERROR_LOCK_VIOLATION:
+    case ERROR_USER_MAPPED_FILE:
+    case ERROR_ACCESS_DENIED:
+        return true;
+    default:
+        break;
+    }
+#endif
+    return e.err == EACCES || e.err == EBUSY || e.err == EPERM;
+}
+
+// Appends the list of processes that hold fname open to reason, so that a
+// failed rename or delete says *who* is in the way and not just that somebody
+// is (issue #398)
+Glib::ustring add_file_holders(const Glib::ustring &reason,
+                               const Glib::ustring &fname)
+{
+    const auto holders = rtengine::get_file_holders(fname);
+    const auto names = rtengine::format_file_holders(holders);
+
+    if (options.rtSettings.verbose && !names.empty()) {
+        std::cout << "\"" << fname << "\" is held by: " << names << std::endl;
+        for (const auto &h : holders) {
+            if (h.is_self) {
+                std::cout << "  we are holding it ourselves; our open files:"
+                          << std::endl;
+                for (const auto &f : rtengine::get_own_open_files()) {
+                    std::cout << "    " << f << std::endl;
+                }
+                break;
+            }
+        }
+    }
+
+    if (names.empty()) {
+        return reason;
+    }
+
+    const auto held = Glib::ustring::compose(M("FILE_IN_USE_BY"), names);
+    return reason.empty() ? held
+                          : Glib::ustring::compose("%1 %2", reason, held);
+}
+
+// Same as get_error_reason(), plus the list of processes holding fname open if
+// the failure looks like a sharing problem
+Glib::ustring get_error_reason(const os_error &e, const Glib::ustring &fname)
+{
+    auto reason = get_error_reason(e);
+    if (is_sharing_error(e)) {
+        reason = add_file_holders(reason, fname);
+    }
+    return reason;
+}
+
+#ifdef WIN32
+
+// The errno the rest of the code expects for a given Win32 error
+int win32_to_errno(unsigned long werr)
+{
+    switch (werr) {
+    case ERROR_NOT_SAME_DEVICE:
+        return EXDEV;
+    case ERROR_SHARING_VIOLATION:
+    case ERROR_LOCK_VIOLATION:
+    case ERROR_USER_MAPPED_FILE:
+    case ERROR_ACCESS_DENIED:
+        return EACCES;
+    case ERROR_FILE_NOT_FOUND:
+    case ERROR_PATH_NOT_FOUND:
+        return ENOENT;
+    case ERROR_ALREADY_EXISTS:
+    case ERROR_FILE_EXISTS:
+        return EEXIST;
+    default:
+        return EIO;
+    }
+}
+
+std::unique_ptr<wchar_t, GFreeFunc> to_wide(const Glib::ustring &s)
+{
+    return std::unique_ptr<wchar_t, GFreeFunc>(
+        reinterpret_cast<wchar_t *>(
+            g_utf8_to_utf16(s.c_str(), -1, nullptr, nullptr, nullptr)),
+        g_free);
+}
+
+#endif // WIN32
+
+// Renames src to dst. On Windows this calls MoveFileExW directly instead of
+// going through g_rename(), so that the Win32 error we report is the one the
+// rename itself produced and not whatever glib's internal g_free()s left behind.
+// MOVEFILE_REPLACE_EXISTING is what g_rename() itself passes, and we have to
+// pass it too: renaming a file also renames its sidecars, and the destination
+// sidecar can already be there. MOVEFILE_COPY_ALLOWED is deliberately *not*
+// set, again like g_rename(), because the EXDEV fallback in the caller relies
+// on a cross-volume move failing with ERROR_NOT_SAME_DEVICE.
+bool do_rename(const Glib::ustring &src, const Glib::ustring &dst, os_error &e)
+{
+    e = os_error();
+
+#ifdef WIN32
+
+    auto ws = to_wide(src);
+    auto wd = to_wide(dst);
+
+    if (!ws || !wd) {
+        e.err = EINVAL;
+        return false;
+    }
+
+    SetLastError(ERROR_SUCCESS);
+    if (MoveFileExW(ws.get(), wd.get(), MOVEFILE_REPLACE_EXISTING)) {
+        return true;
+    }
+    e.werr = GetLastError();
+    e.err = win32_to_errno(e.werr);
+    return false;
+
+#else
+
+    errno = 0;
+    if (::g_rename(src.c_str(), dst.c_str()) == 0) {
+        return true;
+    }
+    e = os_error::capture();
+    return false;
+
+#endif
+}
+
+// Deletes fname, saying why in reason if it fails. On Windows this calls
+// DeleteFileW directly, for the same reason do_rename() calls MoveFileExW.
+bool do_remove(const Glib::ustring &fname, Glib::ustring &reason)
+{
+    os_error e;
+
+#ifdef WIN32
+
+    auto wf = to_wide(fname);
+    if (!wf) {
+        e.err = EINVAL;
+    } else {
+        SetLastError(ERROR_SUCCESS);
+        if (DeleteFileW(wf.get())) {
+            return true;
+        }
+        e.werr = GetLastError();
+        e.err = win32_to_errno(e.werr);
+    }
+
+#else
+
+    clear_error_state();
+    if (::g_remove(fname.c_str()) == 0) {
+        return true;
+    }
+    e = os_error::capture();
+
+#endif
+
+    reason = get_error_reason(e, fname);
+    return false;
 }
 
 Glib::ustring get_error_message(const Glib::ustring &src,
@@ -1153,26 +1352,26 @@ void FileCatalog::copyMoveRequested(const std::vector<FileBrowserEntry *> &args,
                           Glib::ustring &reason) -> bool {
         reason.clear();
 
-        // Drop any cached metadata for the source, so that its Exiv2::Image (and
-        // the FileIo it owns) cannot be what makes the operation fail, and so
-        // that we don't keep a stale entry under the old name (issue #398)
+        // Drop the cached metadata for the source, so that we don't keep a
+        // stale entry under the old name (issue #398). Note that this does not
+        // release the Exiv2::Image itself if an open editor still references
+        // it, which is why source files are read through
+        // rtengine::SharedReadIo: our handles on them never deny a rename.
         rtengine::Exiv2Metadata::removeFromCache(s);
 
         if (move) {
             constexpr int max_attempts = 3;
-            int err = 0;
+            os_error e;
 
             for (int attempt = 0; attempt < max_attempts; ++attempt) {
-                clear_error_state();
-                if (::g_rename(s.c_str(), d.c_str()) == 0) {
+                if (do_rename(s, d, e)) {
                     return true;
                 }
-                err = errno;
                 // On Windows, AV scanners and the search indexer routinely keep
                 // a file open for a few hundred ms after it has been written,
                 // which makes the rename fail with a sharing violation. Give
                 // them a chance to let go before reporting an error.
-                if (err != EACCES && err != EBUSY) {
+                if (e.err != EACCES && e.err != EBUSY) {
                     break;
                 }
                 if (attempt + 1 < max_attempts) {
@@ -1180,16 +1379,14 @@ void FileCatalog::copyMoveRequested(const std::vector<FileBrowserEntry *> &args,
                 }
             }
 
-            if (err == EXDEV) {
+            if (e.err == EXDEV) {
                 try {
                     auto fs = Gio::File::create_for_path(s);
                     auto fd = Gio::File::create_for_path(d);
                     fs->copy(fd);
-                    clear_error_state();
-                    if (::g_remove(s.c_str()) == 0) {
+                    if (do_remove(s, reason)) {
                         return true;
                     }
-                    reason = get_error_reason(errno);
                     return false;
                 } catch (Glib::Error &exc) {
                     if (options.rtSettings.verbose) {
@@ -1200,7 +1397,7 @@ void FileCatalog::copyMoveRequested(const std::vector<FileBrowserEntry *> &args,
                 }
             }
 
-            reason = get_error_reason(err);
+            reason = get_error_reason(e, s);
             return false;
         } else {
             try {
@@ -1233,37 +1430,55 @@ void FileCatalog::copyMoveRequested(const std::vector<FileBrowserEntry *> &args,
 
         const auto func = [&](FileBrowserEntry *e) -> void {
             get_targets(params, e, torename);
+            // the first target is the image itself, the rest are its sidecars
             bool first = true;
+            bool main_ok = false;
+            Glib::ustring main_src, main_dst;
+
             for (auto &p : torename) {
                 Glib::ustring reason;
                 auto destdir = Glib::path_get_dirname(p.second);
                 clear_error_state();
                 bool ok = (::g_mkdir_with_parents(destdir.c_str(), 0755) == 0);
+                const auto mkdir_err = os_error::capture();
                 if (!ok) {
-                    reason = get_error_reason(errno);
+                    reason = get_error_reason(mkdir_err);
                 } else {
                     ok = doit(p.first, p.second, reason);
                 }
 
-                if (ok) {
-                    if (first && move) {
-                        cacheMgr->renameEntry(p.first, e->thumbnail->getMD5(),
-                                              p.second);
-                        // keep an editor that has this file open in sync with
-                        // its new name
-                        if (auto *w = filepanel->getParent()) {
-                            w->renameEditorPanel(p.first, p.second);
-                        }
-                        if (is_session) {
-                            session_add.push_back(p.second);
-                            session_rem.push_back(p.first);
-                        }
-                    }
-                } else {
+                if (!ok) {
                     filepanel->getParent()->error(
                         get_error_message(p.first, p.second, reason, move));
+                    if (first) {
+                        // the image stayed where it was, so leave its sidecars
+                        // alone rather than orphaning them under the new name
+                        break;
+                    }
+                } else if (first && move) {
+                    main_ok = true;
+                    main_src = p.first;
+                    main_dst = p.second;
                 }
                 first = false;
+            }
+
+            // Only now that every file of this entry has been moved:
+            // renameEntry() makes an open Thumbnail write its parameters out
+            // under the new name, so doing this inside the loop would create
+            // the new .arp before we get to renaming the old one over it
+            if (main_ok) {
+                cacheMgr->renameEntry(main_src, e->thumbnail->getMD5(),
+                                      main_dst);
+                // keep an editor that has this file open in sync with its new
+                // name
+                if (auto *w = filepanel->getParent()) {
+                    w->renameEditorPanel(main_src, main_dst);
+                }
+                if (is_session) {
+                    session_add.push_back(main_dst);
+                    session_rem.push_back(main_src);
+                }
             }
         };
 
@@ -1335,6 +1550,7 @@ void FileCatalog::deleteRequested(const std::vector<FileBrowserEntry *> &tbe,
             std::vector<Glib::ustring> session_rem;
 
             options.renaming.sidecars = sidecars.get_text();
+            bool delete_failed = false;
 
             // for (unsigned int i = 0; i < tbe.size(); i++) {
             const auto func = [&](FileBrowserEntry *e) -> void {
@@ -1344,11 +1560,26 @@ void FileCatalog::deleteRequested(const std::vector<FileBrowserEntry *> &tbe,
                 delete fileBrowser->delEntry(fname);
                 // remove from cache
                 cacheMgr->deleteEntry(fname);
-                // release any handle the metadata cache might still hold on the
-                // file (issue #398)
+                // drop the cached metadata for the file (issue #398)
                 rtengine::Exiv2Metadata::removeFromCache(fname);
                 // delete from file system
-                ::g_remove(fname.c_str());
+                Glib::ustring reason;
+                if (!do_remove(fname, reason)) {
+                    // say why, and who is holding the file, instead of failing
+                    // silently (issue #398)
+                    delete_failed = true;
+                    Glib::ustring msg;
+                    if (reason.empty()) {
+                        msg = Glib::ustring::compose(
+                            M("FILEBROWSER_DELETE_ERROR"), fname);
+                    } else {
+                        msg = Glib::ustring::compose(
+                            M("FILEBROWSER_DELETE_ERROR_REASON"), fname,
+                            reason);
+                    }
+                    filepanel->getParent()->error(msg);
+                    return;
+                }
                 // delete also the arp sidecar
                 ::g_remove(options.getParamFile(fname).c_str());
 
@@ -1383,6 +1614,10 @@ void FileCatalog::deleteRequested(const std::vector<FileBrowserEntry *> &tbe,
             _refreshProgressBar();
             if (is_session) {
                 art::session::remove(session_rem);
+            } else if (delete_failed) {
+                // some of the files are still on disk: put them back in the
+                // browser instead of pretending they are gone
+                reparseDirectory();
             } else {
                 redrawAll();
             }

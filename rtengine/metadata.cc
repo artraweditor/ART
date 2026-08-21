@@ -30,6 +30,7 @@
 #include "../rtgui/pathutils.h"
 #include "../rtgui/version.h"
 #include "cJSON.h"
+#include "exiv2io.h"
 #include "imagedata.h"
 #include "metadata.h"
 #include "settings.h"
@@ -76,27 +77,57 @@ private:
 
 constexpr size_t IMAGE_CACHE_SIZE = 200;
 
-std::unique_ptr<Exiv2::Image> open_exiv2(const Glib::ustring &fname,
-                                         bool check_exif)
+void throw_exiv2_error(const std::string &msg)
 {
-#if defined WIN32 && defined EXV_UNICODE_PATH && !defined ART_WIN32_UCRT
-    std::wstring wfname = subprocess::to_wstr(fname);
-    auto image = Exiv2::ImageFactory::open(wfname);
-#else
-    auto image = Exiv2::ImageFactory::open(Glib::filename_from_utf8(fname));
-#endif
-    image->readMetadata();
-    if (!image->good() || (check_exif && image->exifData().empty())) {
 #if EXIV2_TEST_VERSION(0, 28, 0)
-        auto error_code = Exiv2::ErrorCode::kerErrorMessage;
+    auto error_code = Exiv2::ErrorCode::kerErrorMessage;
 #elif EXIV2_TEST_VERSION(0, 27, 0)
-        auto error_code = Exiv2::kerErrorMessage;
+    auto error_code = Exiv2::kerErrorMessage;
 #else
-        auto error_code = 1;
+    auto error_code = 1;
 #endif
-        throw Exiv2::Error(error_code, "exiv2: invalid image");
+    throw Exiv2::Error(error_code, msg);
+}
+
+// Opens fname with exiv2. Unless writable is set -- which is only the case for
+// the output files we have just written ourselves -- the file is read through
+// rtengine::SharedReadIo rather than exiv2's own FileIo, so that having looked
+// at a file never prevents it from being renamed or deleted afterwards. See
+// rtengine/exiv2io.h and issue #398.
+std::unique_ptr<Exiv2::Image> open_exiv2(const Glib::ustring &fname,
+                                         bool check_exif,
+                                         bool writable = false)
+{
+    std::unique_ptr<Exiv2::Image> ret;
+
+    if (writable) {
+#if defined WIN32 && defined EXV_UNICODE_PATH && !defined ART_WIN32_UCRT
+        std::wstring wfname = subprocess::to_wstr(fname);
+        auto image = Exiv2::ImageFactory::open(wfname);
+#else
+        auto image =
+            Exiv2::ImageFactory::open(Glib::filename_from_utf8(fname));
+#endif
+        ret.reset(image.release());
+    } else {
+        auto io = make_shared_read_io(fname);
+#if EXIV2_TEST_VERSION(0, 28, 0)
+        auto image = Exiv2::ImageFactory::open(std::move(io));
+#else
+        auto image = Exiv2::ImageFactory::open(io);
+#endif
+        // unlike the path-based overload, this one reports an unrecognised
+        // file by returning nothing instead of throwing
+        ret.reset(image.release());
+        if (!ret.get()) {
+            throw_exiv2_error("exiv2: unknown image type");
+        }
     }
-    std::unique_ptr<Exiv2::Image> ret(image.release());
+
+    ret->readMetadata();
+    if (!ret->good() || (check_exif && ret->exifData().empty())) {
+        throw_exiv2_error("exiv2: invalid image");
+    }
     return ret;
 }
 
@@ -412,6 +443,12 @@ void Exiv2Metadata::removeFromCache(const Glib::ustring &fname)
     }
 }
 
+void Exiv2Metadata::release() const
+{
+    image_.reset();
+    removeFromCache(src_);
+}
+
 void Exiv2Metadata::load() const
 {
     if (!src_.empty() && !image_.get() &&
@@ -510,7 +547,9 @@ void Exiv2Metadata::do_merge_xmp(Exiv2::Image *dst, bool keep_all) const
 void Exiv2Metadata::saveToImage(ProgressListener *pl, const Glib::ustring &path,
                                 bool preserve_all_tags) const
 {
-    auto dst = open_exiv2(path, false);
+    // the destination is an output file we have just produced, and we are about
+    // to write to it, so it has to go through exiv2's own read/write FileIo
+    auto dst = open_exiv2(path, false, true);
     if (image_.get()) {
         dst->setIptcData(image_->iptcData());
         dst->setXmpData(image_->xmpData());
@@ -853,7 +892,8 @@ void Exiv2Metadata::embedProcParamsData(const Glib::ustring &fname,
                                         const std::string &data)
 {
     try {
-        auto img = open_exiv2(fname, false);
+        // we are about to write to fname, so this one needs a writable io
+        auto img = open_exiv2(fname, false, true);
         img->xmpData()["Xmp.ART.arp"] = data;
         img->writeMetadata();
     } catch (std::exception &exc) {

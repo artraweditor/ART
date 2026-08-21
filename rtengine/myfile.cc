@@ -21,109 +21,22 @@
 #include <cstdarg>
 #include <glibmm.h>
 
-// get mmap() sorted out
-#ifdef MYFILE_MMAP
+// Note: this used to have a memory-mapped variant, guarded by MYFILE_MMAP. No
+// build ever defined that macro, and on Windows a live MapViewOfFile() makes
+// renaming or deleting the file fail with ERROR_USER_MAPPED_FILE whatever the
+// sharing flags on the handle are (issue #398), so the variant is gone: we
+// always read the whole file into a heap buffer and close it right away. (The
+// remaining #ifdef MYFILE_MMAP blocks in dcraw.cc and fujicompressed.cc are
+// dead code for the same reason.)
 
-#ifdef WIN32
+namespace {
 
-#include <windows.h>
-#include <fcntl.h>
-
-// dummy values
-#define MAP_PRIVATE 1
-#define PROT_READ 1
-#define MAP_FAILED (void *)-1
-
-#ifdef __GNUC__ // silence warning
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#endif
-
-void *mmap(void *start, size_t length, int prot, int flags, int fd,
-           off_t offset)
+IMFILE *read_whole_file(const char *fname)
 {
-    HANDLE handle = CreateFileMapping((HANDLE)_get_osfhandle(fd), NULL,
-                                      PAGE_WRITECOPY, 0, 0, NULL);
-
-    if (handle != NULL) {
-        start = MapViewOfFile(handle, FILE_MAP_COPY, 0, offset, length);
-        CloseHandle(handle);
-        return start;
-    }
-
-    return MAP_FAILED;
-}
-
-int munmap(void *start, size_t length)
-{
-    UnmapViewOfFile(start);
-    return 0;
-}
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-#else // WIN32
-
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
-#endif // WIN32
-#endif // MYFILE_MMAP
-
-#ifdef MYFILE_MMAP
-
-IMFILE *fopen(const char *fname)
-{
-    // Opens the file with FILE_SHARE_DELETE and a non-inheritable handle on
-    // Windows, so that keeping it mmap'd never blocks a rename or delete of the
-    // file (see issue #398).
-    int fd = rtengine::g_open_shared_read(fname);
-
-    if (fd < 0) {
-        return nullptr;
-    }
-
-    struct stat stat_buffer;
-
-    if (fstat(fd, &stat_buffer) < 0) {
-        printf("no stat\n");
-        close(fd);
-        return nullptr;
-    }
-
-    void *data =
-        mmap(nullptr, stat_buffer.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-    if (data == MAP_FAILED) {
-        printf("no mmap %s\n", fname);
-        close(fd);
-        return nullptr;
-    }
-
-    IMFILE *mf = new IMFILE;
-
-    memset(mf, 0, sizeof(*mf));
-    mf->fd = fd;
-    mf->pos = 0;
-    mf->size = stat_buffer.st_size;
-    mf->data = (char *)data;
-    mf->eof = false;
-
-    return mf;
-}
-
-IMFILE *gfopen(const char *fname) { return fopen(fname); }
-#else
-
-IMFILE *fopen(const char *fname)
-{
-
     FILE *f = rtengine::g_fopen_shared_read(fname);
 
     if (!f) {
-        return NULL;
+        return nullptr;
     }
 
     IMFILE *mf = new IMFILE;
@@ -140,36 +53,17 @@ IMFILE *fopen(const char *fname)
     return mf;
 }
 
-IMFILE *gfopen(const char *fname)
-{
+} // namespace
 
-    FILE *f = rtengine::g_fopen_shared_read(fname);
+IMFILE *fopen(const char *fname) { return read_whole_file(fname); }
 
-    if (!f) {
-        return NULL;
-    }
-
-    IMFILE *mf = new IMFILE;
-    memset(mf, 0, sizeof(*mf));
-    fseek(f, 0, SEEK_END);
-    mf->size = ftell(f);
-    mf->data = new char[mf->size];
-    fseek(f, 0, SEEK_SET);
-    fread(mf->data, 1, mf->size, f);
-    fclose(f);
-    mf->pos = 0;
-    mf->eof = false;
-
-    return mf;
-}
-#endif // MYFILE_MMAP
+IMFILE *gfopen(const char *fname) { return read_whole_file(fname); }
 
 IMFILE *fopen(unsigned *buf, ssize_t size)
 {
 
     IMFILE *mf = new IMFILE;
     memset(mf, 0, sizeof(*mf));
-    mf->fd = -1;
     mf->size = size;
     mf->data = new char[mf->size];
     memcpy((void *)mf->data, buf, size);
@@ -180,18 +74,7 @@ IMFILE *fopen(unsigned *buf, ssize_t size)
 
 void fclose(IMFILE *f)
 {
-#ifdef MYFILE_MMAP
-
-    if (f->fd == -1) {
-        delete[] f->data;
-    } else {
-        munmap((void *)f->data, f->size);
-        close(f->fd);
-    }
-
-#else
     delete[] f->data;
-#endif
     delete f;
 }
 
