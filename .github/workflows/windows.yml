@@ -54,12 +54,14 @@ jobs:
             export ART_COMPILER=gcc
             export ART_MSYS2_REPO=ucrt64
             export ART_PKG_PREFIX=mingw-w64-ucrt-x86_64
+            export ART_MSYS2_REPO_VER=1.0.1
           else
             export ART_COMPILER=clang
             export ART_MSYS2_REPO=clangarm64
             export ART_PKG_PREFIX=mingw-w64-clang-aarch64
+            export ART_MSYS2_REPO_VER=1.0
           fi
-          wget https://github.com/artraweditor/msys2-repo/releases/download/1.0/repo-${ART_MSYS2_REPO}.tar
+          wget https://github.com/artraweditor/msys2-repo/releases/download/${ART_MSYS2_REPO_VER}/repo-${ART_MSYS2_REPO}.tar
           tar xf repo-${ART_MSYS2_REPO}.tar
           echo "[options]" > /etc/pacman.conf
           echo "HoldPkg     = pacman" >> /etc/pacman.conf
