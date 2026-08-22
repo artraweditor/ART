@@ -18,25 +18,13 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef WIN32
-// We need InitializeProcThreadAttributeList/PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-// which require Windows Vista or later. This has to come before any header that
-// might pull in <windows.h>.
-#undef WINVER
-#define WINVER 0x0600
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#endif
-
 #include <giomm.h>
 #include <glib/gstdio.h>
 #include <iostream>
 #include <stdio.h>
 #include <unistd.h>
 
-#include <cstdlib>
 #include <set>
-#include <vector>
 
 #ifdef WIN32
 #include <windows.h>
@@ -133,97 +121,6 @@ struct HandleCloser {
     std::set<HANDLE> toclose;
 };
 
-// Restricts what a child process inherits to the handles it actually needs.
-//
-// Passing bInheritHandles = TRUE to CreateProcessW without a handle list gives
-// the child a copy of *every* inheritable handle in the process, including the
-// ones the CRT creates for the image files we have open. For a long-lived child
-// such as the exiftool "-stay_open" worker, that keeps those files locked for
-// the whole session, even after ART itself has closed them -- which is the
-// "must quit ART to delete the file" part of issue #398.
-class InheritList {
-public:
-    InheritList(): attrs_(nullptr) {}
-
-    ~InheritList()
-    {
-        if (attrs_) {
-            DeleteProcThreadAttributeList(
-                static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attrs_));
-            free(attrs_);
-        }
-    }
-
-    InheritList(const InheritList &) = delete;
-    InheritList &operator=(const InheritList &) = delete;
-
-    // Registers a handle the child needs. Handles that cannot be made
-    // inheritable are silently dropped -- the child would not have got a usable
-    // copy of them anyway.
-    void add(HANDLE h)
-    {
-        if (h == nullptr || h == INVALID_HANDLE_VALUE) {
-            return;
-        }
-        DWORD flags = 0;
-        if (!GetHandleInformation(h, &flags)) {
-            return;
-        }
-        if (!(flags & HANDLE_FLAG_INHERIT) &&
-            !SetHandleInformation(h, HANDLE_FLAG_INHERIT,
-                                  HANDLE_FLAG_INHERIT)) {
-            return;
-        }
-        for (auto x : handles_) {
-            if (x == h) {
-                return; // already there (e.g. stdout == stderr)
-            }
-        }
-        handles_.push_back(h);
-    }
-
-    // Sets up si for CreateProcessW. Returns true if the child should be
-    // created with bInheritHandles = TRUE and EXTENDED_STARTUPINFO_PRESENT,
-    // false if it should inherit nothing at all.
-    bool build(STARTUPINFOEXW &si)
-    {
-        if (handles_.empty()) {
-            return false;
-        }
-
-        SIZE_T size = 0;
-        InitializeProcThreadAttributeList(nullptr, 1, 0, &size);
-        attrs_ = malloc(size);
-        if (!attrs_) {
-            return false;
-        }
-        auto *lst = static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attrs_);
-        if (!InitializeProcThreadAttributeList(lst, 1, 0, &size)) {
-            free(attrs_);
-            attrs_ = nullptr;
-            return false;
-        }
-        if (!UpdateProcThreadAttribute(lst, 0,
-                                       PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                                       handles_.data(),
-                                       handles_.size() * sizeof(HANDLE),
-                                       nullptr, nullptr)) {
-            DeleteProcThreadAttributeList(lst);
-            free(attrs_);
-            attrs_ = nullptr;
-            return false;
-        }
-
-        si.lpAttributeList = lst;
-        si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
-        return true;
-    }
-
-private:
-    std::vector<HANDLE> handles_;
-    void *attrs_;
-};
-
 } // namespace
 
 // Glib::spawn_sync opens a console window for command-line apps, I wasn't
@@ -269,11 +166,9 @@ void exec_sync(const Glib::ustring &workdir,
     }
 
     PROCESS_INFORMATION pi;
-    STARTUPINFOEXW six;
-    InheritList inherit;
+    STARTUPINFOW si;
 
-    ZeroMemory(&six, sizeof(STARTUPINFOEXW));
-    STARTUPINFOW &si = six.StartupInfo;
+    ZeroMemory(&si, sizeof(STARTUPINFOW));
     si.cb = sizeof(STARTUPINFOW);
     si.wShowWindow = SW_HIDE;
     if (out || err) {
@@ -281,9 +176,6 @@ void exec_sync(const Glib::ustring &workdir,
         si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
         si.hStdOutput = fds_from[1];
         si.hStdError = fds_from_e[1];
-        inherit.add(si.hStdInput);
-        inherit.add(si.hStdOutput);
-        inherit.add(si.hStdError);
     }
 
     std::wstring pth = to_wstr(argv[0]);
@@ -311,17 +203,9 @@ void exec_sync(const Glib::ustring &workdir,
         cmdline[s.size()] = 0;
     }
 
-    // only let the child inherit the handles it actually needs (issue #398)
-    DWORD creation_flags = CREATE_NO_WINDOW;
-    BOOL inherit_handles = FALSE;
-    if (inherit.build(six)) {
-        creation_flags |= EXTENDED_STARTUPINFO_PRESENT;
-        inherit_handles = TRUE;
-    }
-
     std::wstring wd = to_wstr(workdir);
-    if (!CreateProcessW(pth.c_str(), cmdline, nullptr, nullptr, inherit_handles,
-                        creation_flags, (LPVOID) nullptr,
+    if (!CreateProcessW(pth.c_str(), cmdline, nullptr, nullptr, TRUE,
+                        CREATE_NO_WINDOW, (LPVOID) nullptr,
                         wd.empty() ? nullptr : wd.c_str(), &si, &pi)) {
         delete[] cmdline;
         throw(error() << "impossible to create process");
@@ -395,7 +279,7 @@ public:
     std::set<HANDLE> toclose;
     SECURITY_ATTRIBUTES sa;
     PROCESS_INFORMATION pi;
-    STARTUPINFOEXW six;
+    STARTUPINFOW si;
     HANDLE child_in;
     HANDLE child_out;
 };
@@ -487,11 +371,9 @@ std::unique_ptr<SubprocessInfo> popen(const Glib::ustring &workdir,
     }
 
     PROCESS_INFORMATION &pi = data->pi;
-    STARTUPINFOEXW &six = data->six;
-    STARTUPINFOW &si = six.StartupInfo;
-    InheritList inherit;
+    STARTUPINFOW &si = data->si;
 
-    ZeroMemory(&six, sizeof(STARTUPINFOEXW));
+    ZeroMemory(&si, sizeof(STARTUPINFOW));
     si.cb = sizeof(STARTUPINFOW);
     si.wShowWindow = SW_HIDE;
     si.dwFlags = STARTF_USESTDHANDLES;
@@ -508,10 +390,6 @@ std::unique_ptr<SubprocessInfo> popen(const Glib::ustring &workdir,
         si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
         si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     }
-
-    inherit.add(si.hStdInput);
-    inherit.add(si.hStdOutput);
-    inherit.add(si.hStdError);
 
     std::wstring pth = to_wstr(argv[0]);
     if (search_in_path) {
@@ -538,17 +416,9 @@ std::unique_ptr<SubprocessInfo> popen(const Glib::ustring &workdir,
         cmdline[s.size()] = 0;
     }
 
-    // only let the child inherit the handles it actually needs (issue #398)
-    DWORD creation_flags = CREATE_NO_WINDOW;
-    BOOL inherit_handles = FALSE;
-    if (inherit.build(six)) {
-        creation_flags |= EXTENDED_STARTUPINFO_PRESENT;
-        inherit_handles = TRUE;
-    }
-
     std::wstring wd = to_wstr(workdir);
-    if (!CreateProcessW(pth.c_str(), cmdline, nullptr, nullptr, inherit_handles,
-                        creation_flags, (LPVOID) nullptr,
+    if (!CreateProcessW(pth.c_str(), cmdline, nullptr, nullptr, TRUE,
+                        CREATE_NO_WINDOW, (LPVOID) nullptr,
                         wd.empty() ? nullptr : wd.c_str(), &si, &pi)) {
         delete[] cmdline;
         throw(error() << "impossible to create process");

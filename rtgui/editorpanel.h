@@ -262,11 +262,8 @@ private:
 
     bool firstProcessingDone;
 
-    Thumbnail *openThm; // may get invalid on external delete event
-    // fallback for when openThm is gone: openThm is the authoritative source of
-    // the file name (it follows renames, see CacheManager::renameEntry), so use
-    // getFileName() rather than reading this directly
-    Glib::ustring fname;
+    Thumbnail *openThm;  // may get invalid on external delete event
+    Glib::ustring fname; // must be saved separately
 
     int selectedFrame;
 

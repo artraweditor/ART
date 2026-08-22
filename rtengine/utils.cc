@@ -27,12 +27,9 @@
 #include <iomanip>
 #include <sstream>
 
-#include <fcntl.h>
 #include <giomm.h>
 #include <glib/gstdio.h>
-#include <memory>
 #ifdef WIN32
-#include <io.h>
 #include <windows.h>
 #endif
 
@@ -334,76 +331,6 @@ std::string getMD5(const Glib::ustring &fname, bool extended)
 #endif
 
     return {};
-}
-
-int g_open_shared_read(const Glib::ustring &fname)
-{
-#ifdef WIN32
-
-    std::unique_ptr<wchar_t, GFreeFunc> wfname(
-        reinterpret_cast<wchar_t *>(
-            g_utf8_to_utf16(fname.c_str(), -1, NULL, NULL, NULL)),
-        g_free);
-    if (!wfname) {
-        return -1;
-    }
-
-    // FILE_SHARE_DELETE is the important bit: without it, holding this handle
-    // makes any rename or delete of the file fail with ERROR_SHARING_VIOLATION
-    // (reported as EACCES by _wrename). bInheritHandle is FALSE so that the
-    // handle is not duplicated into the child processes we spawn (e.g. the
-    // long-lived exiftool -stay_open worker), which would keep the file locked
-    // even after we closed it ourselves.
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = FALSE;
-
-    HANDLE hFile = CreateFileW(
-        wfname.get(), GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, &sa,
-        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (hFile == INVALID_HANDLE_VALUE) {
-        return -1;
-    }
-
-    int fd = _open_osfhandle(reinterpret_cast<intptr_t>(hFile),
-                             _O_RDONLY | _O_BINARY);
-    if (fd < 0) {
-        CloseHandle(hFile);
-        return -1;
-    }
-
-    return fd;
-
-#else
-
-    return ::g_open(fname.c_str(), O_RDONLY, 0);
-
-#endif
-}
-
-FILE *g_fopen_shared_read(const Glib::ustring &fname)
-{
-#ifdef WIN32
-
-    int fd = g_open_shared_read(fname);
-    if (fd < 0) {
-        return nullptr;
-    }
-
-    FILE *f = _fdopen(fd, "rb");
-    if (!f) {
-        _close(fd); // this also closes the underlying HANDLE
-    }
-    return f;
-
-#else
-
-    return ::g_fopen(fname.c_str(), "rb");
-
-#endif
 }
 
 std::string get_html_color(int r, int g, int b)

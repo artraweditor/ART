@@ -63,10 +63,6 @@ public:
     void addEditorPanel(EditorPanel *ep, const std::string &name);
     void remEditorPanel(EditorPanel *ep);
     bool selectEditorPanel(const std::string &name);
-    // Follows a rename of a file that is open in an editor, so that the tab
-    // label, the window title and our bookkeeping don't keep the old name
-    void renameEditorPanel(const Glib::ustring &oldname,
-                           const Glib::ustring &newname);
 
     void addBatchQueueJob(BatchQueueEntry *bqe, bool head = false);
     void addBatchQueueJobs(const std::vector<BatchQueueEntry *> &entries);

@@ -34,7 +34,6 @@
 #include "metadata.h"
 #include "settings.h"
 #include "subprocess.h"
-#include "utils.h"
 
 namespace rtengine {
 
@@ -400,16 +399,6 @@ Exiv2Metadata::Exiv2Metadata(const Glib::ustring &path)
 Exiv2Metadata::Exiv2Metadata(const Glib::ustring &path, bool merge_xmp_sidecar)
     : src_(path), merge_xmp_(merge_xmp_sidecar), image_(nullptr), rating_(0)
 {
-}
-
-void Exiv2Metadata::removeFromCache(const Glib::ustring &fname)
-{
-    if (cache_) {
-        cache_->remove(fname);
-    }
-    if (jsoncache_) {
-        jsoncache_->remove(fname);
-    }
 }
 
 void Exiv2Metadata::load() const
@@ -933,7 +922,7 @@ Exiv2Metadata::getExiftoolMakernotes(const Glib::ustring &fname)
     cJSON *root = nullptr;
     close(fd);
 
-    FILE *src = g_fopen_shared_read(outname);
+    FILE *src = g_fopen(outname.c_str(), "rb");
     if (src) {
         std::ostringstream data;
         int c;

@@ -1256,14 +1256,13 @@ void EditorPanel::close()
 
         // If the file was deleted somewhere, the openThm.descreaseRef delete
         // the object, but we don't know here
-        if (Glib::file_test(getFileName(), Glib::FILE_TEST_EXISTS)) {
+        if (Glib::file_test(fname, Glib::FILE_TEST_EXISTS)) {
             openThm->removeThumbnailListener(this);
             openThm->decreaseRef();
         }
     }
     if (openThm) {
         update_open_mark(openThm, false);
-        fname = openThm->getFileName(); // keep the fallback up to date
     }
     openThm = nullptr;
 }
@@ -1279,7 +1278,7 @@ void EditorPanel::saveProfile()
     }
 
     // If the file was deleted, do not generate ghost entries
-    if (Glib::file_test(getFileName(), Glib::FILE_TEST_EXISTS)) {
+    if (Glib::file_test(fname, Glib::FILE_TEST_EXISTS)) {
         ProcParams params;
         ipc->getParams(&params);
 
@@ -1297,18 +1296,19 @@ void EditorPanel::saveProfile()
 
 Glib::ustring EditorPanel::getShortName()
 {
-    const auto fn = getFileName();
-    return fn.empty() ? Glib::ustring() : Glib::ustring(Glib::path_get_basename(fn));
+    if (openThm) {
+        return Glib::path_get_basename(openThm->getFileName());
+    } else {
+        return "";
+    }
 }
 
 Glib::ustring EditorPanel::getFileName()
 {
     if (openThm) {
-        // openThm follows renames (see CacheManager::renameEntry), fname does
-        // not -- so always prefer it
         return openThm->getFileName();
     } else {
-        return fname;
+        return "";
     }
 }
 
@@ -1805,8 +1805,8 @@ bool EditorPanel::handleShortcutKey(GdkEventKey *event)
                 return true;
 
             case GDK_KEY_y: // synchronize filebrowser with image in Editor
-                if (!simpleEditor && fPanel && !getFileName().empty()) {
-                    fPanel->fileCatalog->selectImage(getFileName(), false);
+                if (!simpleEditor && fPanel && !fname.empty()) {
+                    fPanel->fileCatalog->selectImage(fname, false);
                     return true;
                 }
 
@@ -1814,8 +1814,8 @@ bool EditorPanel::handleShortcutKey(GdkEventKey *event)
 
             case GDK_KEY_x: // clear filters and synchronize filebrowser with
                             // image in Editor
-                if (!simpleEditor && fPanel && !getFileName().empty()) {
-                    fPanel->fileCatalog->selectImage(getFileName(), true);
+                if (!simpleEditor && fPanel && !fname.empty()) {
+                    fPanel->fileCatalog->selectImage(fname, true);
                     return true;
                 }
 
@@ -1842,7 +1842,7 @@ bool EditorPanel::handleShortcutKey(GdkEventKey *event)
             case GDK_KEY_b:
             case GDK_KEY_B:
                 if (!simpleEditor && catalogPane && catalogPane->is_visible() &&
-                    fPanel->fileCatalog->isSelected(getFileName())) {
+                    fPanel->fileCatalog->isSelected(fname)) {
                     // propagate this to fPanel, so that if there is a
                     // multiple selection all the selected thumbs get
                     // enqueued
@@ -1900,7 +1900,7 @@ bool EditorPanel::handleShortcutKey(GdkEventKey *event)
     if (shift) {
         switch (getKeyval(event)) {
         case GDK_KEY_F3: // open Previous image from Editor's perspective
-            if (!simpleEditor && fPanel && !getFileName().empty()) {
+            if (!simpleEditor && fPanel && !fname.empty()) {
                 EditorPanel::openPreviousEditorImage();
                 return true;
             }
@@ -1908,7 +1908,7 @@ bool EditorPanel::handleShortcutKey(GdkEventKey *event)
             break; // to avoid gcc complain
 
         case GDK_KEY_F4: // open next image from Editor's perspective
-            if (!simpleEditor && fPanel && !getFileName().empty()) {
+            if (!simpleEditor && fPanel && !fname.empty()) {
                 EditorPanel::openNextEditorImage();
                 return true;
             }
@@ -2171,7 +2171,7 @@ void EditorPanel::do_save_image(bool fast_export)
     saveAsDialog->set_default_size(options.saveAsDialogWidth,
                                    options.saveAsDialogHeight);
     saveAsDialog->setInitialFileName(lastSaveAsFileName);
-    saveAsDialog->setImagePath(getFileName());
+    saveAsDialog->setImagePath(fname);
 
     do {
         int result = saveAsDialog->run();
@@ -2366,27 +2366,25 @@ bool EditorPanel::saveImmediately(const Glib::ustring &filename,
 
 void EditorPanel::openPreviousEditorImage()
 {
-    const auto fn = getFileName();
-    if (!simpleEditor && fPanel && !fn.empty()) {
-        fPanel->fileCatalog->openNextPreviousEditorImage(fn, false,
+    if (!simpleEditor && fPanel && !fname.empty()) {
+        fPanel->fileCatalog->openNextPreviousEditorImage(fname, false,
                                                          NAV_PREVIOUS);
     }
 }
 
 void EditorPanel::openNextEditorImage()
 {
-    const auto fn = getFileName();
-    if (!simpleEditor && fPanel && !fn.empty()) {
-        fPanel->fileCatalog->openNextPreviousEditorImage(fn, false, NAV_NEXT);
+    if (!simpleEditor && fPanel && !fname.empty()) {
+        fPanel->fileCatalog->openNextPreviousEditorImage(fname, false,
+                                                         NAV_NEXT);
     }
 }
 
 void EditorPanel::syncFileBrowser() // synchronize filebrowser with image in
                                     // Editor
 {
-    const auto fn = getFileName();
-    if (!simpleEditor && fPanel && !fn.empty()) {
-        fPanel->fileCatalog->selectImage(fn, false);
+    if (!simpleEditor && fPanel && !fname.empty()) {
+        fPanel->fileCatalog->selectImage(fname, false);
     }
 }
 

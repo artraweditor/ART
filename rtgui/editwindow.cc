@@ -251,47 +251,6 @@ bool EditWindow::selectEditorPanel(const std::string &name)
     return false;
 }
 
-void EditWindow::renameEditorPanel(const Glib::ustring &oldname,
-                                   const Glib::ustring &newname)
-{
-    if (oldname == newname) {
-        return;
-    }
-
-    const auto it = epanels.find(oldname);
-
-    if (it == epanels.end()) {
-        return;
-    }
-
-    EditorPanel *ep = it->second;
-    epanels.erase(it);
-    epanels[newname] = ep;
-
-    filesEdited.erase(oldname);
-    filesEdited.insert(newname);
-    parent->fpanel->refreshEditedState(filesEdited);
-
-    // the tab label is a box with an icon, a Gtk::Label with the file name and
-    // a close button -- update the label in place
-    if (auto container =
-            dynamic_cast<Gtk::Container *>(mainNB->get_tab_label(*ep))) {
-        container->set_tooltip_markup(newname);
-        for (auto w : container->get_children()) {
-            if (auto lbl = dynamic_cast<Gtk::Label *>(w)) {
-                lbl->set_text(Glib::path_get_basename(newname));
-                break;
-            }
-        }
-    }
-
-    const int page = mainNB->get_current_page();
-
-    if (page >= 0 && mainNB->get_nth_page(page) == ep) {
-        set_title_decorated(newname);
-    }
-}
-
 void EditWindow::toFront()
 {
     // when using the secondary window on the same monitor as the primary window

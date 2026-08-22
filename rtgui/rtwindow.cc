@@ -844,66 +844,6 @@ bool RTWindow::selectEditorPanel(const std::string &name)
     return false;
 }
 
-namespace {
-
-// The tab label of an editor panel is a container with an icon, a Gtk::Label
-// with the file name and a close button -- update the label in place
-void update_tab_label(Gtk::Widget *tab, const Glib::ustring &name)
-{
-    auto container = dynamic_cast<Gtk::Container *>(tab);
-
-    if (!container) {
-        return;
-    }
-
-    container->set_tooltip_markup(name);
-
-    for (auto w : container->get_children()) {
-        if (auto lbl = dynamic_cast<Gtk::Label *>(w)) {
-            lbl->set_text(Glib::path_get_basename(name));
-            return;
-        }
-    }
-}
-
-} // namespace
-
-void RTWindow::renameEditorPanel(const Glib::ustring &oldname,
-                                 const Glib::ustring &newname)
-{
-    if (oldname == newname) {
-        return;
-    }
-
-    if (options.multiDisplayMode > 0) {
-        EditWindow::getInstance(this, false)->renameEditorPanel(oldname,
-                                                                newname);
-        return;
-    }
-
-    const auto it = epanels.find(oldname);
-
-    if (it == epanels.end()) {
-        return;
-    }
-
-    EditorPanel *ep = it->second;
-    epanels.erase(it);
-    epanels[newname] = ep;
-
-    filesEdited.erase(oldname);
-    filesEdited.insert(newname);
-    fpanel->refreshEditedState(filesEdited);
-
-    update_tab_label(mainNB->get_tab_label(*ep), newname);
-
-    const int page = mainNB->get_current_page();
-
-    if (page >= 0 && mainNB->get_nth_page(page) == ep) {
-        set_title_decorated(newname);
-    }
-}
-
 void RTWindow::quit()
 {
     if (!on_delete_event(nullptr)) {
