@@ -5,9 +5,9 @@ def download_sample():
     url = "https://www.rawsamples.ch/raws/nikon/d70/RAW_NIKON_D70.NEF"
     out_dir = "data/fivek_sample"
     out_file = os.path.join(out_dir, "sample1.nef")
-    
+
     os.makedirs(out_dir, exist_ok=True)
-    
+
     print(f"Downloading sample RAW to {out_file}...")
     try:
         urllib.request.urlretrieve(url, out_file)

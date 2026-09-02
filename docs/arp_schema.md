@@ -407,4 +407,3 @@ This document specifies the configuration groups and keys found in `.arp` files.
 
 ## [Spot Removal]
 - `Enabled`
-
