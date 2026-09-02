@@ -85,7 +85,7 @@
 ## 3. 기술 스택
 
 - **오케스트레이션**: LangGraph
-- **벡터DB**: Chroma / pgvector
+- **벡터DB**: Chroma
 - **파인튜닝**: KoBART, mBART 또는 NLLB — LoRA/PEFT (풀파인튜닝 대비 반복 실험 속도 우선)
 - **컴퓨트**: RunPod RTX PRO 6000 Blackwell
 - **렌더링 엔진**: ART-cli
