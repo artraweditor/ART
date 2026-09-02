@@ -62,7 +62,7 @@ AAART/
 - **C++11 / C11** — set globally via `-std=c++11`/`-std=c11` in CMake flags, not per target. GCC ≥4.9 required.
 - **Formatting:** `.clang-format` = LLVM base, IndentWidth 4, ColumnLimit 80, WebKit braces, no tabs, no short single-line if/loops.
 - **Build defaults:** `CMAKE_BUILD_TYPE` forced to Release when empty; `-DNDEBUG` in release, `-D_DEBUG` in debug. ccache auto-enabled if present.
-- **Options (defaults):** `OPTION_OMP`=ON, `ENABLE_MIMALLOC`=ON, `ENABLE_LIBRAW`=ON, `ENABLE_OCIO`=ON, `ENABLE_CTL`=OFF, `ENABLE_SIMDE`=OFF, `ENABLE_LCMS_FAST_FLOAT`=ON, `WITH_LTO`/`WITH_SAN`/`WITH_PROF`/`BUILD_SHARED`=OFF.
+- **Options (defaults):** `OPTION_OMP`=ON, `ENABLE_MIMALLOC`=ON (required on Linux unless `WITH_SAN`), `ENABLE_LIBRAW`=ON, `ENABLE_OCIO`=ON, `ENABLE_CTL`=OFF, `ENABLE_SIMDE`=OFF, `ENABLE_LCMS_FAST_FLOAT`=ON, `WITH_LTO`/`WITH_SAN`/`WITH_PROF`/`BUILD_SHARED`=OFF.
 - **Pipeline Python:** use the root Python 3.14 `venv/`; do not add `requirements.txt`. Scripts use argparse, docstrings, and a `main()` guard; Bash scripts use `set -e`.
 - **Pipeline dependencies:** install only when a consuming task needs them and record the installation then. Do not predeclare a package list, model, configuration loader, or file layout.
 - **Version coupling:** bump `PPVERSION` in `rtgui/ppversion.h` whenever the `.arp` format or tool behavior changes.
@@ -70,7 +70,7 @@ AAART/
 ## ANTI-PATTERNS
 
 - **NEVER build with `-ffast-math`** — it introduces artifacts; `rtgui/main.cc` and `rtgui/main-cli.cc` reject it.
-- **No x86 intrinsics in `rtengine/helpersse2.h` / `helperavx.h`** — use GCC vector extensions. The `#error` guards require `-msse2` / `-mavx`.
+- **No x86 intrinsics in `rtengine/helpersse2.h` / `helperavx.h`** — use GCC vector extensions (“Don't use intrinsics here”). The `#error` guards require `-msse2` / `-mavx`.
 - **Do not “fix” warnings in vendored code** — `dcraw.c`, `cJSON.c`, `canon_cr3_decoder.cc`, `klt/`, and `jpeg_ijg/` intentionally suppress warnings.
 - **No `floor()` in `LUT.h` hot paths** (negative-index truncation correctness); no `std::list` in `lcp.h`; do not call the functions marked “do not use in a loop” in `color.h` from loops.
 - **Do not use CameraCalibration matrices for DNGs** (`dcraw.cc`, #4129); do not reuse a `ProcessingJob` after destroy or while processing; `RefreshMapEvent` must not combine with other events.
@@ -82,15 +82,16 @@ AAART/
 ## UNIQUE STYLES
 
 - ART-cli argument parsing uses `processLineParams` with per-OS console handling in `main-cli.cc`; `printhelp.h` is the flag source of truth.
-- Theme retirement uses filename suffix `-DEPRECATED` matched in `rtgui/options.h`.
-- macOS/Windows GUI builds use `BUILD_BUNDLE`; Linux uses `bundle_ART.py` and AppImage.
-- CI build workflows trigger on version tags and `workflow_dispatch`; they do not run PR builds or CI tests. `mirror.yml` triggers on every push/delete. All platform builds produce x86_64 and arm64 artifacts.
+- Theme retirement uses filename suffix `-DEPRECATED` matched in `rtgui/options.h:83` and the `GENERAL_DEPRECATED` i18n string.
+- macOS/Windows GUI builds use `BUILD_BUNDLE`; Linux uses `bundle_ART.py` and AppImage, with `AppRun` dispatching `--cli` to ART-cli.
+- CI build workflows trigger on version tags matching `[1-9].[0-9]+` or `[1-9].[0-9]+.[0-9]+` and `workflow_dispatch`; they do not run PR builds or CI tests. `mirror.yml` triggers on every push/delete. All platform builds produce x86_64 and arm64 artifacts: Linux tar.xz+AppImage, macOS .dmg, Windows .exe+.7z.
 
 ## COMMANDS
 
 ```bash
 # GUI build (from repo root; creates build/)
 cmake -DCMAKE_BUILD_TYPE=Release -B build && cmake --build build -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc) --target art
+# → build/rtgui/ART
 
 # CLI-only build
 cmake --build build -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc) --target art-cli
@@ -119,6 +120,6 @@ python3 scripts/fetch_rawpedia.py -o data/rawpedia -s 50
 - No unit-test framework is wired into CMake; `rtengine/rtetest.cc` and `rtgui/test_guidedfilter.cpp` are manual harnesses.
 - `TODO.txt` at root is an in-flight scratchpad for profile-change/ParamsEdited refactoring and batch-mode CLI work.
 - `tools/` has its own `AGENTS.md` for bundling, release, and camera-data tooling.
-- `rtdata/` is mostly static data; its related conventions are documented in `rtgui/AGENTS.md`.
+- `rtdata/` is mostly static data; its related conventions are documented in `rtgui/AGENTS.md`. Theme `-DEPRECATED` retirement and per-OS `options.*` conventions live there.
 - Root JSONs (`camconst.json`, `dcraw.json`, `rt.json`, `wbpresets.json`) use C-style comments; strip comments before parsing.
-- `doc/manpage/ART.1` is stale; update `printhelp.h`, not the manpage, when CLI flags change.
+- `doc/manpage/ART.1` is stale (July 2019): it lacks `--make-icc`, `--check-lut`, `-Ttype`, `-f`, `-V`, `--progress`, and `-b<16f|32>`. Update `printhelp.h`, not the manpage, when CLI flags change.
