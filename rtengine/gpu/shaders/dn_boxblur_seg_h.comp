@@ -1,0 +1,35 @@
+#version 450
+
+// Horizontal half of a segmented separable box blur (direct form), one radius per segment for fused wavelet levels.
+
+#define MAX_SEGMENTS 24
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;        // rows per segment
+    uint segments;
+    int radius[MAX_SEGMENTS];
+} pc;
+
+void main()
+{
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y; // segment-major row
+    if (x >= pc.w || y >= pc.h * pc.segments) {
+        return;
+    }
+    int r = pc.radius[y / pc.h];
+    int x0 = max(int(x) - r, 0);
+    int x1 = min(int(x) + r, int(pc.w) - 1);
+    uint row = y * pc.w;
+    float s = 0.0;
+    for (int i = x0; i <= x1; ++i) {
+        s += src.v[row + uint(i)];
+    }
+    dst.v[row + x] = s / float(x1 - x0 + 1);
+}

@@ -1,0 +1,54 @@
+#version 450
+
+// Shrink, final stage: vertical box-blur half, recombined with the unblurred shrink factor and applied to
+// the coefficients in one pass (shared by luma and chroma shrinks; only the factor differs per channel).
+// coeff *= (sfaved^2 + sfave^2) / (sfaved + sfave + eps). Fuses the blur and recombination to avoid
+// materializing the blurred plane, since this stage is bandwidth- not arithmetic-bound.
+//
+// `sf` holds `segments` planes, `band` holds the full `levels`, but both are level-major from zero, so
+// a flat index y*w + x addresses both.
+
+#define MAX_SEGMENTS 24
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) readonly buffer BlurH { float v[]; } blurH;
+layout(std430, set = 0, binding = 1) readonly buffer Sf { float v[]; } sf;
+layout(std430, set = 0, binding = 2) buffer Band { float v[]; } band;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;        // rows per segment (one wavelet level plane)
+    uint segments;
+    int radius[MAX_SEGMENTS];
+    float eps;
+} pc;
+
+void main()
+{
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    if (x >= pc.w || y >= pc.h * pc.segments) {
+        return;
+    }
+    uint seg = y / pc.h;
+    int lr = int(y - seg * pc.h);
+    int r = pc.radius[seg];
+    /* Clamp within the segment: each is an independent level plane and must
+     * not blur into its neighbour. */
+    int y0 = max(lr - r, 0);
+    int y1 = min(lr + r, int(pc.h) - 1);
+
+    uint base = seg * pc.h * pc.w + x;
+    float s = 0.0;
+    for (int i = y0; i <= y1; ++i) {
+        s += blurH.v[base + uint(i) * pc.w];
+    }
+    float sfd = s / float(y1 - y0 + 1);
+
+    uint k = y * pc.w + x;
+    float a = sf.v[k];
+    band.v[k] *= (sfd * sfd + a * a) / (sfd + a + pc.eps);
+}

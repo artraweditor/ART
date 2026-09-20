@@ -1,0 +1,85 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Denoise phase 1a/1c fused: builds the quarter-resolution luma/chroma noise-variance maps the shrink passes read.
+// `lut` is NoiseCurve's rawData() verbatim (501 samples); LUTf's clip-below/clip-above out-of-range policy applies.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) readonly buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) readonly buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) readonly buffer P2 { float v[]; } p2;
+layout(std430, set = 0, binding = 3) readonly buffer Lut { float v[]; } lut;
+layout(std430, set = 0, binding = 4) writeonly buffer NL { float v[]; } nvlum;
+layout(std430, set = 0, binding = 5) writeonly buffer NC { float v[]; } nvchrom;
+
+// vec4 rows first: 16-byte alignment means leading uints would leave a hole the host struct doesn't have.
+layout(push_constant) uniform PC {
+    vec4 ws0;
+    vec4 ws1;
+    vec4 ws2;
+    uint w;              // W2 = (src width + 1) / 2
+    uint h;              // H2 = (src height + 1) / 2
+    uint stride;         // src row stride in floats == getRowStride() / 4
+    uint lutSize;        // NoiseCurve's rawData() element count
+    float noisevarL;     // flat luma term (DenoisePrep::noisevarL)
+    float maxNoiseVarab;  // max(noisevarab_r, noisevarab_b)
+    float cn100Precalc;  // the CPU's own cn <= 100 constant, not re-derived
+} pc;
+
+#include "include/art_color.glsl"
+
+// LUT<float>::operator[](float): truncate toward the sample below, clip both ends (NoiseCurve's default flags).
+// `index` is never negative here, so the clip-below branch is defensive, not reachable.
+float lut_lookup(float index)
+{
+    float clamped = max(index, 0.0);
+    float maxsf = float(pc.lutSize) - 2.0;
+    if (clamped > maxsf) {
+        return lut.v[pc.lutSize - 1u];
+    }
+    int idx = int(clamped);
+    float diff = clamped - float(idx);
+    float p1v = lut.v[idx];
+    float p2v = lut.v[idx + 1] - p1v;
+    return p1v + p2v * diff;
+}
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint si = g.y * 2u;
+    const uint sj = g.x * 2u;
+    const uint s = si * pc.stride + sj;
+
+    const vec3 rgb = vec3(p0.v[s], p1.v[s], p2.v[s]);
+    vec3 xyz = art_mat3_row_mul(pc.ws0, pc.ws1, pc.ws2, rgb);
+
+    // art_xyz2lab leaves the D50 white-point normalization to its caller.
+    xyz.x /= 0.9642;   // Color::D50x
+    xyz.z /= 0.8249;   // Color::D50z
+
+    float L, a, b;
+    art_xyz2lab(xyz, L, a, b);
+
+    const float cN = sqrt(a * a + b * b);
+
+    // cN <= 100: use the CPU's precalculated constant, not a lookup (matches ipdenoise.cc's ccalc exactly).
+    float ccalcVal;
+    if (cN > 100.0) {
+        const float lutval = lut_lookup(cN / 60.0);
+        const float t = 1.0 + 4.0 * lutval;
+        ccalcVal = t * t;
+    } else {
+        ccalcVal = pc.cn100Precalc;
+    }
+
+    const uint o = g.y * pc.w + g.x;
+    nvlum.v[o] = pc.noisevarL;
+    nvchrom.v[o] = pc.maxNoiseVarab * ccalcVal;
+}

@@ -26,6 +26,7 @@
 #include "metadata.h"
 #include "mytime.h"
 #include "perspectivecorrection.h"
+#include "pipelineprofile.h"
 #include "refreshmap.h"
 #include "threadpool.h"
 #include <fstream>
@@ -146,6 +147,8 @@ void ImProcCoordinator::restoreParams() { params = paramsBackup; }
 // used
 void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
 {
+    ART_PIPELINE_TIME_REPORT("preview");
+
     // mProcessing is locked by process(), our only caller, for the whole call
     // (see there) -- it used to be locked here instead, but that put it inside
     // mTweak's scope there, which could deadlock against Crop::fullUpdate()'s
@@ -156,6 +159,7 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
     DCPProfile *dcpProf = imgsrc->getDCP(params.icm, dcpApplyState);
     ipf.setDCPProfile(dcpProf, dcpApplyState);
     ipf.setViewport(0, 0, -1, -1);
+    ipf.setPipeline(ImProcFunctions::Pipeline::NAVIGATOR);
     ipf.setOutputHistograms(&histToneCurve, &histCCurve, &histLCurve);
 
     if (todo == CROP && ipf.needsPCVignetting()) {
@@ -441,17 +445,10 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 drcomp_11_dcrop_cache = nullptr;
             }
 
-            pipeline_stop_[0] = ipf.process(
-                ImProcFunctions::Pipeline::NAVIGATOR,
-                ImProcFunctions::Stage::STAGE_0, oprevi); // orig_prev);
-
-            // if (oprevi != orig_prev) {
-            //     delete oprevi;
-            // }
+            pipeline_stop_[0] =
+                ipf.process(ImProcFunctions::Stage::STAGE_0, oprevi);
         }
         stop = pipeline_stop_[0];
-
-        // oprevi = orig_prev;
 
         progress("Rotate / Distortion...", 100 * readyphase / numofphases);
         // Remove transformation if unneeded
@@ -525,8 +522,7 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 oprevi->copyTo(bufs_[0]);
                 pipeline_stop_[1] =
                     stop ||
-                    ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                ImProcFunctions::Stage::STAGE_1, bufs_[0]);
+                    ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
             }
 
             // compute L channel histogram
@@ -540,16 +536,14 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
         if (todo & M_LUMACURVE) {
             bufs_[0]->copyTo(bufs_[1]);
             pipeline_stop_[2] =
-                stop || ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                    ImProcFunctions::Stage::STAGE_2, bufs_[1]);
+                stop || ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
         }
         stop = stop || pipeline_stop_[2];
 
         if (todo & (M_LUMINANCE | M_COLOR)) {
             bufs_[1]->copyTo(bufs_[2]);
             pipeline_stop_[3] =
-                stop || ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                    ImProcFunctions::Stage::STAGE_3, bufs_[2]);
+                stop || ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
         }
         stop = stop || pipeline_stop_[3];
 
@@ -593,6 +587,18 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 // from WCS->Output profile
                 delete workimg;
                 workimg = ipf.rgb2out(bufs_[2], 0, 0, pW, pH, params.icm);
+
+                /* Worker -> GUI handoff barrier.  bufs_[2] is read after this
+                 * point by the scope panels (updateLRGBHistograms below, and
+                 * updateWaveforms, via bufs_[2]->getLab), which also run from
+                 * the GTK thread through requestUpdateHistogram() et al.
+                 * without holding mProcessing.  Publishing it CPU-resident here,
+                 * while the lock IS held, keeps those readers off the residency
+                 * state entirely -- their per-pixel getLab() sync becomes a
+                 * branch instead of a device download inside an OpenMP region.
+                 *
+                 * Free: the two conversions above have already forced it. */
+                bufs_[2]->syncCpu();
             } catch (char *str) {
                 progress("Error converting file...", 0);
                 return;

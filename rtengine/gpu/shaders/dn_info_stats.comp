@@ -1,0 +1,67 @@
+#version 450
+
+// Denoise auto-chrominance analysis step 3: reduces the three noisevar maps to scene statistics (ShrinkAll_info's lvl==1 block, ipdenoise.cc:825).
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer NL { float v[]; } nvlum;
+layout(std430, set = 0, binding = 1) readonly buffer NC { float v[]; } nvchrom;
+layout(std430, set = 0, binding = 2) readonly buffer NH { float v[]; } nvhue;
+layout(std430, set = 0, binding = 3) writeonly buffer Out { float v[]; } part;
+
+layout(push_constant) uniform PC {
+    uint n;
+} pc;
+
+// chro, lume, red_yel, nry, skin_c, nsk -- in that order, and the host reads them in that order. The
+// CPU's dev/devL accumulators are dropped: their only consumers (sigma/sigma_L) are never read
+// (ipdenoise.cc:966,982), and reproducing that running-mean recurrence would need a prefix scan.
+#define DN_INFO_ACC 6
+
+shared float sdata[DN_INFO_ACC * 256];
+
+void main()
+{
+    const uint tid = gl_LocalInvocationID.x;
+    const uint gid = gl_GlobalInvocationID.x;
+
+    float acc[DN_INFO_ACC] = float[DN_INFO_ACC](0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
+    if (gid < pc.n) {
+        const float c = nvchrom.v[gid];
+        const float hue = nvhue.v[gid];
+        acc[0] = c;
+        acc[1] = nvlum.v[gid];
+        if (hue > -0.8 && hue < 2.0 && c > 10000.0) {   // saturated red/yellow
+            acc[2] = c;
+            acc[3] = 1.0;
+        }
+        if (hue > 0.0 && hue < 1.6 && c < 10000.0) {    // skin
+            acc[4] = c;
+            acc[5] = 1.0;
+        }
+    }
+
+    for (uint k = 0u; k < uint(DN_INFO_ACC); ++k) {
+        sdata[k * 256u + tid] = acc[k];
+    }
+    barrier();
+
+    for (uint s = LX / 2u; s > 0u; s >>= 1u) {
+        if (tid < s) {
+            for (uint k = 0u; k < uint(DN_INFO_ACC); ++k) {
+                sdata[k * 256u + tid] += sdata[k * 256u + tid + s];
+            }
+        }
+        barrier();
+    }
+
+    if (tid == 0u) {
+        // One partial sum per workgroup, finished on the host: a few thousand floats isn't worth a second submission.
+        const uint base = gl_WorkGroupID.x * uint(DN_INFO_ACC);
+        for (uint k = 0u; k < uint(DN_INFO_ACC); ++k) {
+            part.v[base + k] = sdata[k * 256u];
+        }
+    }
+}

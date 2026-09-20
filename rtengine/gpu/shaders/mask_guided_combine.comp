@@ -1,0 +1,59 @@
+#version 450
+
+// Guided filter final step (guidedfilter.cc:222-239): bilinear-upsample meanA/meanB to full res and combine with guide in one pass.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer MeanA { float v[]; } meanA;
+layout(std430, set = 0, binding = 1) readonly buffer MeanB { float v[]; } meanB;
+layout(std430, set = 0, binding = 2) readonly buffer Guide { float v[]; } guide;
+layout(std430, set = 0, binding = 3) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint ws;   // meanA/meanB width
+    uint hs;
+    uint wd;   // guide/dst width (full resolution)
+    uint hd;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.wd || g.y >= pc.hd) {
+        return;
+    }
+    float col_scale = float(pc.ws) / float(pc.wd);
+    float row_scale = float(pc.hs) / float(pc.hd);
+    float x = float(g.x) * col_scale;
+    float y = float(g.y) * row_scale;
+
+    int Ws = int(pc.ws);
+    int Hs = int(pc.hs);
+    int xi = min(int(x), Ws - 1);
+    int yi = min(int(y), Hs - 1);
+    float xf = x - float(xi);
+    float yf = y - float(yi);
+    int xi1 = min(xi + 1, Ws - 1);
+    int yi1 = min(yi + 1, Hs - 1);
+
+    float a_bl = meanA.v[yi * Ws + xi];
+    float a_br = meanA.v[yi * Ws + xi1];
+    float a_tl = meanA.v[yi1 * Ws + xi];
+    float a_tr = meanA.v[yi1 * Ws + xi1];
+    float a_bot = xf * a_br + (1.0 - xf) * a_bl;
+    float a_top = xf * a_tr + (1.0 - xf) * a_tl;
+    float a = yf * a_top + (1.0 - yf) * a_bot;
+
+    float b_bl = meanB.v[yi * Ws + xi];
+    float b_br = meanB.v[yi * Ws + xi1];
+    float b_tl = meanB.v[yi1 * Ws + xi];
+    float b_tr = meanB.v[yi1 * Ws + xi1];
+    float b_bot = xf * b_br + (1.0 - xf) * b_bl;
+    float b_top = xf * b_tr + (1.0 - xf) * b_tl;
+    float b = yf * b_top + (1.0 - yf) * b_bot;
+
+    uint od = g.y * pc.wd + g.x;
+    dst.v[od] = a * guide.v[od] + b;
+}

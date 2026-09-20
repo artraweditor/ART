@@ -24,6 +24,7 @@
 #include "iccstore.h"
 #include "imagesource.h"
 #include "improcfun.h"
+#include "pipelineprofile.h"
 #include "metadata.h"
 #include "mytime.h"
 #include "processingjob.h"
@@ -168,6 +169,7 @@ private:
 
         ipf_p.reset(new ImProcFunctions(&params, true));
         ImProcFunctions &ipf = *(ipf_p.get());
+        ipf.setPipeline(ImProcFunctions::Pipeline::OUTPUT);
         scale_factor = 1.0;
         if (is_fast) {
             int imw, imh;
@@ -205,8 +207,11 @@ private:
             }
         }
 
+        {
+            ART_PROFILE_SCOPE("raw:preprocess");
         imgsrc->preprocess(params.raw, params.lensProf, params.coarse,
                            params.denoise.enabled, currWB);
+        }
 
         if (pl) {
             pl->setProgress(0.20);
@@ -219,7 +224,10 @@ private:
             imgsrc->getSensorType() == ST_BAYER
                 ? params.raw.bayersensor.dualDemosaicContrast
                 : params.raw.xtranssensor.dualDemosaicContrast;
-        imgsrc->demosaic(params.raw, autoContrast, contrastThreshold);
+        {
+            ART_PROFILE_SCOPE("raw:demosaic");
+            imgsrc->demosaic(params.raw, autoContrast, contrastThreshold);
+        }
 
         if (params.wb.method == WBParams::AUTO) {
             double rm, gm, bm;
@@ -251,11 +259,17 @@ private:
         }
 
         if (params.denoise.enabled) {
-            ipf.denoiseComputeParams(imgsrc, currWB, dnstore, params.denoise);
+            {
+                ART_PROFILE_SCOPE("denoise:params");
+                ipf.denoiseComputeParams(imgsrc, currWB, dnstore, params.denoise);
+            }
         }
 
         img = new Imagefloat(fw, fh);
-        imgsrc->getImage(currWB, tr, img, pp, params.exposure, params.raw);
+        {
+            ART_PROFILE_SCOPE("raw:getImage");
+            imgsrc->getImage(currWB, tr, img, pp, params.exposure, params.raw);
+        }
         img->assignColorSpace(params.icm.workingProfile);
 
         if (pl) {
@@ -301,7 +315,9 @@ private:
         bool converted = false;
         if (params.filmNegative.colorSpace !=
             FilmNegativeParams::ColorSpace::INPUT) {
-            imgsrc->convertColorSpace(img, params.icm, currWB);
+            {
+                imgsrc->convertColorSpace(img, params.icm, currWB);
+            }
             converted = true;
         }
 
@@ -311,11 +327,16 @@ private:
         }
 
         if (!converted) {
-            imgsrc->convertColorSpace(img, params.icm, currWB);
+            {
+                imgsrc->convertColorSpace(img, params.icm, currWB);
+            }
         }
 
         if (params.denoise.enabled) {
-            ipf.denoise(imgsrc, currWB, img, params.denoise);
+            {
+                ART_PROFILE_SCOPE("denoise");
+                ipf.denoise(imgsrc, currWB, img, params.denoise);
+            }
         }
     }
 
@@ -324,13 +345,13 @@ private:
         procparams::ProcParams &params = job->pparams;
         ImProcFunctions &ipf = *(ipf_p.get());
 
-        // imgsrc->convertColorSpace(img, params.icm, currWB);
-
         LUTu hist16(65536);
-        ipf.firstAnalysis(img, params, hist16);
+        {
+            ART_PROFILE_SCOPE("firstAnalysis");
+            ipf.firstAnalysis(img, params, hist16);
+        }
 
-        stop = ipf.process(ImProcFunctions::Pipeline::OUTPUT,
-                           ImProcFunctions::Stage::STAGE_0, img);
+        stop = ipf.process(ImProcFunctions::Stage::STAGE_0, img);
 
         // perform transform (excepted resizing)
         if (ipf.needsTransform()) {
@@ -345,9 +366,12 @@ private:
             } else {
                 trImg = new Imagefloat(fw, fh, img);
             }
+            {
+                ART_PROFILE_SCOPE("transform");
             ipf.transform(img, trImg, 0, 0, 0, 0, fw, fh, fw, fh,
                           imgsrc->getMetaData(), imgsrc->getRotateDegree(),
                           true);
+            }
             if (trImg != img) {
                 delete img;
                 img = trImg;
@@ -392,17 +416,14 @@ private:
         DCPProfile *dcpProf = imgsrc->getDCP(params.icm, as);
 
         ipf.setDCPProfile(dcpProf, as);
-        stop = stop || ipf.process(ImProcFunctions::Pipeline::OUTPUT,
-                                   ImProcFunctions::Stage::STAGE_1, img);
+        stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_1, img);
 
         if (pl) {
             pl->setProgress(0.55);
         }
 
-        stop = stop || ipf.process(ImProcFunctions::Pipeline::OUTPUT,
-                                   ImProcFunctions::Stage::STAGE_2, img);
-        stop = stop || ipf.process(ImProcFunctions::Pipeline::OUTPUT,
-                                   ImProcFunctions::Stage::STAGE_3, img);
+        stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_2, img);
+        stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_3, img);
 
         if (pl) {
             pl->setProgress(0.60);
@@ -416,7 +437,8 @@ private:
                     params.resize.allowUpscaling || params.resize.dataspec == 0;
                 if (scale < 1.0 || (scale > 1.0 && allow_upscaling)) {
                     Imagefloat *resized = new Imagefloat(imw, imh, img);
-                    ipf.Lanczos(img, resized, scale);
+                    { ART_PROFILE_SCOPE("resize");
+                      ipf.Lanczos(img, resized, scale); }
                     delete img;
                     img = resized;
                 }
@@ -427,6 +449,7 @@ private:
             ipf.prsharpening(img);
         }
 
+        ART_PROFILE_SCOPE("rgb2out");
         Imagefloat *readyImg = ipf.rgb2out(img, params.icm);
 
         if (settings->verbose) {
@@ -552,7 +575,8 @@ private:
             params.resize.allowUpscaling || params.resize.dataspec == 0;
         if (allow_upscaling || (imw <= fw && imh <= fh)) {
             Imagefloat *resized = new Imagefloat(imw, imh, img);
-            ipf.Lanczos(img, resized, scale_factor);
+            { ART_PROFILE_SCOPE("resize:early");
+              ipf.Lanczos(img, resized, scale_factor); }
             delete img;
             img = resized;
         }
@@ -616,8 +640,13 @@ private:
 IImagefloat *processImage(ProcessingJob *pjob, int &errorCode,
                           ProgressListener *pl, bool flush)
 {
+    ART_PIPELINE_TIME_REPORT("export");
     ImageProcessor proc(pjob, errorCode, pl, flush);
-    return proc();
+    IImagefloat *res = proc();
+    /* One table per processed image, so a batch run gives a profile per file
+     * rather than a single blended one.  No-op unless ART_PROFILE is set. */
+    PipelineProfile::report("OUTPUT pipeline");
+    return res;
 }
 
 void batchProcessingThread(ProcessingJob *job, BatchProcessingListener *bpl)

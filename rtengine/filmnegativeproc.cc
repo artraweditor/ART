@@ -77,7 +77,8 @@ Coord2D translateCoord(rtengine::ImProcFunctions &ipf, int fw, int fh, int x,
 
 void getSpotAvgMax(ImageSource *imgsrc, ColorTemp currWB,
                    const rtengine::procparams::ProcParams &params, Coord2D p,
-                   int tr, int spotSize, RGB &avg, RGB &max)
+                   int tr, int spotSize, RGB &avg, RGB &max,
+                   rtengine::gpu::Context *ctx)
 {
     int x1 = MAX(0, (int)p.x - spotSize / 2);
     int y1 = MAX(0, (int)p.y - spotSize / 2);
@@ -222,6 +223,9 @@ bool doProcess(Imagefloat *input, Imagefloat *output,
                const FilmNegativeParams &params,
                const ColorManagementParams &icmParams, RGB &refIn, RGB &refOut)
 {
+    input->syncCpu();
+    output->syncCpuForWrite();
+
     bool refsUpdated = false;
 
     float rexp = -(params.greenExp * params.redRatio);
@@ -420,7 +424,8 @@ bool rtengine::ImProcCoordinator::getFilmNegativeSpot(int x, int y,
 
     // Get the average channel values from the sampled spot
     RGB avg, max;
-    getSpotAvgMax(imgsrc, currWB, params, p, tr, spotSize, avg, max);
+    getSpotAvgMax(imgsrc, currWB, params, p, tr, spotSize, avg, max,
+                 ipf.getGPUContext());
 
     float rexp = -(params.filmNegative.greenExp * params.filmNegative.redRatio);
     float gexp = -params.filmNegative.greenExp;

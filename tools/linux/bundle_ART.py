@@ -173,6 +173,11 @@ def extra_files(opts):
             D('/usr/lib/' + machine + '-linux-gnu/gvfs/libgvfsdaemon.so'),
         ]),
     ] + extra
+    # NOTE: nothing is bundled for the GPU backend on Linux. The host loader
+    # must always win -- a libvulkan.so.1 copied into lib/ would be found
+    # through the LD_LIBRARY_PATH the launcher script sets and would shadow
+    # it -- and the vendor/mesa ICD comes from the host's own graphics stack.
+    # See the candidates() comment in rtengine/gpu/vk_api.cc.
 
 
 def main():

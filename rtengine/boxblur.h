@@ -17,8 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _BOXBLUR_H_
-#define _BOXBLUR_H_
+#pragma once
 
 #include "StopWatch.h"
 #include "alignedbuffer.h"
@@ -1019,4 +1018,3 @@ void boxabsblur(T *src, A *dst, int radx, int rady, int W, int H, float *temp)
 }
 
 } // namespace rtengine
-#endif /* _BOXBLUR_H_ */

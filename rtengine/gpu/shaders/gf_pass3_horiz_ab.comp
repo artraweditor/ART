@@ -1,0 +1,41 @@
+#version 450
+
+// Guided filter stage 3/4: shrinking-window horizontal mean of a,b (box(a),box(b) first half).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Abuf { float v[]; } a;
+layout(std430, set = 0, binding = 1) readonly buffer Bbuf { float v[]; } b;
+layout(std430, set = 0, binding = 2) writeonly buffer HA { float v[]; } ha;
+layout(std430, set = 0, binding = 3) writeonly buffer HB { float v[]; } hb;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int radius;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+
+    int xlo = max(0, int(g.x) - pc.radius);
+    int xhi = min(int(g.x) + pc.radius, int(pc.w) - 1);
+    int cnt = xhi - xlo + 1;
+
+    vec2 sum = vec2(0.0);
+    uint row = g.y * pc.w;
+    for (int x = xlo; x <= xhi; ++x) {
+        sum += vec2(a.v[row + uint(x)], b.v[row + uint(x)]);
+    }
+
+    uint o = row + g.x;
+    float invCnt = 1.0 / float(cnt);
+    ha.v[o] = sum.x * invCnt;
+    hb.v[o] = sum.y * invCnt;
+}

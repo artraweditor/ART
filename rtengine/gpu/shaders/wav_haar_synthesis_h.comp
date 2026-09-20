@@ -1,0 +1,35 @@
+#version 450
+
+// Haar a-trous wavelet synthesis, horizontal pass (level >=1).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer SrcLo { float v[]; } srcLo;
+layout(std430, set = 0, binding = 1) readonly buffer SrcHi { float v[]; } srcHi;
+layout(std430, set = 0, binding = 2) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int skip;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    float lo = srcLo.v[o], hi = srcHi.v[o];
+    float outv;
+    if (int(g.x) < pc.skip) {
+        outv = lo + hi;
+    } else {
+        uint po = g.y * pc.w + uint(int(g.x) - pc.skip);
+        outv = 0.5 * (lo + hi + srcLo.v[po] - srcHi.v[po]);
+    }
+    dst.v[o] = outv;
+}

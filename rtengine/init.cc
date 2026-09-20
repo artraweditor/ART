@@ -23,6 +23,7 @@
 #include "dcp.h"
 #include "dfmanager.h"
 #include "ffmanager.h"
+#include "gpu/gpu.h"
 #include "iccstore.h"
 #include "imgiomanager.h"
 #include "improccoordinator.h"
@@ -152,6 +153,9 @@ int init(const Settings *s, Glib::ustring baseDir,
 
     DynamicProfileRules::init(baseDir);
     ImageIOManager::getInstance()->init(baseDir, userSettingsDir);
+    gpu::init(userSettingsDir,
+              s->gpu_enabled ? s->gpu_device : Glib::ustring("off"),
+              s->gpu_allow_software);
 #ifdef ART_USE_OCIO
     ExternalLUT3D::init();
 #endif
@@ -176,6 +180,10 @@ int init(const Settings *s, Glib::ustring baseDir,
 
 void cleanup()
 {
+    /* Before the FFTW teardown, and before the thread pool is gone: the GPU
+     * teardown waits on the device and flushes the pipeline cache to disk. */
+    gpu::cleanup();
+
     Exiv2Metadata::cleanup();
     ProcParams::cleanup();
     Color::cleanup();
@@ -210,6 +218,7 @@ Settings::Settings()
       thumbnail_inspector_raw_curve(ThumbnailInspectorRawCurve::LINEAR),
       xmp_sidecar_style(XmpSidecarStyle::STD),
       metadata_xmp_sync(MetadataXmpSync::NONE), thread_pool_size(0),
+      gpu_enabled(false), gpu_device("auto"), gpu_allow_software(false),
       ctl_scripts_fast_preview(false),
       os_monitor_profile(StdMonitorProfile::SRGB), imgio_raw_cache_size(10)
 {

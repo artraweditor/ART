@@ -1,0 +1,42 @@
+#version 450
+
+// Wavelet FIR analysis, vertical half + subsample by 2 (cplx_wavelet_level.h AnalysisFilterSubsampVertical, level 0).
+// CPU's bulk/boundary split collapses to one clamped formula (clamp is a no-op in the bulk region).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Lo { float v[]; } lo;
+layout(std430, set = 0, binding = 2) writeonly buffer Hi { float v[]; } hi;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint h2;
+    int skip;
+    int offset;
+    float filterLo[6];
+    float filterHi[6];
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h2) {
+        return;
+    }
+    int row = int(g.y) * 2;
+    float accLo = 0.0, accHi = 0.0;
+    for (int j = 0; j < 6; ++j) {
+        int l = pc.skip * (pc.offset - j);
+        int ry = clamp(row + l, 0, int(pc.h) - 1);
+        float s = src.v[uint(ry) * pc.w + g.x];
+        accLo += pc.filterLo[j] * s;
+        accHi += pc.filterHi[j] * s;
+    }
+    uint o = g.y * pc.w + g.x;
+    lo.v[o] = accLo;
+    hi.v[o] = accHi;
+}

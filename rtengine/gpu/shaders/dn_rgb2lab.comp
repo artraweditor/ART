@@ -1,0 +1,47 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Denoise phase 1b, Lab: Color::rgb2lab in place, via direct pow(t,1/3) instead of the CPU's cachef LUT.
+// Buffer layout matches wav_rgb2yuv.comp: in (p0,p1,p2)=(R,G,B), out (p0,p1,p2)=(b,L,a).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) buffer P2 { float v[]; } p2;
+
+// vec4 rows first: 16-byte alignment means leading uints would leave a hole the host struct doesn't have.
+layout(push_constant) uniform PC {
+    vec4 ws0;
+    vec4 ws1;
+    vec4 ws2;
+    uint w;
+    uint h;
+} pc;
+
+#include "include/art_color.glsl"
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint i = g.y * pc.w + g.x;
+
+    const vec3 rgb = vec3(p0.v[i], p1.v[i], p2.v[i]);
+    vec3 xyz = art_mat3_row_mul(pc.ws0, pc.ws1, pc.ws2, rgb);
+
+    // art_xyz2lab leaves the D50 white-point normalization to its caller.
+    xyz.x /= 0.9642;   // Color::D50x
+    xyz.z /= 0.8249;   // Color::D50z
+
+    float L, a, b;
+    art_xyz2lab(xyz, L, a, b);
+
+    p0.v[i] = b;
+    p1.v[i] = L;
+    p2.v[i] = a;
+}

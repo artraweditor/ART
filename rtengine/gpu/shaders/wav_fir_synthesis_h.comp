@@ -1,0 +1,41 @@
+#version 450
+
+// Wavelet FIR synthesis, horizontal half (cplx_wavelet_level.h SynthesisFilterSubsampHorizontal, level 0).
+// `shift` = skip*(taps-offset-1), precomputed host-side (taps/offset fixed at 6/2).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer SrcLo { float v[]; } srcLo;
+layout(std430, set = 0, binding = 1) readonly buffer SrcHi { float v[]; } srcHi;
+layout(std430, set = 0, binding = 2) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w2;
+    uint w;
+    uint h2;
+    int skip;
+    int shift;
+    float filterLo[6];
+    float filterHi[6];
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h2) {
+        return;
+    }
+    int i = int(g.x) + pc.shift;
+    int isrc = i / 2;
+    int begin = i - isrc * 2; // i % 2, i always >= 0
+
+    float tot = 0.0;
+    for (int j = begin, l = 0; j < 6; j += 2, l += pc.skip) {
+        int arg = clamp(isrc - l, 0, int(pc.w2) - 1);
+        uint o = g.y * pc.w2 + uint(arg);
+        tot += pc.filterLo[j] * srcLo.v[o] + pc.filterHi[j] * srcHi.v[o];
+    }
+    dst.v[g.y * pc.w + g.x] = tot;
+}

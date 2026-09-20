@@ -109,6 +109,23 @@ private:
     static LUTf jzazbz_pq_inv_;
 
 public:
+    /* The JzAzBz perceptual-quantiser tables, exposed so that a GPU kernel can
+     * use the very same values: xyz2jzazbz consults the table for inputs in
+     * [0,1] and the closed form outside it, so a kernel that only implemented
+     * the closed form would diverge across the entire normal range. */
+    static const LUTf &jzazbzPQTable() { return jzazbz_pq_; }
+    static const LUTf &jzazbzPQInvTable() { return jzazbz_pq_inv_; }
+
+    /* Upper bound of the jzazbz_pq_inv_ table's domain.
+     *
+     * PQ() maps [0,1] -- the whole normal XYZ range -- onto [0, 0.0397], so
+     * jzazbz2xyz only ever feeds PQ_inv values in that band.  Indexing the
+     * table over [0,1] therefore used just 2603 of its 65536 entries; it is
+     * indexed over [0, jzazbzPQInvMax()] instead, which is the same table size
+     * at ~25x the resolution.  Inputs above the bound (XYZ beyond 1.0, i.e.
+     * specular highlights) fall back to evaluating PQ_inv directly. */
+    static float jzazbzPQInvMax() { return 0.04f; }
+
     typedef enum Channel {
         CHANNEL_RED = 1 << 0,
         CHANNEL_GREEN = 1 << 1,

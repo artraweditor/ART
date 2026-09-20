@@ -31,7 +31,9 @@
 #include "clutstore.h"
 #include "color.h"
 #include "curves.h"
+#include "gpu/gpu.h"
 #include "iccmatrices.h"
+#include "pipelineprofile.h"
 #include "iccstore.h"
 #include "imagesource.h"
 #include "improccoordinator.h"
@@ -43,20 +45,39 @@
 #include "rtthumbnail.h"
 #include "utils.h"
 
+#ifdef ART_USE_VULKAN
+#include "gpu/vk_context.h"
+#endif
+
 namespace rtengine {
 
 using namespace procparams;
 
 extern const Settings *settings;
 
-ImProcFunctions::ImProcFunctions(const ProcParams *iparams, bool imultiThread)
-    : monitor(nullptr), monitorTransform(nullptr), params(iparams), scale(1),
-      multiThread(imultiThread), cur_pipeline(Pipeline::OUTPUT),
-      dcpProf(nullptr), dcpApplyState(nullptr), pipetteBuffer(nullptr),
-      lumimul{}, offset_x(0), offset_y(0), full_width(-1), full_height(-1),
-      histToneCurve(nullptr), histCCurve(nullptr), histLCurve(nullptr),
-      show_sharpening_mask(false), plistener(nullptr), progress_step(0),
-      progress_end(1)
+ImProcFunctions::ImProcFunctions(const ProcParams *iparams, bool imultiThread):
+    monitor(nullptr),
+    monitorTransform(nullptr),
+    params(iparams),
+    scale(1),
+    multiThread(imultiThread),
+    cur_pipeline(Pipeline::OUTPUT),
+    dcpProf(nullptr),
+    dcpApplyState(nullptr),
+    pipetteBuffer(nullptr),
+    lumimul{},
+    offset_x(0),
+    offset_y(0),
+    full_width(-1),
+    full_height(-1),
+    histToneCurve(nullptr),
+    histCCurve(nullptr),
+    histLCurve(nullptr),
+    show_sharpening_mask(false),
+    plistener(nullptr),
+    progress_step(0),
+    progress_end(1),
+    gpuPool_(nullptr)
 {
 }
 
@@ -65,9 +86,39 @@ ImProcFunctions::~ImProcFunctions()
     if (monitorTransform) {
         cmsDeleteTransform(monitorTransform);
     }
+#ifdef ART_USE_VULKAN
+    if (gpuPool_) {
+        delete gpuPool_;
+    }
+#endif
 }
 
 void ImProcFunctions::setScale(double iscale) { scale = iscale; }
+
+gpu::BufferPool *ImProcFunctions::getGPUPool()
+{
+#ifdef ART_USE_VULKAN
+    auto ctx = getGPUContext();
+    if (ctx) {
+        if (!gpuPool_) {
+            gpuPool_ = new gpu::BufferPool(*ctx);
+        }
+        return gpuPool_;
+    }
+#endif
+    return nullptr;
+}
+
+
+gpu::Context *ImProcFunctions::getGPUContext()
+{
+#ifdef ART_USE_VULKAN
+    if (cur_pipeline == Pipeline::OUTPUT || cur_pipeline == Pipeline::PREVIEW) {
+        return gpu::Context::get();
+    }
+#endif
+    return nullptr;
+}
 
 void ImProcFunctions::updateColorProfiles(const Glib::ustring &monitorProfile,
                                           RenderingIntent monitorIntent,
@@ -237,6 +288,7 @@ void ImProcFunctions::updateColorProfiles(const Glib::ustring &monitorProfile,
 void ImProcFunctions::firstAnalysis(const Imagefloat *const original,
                                     const ProcParams &params, LUTu &histogram)
 {
+    original->syncCpu();
 
     TMatrix wprof =
         ICCStore::getInstance()->workingSpaceMatrix(params.icm.workingProfile);
@@ -562,84 +614,96 @@ void ImProcFunctions::setProgressListener(ProgressListener *pl,
 }
 
 template <class Ret, class Method>
-Ret ImProcFunctions::apply(Method op, Imagefloat *img)
+Ret ImProcFunctions::apply(const char *name, Method op, Imagefloat *img, bool can_skip_sync)
 {
     if (plistener) {
         float percent = float(++progress_step) / float(progress_end);
         plistener->setProgress(percent);
     }
+
+    /* Every stage tool goes through here, which makes this the one place that
+     * cannot be forgotten.  Conservative on purpose: unless the tool is known
+     * to have a GPU path, assume it reads and writes the CPU planes directly,
+     * and bring the pixels back first.  */
+    if (!can_skip_sync && !gpu::hasFullGPUStage(name)) {
+        img->syncCpuForWrite();
+    }
+
+    ART_PROFILE_SCOPE(name);
     return (this->*op)(img);
 }
 
-bool ImProcFunctions::process(Pipeline pipeline, Stage stage, Imagefloat *img)
+bool ImProcFunctions::process(Stage stage, Imagefloat *img)
 {
     bool stop = false;
-    cur_pipeline = pipeline;
 
-#define STEP_(op) apply<void>(&ImProcFunctions::op, img)
-#define STEP_s_(op) apply<bool>(&ImProcFunctions::op, img)
+#define STEP_(op, s) apply<void>(#op, &ImProcFunctions::op, img, s)
+#define STEP_s_(op, s) apply<bool>(#op, &ImProcFunctions::op, img, s)
 
     switch (stage) {
     case Stage::STAGE_0:
-        STEP_(dehaze);
-        STEP_(dynamicRangeCompression);
+        STEP_(dehaze, !params->dehaze.enabled);
+        STEP_(dynamicRangeCompression, !params->fattal.enabled);
         break;
     case Stage::STAGE_1:
-        STEP_(channelMixer);
-        STEP_(exposure);
-        STEP_(hslEqualizer);
-        stop = STEP_s_(toneEqualizer);
+        STEP_(channelMixer, !params->chmixer.enabled);
+        STEP_(exposure, !params->exposure.enabled);
+        STEP_(hslEqualizer, !params->hsl.enabled);
+        stop = STEP_s_(toneEqualizer, !params->toneEqualizer.enabled);
         if (params->icm.workingProfile == "ProPhoto") {
+            img->syncCpuForWrite();   // funnel bypass: CPU-only free function
             proPhotoBlue(img, multiThread);
         }
         break;
     case Stage::STAGE_2:
-        if (params->icm.dcp_look_early) {
+        if (params->icm.dcp_look_early && needsDCPProfile()) {
+            img->syncCpuForWrite();   // funnel bypass: CPU-only free function
             dcpProfile(img, dcpProf, dcpApplyState, multiThread);
         }
         linked_mask_mgr_.init(*params);
-        if (pipeline == Pipeline::OUTPUT || pipeline == Pipeline::PREVIEW) {
-            stop = STEP_s_(sharpening);
+        if (cur_pipeline == Pipeline::OUTPUT || cur_pipeline == Pipeline::PREVIEW) {
+            stop = STEP_s_(sharpening, !params->sharpening.enabled);
             if (!stop) {
-                STEP_(impulsedenoise);
-                STEP_(defringe);
+                STEP_(impulsedenoise, !params->impulseDenoise.enabled);
+                STEP_(defringe, !params->defringe.enabled);
             }
         }
-        stop = stop || STEP_s_(colorCorrection);
-        stop = stop || STEP_s_(guidedSmoothing);
+        stop = stop || STEP_s_(colorCorrection, !params->colorcorrection.enabled);
+        stop = stop || STEP_s_(guidedSmoothing, !params->smoothing.enabled);
         break;
     case Stage::STAGE_3:
-        STEP_(creativeGradients);
-        stop = stop || STEP_s_(textureBoost);
+        STEP_(creativeGradients, !(needsGradient() || needsPCVignetting()));
+        stop = stop || STEP_s_(textureBoost, !params->textureBoost.enabled);
         if (!stop) {
-            STEP_(filmGrain);
-            STEP_(logEncoding);
-            STEP_(saturationVibrance);
-            if (!params->icm.dcp_look_early) {
+            STEP_(filmGrain, !params->grain.enabled);
+            STEP_(logEncoding, !params->logenc.enabled);
+            STEP_(saturationVibrance, !params->saturation.enabled);
+            if (!params->icm.dcp_look_early && needsDCPProfile()) {
+                img->syncCpuForWrite();   // funnel bypass
                 dcpProfile(img, dcpProf, dcpApplyState, multiThread);
             }
             if (!params->filmSimulation.after_tone_curve) {
-                STEP_(filmSimulation);
+                STEP_(filmSimulation, !params->filmSimulation.enabled);
             }
-            STEP_(toneCurve);
+            STEP_(toneCurve, !params->toneCurve.enabled);
             if (params->filmSimulation.after_tone_curve) {
-                STEP_(filmSimulation);
+                STEP_(filmSimulation, !params->filmSimulation.enabled);
             }
-            STEP_(rgbCurves);
-            STEP_(labAdjustments);
-            STEP_(softLight);
+            STEP_(rgbCurves, !params->rgbCurves.enabled);
+            STEP_(labAdjustments, !params->labCurve.enabled);
+            STEP_(softLight, !params->softlight.enabled);
         }
-        stop = stop || STEP_s_(localContrast);
+        stop = stop || STEP_s_(localContrast, !params->localContrast.enabled);
         if (!stop) {
-            STEP_(blackAndWhite);
+            STEP_(blackAndWhite, !params->blackwhite.enabled);
         }
-        if (pipeline == Pipeline::PREVIEW && params->prsharpening.enabled) {
+        if (cur_pipeline == Pipeline::PREVIEW && params->prsharpening.enabled) {
             double s = scale;
             int fw = full_width * s, fh = full_height * s;
             int imw, imh;
             double s2 = resizeScale(params, fw, fh, imw, imh);
             scale = std::max(s * s2, 1.0);
-            STEP_s_(prsharpening);
+            STEP_s_(prsharpening, false);
             scale = s;
         }
         break;
@@ -668,6 +732,11 @@ int ImProcFunctions::setDeltaEData(EditUniqueID id, double x, double y)
     default:
         return 0;
     }
+}
+
+bool ImProcFunctions::needsDCPProfile()
+{
+    return dcpProf && dcpApplyState && dcpProf->needStep2(*dcpApplyState);
 }
 
 } // namespace rtengine

@@ -37,6 +37,15 @@ void ImProcFunctions::expcomp(Imagefloat *img,
         return;
     }
 
+    /* The loop below writes img's planes directly, and ImProcFunctions::denoise
+     * calls this outside the apply() funnel -- after RGB_denoise and
+     * finalSmoothing, which on the GPU path leave the image device-resident.
+     * setMode() is not a sync point: it returns early when the mode already
+     * matches (imagefloat.cc:655), which is exactly the case here, so without
+     * this the -expcomp that undoes the pre-denoise brightening lands on stale
+     * CPU planes and is discarded by the next download. */
+    img->syncCpuForWrite();
+
     img->setMode(Imagefloat::Mode::RGB, multiThread);
 
     const float exp_scale = pow(2.f, expparams->expcomp);

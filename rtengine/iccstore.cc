@@ -31,6 +31,8 @@
 
 #include "iccstore.h"
 
+#include <cmath>
+
 #include "iccmatrices.h"
 #include "procparams.h"
 
@@ -1493,7 +1495,11 @@ cmsHPROFILE ICCStore::createFromMatrix(const float matrix[3][3], bool gamma,
     //    pseudoinverse((double(*)[3]) out_rgb[output_color-1], inverse, 3);
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++) {
-            oprof[pbody[j * 3 + 23] / 4 + i + 2] = matrix[i][j] * 0x10000 + 0.5;
+            /* s15Fixed16Number is SIGNED, and colorants legitimately go
+             * negative: the Bradford-adapted Rec2020 red primary has
+             * Z = -0.00193.  Round via a signed integer, then reinterpret. */
+            oprof[pbody[j * 3 + 23] / 4 + i + 2] = (unsigned)(int)std::lround(
+                double(matrix[i][j]) * 0x10000);
             //      for (num = k=0; k < 3; k++)
             //        num += xyzd50_srgb[i][k] * inverse[j][k];
         }

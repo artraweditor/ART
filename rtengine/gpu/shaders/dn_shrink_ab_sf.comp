@@ -1,0 +1,49 @@
+#version 450
+
+// Chroma shrink, stage 1: per-coefficient shrink factor, feeding the box blur + recombination in
+// dn_shrink_blurv_apply.comp. sf = 1 - exp(-SQR(ab)/(noisevarchrom*madab) - SQR(L)/(9*mad_L)).
+//
+// Cross-channel: reads L's detail coefficients too, so the CPU runs the whole chroma shrink before the
+// luma one -- L's bands must still hold their original values here. `madabScale` (host-computed, folds in
+// noisevar_ab, which differs by caller) and `mad` (unsquared, as waveletMadExact returns it) match
+// dn_shrink_ab_bishrink.comp. Exponent uses the ART_SIMD association (1/(mad_L*9), not /(9*mad_L)) --
+// differs from the scalar fallback in the last ulp.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Ab { float v[]; } ab;
+layout(std430, set = 0, binding = 1) readonly buffer L { float v[]; } lum;
+layout(std430, set = 0, binding = 2) readonly buffer Nv { float v[]; } nv;
+layout(std430, set = 0, binding = 3) readonly buffer MadAb { float v[]; } madab;
+layout(std430, set = 0, binding = 4) readonly buffer MadL { float v[]; } madl;
+layout(std430, set = 0, binding = 5) writeonly buffer Sf { float v[]; } sf;
+
+layout(push_constant) uniform PC {
+    uint n;        // coefficients per subband
+    uint levels;   // subbands covered by this dispatch
+    uint madBase;  // absolute index of this dispatch's first mad entry
+    float madabScale;
+} pc;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.n * pc.levels) {
+        return;
+    }
+    uint lvl = gid / pc.n;
+    uint i = gid - lvl * pc.n;
+
+    float ma = madab.v[pc.madBase + lvl];
+    ma = (ma * ma) * pc.madabScale;
+    float ml = madl.v[pc.madBase + lvl];
+    ml = ml * ml;
+
+    float c = ab.v[gid];
+    float mag_ab = c * c;
+    float l = lum.v[gid];
+    float mag_L = (l * l) * (1.0 / (ml * 9.0));
+
+    sf.v[gid] = 1.0 - exp(-(mag_ab / (nv.v[i] * ma)) - mag_L);
+}

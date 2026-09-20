@@ -1,0 +1,33 @@
+#version 450
+
+// Separable Gaussian blur, vertical pass. See gauss_h.comp for why this is a truncated FIR, not the IIR port.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+layout(std430, set = 0, binding = 2) readonly buffer Wt { float v[]; } wt;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint radius;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    int y = int(g.y);
+    int r = int(pc.radius);
+    float acc = 0.0;
+    for (int k = -r; k <= r; ++k) {
+        int yy = clamp(y + k, 0, int(pc.h) - 1);
+        acc += wt.v[uint(k + r)] * src.v[uint(yy) * pc.w + g.x];
+    }
+    dst.v[uint(y) * pc.w + g.x] = acc;
+}

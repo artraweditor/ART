@@ -1,0 +1,52 @@
+#version 450
+
+// Guided filter box-mean, stage 1/4 (horizontal): accumulates the shrinking-window horizontal mean of
+// I, p, I^2 and I*p in one pass, fusing the I*I/I*p multiplies with the horizontal box-mean.
+//
+// "Shrinking window": divisor is the actual in-bounds column count, not a fixed 2*radius+1 (matches
+// boxblur.h). Required for correctness: only this way does mean_y(mean_x(f)) == mean_2d(f) for the
+// horizontal+vertical split (see op_masks.cc's guidedFilterGpu for the derivation).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Ibuf { float v[]; } I;
+layout(std430, set = 0, binding = 1) readonly buffer Pbuf { float v[]; } p;
+layout(std430, set = 0, binding = 2) writeonly buffer HI { float v[]; } hI;
+layout(std430, set = 0, binding = 3) writeonly buffer HP { float v[]; } hp;
+layout(std430, set = 0, binding = 4) writeonly buffer HII { float v[]; } hII;
+layout(std430, set = 0, binding = 5) writeonly buffer HIP { float v[]; } hIp;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int radius;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+
+    int xlo = max(0, int(g.x) - pc.radius);
+    int xhi = min(int(g.x) + pc.radius, int(pc.w) - 1);
+    int cnt = xhi - xlo + 1;
+
+    vec4 sum = vec4(0.0);
+    uint row = g.y * pc.w;
+    for (int x = xlo; x <= xhi; ++x) {
+        float iv = I.v[row + uint(x)];
+        float pv = p.v[row + uint(x)];
+        sum += vec4(iv, pv, iv * iv, iv * pv);
+    }
+
+    uint o = row + g.x;
+    float invCnt = 1.0 / float(cnt);
+    hI.v[o] = sum.x * invCnt;
+    hp.v[o] = sum.y * invCnt;
+    hII.v[o] = sum.z * invCnt;
+    hIp.v[o] = sum.w * invCnt;
+}

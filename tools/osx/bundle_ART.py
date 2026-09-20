@@ -150,6 +150,53 @@ def getprefix(opts):
     assert False, "can't determine prefix"
 
 
+def vulkan_enabled(opts):
+    """Whether the build being bundled has the GPU backend enabled, per the
+    'Vulkan: ...' line written into AboutThisBuild.txt by CMakeLists.txt
+    (ART_VULKAN_VERSION_INFO)."""
+    try:
+        with open('Contents/Resources/AboutThisBuild.txt') as f:
+            for line in f:
+                if line.startswith('Vulkan: '):
+                    return line.split(':', 1)[1].strip() != 'N/A'
+    except OSError:
+        pass
+    return False
+
+
+def vulkan_files(opts, pref):
+    """MoltenVK, the one thing the GPU backend needs that macOS does not
+    provide. No Vulkan loader and no ICD json: ART dlopens MoltenVK directly
+    (it finds the bundled copy through the
+    "@executable_path/../Frameworks/libMoltenVK.dylib" candidate), which is
+    why there is only ever one dylib to carry -- see the candidates() comment
+    in rtengine/gpu/vk_api.cc. The cost, documented there, is that Vulkan
+    layers (validation) are a loader feature and so are unavailable on macOS.
+
+    MoltenVK is dlopen'd, never linked, so getdlls() cannot find it; it has
+    to be copied explicitly. Best-effort: the GPU backend is optional and
+    never fatal (rtengine/gpu/gpu.h), so if it isn't installed on the build
+    machine the bundle just falls back to whatever the user has, exactly like
+    an unbundled build."""
+    name = 'libMoltenVK.dylib'
+    dirs = [os.path.join(pref, 'lib')]
+    sdk = os.environ.get('VULKAN_SDK')
+    if sdk:
+        dirs += [os.path.join(sdk, 'lib'), os.path.join(sdk, 'macOS/lib')]
+    dirs += ['/opt/homebrew/lib', '/opt/local/lib', '/usr/local/lib']
+    for d in dirs:
+        p = os.path.join(d, name)
+        if os.path.exists(p):
+            # copied by resolving the symlink, so that the Cellar/SDK layout
+            # it usually points into is not needed at runtime
+            return [('Contents/Frameworks', [(os.path.realpath(p), name)])]
+    sys.stderr.write(
+        'WARNING: %s not found in %s, not bundling it; GPU acceleration '
+        'will only work if the user has their own MoltenVK installed\n'
+        % (name, ', '.join(dirs)))
+    return []
+
+
 def extra_files(opts):
     pref = getprefix(opts)
     def D(s): return os.path.expanduser(s)
@@ -225,7 +272,7 @@ def extra_files(opts):
         ('Contents/Resources', [
             P('etc/fonts/fonts.conf'),
         ]),
-    ] + extra
+    ] + extra + (vulkan_files(opts, pref) if vulkan_enabled(opts) else [])
 
 
 def get_version(opts):

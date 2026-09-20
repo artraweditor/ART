@@ -690,6 +690,12 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
                                   const ColorManagementParams *cmp, int tr,
                                   DenoiseInfoStore *dnstore)
 {
+    /* Residency boundary: the heal/clone loops both read and write img's
+     * planes, and the caller hands us a copyTo() destination -- copyTo
+     * deliberately preserves device residency (imagefloat.cc:190), so this
+     * arrives GPU-resident. */
+    img->syncCpuForWrite();
+
     // Get the clipped image areas (src & dst) from the source image
 
     std::vector<std::shared_ptr<SpotBox>> srcSpotBoxs;

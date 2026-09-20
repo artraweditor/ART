@@ -1,0 +1,267 @@
+#version 450
+
+// Denoise phase 7 (detail_recovery) block kernel: fused 2D DCT-II -> neighbour-weighted shrink -> 2D DCT-III per 64x64 block.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Resid { float v[]; } resid;
+layout(std430, set = 0, binding = 1) readonly buffer Cf { float v[]; } cf;
+// tilemask_in[i][j] = fv[i]*fv[j]+eps, tilemask_out[i][j] = gv[i]*gv[j]+eps (ipdenoise.cc:3064-3093, buildTileMasks).
+// Separate bindings, not halves of one buffer: see driver hazard note in include/dn_dct.glsl.
+layout(std430, set = 0, binding = 2) readonly buffer Fv { float v[]; } fvb;
+layout(std430, set = 0, binding = 3) readonly buffer Gv { float v[]; } gvb;
+layout(std430, set = 0, binding = 4) readonly buffer Mask { float v[]; } dmask;
+layout(std430, set = 0, binding = 5) writeonly buffer Out { float v[]; } blocks;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint nbW;          // block columns computed (RGBoutput_tile_row's count)
+    uint nbH;          // block rows
+    float detail_hi;   // compute_detail(params_Ldetail)
+    float detail_lo;   // compute_detail(0)
+    float pLdetail;    // params_Ldetail, for the masked case
+    float eps;         // 0.001f / (TS*TS)
+    uint use_mask;     // detail_thresh > 0
+    uint blur_rad;     // max(1, int(3/scale))
+    uint no_shrink;    // 1 = skip RGBtile_denoise (DCT round-trip check)
+} pc;
+
+#define TS 64
+#define OFFSET 25
+#define BLKRAD 1
+#define DCTNORM (1.0 / (4.0 * float(TS) * float(TS)))
+
+shared float sh[TS * TS];
+shared float fv[TS];
+shared float gv[TS];
+
+#define SH(i, j) sh[(i) * TS + (j)]
+
+// compute_detail (ipdenoise.cc:3202-3205). CPU forms the inner sum in double; done in float here, costs ~1e-7 relative.
+float computeDetail(float d)
+{
+    const float t = 100.0 - d;
+    const float s = (t * t + 50.0 * t) * float(TS) * 0.5;
+    return s * s;
+}
+
+// datarow's mirror, both rows and columns (ipdenoise.cc:3295-3299, 3305-3311): same form, one function.
+int mirror(int p, int n)
+{
+    if (p < 0) {
+        return min(-p, n - 1);
+    }
+    if (p >= n) {
+        return max(0, 2 * n - 2 - p);
+    }
+    return p;
+}
+
+void main()
+{
+    const uint blk = gl_WorkGroupID.x;
+    if (blk >= pc.nbW * pc.nbH) {
+        return;
+    }
+    const uint tid = gl_LocalInvocationID.x;
+
+    const int top = int(blk / pc.nbW) * OFFSET - BLKRAD * OFFSET;
+    const int left = int(blk % pc.nbW) * OFFSET - BLKRAD * OFFSET;
+
+    // Staged to shared memory (read 4096x/block) via a plain index, not two offsets of one dynamic value (see
+    // include/dn_dct.glsl). Uploaded, not recomputed, so the masks are bit-identical to the CPU's std::sin.
+    if (tid < uint(TS)) {
+        fv[tid] = fvb.v[tid];
+        gv[tid] = gvb.v[tid];
+    }
+    barrier();
+
+    // ---- fill: tilemask_in * (Lin - labdn->L), mirrored at every edge ----
+    for (uint e = tid; e < uint(TS * TS); e += LX) {
+        const uint i = e >> 6, j = e & 63u;
+        const int rr = mirror(top + int(i), int(pc.h));
+        const int cc = mirror(left + int(j), int(pc.w));
+        sh[e] = (fv[i] * fv[j] + pc.eps) *
+                resid.v[uint(rr) * pc.w + uint(cc)];
+    }
+    barrier();
+
+    // 4x4 output tile: `lo`/`hi` come from the low/high 4 bits of the invocation id, swappable per pass
+    // so whichever axis is simdgroup-uniform changes to keep bank conflicts down (see each pass below).
+    const uint lo = (tid & 15u) * 4u;
+    const uint hi = (tid >> 4u) * 4u;
+    float acc[16];
+    float xs[4];
+    float cs[4];
+
+    // ---- forward DCT-II along rows (FFTW REDFT10, unnormalised); rows from `hi` (broadcast reads), writes by `lo` ----
+    for (uint t = 0u; t < 16u; ++t) {
+        acc[t] = 0.0;
+    }
+    for (uint j = 0u; j < uint(TS); ++j) {
+        for (uint m = 0u; m < 4u; ++m) {
+            xs[m] = SH(hi + m, j);
+        }
+        for (uint p = 0u; p < 4u; ++p) {
+            cs[p] = cf.v[(lo + p) * uint(TS) + j];
+        }
+        for (uint m = 0u; m < 4u; ++m) {
+            for (uint p = 0u; p < 4u; ++p) {
+                acc[m * 4u + p] = fma(xs[m], cs[p], acc[m * 4u + p]);
+            }
+        }
+    }
+    barrier();
+    for (uint m = 0u; m < 4u; ++m) {
+        for (uint p = 0u; p < 4u; ++p) {
+            SH(hi + m, lo + p) = 2.0 * acc[m * 4u + p];
+        }
+    }
+    barrier();
+
+    // ---- forward DCT-II along columns; untransformed index (column) now from `lo`, matrix reads are the broadcast ----
+    for (uint t = 0u; t < 16u; ++t) {
+        acc[t] = 0.0;
+    }
+    for (uint i = 0u; i < uint(TS); ++i) {
+        for (uint m = 0u; m < 4u; ++m) {
+            xs[m] = SH(i, lo + m);
+        }
+        for (uint p = 0u; p < 4u; ++p) {
+            cs[p] = cf.v[(hi + p) * uint(TS) + i];
+        }
+        for (uint m = 0u; m < 4u; ++m) {
+            for (uint p = 0u; p < 4u; ++p) {
+                acc[m * 4u + p] = fma(xs[m], cs[p], acc[m * 4u + p]);
+            }
+        }
+    }
+    barrier();
+    for (uint m = 0u; m < 4u; ++m) {
+        for (uint p = 0u; p < 4u; ++p) {
+            SH(hi + p, lo + m) = 2.0 * acc[m * 4u + p];
+        }
+    }
+    barrier();
+
+    // ---- RGBtile_denoise (ipdenoise.cc:2906-2944) ----
+    // nbrwt = boxabsblur(|coeff|, blur_rad, blur_rad, TS, TS), computed directly (not separable running-sum):
+    // measured faster and ~20x more accurate since no error accumulates along a line. Each invocation builds
+    // the row sums it needs once and slides a window down them. Factors are held in registers across the
+    // barrier below rather than applied in place, since the whole window must be read before anything is overwritten.
+    if (pc.no_shrink == 0u) {
+        const int r = int(pc.blur_rad);
+        const int j = int(tid & 63u);
+        const int r0 = int(tid >> 6u) * 16;   // first row this invocation owns
+        const int x0 = max(j - r, 0), x1 = min(j + r, TS - 1);
+        const float rnx = 1.0 / float(x1 - x0 + 1);
+
+        // Unnormalised row sums over the horizontal window, for every row the 16 owned outputs can reach;
+        // both normalizing factors are applied once at the end since the divisor factorises.
+        #define DN_DCT_MAXROWS 32
+        float rowsum[DN_DCT_MAXROWS];
+        float nbw[16];
+        const int lo_r = max(r0 - r, 0);
+        const int hi_r = min(r0 + 15 + r, TS - 1);
+        for (int y = lo_r; y <= hi_r; ++y) {
+            float acc_h = 0.0;
+            for (int xx = x0; xx <= x1; ++xx) {
+                acc_h += abs(SH(y, xx));
+            }
+            rowsum[y - lo_r] = acc_h;
+        }
+        for (int m = 0; m < 16; ++m) {
+            const int i = r0 + m;
+            const int y0 = max(i - r, 0), y1 = min(i + r, TS - 1);
+            float acc_v = 0.0;
+            for (int y = y0; y <= y1; ++y) {
+                acc_v += rowsum[y - lo_r];
+            }
+            nbw[m] = acc_v * rnx / float(y1 - y0 + 1);
+        }
+        barrier();
+        for (int m = 0; m < 16; ++m) {
+            const int i = r0 + m;
+            const int row = top + i, col = left + j;
+            const bool inb = row >= 0 && row < int(pc.h) && col >= 0 &&
+                             col < int(pc.w);
+            float df;
+            if (!inb) {
+                df = pc.detail_lo;
+            } else if (pc.use_mask != 0u) {
+                df = computeDetail(pc.pLdetail *
+                                   dmask.v[uint(row) * pc.w + uint(col)]);
+            } else {
+                df = pc.detail_hi;
+            }
+            SH(i, j) *= 1.0 - exp(-(nbw[m] * nbw[m]) / df);
+        }
+        barrier();
+    }
+
+    /* ---- inverse DCT-III along rows (FFTW REDFT01, unnormalised) ---- */
+    for (uint m = 0u; m < 4u; ++m) {
+        const float first = SH(hi + m, 0u);
+        for (uint p = 0u; p < 4u; ++p) {
+            acc[m * 4u + p] = first;
+        }
+    }
+    for (uint j = 1u; j < uint(TS); ++j) {
+        for (uint m = 0u; m < 4u; ++m) {
+            xs[m] = 2.0 * SH(hi + m, j);
+        }
+        for (uint p = 0u; p < 4u; ++p) {
+            cs[p] = cf.v[j * uint(TS) + lo + p];
+        }
+        for (uint m = 0u; m < 4u; ++m) {
+            for (uint p = 0u; p < 4u; ++p) {
+                acc[m * 4u + p] = fma(xs[m], cs[p], acc[m * 4u + p]);
+            }
+        }
+    }
+    barrier();
+    for (uint m = 0u; m < 4u; ++m) {
+        for (uint p = 0u; p < 4u; ++p) {
+            SH(hi + m, lo + p) = acc[m * 4u + p];
+        }
+    }
+    barrier();
+
+    /* ---- inverse DCT-III along columns ---- */
+    for (uint m = 0u; m < 4u; ++m) {
+        const float first = SH(0u, lo + m);
+        for (uint p = 0u; p < 4u; ++p) {
+            acc[m * 4u + p] = first;
+        }
+    }
+    for (uint i = 1u; i < uint(TS); ++i) {
+        for (uint m = 0u; m < 4u; ++m) {
+            xs[m] = 2.0 * SH(i, lo + m);
+        }
+        for (uint p = 0u; p < 4u; ++p) {
+            cs[p] = cf.v[i * uint(TS) + hi + p];
+        }
+        for (uint m = 0u; m < 4u; ++m) {
+            for (uint p = 0u; p < 4u; ++p) {
+                acc[m * 4u + p] = fma(xs[m], cs[p], acc[m * 4u + p]);
+            }
+        }
+    }
+    barrier();
+    for (uint m = 0u; m < 4u; ++m) {
+        for (uint p = 0u; p < 4u; ++p) {
+            SH(hi + p, lo + m) = acc[m * 4u + p];
+        }
+    }
+    barrier();
+
+    // ---- tilemask_out * DCTnorm half of RGBoutput_tile_row; applied here (not in the gather) so the gather is a pure sum ----
+    const uint base = blk * uint(TS * TS);
+    for (uint e = tid; e < uint(TS * TS); e += LX) {
+        const uint i = e >> 6, j = e & 63u;
+        blocks.v[base + e] =
+            (gv[i] * gv[j] + pc.eps) * sh[e] * float(DCTNORM);
+    }
+}

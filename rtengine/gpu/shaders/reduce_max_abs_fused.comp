@@ -1,0 +1,43 @@
+#version 450
+
+// Segmented max-abs reduction: reduces `levels` independent same-size segments of one buffer in a single dispatch
+// (waveletShrink's per-level MAD estimate). Segments are padded to `paddedN` (host-computed ceil(n/LX)*LX) so no
+// workgroup straddles a segment boundary -- required since the tree reduction assumes all LX threads share a segment.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint n;       // real elements per segment (level)
+    uint paddedN; // ceil(n/LX)*LX -- elements per segment as dispatched
+    uint levels;
+} pc;
+
+shared float sdata[256];
+
+void main()
+{
+    uint tid = gl_LocalInvocationID.x;
+    uint gid = gl_GlobalInvocationID.x;
+    uint level = gid / pc.paddedN;
+    uint local = gid % pc.paddedN;
+    float v = (level < pc.levels && local < pc.n)
+                  ? abs(src.v[level * pc.n + local])
+                  : 0.0;
+    sdata[tid] = v;
+    barrier();
+
+    for (uint s = LX / 2u; s > 0u; s >>= 1u) {
+        if (tid < s) {
+            sdata[tid] = max(sdata[tid], sdata[tid + s]);
+        }
+        barrier();
+    }
+
+    if (tid == 0u) {
+        dst.v[gl_WorkGroupID.x] = sdata[0];
+    }
+}

@@ -1,0 +1,60 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Final step of the one-pass exact MAD: histogram + dn_mad_group's group sums -> MadRgb's return value (ipdenoise.cc:89-126).
+
+#include "dn_mad.glsl"
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Hist { uint v[]; } hist;
+layout(std430, set = 0, binding = 1) readonly buffer Gsum { uint v[]; } gsum;
+layout(std430, set = 0, binding = 2) writeonly buffer Mad { float v[]; } mad;
+
+layout(push_constant) uniform PC {
+    uint n;        // datalen: elements per segment
+    uint segments;
+} pc;
+
+void main()
+{
+    uint seg = gl_GlobalInvocationID.x;
+    if (seg >= pc.segments) {
+        return;
+    }
+    if (pc.n <= 1u) {
+        mad.v[seg] = 0.0;
+        return;
+    }
+
+    uint half_ = pc.n / 2u;
+    uint cum = 0u;
+
+    // Finds b = median-1, the first bin whose inclusive cumulative count reaches datalen/2; bit-identical
+    // to MadRgb's C loop, so histo[b] below is guaranteed nonzero by the same invariant.
+    uint g = 0u;
+    for (; g < 255u; ++g) {
+        uint c = gsum.v[seg * 256u + g];
+        if (cum + c >= half_) {
+            break;
+        }
+        cum += c;
+    }
+
+    uint base = seg * 65536u + g * 256u;
+    uint b = 0u;
+    for (; b < 255u; ++b) {
+        uint c = hist.v[base + b];
+        if (cum + c >= half_) {
+            break;
+        }
+        cum += c;
+    }
+
+    uint hb = hist.v[base + b];
+    // art_mad_scale (dn_mad.glsl) does the final "/ 0.6745" as the C does: promoted to double, not a plain float divide.
+    mad.v[seg] = hb != 0u
+        ? art_mad_scale(float(g * 256u + b) + float(half_ - cum) / float(hb))
+        : 0.0;
+}

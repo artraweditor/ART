@@ -331,7 +331,10 @@ void Color::init()
 #endif
         for (int i = 0; i < maxindex; ++i) {
             jzazbz_pq_[i] = PQ(float(i) / 65535.f);
-            jzazbz_pq_inv_[i] = PQ_inv(float(i) / 65535.f);
+            /* Sampled over [0, jzazbzPQInvMax()], not [0,1] -- see the comment
+             * on jzazbzPQInvMax() in color.h. */
+            jzazbz_pq_inv_[i] =
+                PQ_inv(jzazbzPQInvMax() * float(i) / 65535.f);
         }
     }
 }
@@ -7178,8 +7181,11 @@ void Color::xyz2jzazbz(float X, float Y, float Z, float &Jz, float &az,
 void Color::jzazbz2xyz(float Jz, float az, float bz, float &X, float &Y,
                        float &Z)
 {
+    const float pq_inv_max = jzazbzPQInvMax();
+    const float pq_inv_scale = 65535.f / pq_inv_max;
     const auto get_PQ_inv = [&](float x) -> float {
-        return (x >= 0.f && x <= 1.f) ? jzazbz_pq_inv_[x * 65535.f] : PQ_inv(x);
+        return (x >= 0.f && x <= pq_inv_max) ? jzazbz_pq_inv_[x * pq_inv_scale]
+                                             : PQ_inv(x);
     };
 
     Jz = Jz + 1.6295499532821566e-11f;

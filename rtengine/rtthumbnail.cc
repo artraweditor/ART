@@ -1080,6 +1080,7 @@ IImage8 *Thumbnail::processImage(const procparams::ProcParams &params,
     ImProcFunctions ipf(&params,
                         forHistogramMatching); // enable multithreading when
                                                // forHistogramMatching is true
+    ipf.setPipeline(ImProcFunctions::Pipeline::THUMBNAIL);
 
     if (params.filmNegative.enabled &&
         params.filmNegative.backCompat ==
@@ -1124,8 +1125,7 @@ IImage8 *Thumbnail::processImage(const procparams::ProcParams &params,
 
     ipf.firstAnalysis(baseImg, params, hist16);
 
-    bool stop = ipf.process(ImProcFunctions::Pipeline::THUMBNAIL,
-                            ImProcFunctions::Stage::STAGE_0, baseImg);
+    bool stop = ipf.process(ImProcFunctions::Stage::STAGE_0, baseImg);
 
     // perform transform
     if (ipf.needsTransform()) {
@@ -1156,12 +1156,9 @@ IImage8 *Thumbnail::processImage(const procparams::ProcParams &params,
     }
     ipf.setDCPProfile(dcpProf, as);
 
-    stop = stop || ipf.process(ImProcFunctions::Pipeline::THUMBNAIL,
-                               ImProcFunctions::Stage::STAGE_1, baseImg);
-    stop = stop || ipf.process(ImProcFunctions::Pipeline::THUMBNAIL,
-                               ImProcFunctions::Stage::STAGE_2, baseImg);
-    stop = stop || ipf.process(ImProcFunctions::Pipeline::THUMBNAIL,
-                               ImProcFunctions::Stage::STAGE_3, baseImg);
+    stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_1, baseImg);
+    stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_2, baseImg);
+    stop = stop || ipf.process(ImProcFunctions::Stage::STAGE_3, baseImg);
 
     // obtain final image
     Image8 *readyImg = nullptr;

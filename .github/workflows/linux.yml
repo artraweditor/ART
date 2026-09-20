@@ -63,6 +63,9 @@ jobs:
             libinih-dev \
             libbrotli-dev \
             libexpat1-dev \
+            libopenexr-dev \
+            libvulkan-dev \
+            glslang-tools \
             gvfs \
             wget
           sudo python3 -m pip install meson
@@ -203,6 +206,7 @@ jobs:
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DENABLE_SIMDE=${ART_SIMDE} \
+            -DENABLE_VULKAN=1 \
             ../repo
           cd ..
 

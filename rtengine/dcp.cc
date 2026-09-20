@@ -2179,3 +2179,9 @@ DCPStore::getCameraProfile(const Glib::ustring &requested_cam_short_name) const
 
     return nullptr;
 }
+
+
+bool DCPProfile::needStep2(const ApplyState &as) const
+{
+    return !(!as.data->use_tone_curve && !as.data->apply_look_table && as.data->bl_scale == 1.f);
+}

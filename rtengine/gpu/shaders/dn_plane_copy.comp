@@ -1,0 +1,23 @@
+#version 450
+
+// Flat plane copy: snapshots L aside before wavelet reconstruction overwrites it, for phase 7's Lin - labdn->L residual.
+// Costs ~2.3ms of device traffic but avoids making the session's plane identity mutable across phase 8's three shaders.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint n;
+} pc;
+
+void main()
+{
+    const uint i = gl_GlobalInvocationID.x;
+    if (i >= pc.n) {
+        return;
+    }
+    dst.v[i] = src.v[i];
+}

@@ -78,7 +78,9 @@ jobs:
                 adwaita-icon-theme \
                 libomp \
                 ctl \
-                expat
+                expat \
+                vulkan-headers \
+                shaderc
 
       - if: ${{ matrix.arch == 'arm64' }}
         name: Install SIMDE
@@ -161,6 +163,8 @@ jobs:
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
             -DENABLE_SIMDE=${ART_SIMDE} \
+            -DENABLE_VULKAN=1 \
+            -DCMAKE_PREFIX_PATH=${HOMEBREW_PREFIX} \
             -DOpenMP_C_FLAGS="$C_FLAGS" \
             -DOpenMP_CXX_FLAGS="$C_FLAGS" \
             -DOpenMP_C_LIB_NAMES=libomp \

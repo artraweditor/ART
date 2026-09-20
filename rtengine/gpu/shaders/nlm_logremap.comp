@@ -1,0 +1,29 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// detail_mask's log remap of downscaled luminance (nlmeans.cc:374-378): L2 = xlin2log(L2/scaling, base), in place.
+
+#include "include/art_color.glsl"
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) buffer Buf { float v[]; } buf;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float invScaling;
+    float base;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    buf.v[o] = art_xlin2log(buf.v[o] * pc.invScaling, pc.base);
+}

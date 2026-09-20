@@ -184,6 +184,7 @@ void Crop::update(int todo)
     // Tells to the ImProcFunctions' tool what is the preview scale, which may
     // lead to some simplifications
     parent->ipf.setScale(skip);
+    parent->ipf.setPipeline(ImProcFunctions::Pipeline::PREVIEW);
     parent->ipf.setPipetteBuffer(this);
     parent->ipf.setViewport(0, 0, -1, -1);
     parent->ipf.setOutputHistograms(nullptr, nullptr, nullptr);
@@ -201,8 +202,8 @@ void Crop::update(int todo)
             if (params.filmNegative.colorSpace ==
                 FilmNegativeParams::ColorSpace::WORKING) {
                 converted = true;
-                parent->imgsrc->convertColorSpace(img, params.icm,
-                                                  parent->currWB);
+                parent->imgsrc->convertColorSpace(
+                    img, params.icm, parent->currWB);
             }
             parent->ipf.filmNegativeProcess(img, img, params.filmNegative,
                                             params.raw, parent->imgsrc,
@@ -225,8 +226,8 @@ void Crop::update(int todo)
                                  params.exposure, params.raw);
 
         if (!invert_negative(origCrop)) {
-            parent->imgsrc->convertColorSpace(origCrop, params.icm,
-                                              parent->currWB);
+            parent->imgsrc->convertColorSpace(
+                origCrop, params.icm, parent->currWB);
         }
     }
 
@@ -336,14 +337,15 @@ void Crop::update(int todo)
                 parent->imgsrc->getImage(parent->currWB, tr, f, pp,
                                          params.exposure, params.raw);
                 if (!invert_negative(f)) {
-                    parent->imgsrc->convertColorSpace(f, params.icm,
-                                                      parent->currWB);
+                    parent->imgsrc->convertColorSpace(
+                        f, params.icm, parent->currWB);
                 }
 
                 if (copy_from_earlier_steps) {
                     // copy the denoised crop
                     int oy = trafy / skip;
                     int ox = trafx / skip;
+                    baseCrop->syncCpu();
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -367,8 +369,7 @@ void Crop::update(int todo)
 
         if (need_drcomp) {
             pipeline_stop_[0] =
-                parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                    ImProcFunctions::Stage::STAGE_0, f);
+                parent->ipf.process(ImProcFunctions::Stage::STAGE_0, f);
         }
         stop = pipeline_stop_[0];
 
@@ -377,6 +378,7 @@ void Crop::update(int todo)
         if (need_cropping) {
             int oy = trafy / skip;
             int ox = trafx / skip;
+            f->syncCpu();
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -390,6 +392,7 @@ void Crop::update(int todo)
                     baseCrop->b(y, x) = f->b(cy, cx);
                 }
             }
+            baseCrop->residency().invalidateGPU();
         } else {
             f->copyTo(baseCrop);
         }
@@ -428,8 +431,7 @@ void Crop::update(int todo)
         workingCrop->copyTo(bufs_[0]);
         pipeline_stop_[1] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_1, bufs_[0]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
 
         if (workingCrop != baseCrop) {
             delete workingCrop;
@@ -442,8 +444,7 @@ void Crop::update(int todo)
 
         pipeline_stop_[2] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_2, bufs_[1]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
     }
     stop = stop || pipeline_stop_[2];
 
@@ -452,8 +453,7 @@ void Crop::update(int todo)
 
         pipeline_stop_[3] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_3, bufs_[2]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
     }
     stop = stop || pipeline_stop_[3];
 

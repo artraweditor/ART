@@ -41,6 +41,10 @@ if(CTL_FOUND)
     link_directories(${CTL_LIBRARY_DIRS})
 endif()
 
+if(VULKAN_FOUND)
+    include_directories(${VULKAN_INCLUDE_DIRS})
+endif()
+
 if(SIMDE_INCLUDE_DIRS)
     include_directories("${SIMDE_INCLUDE_DIRS}")
 endif()
@@ -48,6 +52,12 @@ endif()
 set(CAMCONSTSFILE "camconst.json")
 
 set(RTENGINESOURCEFILES
+    # The GPU facade and the per-operator translation units are compiled
+    # unconditionally: each one is Vulkan-free at the top level and provides
+    # "return false" stubs when ART_USE_VULKAN is not defined, so callers need
+    # no #ifdef.  Only the vk_* internals below are conditional.
+    gpu/gpu.cc
+    gpu/residency.cc
     badpixels.cc
     CA_correct_RT.cc
     PF_correct_RT.cc
@@ -63,6 +73,7 @@ set(RTENGINESOURCEFILES
     color.cc
     colortemp.cc
     coord.cc
+    wavelet.cc
     curves.cc
     dcp.cc
     dcraw.cc
@@ -104,6 +115,7 @@ set(RTENGINESOURCEFILES
     loadinitial.cc
     myfile.cc
     panasonic_decoders.cc
+    pipelineprofile.cc
     pipettebuffer.cc
     pixelshift.cc
     previewimage.cc
@@ -169,7 +181,6 @@ set(RTENGINESOURCEFILES
     compress.cc
     LUT3D.cc
     clutparams.cc
-    wavelet.cc
     )
 
 
@@ -203,6 +214,64 @@ if(OCIO_FOUND)
     set(RTENGINESOURCEFILES ${RTENGINESOURCEFILES}
         extclut.cc
         )
+endif()
+
+if(VULKAN_FOUND)
+    set(RTENGINE_GPU_SOURCES
+        gpu/vk_api.cc
+        gpu/vk_context.cc
+        gpu/vk_pipeline.cc
+        gpu/vk_pass.cc
+        gpu/ops.cc
+        )
+
+    # ---- GLSL -> SPIR-V -------------------------------------------------
+    set(ART_SHADER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gpu/shaders")
+    file(GLOB ART_SHADER_SOURCES "${ART_SHADER_SRC_DIR}/*.comp")
+    file(GLOB ART_SHADER_INCLUDES "${ART_SHADER_SRC_DIR}/include/*.glsl")
+    set(ART_SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/gpu/shaders")
+    file(MAKE_DIRECTORY "${ART_SPIRV_DIR}")
+
+    if(ART_GLSL_COMPILER MATCHES "glslangValidator")
+        set(ART_GLSL_ARGS -V --target-env vulkan1.1
+            "-I${ART_SHADER_SRC_DIR}/include" -o)
+    else()
+        set(ART_GLSL_ARGS -O --target-env=vulkan1.1
+            "-I${ART_SHADER_SRC_DIR}/include" -o)
+    endif()
+
+    set(ART_SPIRV_FILES)
+    foreach(_shader ${ART_SHADER_SOURCES})
+        get_filename_component(_name "${_shader}" NAME_WE)
+        set(_spv "${ART_SPIRV_DIR}/${_name}.spv")
+        # NOTE: add_custom_command(DEPFILE) needs CMake 3.20 and only works for
+        # Makefile generators; ART requires 3.9.  So depend on every shared
+        # include instead: over-approximate, but correct and generator-agnostic.
+        add_custom_command(OUTPUT "${_spv}"
+            COMMAND "${ART_GLSL_COMPILER}" ${ART_GLSL_ARGS} "${_spv}" "${_shader}"
+            DEPENDS "${_shader}" ${ART_SHADER_INCLUDES}
+            COMMENT "Compiling shader ${_name}.comp"
+            VERBATIM)
+        list(APPEND ART_SPIRV_FILES "${_spv}")
+    endforeach()
+
+    set(ART_SPIRV_BLOB "${CMAKE_CURRENT_BINARY_DIR}/gpu_shaders_generated.cc")
+    set(ART_SPIRV_BLOB_H "${CMAKE_CURRENT_BINARY_DIR}/gpu_shaders_generated.h")
+    add_custom_command(OUTPUT "${ART_SPIRV_BLOB}" "${ART_SPIRV_BLOB_H}"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DOUTPUT=${ART_SPIRV_BLOB}"
+            "-DHEADER=${ART_SPIRV_BLOB_H}"
+            "-DINPUTS=${ART_SPIRV_FILES}"
+            -P "${PROJECT_SOURCE_DIR}/cmake/modules/ARTEmbedSpirv.cmake"
+        DEPENDS ${ART_SPIRV_FILES}
+                "${PROJECT_SOURCE_DIR}/cmake/modules/ARTEmbedSpirv.cmake"
+        COMMENT "Embedding SPIR-V modules"
+        VERBATIM)
+    set_source_files_properties("${ART_SPIRV_BLOB}" "${ART_SPIRV_BLOB_H}"
+        PROPERTIES GENERATED TRUE)
+
+    list(APPEND RTENGINE_GPU_SOURCES "${ART_SPIRV_BLOB}")
+    set(RTENGINESOURCEFILES ${RTENGINESOURCEFILES} ${RTENGINE_GPU_SOURCES})
 endif()
 
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
@@ -245,6 +314,12 @@ if(OCIO_FOUND)
 endif()
 if(CTL_FOUND)
     target_link_libraries(rtengine ${CTL_LIBRARIES})
+endif()
+if(VULKAN_FOUND)
+    # The Vulkan loader is deliberately NOT linked: it is dlopen'd at runtime so
+    # that a machine without a loader/ICD/device still runs ART, and so the
+    # platform bundlers cannot pick up a loader and shadow the host's own.
+    target_link_libraries(rtengine ${CMAKE_DL_LIBS})
 endif()
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)

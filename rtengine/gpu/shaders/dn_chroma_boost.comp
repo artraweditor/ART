@@ -1,0 +1,33 @@
+#version 450
+
+// Denoise phase 8: chroma boost, pushes coefficients with |chroma| > 3000 outward to restore QUALITY_HIGH saturation.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) buffer A { float v[]; } aC;
+layout(std430, set = 0, binding = 1) buffer B { float v[]; } bC;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float boost_a;      // 1 + qhighFactor * realred / 100
+    float boost_b;      // 1 + qhighFactor * realblue / 100
+} pc;
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint i = g.y * pc.w + g.x;
+    const float a = aC.v[i];
+    const float b = bC.v[i];
+
+    if (sqrt(a * a + b * b) > 3000.0) {
+        aC.v[i] = a * pc.boost_a;
+        bC.v[i] = b * pc.boost_b;
+    }
+}

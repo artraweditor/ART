@@ -38,16 +38,27 @@
 
 namespace rtengine {
 
+extern const Settings *settings;
+
 using namespace procparams;
+
+namespace gpu {
+namespace ops {
+class DenoisePools;
+} // namespace ops
+} // namespace gpu
+
+class ImProcFunctions;
 
 struct ImProcData {
     const ProcParams *params;
     double scale;
     bool multiThread;
+    ImProcFunctions *ipf;
 
     explicit ImProcData(const ProcParams *p = nullptr, double s = 1.0,
-                        bool m = true)
-        : params(p), scale(s), multiThread(m)
+                        bool m = true, ImProcFunctions *i = nullptr)
+        : params(p), scale(s), multiThread(m), ipf(i)
     {
     }
 };
@@ -61,6 +72,9 @@ public:
     ~ImProcFunctions();
 
     void setScale(double iscale);
+
+    gpu::Context *getGPUContext();
+    gpu::BufferPool *getGPUPool();
 
     void updateColorProfiles(const Glib::ustring &monitorProfile,
                              RenderingIntent monitorIntent, bool softProof,
@@ -83,7 +97,8 @@ public:
     //----------------------------------------------------------------------
     enum class Stage { STAGE_0, STAGE_1, STAGE_2, STAGE_3 };
     enum class Pipeline { THUMBNAIL, NAVIGATOR, PREVIEW, OUTPUT };
-    bool process(Pipeline pipeline, Stage stage, Imagefloat *img);
+    void setPipeline(Pipeline pipeline) { cur_pipeline = pipeline; }
+    bool process(Stage stage, Imagefloat *img);
 
     void setViewport(int ox, int oy, int fw, int fh);
     void setOutputHistograms(LUTu *histToneCurve, LUTu *histCCurve,
@@ -268,6 +283,8 @@ private:
 
     LinkedMaskManager linked_mask_mgr_;
 
+    gpu::BufferPool *gpuPool_;
+
 private:
     void transformLuminanceOnly(Imagefloat *original, Imagefloat *transformed,
                                 int cx, int cy, int oW, int oH, int fW, int fH,
@@ -289,8 +306,10 @@ private:
     bool needsVignetting();
     bool needsLCP();
     bool needsLensfun();
+    bool needsDCPProfile();
 
-    template <class Ret, class Method> Ret apply(Method op, Imagefloat *img);
+    template <class Ret, class Method>
+    Ret apply(const char *name, Method op, Imagefloat *img, bool can_skip_sync);
 };
 
 } // namespace rtengine

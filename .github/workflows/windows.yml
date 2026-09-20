@@ -74,7 +74,7 @@ jobs:
           echo "SigLevel = Optional TrustAll" >> /etc/pacman.conf
           echo "Server = file://${PWD}/repo-${ART_MSYS2_REPO}" >> /etc/pacman.conf
           pacman -Sy
-          for p in ${ART_COMPILER} cmake autotools ninja gtkmm3 lcms2 fftw lensfun mimalloc opencolorio; do
+          for p in ${ART_COMPILER} cmake autotools ninja gtkmm3 lcms2 fftw lensfun mimalloc opencolorio vulkan-headers shaderc; do
               pacman --noconfirm -S custom-${ART_MSYS2_REPO}/${ART_PKG_PREFIX}-${p}
           done
           
@@ -169,6 +169,7 @@ jobs:
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DBUILD_BUNDLE=1 \
             -DENABLE_SIMDE=${ART_SIMDE} \
+            -DENABLE_VULKAN=1 \
             -DCMAKE_CXX_FLAGS="${ART_CXX_FLAGS}" \
             ../repo
           cd ..

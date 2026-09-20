@@ -1,0 +1,30 @@
+#version 450
+
+// Y = R*ws1x + G*ws1y + B*ws1z: Color::rgb2yuv's Y term only (color.h:872-878).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer R { float v[]; } rC;
+layout(std430, set = 0, binding = 1) readonly buffer G { float v[]; } gC;
+layout(std430, set = 0, binding = 2) readonly buffer B { float v[]; } bC;
+layout(std430, set = 0, binding = 3) writeonly buffer Y { float v[]; } yBuf;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float ws1x;
+    float ws1y;
+    float ws1z;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    yBuf.v[o] = rC.v[o] * pc.ws1x + gC.v[o] * pc.ws1y + bC.v[o] * pc.ws1z;
+}

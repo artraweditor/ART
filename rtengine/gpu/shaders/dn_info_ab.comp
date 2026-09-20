@@ -1,0 +1,57 @@
+#version 450
+
+// Denoise auto-chrominance analysis step 2: the two chroma planes to wavelet-decompose (RGB_denoise_info's isRAW branch, ipdenoise.cc:481-513).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+// Three source descriptors rather than one plane-strided binding: see the note in dn_info_prep.comp.
+layout(std430, set = 0, binding = 0) readonly buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) readonly buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) readonly buffer P2 { float v[]; } p2;
+// L is never filled/read on this branch, so only two chroma planes are written here.
+layout(std430, set = 0, binding = 3) writeonly buffer A { float v[]; } aOut;
+layout(std430, set = 0, binding = 4) writeonly buffer B { float v[]; } bOut;
+
+layout(push_constant) uniform PC {
+    /* Color::rgbLuminance's row of the working-space matrix, ws[1][0..2].
+     * rgb2yuv needs no other row: u and v are differences against Y. */
+    vec4 ws1;
+    uint w;
+    uint h;
+    uint stride;        // source row stride in floats
+    float gain;         // pow(2, expcomp)
+    float gam;          // RGB_denoise_infoGamCurve's gam
+    float thresh;       // gamthresh, 0.001
+    float slope;        // gamslope
+} pc;
+
+/* Color::gammaf (color.h:1329), then gammaf2lut's factor of 32768 -- note
+ * that this is 32768 and not 65535: the analysis works in the same half-scale
+ * Lab-ish units as its Color::XYZ2Lab counterpart. */
+float warp(float v)
+{
+    const float x = v / 65535.0;
+    const float y = x <= pc.thresh ? x * pc.slope : exp(log(x) / pc.gam);
+    return y * 32768.0;
+}
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint s = g.y * pc.stride + g.x;
+    const uint o = g.y * pc.w + g.x;
+
+    const float X = warp(pc.gain * p0.v[s]);
+    const float Y = warp(pc.gain * p1.v[s]);
+    const float Z = warp(pc.gain * p2.v[s]);
+
+    /* Color::rgb2yuv: Y = rgbLuminance(X, Y, Z), u = Y - b, v = r - Y. */
+    const float lum = pc.ws1.x * X + pc.ws1.y * Y + pc.ws1.z * Z;
+    aOut.v[o] = X - lum;      // labdn->a = v
+    bOut.v[o] = lum - Z;      // labdn->b = u
+}

@@ -1,0 +1,69 @@
+#version 450
+
+// Brute-force pixelwise NLM (Froment, IPOL 4 (2014) "Parameter-Free Fast Pixelwise NLM", algorithm 1), O(D^2 d^2)/pixel.
+// Experimental ART_NLMEANS_SIMPLE=1 alternative to the box-blur-based gpu::ops::nlmeans, not the default path.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) readonly buffer Mask { float v[]; } mask;
+layout(std430, set = 0, binding = 2) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    int w;
+    int h;
+    int ds;    // patch side half-length
+    int Ds;    // search window side half-length
+    float invH2;
+    float invNormcoeff;
+} pc;
+
+float fetchPad(int x, int y)
+{
+    return src.v[uint(clamp(y, 0, pc.h-1)) * uint(pc.w) +
+                 uint(clamp(x, 0, pc.w-1))];
+}
+
+void main()
+{
+    ivec2 g = ivec2(gl_GlobalInvocationID.xy);
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+
+    float r = 0.0; // sum of weighted pixel values (eq. 2)
+    float s = 0.0; // sum of weights, for normalization
+
+    float m = 1.0 / mask.v[uint(g.y) * uint(pc.w) + uint(g.x)];
+
+    for (int dy = -pc.Ds; dy <= pc.Ds; ++dy) {
+        for (int dx = -pc.Ds; dx <= pc.Ds; ++dx) {
+            int yx = g.x + dx;
+            int yy = g.y + dy;
+
+            // Patch SSD: raw sum (not eq. 11's per-pixel mean) -- must match nlmeans.cc's integral-image Dist2
+            // convention, since pc.invH2 is calibrated against that, not the paper's 1/d^2 normalization.
+            // Fetches are scaled by invNormcoeff before differencing (dist2 only, not `r`'s accumulation below):
+            // without it, large normcoeff (e.g. 65535) blows dist2 past float32's precision and exp()'s input is noise.
+            float dist2 = 0.0;
+            for (int zy = -pc.ds; zy <= pc.ds; ++zy) {
+                for (int zx = -pc.ds; zx <= pc.ds; ++zx) {
+                    float a = fetchPad(g.x + zx, g.y + zy) * pc.invNormcoeff;
+                    float b = fetchPad(yx + zx, yy + zy) * pc.invNormcoeff;
+                    float d = a - b;
+                    dist2 += d * d;
+                }
+            }
+
+            float weight = exp(-dist2 * m * pc.invH2); // eq. (12)
+            r += weight * fetchPad(yx, yy);
+            s += weight;
+        }
+    }
+
+    // r/s stay at the caller's raw plane scale (op_nlmeans.cc uploads unnormalised, unlike nlm_pad) --
+    // do not multiply by normcoeff here, that previously corrupted output whenever normcoeff != 1.
+    dst.v[uint(g.y) * uint(pc.w) + uint(g.x)] = r / max(s, 1e-20);
+}

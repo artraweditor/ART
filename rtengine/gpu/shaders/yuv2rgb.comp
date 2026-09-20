@@ -1,0 +1,38 @@
+#version 450
+
+// YUV to RGB colorspace conversion.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Y { float v[]; } yC;
+layout(std430, set = 0, binding = 1) readonly buffer U { float v[]; } uC;
+layout(std430, set = 0, binding = 2) readonly buffer V { float v[]; } vC;
+layout(std430, set = 0, binding = 3) writeonly buffer R { float v[]; } rC;
+layout(std430, set = 0, binding = 4) writeonly buffer G { float v[]; } gC;
+layout(std430, set = 0, binding = 5) writeonly buffer B { float v[]; } bC;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float ws1x;
+    float ws1y;
+    float ws1z;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    float y = yC.v[o], u = uC.v[o], v = vC.v[o];
+    float newB = y - u;
+    float newR = v + y;
+    float newG = (y - newR * pc.ws1x - newB * pc.ws1z) / pc.ws1y;
+    rC.v[o] = newR;
+    gC.v[o] = newG;
+    bC.v[o] = newB;
+}

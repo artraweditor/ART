@@ -35,4 +35,34 @@ void guidedFilterLog(const array2D<float> &guide, float base,
                      array2D<float> &chan, int r, float eps, bool multithread,
                      int subsampling = 0);
 
+#ifdef ART_USE_VULKAN
+
+namespace gpu {
+
+class Context;
+class Buffer;
+class BufferPool;
+class Pass;
+
+namespace ops {
+
+/* The Fast Guided Filter (He/Sun, "Fast Guided Filter", 2015) over one
+ * already device-resident W x H plane triple.
+ *
+ * Recording form: records into `pass` and submits nothing, so a caller can
+ * fold the surrounding log transform (ops::logGuidedFilterSelf) and whatever
+ * else it needs into the same command buffer.  Scratch comes from `pool`,
+ * which must not be recycled before the caller submits and waits. */
+bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
+                     Buffer &srcFull, Buffer &dstFull, int W, int H, int r,
+                     float epsilon);
+
+bool guidedFilterGPU(Context &ctx, Buffer &guideFull, Buffer &srcFull,
+                     Buffer &dstFull, int W, int H, int r, float epsilon);
+
+} // namespace ops
+} // namespace gpu
+
+#endif // ART_USE_VULKAN
+
 } // namespace rtengine

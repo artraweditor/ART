@@ -28,6 +28,8 @@
 #include "improcfun.h"
 #include "ipdenoise.h"
 #include "masks.h"
+#include "nlmeans.h"
+#include "wavelet.h"
 #include "rescale.h"
 #include "rt_algo.h"
 #include "rt_math.h"
@@ -48,6 +50,22 @@
 extern Options options;
 
 namespace rtengine {
+
+namespace { enum class Channel { L, C, LC }; }
+
+namespace gpu { namespace ops {
+
+bool wavelet_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, float strength, int levels,
+                       float gamma, double scale, Channel chan,
+                       Context *ctx, BufferPool *pool);
+
+bool nlmeans_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, const TMatrix &iws, Channel chan,
+                       int strength, int detail, int iterations, double scale,
+                       Context *ctx, BufferPool *pool);
+
+}} // namespace gpu::ops
 
 namespace {
 
@@ -332,8 +350,6 @@ void lens_motion_blur(ImProcData &im, Imagefloat *rgb,
 
 //-----------------------------------------------------------------------------
 
-enum class Channel { L, C, LC };
-
 void guided_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
                       const TMatrix &ws, const TMatrix &iws, Channel chan,
                       int radius, float epsilon, double scale, bool multithread)
@@ -500,13 +516,23 @@ void gaussian_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
     }
 }
 
-void nlmeans_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
+void nlmeans_smoothing(Imagefloat *rgb,
                        const TMatrix &ws, const TMatrix &iws, Channel chan,
                        int strength, int detail, int iterations, double scale,
-                       bool multithread)
+                       bool multithread, gpu::Context *ctx, gpu::BufferPool *pool)
 {
+    if (gpu::ops::nlmeans_smoothing(rgb, ws, iws, chan, strength, detail,
+                                    iterations, scale, ctx, pool)) {
+        return;
+    }
+
     array2D<float> iY;
-    const int W = R.width(), H = R.height();
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
+
+    array2D<float> R(W, H, rgb->r.ptrs, ARRAY2D_BYREFERENCE);
+    array2D<float> G(W, H, rgb->g.ptrs, ARRAY2D_BYREFERENCE);
+    array2D<float> B(W, H, rgb->b.ptrs, ARRAY2D_BYREFERENCE);    
 
     if (chan == Channel::L) {
         iY(W, H, ARRAY2D_ALIGNED);
@@ -757,17 +783,28 @@ void halation(array2D<float> &R, array2D<float> &G, array2D<float> &B, int size,
     }
 }
 
-void wavelet_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
+void wavelet_smoothing(Imagefloat *rgb,
                        const TMatrix &ws, float strength, int levels,
                        float gamma, double scale, Channel chan,
-                       bool multithread)
+                       bool multithread,
+                       gpu::Context *ctx, gpu::BufferPool *pool)
 {
     if (strength <= 0.1f) {
         return;
     }
 
-    const int W = R.width();
-    const int H = R.height();
+    if (gpu::ops::wavelet_smoothing(rgb, ws, strength, levels, gamma, scale,
+                                    chan, ctx, pool)) {
+        return;
+    }
+
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
+
+    array2D<float> R(W, H, rgb->r.ptrs, 0);
+    array2D<float> G(W, H, rgb->g.ptrs, 0);
+    array2D<float> B(W, H, rgb->b.ptrs, 0);
+    
     const int nlevels = std::max(levels - int(std::log2(scale)), 2);
     constexpr float eps = 0.01f;
     const float s = SQR(float(strength) / 125.f * (1.f + strength / 25.f));
@@ -870,9 +907,20 @@ void wavelet_smoothing(array2D<float> &R, array2D<float> &G, array2D<float> &B,
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
-                R[y][x] = pow_F(std::max(R[y][x], 0.f), gamma);
-                G[y][x] = pow_F(std::max(G[y][x], 0.f), gamma);
-                B[y][x] = pow_F(std::max(B[y][x], 0.f), gamma);
+                rgb->r(y, x) = pow_F(std::max(R[y][x], 0.f), gamma);
+                rgb->g(y, x) = pow_F(std::max(G[y][x], 0.f), gamma);
+                rgb->b(y, x) = pow_F(std::max(B[y][x], 0.f), gamma);
+            }
+        }
+    } else {
+#ifdef _OPENMP
+#pragma omp parallel for if (multithread)
+#endif
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                rgb->r(y, x) = R[y][x];
+                rgb->g(y, x) = G[y][x];
+                rgb->b(y, x) = B[y][x];
             }
         }
     }
@@ -1009,81 +1057,91 @@ bool ImProcFunctions::guidedSmoothing(Imagefloat *rgb)
                 rgb->copyTo(&working);
             }
 
-            const int flags = r.mode == SmoothingParams::Region::Mode::WAVELETS
-                                  ? 0
-                                  : ARRAY2D_BYREFERENCE;
-            array2D<float> R(ww, hh, working.r.ptrs, flags);
-            array2D<float> G(ww, hh, working.g.ptrs, flags);
-            array2D<float> B(ww, hh, working.b.ptrs, flags);
-
-            const bool glow =
-                r.mode == SmoothingParams::Region::Mode::GAUSSIAN_GLOW;
-            Channel ch = glow ? Channel::LC : Channel(int(r.channel));
-            if (r.mode == SmoothingParams::Region::Mode::NOISE) {
-                if (cur_pipeline == Pipeline::OUTPUT ||
-                    cur_pipeline == Pipeline::PREVIEW) {
-                    add_noise(R, G, B, ws, r.noise_strength, r.noise_coarseness,
-                              scale, ch, multiThread,
-                              offset_x, offset_y, full_width, full_height);
-                }
-            } else if (r.mode == SmoothingParams::Region::Mode::NLMEANS) {
-                nlmeans_smoothing(R, G, B, ws, iws, ch, r.nlstrength,
-                                  r.nldetail, r.iterations, scale, multiThread);
-            } else if (r.mode == SmoothingParams::Region::Mode::LENS ||
-                       r.mode == SmoothingParams::Region::Mode::MOTION) {
-                ImProcData im(params, scale, multiThread);
-                lens_motion_blur(im, &working, blend, i);
-            } else if (r.mode == SmoothingParams::Region::Mode::HALATION) {
-                halation(R, G, B, 50 * r.halation_size / scale,
-                         LIM01(r.halation_color + 0.5), multiThread);
+            if (r.mode == SmoothingParams::Region::Mode::NLMEANS) {
+                nlmeans_smoothing(&working, ws, iws, Channel(int(r.channel)),
+                                  r.nlstrength,
+                                  r.nldetail, r.iterations, scale, multiThread,
+                                  getGPUContext(), getGPUPool());
             } else if (r.mode == SmoothingParams::Region::Mode::WAVELETS) {
-                wavelet_smoothing(R, G, B, ws, r.wav_strength, r.wav_levels,
-                                  r.wav_gamma, scale, ch, multiThread);
-#ifdef _OPENMP
-#pragma omp parallel for if (multiThread)
-#endif
-                for (int y = 0; y < R.height(); ++y) {
-                    for (int x = 0; x < R.width(); ++x) {
-                        working.r(y, x) = R[y][x];
-                        working.g(y, x) = G[y][x];
-                        working.b(y, x) = B[y][x];
+                wavelet_smoothing(&working, ws, r.wav_strength, r.wav_levels,
+                                  r.wav_gamma, scale, Channel(int(r.channel)),
+                                  multiThread,
+                                  getGPUContext(), getGPUPool());
+            } else {
+                const int flags = ARRAY2D_BYREFERENCE;
+                array2D<float> R(ww, hh, working.r.ptrs, flags);
+                array2D<float> G(ww, hh, working.g.ptrs, flags);
+                array2D<float> B(ww, hh, working.b.ptrs, flags);
+
+                const bool glow =
+                    r.mode == SmoothingParams::Region::Mode::GAUSSIAN_GLOW;
+                Channel ch = glow ? Channel::LC : Channel(int(r.channel));
+                if (r.mode == SmoothingParams::Region::Mode::NOISE) {
+                    if (cur_pipeline == Pipeline::OUTPUT ||
+                        cur_pipeline == Pipeline::PREVIEW) {
+                        add_noise(R, G, B, ws, r.noise_strength, r.noise_coarseness,
+                                  scale, ch, multiThread,
+                                  offset_x, offset_y, full_width, full_height);
                     }
-                }
-            } else if (r.mode != SmoothingParams::Region::Mode::GUIDED) {
-                AlignedBuffer<float> buf(ww * hh);
-                double sigma = r.sigma;
-                for (int i = 0; i < r.iterations; ++i) {
-                    gaussian_smoothing(R, G, B, buf.data, ws, ch, sigma, scale,
-                                       multiThread);
-                    if (glow) {
-                        sigma *= 1.5;
-                        float f = pow_F(r.falloff, i);
-                        float f2 = 1.f + 1.f / f;
+                // } else if (r.mode == SmoothingParams::Region::Mode::NLMEANS) {
+                //     nlmeans_smoothing(R, G, B, ws, iws, ch, r.nlstrength,
+                //                       r.nldetail, r.iterations, scale, multiThread);
+                } else if (r.mode == SmoothingParams::Region::Mode::LENS ||
+                           r.mode == SmoothingParams::Region::Mode::MOTION) {
+                    ImProcData im(params, scale, multiThread);
+                    lens_motion_blur(im, &working, blend, i);
+                } else if (r.mode == SmoothingParams::Region::Mode::HALATION) {
+                    halation(R, G, B, 50 * r.halation_size / scale,
+                             LIM01(r.halation_color + 0.5), multiThread);
+//                 } else if (r.mode == SmoothingParams::Region::Mode::WAVELETS) {
+//                     wavelet_smoothing(R, G, B, ws, r.wav_strength, r.wav_levels,
+//                                       r.wav_gamma, scale, ch, multiThread);
+// #ifdef _OPENMP
+// #pragma omp parallel for if (multiThread)
+// #endif
+//                     for (int y = 0; y < R.height(); ++y) {
+//                         for (int x = 0; x < R.width(); ++x) {
+//                             working.r(y, x) = R[y][x];
+//                             working.g(y, x) = G[y][x];
+//                             working.b(y, x) = B[y][x];
+//                         }
+//                     }
+                } else if (r.mode != SmoothingParams::Region::Mode::GUIDED) {
+                    AlignedBuffer<float> buf(ww * hh);
+                    double sigma = r.sigma;
+                    for (int i = 0; i < r.iterations; ++i) {
+                        gaussian_smoothing(R, G, B, buf.data, ws, ch, sigma, scale,
+                                           multiThread);
+                        if (glow) {
+                            sigma *= 1.5;
+                            float f = pow_F(r.falloff, i);
+                            float f2 = 1.f + 1.f / f;
 
 #ifdef _OPENMP
 #pragma omp parallel for if (multiThread)
 #endif
-                        for (int y = min_y; y < max_y; ++y) {
-                            int yy = y - min_y;
-                            for (int x = min_x; x < max_x; ++x) {
-                                int xx = x - min_x;
-                                float &r = R[yy][xx];
-                                float &g = G[yy][xx];
-                                float &b = B[yy][xx];
-                                r = (rgb->r(y, x) + r / f) / f2;
-                                g = (rgb->g(y, x) + g / f) / f2;
-                                b = (rgb->b(y, x) + b / f) / f2;
+                            for (int y = min_y; y < max_y; ++y) {
+                                int yy = y - min_y;
+                                for (int x = min_x; x < max_x; ++x) {
+                                    int xx = x - min_x;
+                                    float &r = R[yy][xx];
+                                    float &g = G[yy][xx];
+                                    float &b = B[yy][xx];
+                                    r = (rgb->r(y, x) + r / f) / f2;
+                                    g = (rgb->g(y, x) + g / f) / f2;
+                                    b = (rgb->b(y, x) + b / f) / f2;
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                const float epsilon =
-                    std::max(0.001f * std::pow(2, -r.epsilon), 1e-6);
-                int radius = r.radius;
-                for (int i = 0; i < r.iterations; ++i) {
-                    guided_smoothing(R, G, B, ws, iws, ch, radius, epsilon,
-                                     scale, multiThread);
+                } else {
+                    const float epsilon =
+                        std::max(0.001f * std::pow(2, -r.epsilon), 1e-6);
+                    int radius = r.radius;
+                    for (int i = 0; i < r.iterations; ++i) {
+                        guided_smoothing(R, G, B, ws, iws, ch, radius, epsilon,
+                                         scale, multiThread);
+                    }
                 }
             }
 
@@ -1116,3 +1174,666 @@ bool ImProcFunctions::guidedSmoothing(Imagefloat *rgb)
 }
 
 } // namespace rtengine
+
+
+#ifdef ART_USE_VULKAN
+
+#include "gpu/gpu.h"
+#include "gpu/vk_pass.h"
+#include "gpu/plane_io.h"
+#include "gpu/ops.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
+
+namespace rtengine { namespace gpu { namespace ops {
+
+namespace {
+
+/* Decimation only happens once, at level 0's FIR step -- the a-trous Haar
+ * levels never resample -- so every level's hi1/hi2/hi3 subband is the same
+ * w x h size, and WaveletBandsGPU packs all `levels` of one direction into
+ * one buffer (ops_internal.h). That means the per-subband MAD-estimation
+ * work below (reduce max, histogram, shrink) can run as one dispatch across
+ * every level of a direction, instead of one dispatch per (level,
+ * direction) pair -- reduceMaxAbsFusedDispatch/histAbsFusedDispatch/
+ * waveletShrinkFusedDispatch below are the fused counterparts of what used
+ * to be per-subband reduceMaxAbsDispatch/histAbsDispatch/
+ * waveletShrinkSubband calls, each looped over all nlevels*3 subbands
+ * individually. */
+constexpr int kMaxFusedLevels = 8; // matches smoothing.cc's wav_levels Adjuster (2-8)
+constexpr unsigned kHistBuckets = 4096;
+
+/* Split into a dispatch half (recorded into the caller's shared Pass, no
+ * submit) and a finish half (reads back the per-level partial-max buffer
+ * once the Pass has been submitted and waited on). One call covers every
+ * level of one direction (hi1, hi2 or hi3).
+ *
+ * Each level is padded to `paddedN` (a multiple of the workgroup size) so
+ * that no workgroup ever straddles a level boundary -- required by the
+ * shared-memory tree reduction in reduce_max_abs_fused.comp, where every
+ * thread in a workgroup must belong to the same level. */
+struct FusedReduceJob {
+    Buffer dst;
+    unsigned int lx = 0, groupsPerLevel = 0;
+};
+
+bool reduceMaxAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band,
+                               int levels, size_t n, FusedReduceJob &job)
+{
+    unsigned int lx = 256;
+    if (lx > ctx.caps().max_workgroup_invocations) {
+        lx = ctx.caps().max_workgroup_invocations;
+    }
+    if (lx > ctx.caps().max_workgroup_size[0]) {
+        lx = ctx.caps().max_workgroup_size[0];
+    }
+    if (!lx) {
+        return false;
+    }
+    job.lx = lx;
+    job.groupsPerLevel = (unsigned int)((n + lx - 1) / lx);
+    const size_t totalGroups = (size_t)job.groupsPerLevel * (size_t)levels;
+
+    job.dst = ctx.createBuffer(totalGroups * sizeof(float), true);
+    if (!job.dst.valid()) {
+        return false;
+    }
+    struct { unsigned int n, paddedN, levels; } pc{
+        (unsigned)n, job.groupsPerLevel * lx, (unsigned)levels};
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&band, false));
+    b.push_back(Pass::Binding(&job.dst, true));
+    const size_t totalElems = (size_t)job.groupsPerLevel * lx * levels;
+    return pass.dispatch1D("reduce_max_abs_fused", b, &pc, sizeof(pc),
+                          totalElems);
+}
+
+bool reduceMaxAbsFusedFinish(Context &ctx, FusedReduceJob &job, int levels,
+                             std::vector<float> &outPerLevel)
+{
+    const size_t totalGroups = (size_t)job.groupsPerLevel * (size_t)levels;
+    const size_t totalBytes = totalGroups * sizeof(float);
+    std::vector<float> readback(totalGroups);
+    if (!downloadFromBuffer(ctx, &ctx.stagingPoolForThisThread(), job.dst, 0,
+                            readback.data(), totalBytes)) {
+        return false;
+    }
+    outPerLevel.resize(levels);
+    for (int lvl = 0; lvl < levels; ++lvl) {
+        float m = 0.f;
+        for (unsigned g = 0; g < job.groupsPerLevel; ++g) {
+            m = std::max(m, readback[(size_t)lvl * job.groupsPerLevel + g]);
+        }
+        outPerLevel[lvl] = m;
+    }
+    return true;
+}
+
+/* ipsmoothing.cc's `mad()` lambda (ipsmoothing.cc:776-787): median(abs(x))
+ * / 0.6745, approximated via a histogram over [0, max(abs(x))] rather than
+ * an exact order statistic (GPU order statistics need a selection
+ * algorithm this project has no existing primitive for; a histogram is the
+ * idiomatic GPU substitute, in the same accepted-divergence family as
+ * every other approximation in this port). */
+struct FusedHistJob {
+    Buffer hist;
+    std::vector<float> maxAbsPerLevel;
+};
+
+bool histAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band, int levels,
+                          size_t n, const std::vector<float> &maxAbsPerLevel,
+                          FusedHistJob &job)
+{
+    job.maxAbsPerLevel = maxAbsPerLevel;
+    const size_t totalBuckets = (size_t)kHistBuckets * (size_t)levels;
+    job.hist = ctx.createBuffer(totalBuckets * sizeof(unsigned), true);
+    if (!job.hist.valid()) {
+        return false;
+    }
+    if (job.hist.mapped()) {
+        std::memset(job.hist.mapped(), 0, totalBuckets * sizeof(unsigned));
+        job.hist.flush(0, totalBuckets * sizeof(unsigned));
+    } else {
+        /* Discrete GPU, unmapped: zero it on-device instead, through the
+         * same Pass (and hence the same barrier tracking) the atomic
+         * increments below are recorded into -- see Pass::fillBuffer's own
+         * doc comment, which names this exact histogram as its motivating
+         * case. */
+        if (!pass.fillBuffer(job.hist)) {
+            return false;
+        }
+    }
+
+    struct {
+        unsigned int n, numBuckets, levels;
+        float invMaxAbs[kMaxFusedLevels];
+    } pc{};
+    pc.n = (unsigned)n;
+    pc.numBuckets = kHistBuckets;
+    pc.levels = (unsigned)levels;
+    for (int lvl = 0; lvl < levels; ++lvl) {
+        pc.invMaxAbs[lvl] =
+            maxAbsPerLevel[lvl] > 0.f ? 1.f / maxAbsPerLevel[lvl] : 0.f;
+    }
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&band, false));
+    b.push_back(Pass::Binding(&job.hist, true));
+    return pass.dispatch1D("wav_hist_abs_fused", b, &pc, sizeof(pc),
+                          n * (size_t)levels);
+}
+
+bool madEstimateFusedFinish(Context &ctx, FusedHistJob &job, size_t n,
+                            std::vector<float> &madOut)
+{
+    const int levels = (int)job.maxAbsPerLevel.size();
+    madOut.resize(levels);
+    const size_t histBytes = (size_t)kHistBuckets * levels * sizeof(unsigned);
+    std::vector<unsigned> readback((size_t)kHistBuckets * levels);
+    if (!downloadFromBuffer(ctx, &ctx.stagingPoolForThisThread(), job.hist, 0,
+                            readback.data(), histBytes)) {
+        return false;
+    }
+    const unsigned *h = readback.data();
+    const size_t target = n / 2;
+    for (int lvl = 0; lvl < levels; ++lvl) {
+        if (job.maxAbsPerLevel[lvl] <= 0.f) {
+            madOut[lvl] = 0.f;
+            continue;
+        }
+        const unsigned *hb = h + (size_t)lvl * kHistBuckets;
+        size_t cum = 0;
+        float median = job.maxAbsPerLevel[lvl];
+        for (unsigned i = 0; i < kHistBuckets; ++i) {
+            cum += hb[i];
+            if (cum >= target) {
+                median =
+                    (float(i) + 0.5f) / float(kHistBuckets) * job.maxAbsPerLevel[lvl];
+                break;
+            }
+        }
+        madOut[lvl] = median / 0.6745f;
+    }
+    return true;
+}
+
+bool waveletShrinkFusedDispatch(Pass &pass, Buffer &band, size_t n,
+                                int levels,
+                                const std::vector<float> &levelFactorS,
+                                const std::vector<float> &nineLevelFactorS,
+                                float eps)
+{
+    struct {
+        unsigned int n, levels;
+        float eps;
+        float levelFactorS[kMaxFusedLevels];
+        float nineLevelFactorS[kMaxFusedLevels];
+    } pc{};
+    pc.n = (unsigned)n;
+    pc.levels = (unsigned)levels;
+    pc.eps = eps;
+    for (int lvl = 0; lvl < levels; ++lvl) {
+        pc.levelFactorS[lvl] = levelFactorS[lvl];
+        pc.nineLevelFactorS[lvl] = nineLevelFactorS[lvl];
+    }
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&band, true));
+    return pass.dispatch1D("wav_shrink_fused", b, &pc, sizeof(pc),
+                          n * (size_t)levels);
+}
+
+/* ipsmoothing.cc's wavelet_smoothing's `wav` lambda (ipsmoothing.cc:789-820):
+ * decompose, MAD-based soft-shrink every detail subband at every level,
+ * reconstruct in place.
+ *
+ * Batched into exactly 3 submissions total, each covering all three
+ * directions' worth of fused per-level work in one call apiece (down from
+ * one submit->wait per primitive dispatch -- ~9 per subband, i.e.
+ * ~9*3*nlevels for a whole channel -- which measured as ~85% pure
+ * per-submission overhead rather than GPU compute on a 5-level/1200x800
+ * test; fusing every level's reduce/hist/shrink into one dispatch per
+ * direction on top of that cut per-dispatch overhead further, see the
+ * doc comment above). The only reason this can't be one submission is that
+ * the CPU genuinely needs two intermediate results back mid-pipeline: each
+ * level's maxAbs (to scale its histogram's bucket range) and each level's
+ * median (to compute its shrinkage threshold) -- both small per-direction
+ * vectors, both cheap to read back, but both real GPU->CPU->GPU round
+ * trips. Everything else -- decompose, every direction's reduction,
+ * histogram and shrink (each fused across levels), and reconstruct -- has
+ * no CPU-side dependency and is batched into the pass that surrounds it:
+ *   pass 1: decompose + reduceMaxAbsFused (each direction)  -> read maxAbs
+ *   pass 2: histAbsFused (each direction)                    -> read median
+ *   pass 3: shrinkFused (each direction) + reconstruct
+ */
+bool waveletShrink(Context &ctx, Buffer &data, int W, int H, int nlevels,
+                   float s, float eps)
+{
+    if (nlevels > kMaxFusedLevels) {
+        logOnce("GPU: wavelet levels exceeds fused-shrink budget; using the "
+               "CPU");
+        return false;
+    }
+
+    WaveletBandsGPU bands;
+    Buffer *ll = nullptr;
+    int llW, llH;
+    /* One pool for the whole op: the decompose block's scratch comes back
+     * for the reconstruct block, and callers that run several channels get
+     * the allocation amortised across them.  It outlives every Pass below,
+     * which is the requirement (nothing may be recycled before a
+     * submitAndWait), and nothing here recycles at all. */
+    BufferPool pool(ctx);
+    FusedReduceJob reduceJobs[3];
+    FusedHistJob histJobs[3];
+    std::vector<float> maxAbs[3], mad[3];
+
+    {
+        Pass pass(ctx, "wavelet:decompose+reduce");
+        if (!pass.valid()) {
+            return false;
+        }
+        if (!waveletDecompose(ctx, pass, pool, data, W, H, nlevels, bands,
+                              ll, llW, llH)) {
+            return false;
+        }
+        Buffer *dirs[3] = {bands.hi1, bands.hi2, bands.hi3};
+        const size_t n = (size_t)bands.w * bands.h;
+        for (int d = 0; d < 3; ++d) {
+            if (!reduceMaxAbsFusedDispatch(ctx, pass, *dirs[d], nlevels, n,
+                                          reduceJobs[d])) {
+                return false;
+            }
+        }
+        if (!pass.submitAndWait()) {
+            return false;
+        }
+        pass.reportTimings();
+    }
+    for (int d = 0; d < 3; ++d) {
+        if (!reduceMaxAbsFusedFinish(ctx, reduceJobs[d], nlevels, maxAbs[d])) {
+            return false;
+        }
+    }
+
+    {
+        Pass pass(ctx, "wavelet:hist");
+        if (!pass.valid()) {
+            return false;
+        }
+        Buffer *dirs[3] = {bands.hi1, bands.hi2, bands.hi3};
+        const size_t n = (size_t)bands.w * bands.h;
+        for (int d = 0; d < 3; ++d) {
+            if (!histAbsFusedDispatch(ctx, pass, *dirs[d], nlevels, n,
+                                     maxAbs[d], histJobs[d])) {
+                return false;
+            }
+        }
+        if (!pass.submitAndWait()) {
+            return false;
+        }
+        pass.reportTimings();
+    }
+    for (int d = 0; d < 3; ++d) {
+        if (!madEstimateFusedFinish(ctx, histJobs[d], (size_t)bands.w * bands.h,
+                                    mad[d])) {
+            return false;
+        }
+    }
+
+    {
+        Pass pass(ctx, "wavelet:shrink+reconstruct");
+        if (!pass.valid()) {
+            return false;
+        }
+        Buffer *dirs[3] = {bands.hi1, bands.hi2, bands.hi3};
+        const size_t n = (size_t)bands.w * bands.h;
+        for (int d = 0; d < 3; ++d) {
+            std::vector<float> levelFactorS(nlevels), nineLevelFactorS(nlevels);
+            for (int lvl = 0; lvl < nlevels; ++lvl) {
+                const float m = (mad[d][lvl] * 65535.f) * (mad[d][lvl] * 65535.f);
+                const float levelFactor = m * 5.f / float(lvl + 1);
+                levelFactorS[lvl] = levelFactor * s;
+                nineLevelFactorS[lvl] = 9.f * levelFactor * s;
+            }
+            if (!waveletShrinkFusedDispatch(pass, *dirs[d], n, nlevels,
+                                           levelFactorS, nineLevelFactorS,
+                                           eps)) {
+                return false;
+            }
+        }
+        if (!waveletReconstruct(ctx, pass, pool, bands, ll, llW, llH, data,
+                                W, H)) {
+            return false;
+        }
+        if (!pass.submitAndWait()) {
+            return false;
+        }
+        pass.reportTimings();
+    }
+
+    return true;
+}
+
+
+bool waveletGamma(Pass &pass, Buffer &buf, int W, int H, float exponent)
+{
+    struct { unsigned int w, h; float exponent; } pc{(unsigned)W, (unsigned)H,
+                                                     exponent};
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&buf, true));
+    return pass.dispatch2D("wav_gamma", b, &pc, sizeof(pc), W, H);
+}
+
+
+bool waveletRgb2Yuv(Pass &pass, Buffer &R, Buffer &G, Buffer &B, int W,
+                    int H, const TMatrix &ws)
+{
+    return rgb2yuv(pass, R, G, B, W, H, ws, G, R, B);
+}
+
+bool waveletYuv2Rgb(Pass &pass, Buffer &R, Buffer &G, Buffer &B, int W,
+                    int H, const TMatrix &ws)
+{
+    return yuv2rgb(pass, G, R, B, W, H, ws, R, G, B);
+}
+
+
+const unsigned int IMAGETOPLANES_DISPATCHES = 3;
+const unsigned int GAMMA_DISPATCHES = 1;
+const unsigned int RGB2YUV_DISPATCHES = 1;
+const unsigned int RGBLUMINANCE_DISPATCHES = 1;
+const unsigned int YUVRECOMBINE_DISPATCHES = 1;
+
+bool imageToPlanes(Pass &pass, Imagefloat *rgb, Buffer *R, Buffer *G,
+                   Buffer *B, bool from_image)
+{
+    if (!rgb || !R || !G || !B) {
+        return false;
+    }
+
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
+
+    const size_t planeStride = rgb->getPlaneStride();
+    const int strideFloats = int(rgb->getRowStride() / sizeof(float));
+
+    Buffer *resid = rgb->residency().forWrite();
+    if (!resid) {
+        return false;
+    }
+
+    return transferPlane(pass, *R, *resid, 0, planeStride, W, H,
+                         strideFloats, !from_image, 1.f) &&
+           transferPlane(pass, *G, *resid, planeStride, planeStride, W, H,
+                         strideFloats, !from_image, 1.f) &&
+           transferPlane(pass, *B, *resid, 2 * planeStride, planeStride, W,
+                         H, strideFloats, !from_image, 1.f);
+}
+
+} // namespace
+
+bool wavelet_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, float strength, int levels,
+                       float gamma, double scale, Channel chan,
+                       Context *ctx, BufferPool *pool)
+{
+    if (!ctx || !pool || !opEnabled("smoothing") || !available()) {
+        return false;
+    }
+
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
+    const size_t bytes = size_t(W) * H * sizeof(float);
+    
+    Buffer *resid = rgb->residency().forWrite();
+    if (!resid) {
+        return false;
+    }
+
+    PoolScope scope(*pool);
+
+    Buffer *wRp = pool->get(bytes);
+    Buffer *wGp = pool->get(bytes);
+    Buffer *wBp = pool->get(bytes);
+    
+    if (!wRp || !wGp || !wBp) {
+        logOnce("GPU: wavelet_smoothing buffer allocation failed; using the CPU");
+        return false;
+    }
+
+    /* The plane split, the forward gamma and the RGB->YUV rotation have no
+     * CPU step between them, so they go into one chain instead of five
+     * submissions.  waveletShrink below genuinely cannot join them: it reads
+     * maxAbs and the MAD median back to the host mid-algorithm, which is a
+     * real GPU->CPU->GPU dependency, not batching laziness. */
+    PassSeq seq(*ctx, "wavelet_smoothing");
+
+    {
+        Pass *ps = seq.reserve(IMAGETOPLANES_DISPATCHES);
+        if (!ps || !imageToPlanes(*ps, rgb, wRp, wGp, wBp, true)) {
+            return false;
+        }
+    }
+
+    const int nlevels = std::max(levels - (int)std::log2(scale), 2);
+    const float s = (strength / 125.f * (1.f + strength / 25.f)) *
+                    (strength / 125.f * (1.f + strength / 25.f));
+    constexpr float eps = 0.01f;
+
+    auto &wR = *wRp;
+    auto &wG = *wGp;
+    auto &wB = *wBp;
+
+    if (gamma > 1.f) {
+        Pass *ps = seq.reserve(3 * GAMMA_DISPATCHES);
+        if (!ps || !waveletGamma(*ps, wR, W, H, 1.f / gamma) ||
+            !waveletGamma(*ps, wG, W, H, 1.f / gamma) ||
+            !waveletGamma(*ps, wB, W, H, 1.f / gamma)) {
+            return false;
+        }
+    }
+
+    if (chan == Channel::LC) { 
+        if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps) ||
+            !waveletShrink(*ctx, wG, W, H, nlevels, s, eps) ||
+            !waveletShrink(*ctx, wB, W, H, nlevels, s, eps)) {
+            return false;
+        }
+    } else {
+        Pass *ps = seq.reserve(RGB2YUV_DISPATCHES);
+        if (!ps || !waveletRgb2Yuv(*ps, wR, wG, wB, W, H, ws)) {
+            return false;
+        }
+        /* waveletShrink opens its own Passes, so everything recorded above
+         * has to be on the queue before it runs. */
+        if (!seq.flush()) {
+            return false;
+        }
+        if (chan == Channel::L) {
+            if (!waveletShrink(*ctx, wG, W, H, nlevels, s, eps)) {
+                return false;
+            }
+        } else { // Channel::C
+            if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps) ||
+                !waveletShrink(*ctx, wB, W, H, nlevels, s, eps)) {
+                return false;
+            }
+        }
+        Pass *pe = seq.reserve(RGB2YUV_DISPATCHES);
+        if (!pe || !waveletYuv2Rgb(*pe, wR, wG, wB, W, H, ws)) {
+            return false;
+        }
+    }
+
+    if (gamma > 1.f) {
+        Pass *ps = seq.reserve(3 * GAMMA_DISPATCHES);
+        if (!ps || !waveletGamma(*ps, wR, W, H, gamma) ||
+            !waveletGamma(*ps, wG, W, H, gamma) ||
+            !waveletGamma(*ps, wB, W, H, gamma)) {
+            return false;
+        }
+    }
+
+    {
+        Pass *ps = seq.reserve(IMAGETOPLANES_DISPATCHES);
+        if (!ps || !imageToPlanes(*ps, rgb, wRp, wGp, wBp, false)) {
+            return false;
+        }
+    }
+    if (!seq.flush()) {
+        return false;
+    }
+    
+    if (settings->verbose) {
+        std::cout << "wavelet_smoothing executing on the GPU" << std::endl;
+    }
+
+    rgb->syncCpu();
+    return true;
+}
+
+
+bool nlmeans_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, const TMatrix &iws, Channel chan,
+                       int strength, int detail, int iterations, double scale,
+                       Context *ctx, BufferPool *pool)
+{
+    if (!ctx || !pool || !opEnabled("smoothing") || !available()) {
+        return false;
+    }
+
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
+    const size_t bytes = size_t(W) * H * sizeof(float);
+    
+    PoolScope scope(*pool);
+
+    Buffer *wRp = pool->get(bytes);
+    Buffer *wGp = pool->get(bytes);
+    Buffer *wBp = pool->get(bytes);
+    if (!wRp || !wGp || !wBp) {
+        logOnce("GPU: guidedSmoothing allocation failed; using the CPU");
+        return false;
+    }
+
+    /* Same shape as wavelet_smoothing: the plane split and the luminance
+     * extraction that follows it are one chain, and NLMeans in between is
+     * what forces a boundary. */
+    PassSeq seq(*ctx, "nlmeans_smoothing");
+    {
+        Pass *ps = seq.reserve(IMAGETOPLANES_DISPATCHES);
+        if (!ps || !imageToPlanes(*ps, rgb, wRp, wGp, wBp, true)) {
+            return false;
+        }
+    }
+
+    auto &wR = *wRp;
+    auto &wG = *wGp;
+    auto &wB = *wBp;
+    
+    const auto runPlaneNlmeans = [&](Buffer &plane) -> bool {
+        for (int it = 0; it < iterations; ++it) {
+            if (!NLMeans(*ctx, *pool, plane, W, H, 1.f, scale,
+                         strength, detail)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    if (chan == Channel::L) { 
+        Buffer *yBufp = pool->get(bytes);
+        if (!yBufp) {
+            return false;
+        }
+        Buffer &yBuf = *yBufp;
+        Pass *ps = seq.reserve(RGBLUMINANCE_DISPATCHES);
+        // NLMeans opens its own Passes, so flush before handing over
+        if (!ps || !rgbLuminance(*ps, wR, wG, wB, W, H, ws, yBuf) ||
+            !seq.flush()) {
+            return false;
+        }
+        if (!runPlaneNlmeans(yBuf)) {
+            return false;
+        }
+        Pass *pr = seq.reserve(YUVRECOMBINE_DISPATCHES);
+        if (!pr || !yuvRecombine(*pr, yBuf, wR, wG, wB, W, H, false, ws, wR,
+                                 wG, wB)) {
+            return false;
+        }
+    } else {
+        Buffer *origYp = nullptr;
+        if (chan == Channel::C) { // Channel::C
+            origYp = pool->get(bytes);
+            if (!origYp) {
+                return false;
+            }
+            Pass *ps = seq.reserve(RGBLUMINANCE_DISPATCHES);
+            if (!ps || !rgbLuminance(*ps, wR, wG, wB, W, H, ws, *origYp)) {
+                return false;
+            }
+        }
+        if (!seq.flush()) {
+            return false;
+        }
+        if (!runPlaneNlmeans(wR) || !runPlaneNlmeans(wG) ||
+            !runPlaneNlmeans(wB)) {
+            return false;
+        }
+        if (chan == Channel::C) {
+            Pass *pr = seq.reserve(YUVRECOMBINE_DISPATCHES);
+            if (!pr || !yuvRecombine(*pr, *origYp, wR, wG, wB, W, H, false, ws,
+                                     wR, wG, wB)) {
+                return false;
+            }
+        }
+    }
+
+    {
+        Pass *ps = seq.reserve(IMAGETOPLANES_DISPATCHES);
+        if (!ps || !imageToPlanes(*ps, rgb, wRp, wGp, wBp, false)) {
+            return false;
+        }
+    }
+    if (!seq.flush()) {
+        return false;
+    }
+
+    if (settings->verbose) {
+        std::cout << "nlmeans_smoothing executing on the GPU" << std::endl;
+    }
+    
+    rgb->syncCpu();
+    return true;
+}
+
+
+}}} // namespace rtengine::gpu::ops
+
+#else // !ART_USE_VULKAN
+
+namespace rtengine { namespace gpu { namespace ops {
+
+bool wavelet_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, float strength, int levels,
+                       float gamma, double scale, Channel chan,
+                       Context *ctx, BufferPool *pool)
+{
+    return false;
+}
+
+bool nlmeans_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, const TMatrix &iws, Channel chan,
+                       int strength, int detail, int iterations, double scale,
+                       Context *ctx, BufferPool *pool)
+{
+    return false;
+}
+
+}}} // namespace rtengine::gpu::ops
+
+#endif // ART_USE_VULKAN
+

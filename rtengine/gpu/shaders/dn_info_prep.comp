@@ -1,0 +1,64 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Denoise auto-chrominance analysis step 1: fuses RGB_denoise_info's (ipdenoise.cc:296) lumcalc/acalc/bcalc build and its two readback loops into one pass.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+// One descriptor per plane, byte-offset into the Imagefloat, rather than one binding indexed at
+// `c * plane_stride + o`: see the dynamic-index driver hazard note in include/dn_dct.glsl.
+layout(std430, set = 0, binding = 0) readonly buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) readonly buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) readonly buffer P2 { float v[]; } p2;
+layout(std430, set = 0, binding = 3) writeonly buffer NL { float v[]; } nvlum;
+layout(std430, set = 0, binding = 4) writeonly buffer NC { float v[]; } nvchrom;
+layout(std430, set = 0, binding = 5) writeonly buffer NH { float v[]; } nvhue;
+
+/* vec4 rows first: a vec4 in a push-constant block is 16-byte aligned, so
+ * leading uints would leave a hole the host struct does not have. */
+layout(push_constant) uniform PC {
+    vec4 ws0;
+    vec4 ws1;
+    vec4 ws2;
+    uint w;
+    uint h;
+    uint stride;        // source row stride in floats == getRowStride() / 4
+} pc;
+
+#include "include/art_color.glsl"
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint s = g.y * pc.stride + g.x;
+    const uint o = g.y * pc.w + g.x;
+
+    const vec3 rgb = vec3(p0.v[s], p1.v[s], p2.v[s]);
+    vec3 xyz = art_mat3_row_mul(pc.ws0, pc.ws1, pc.ws2, rgb);
+
+    /* Color::XYZ2Lab normalises X and Z by the D50 white point before the
+     * companding function; art_xyz2lab leaves that to its caller.  Same as
+     * dn_rgb2lab.comp. */
+    xyz.x /= 0.9642;   // Color::D50x
+    xyz.z /= 0.8249;   // Color::D50z
+
+    float L, a, b;
+    art_xyz2lab(xyz, L, a, b);
+
+    /* noisevarlum: "avoid divided by zero" floor of 2 and a ceiling of 32768
+     * that the CPU itself calls "not strictly necessary". */
+    nvlum.v[o] = clamp(L, 2.0, 32768.0);
+
+    /* noisevarchrom: chroma with the same divide-by-zero floor of 100. */
+    nvchrom.v[o] = max(sqrt(a * a + b * b), 100.0);
+
+    /* noisevarhue: xatan2f(b, a).  The (0,0) case is guarded because GLSL
+     * leaves atan(0,0) undefined where sleef's atan2f returns 0, and it is
+     * reachable -- a neutral grey pixel has a == b == 0 exactly. */
+    nvhue.v[o] = (a == 0.0 && b == 0.0) ? 0.0 : atan(b, a);
+}

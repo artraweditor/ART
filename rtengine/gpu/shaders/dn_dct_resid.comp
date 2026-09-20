@@ -1,0 +1,23 @@
+#version 450
+
+// Denoise phase 7: residual plane resid = Lin - labdn->L, materialised once instead of inside the block kernel (blocks overlap ~6.6x).
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) writeonly buffer Resid { float v[]; } resid;
+layout(std430, set = 0, binding = 1) readonly buffer Lin { float v[]; } lin;
+layout(std430, set = 0, binding = 2) readonly buffer L { float v[]; } lum;
+
+layout(push_constant) uniform PC {
+    uint n;
+} pc;
+
+void main()
+{
+    const uint i = gl_GlobalInvocationID.x;
+    if (i >= pc.n) {
+        return;
+    }
+    resid.v[i] = lin.v[i] - lum.v[i];
+}

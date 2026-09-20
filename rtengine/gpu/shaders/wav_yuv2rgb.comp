@@ -1,0 +1,36 @@
+#version 450
+
+// YUV to RGB, in place, for wavelet smoothing's Channel::L/C teardown (Color::yuv2rgb row-1 formula).
+// Inputs are (G=Y, R=U, B=V), matching wav_rgb2yuv.comp's output layout.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) buffer R { float v[]; } rC;
+layout(std430, set = 0, binding = 1) buffer G { float v[]; } gC;
+layout(std430, set = 0, binding = 2) buffer B { float v[]; } bC;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float ws1x;
+    float ws1y;
+    float ws1z;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    float y = gC.v[o], u = rC.v[o], v = bC.v[o];
+    float newB = y - u;
+    float newR = v + y;
+    float newG = (y - newR * pc.ws1x - newB * pc.ws1z) / pc.ws1y;
+    rC.v[o] = newR;
+    gC.v[o] = newG;
+    bC.v[o] = newB;
+}
