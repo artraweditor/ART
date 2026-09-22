@@ -271,69 +271,75 @@ bool build_blur_kernel(array2D<float> &out, const SmoothingParams &params,
     return true;
 }
 
-bool do_inpainting(const Imagefloat *src, Imagefloat *dst,
-                   const array2D<float> &mask, const SmoothingParams &params,
-                   int region, double scale, bool multithread)
-{
-    const auto &r = params.regions[region];
-    int radius = std::ceil(r.radius / scale);
-    if (radius < 1) {
-        return false;
-    }
-
-    const int W = src->getWidth();
-    const int H = src->getHeight();
-
-    dst->allocate(W, H);
-#ifdef _OPENMP
-#pragma omp parallel for if (multithread)
-#endif
-    for (int y = 0; y < H; ++y) {
-        for (int x = 0; x < W; ++x) {
-            dst->r(y, x) = src->r(y, x);
-            dst->g(y, x) = src->g(y, x);
-            dst->b(y, x) = src->b(y, x);
-        }
-    }
-
-    // dst->normalizeFloatTo65535(false);
-    // dst->saveAsTIFF("/tmp/input.tif", 16, false);
-    // dst->normalizeFloatTo1(false);
-
-    float threshold =
-        r.mode == SmoothingParams::Region::Mode::LENS ? 0.25f : 0.95f;
-    inpaint(dst, mask, -threshold, 16.f / scale + 0.5, std::max(radius / 2, 1),
-            radius * 2, multithread, 4);
-
-    // dst->normalizeFloatTo65535(false);
-    // dst->saveAsTIFF("/tmp/inpaint.tif", 16, false);
-    // dst->normalizeFloatTo1(false);
-
-    return true;
-}
 
 void lens_motion_blur(ImProcData &im, Imagefloat *rgb,
                       const array2D<float> &mask, int region)
 {
     Imagefloat tmp;
     Imagefloat *src = rgb;
-    if (do_inpainting(rgb, &tmp, mask, im.params->smoothing, region, im.scale,
-                      im.multiThread)) {
-        rgb = &tmp;
-    }
+
+    const int W = rgb->getWidth();
+    const int H = rgb->getHeight();
 
     array2D<float> kernel;
     if (build_blur_kernel(kernel, im.params->smoothing, region, im.scale)) {
+        // prevent the blur from bleeding outside the mask
+        // idea taken from https://discuss.pixls.us/t/difficulty-with-blurs-and-masks/50274/21
+        // credit to @kofa (István Kovács)
+        //
+        // Method: 
+        // - create a mask
+        // - blurred_image_mask = blur(image * mask)
+        // - blurred_mask = blur(mask)
+        // - blurred_image = blurred_image_mask / blurred_mask
+        // - apply blurred_image to base image via mask.
+        //
+        // Rationale:
+        // - where the mask is white, far from the hole/subject → mask
+        //   is white → no change, keep the blurred pixel;
+        // - where the mask is grey, close to the edge → pixel is
+        //   darkened by the blurred mask bleeding into the pixel, but
+        //   blurred mask < 1 → darkened pixel divided by e.g. 0.5 →
+        //   restores brightness;
+        // - where the mask is black: we don’t care.
+        
+        tmp.allocate(W, H);
+#ifdef _OPENMP
+#       pragma omp parallel for if (im.multiThread)
+#endif
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                const float f = LIM01(mask[y][x]);
+                tmp.r(y, x) = rgb->r(y, x) * f;
+                tmp.g(y, x) = rgb->g(y, x) * f;
+                tmp.b(y, x) = rgb->b(y, x) * f;
+            }
+        }
+        rgb = &tmp;
+        
         Convolution conv(kernel, rgb->getWidth(), rgb->getHeight(),
                          im.multiThread);
         conv(rgb->r.ptrs, rgb->r.ptrs);
         conv(rgb->g.ptrs, rgb->g.ptrs);
         conv(rgb->b.ptrs, rgb->b.ptrs);
+
+        array2D<float> bmask(W, H);
+        conv(mask, bmask);
+#ifdef _OPENMP
+#       pragma omp parallel for if (im.multiThread)
+#endif
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                if (bmask[y][x] > 1e-6f) {
+                    rgb->r(y, x) /= bmask[y][x];
+                    rgb->g(y, x) /= bmask[y][x];
+                    rgb->b(y, x) /= bmask[y][x];
+                }
+            }
+        }
     }
 
     if (src != rgb) {
-        const int W = src->getWidth();
-        const int H = src->getHeight();
 #ifdef _OPENMP
 #pragma omp parallel for if (im.multiThread)
 #endif
