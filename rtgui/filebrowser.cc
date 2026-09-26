@@ -1256,11 +1256,49 @@ void FileBrowser::menuItemActivated(Gtk::MenuItem *m)
     } else if (m == partpasteprof) {
         partPasteProfile();
     } else if (m == clearprof) {
+        std::vector<Glib::ustring> withSnapshots;
         for (size_t i = 0; i < mselected.size(); i++) {
-            mselected[i]->thumbnail->clearProcParams(FILEBROWSER);
+            if (!mselected[i]->thumbnail->getProcParamsSnapshots().empty()) {
+                withSnapshots.push_back(
+                    Glib::path_get_basename(mselected[i]->filename));
+            }
         }
 
-        queue_draw();
+        bool proceed = true;
+        if (!withSnapshots.empty()) {
+            auto msg = Glib::ustring::compose(M("FILEBROWSER_CLEARPROFILE_SNAPSHOTS_MSG"), withSnapshots.size());
+            Gtk::MessageDialog msd(getToplevelWindow(this), msg, true, Gtk::MESSAGE_WARNING, Gtk::BUTTONS_YES_NO, true);
+            msd.set_title(M("FILEBROWSER_CLEARPROFILE_SNAPSHOTS_TITLE"));
+
+            Glib::ustring names;
+            for (auto &n : withSnapshots) {
+                if (!names.empty()) {
+                    names += "\n";
+                }
+                names += n;
+            }
+
+            Gtk::ScrolledWindow scroll;
+            scroll.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+            scroll.set_min_content_height(120);
+            Gtk::TextView tv;
+            tv.set_editable(false);
+            tv.get_buffer()->set_text(names);
+            scroll.add(tv);
+            msd.get_message_area()->pack_start(
+                scroll, Gtk::PACK_EXPAND_WIDGET, 4);
+            msd.show_all_children();
+
+            proceed = (msd.run() == Gtk::RESPONSE_YES);
+        }
+
+        if (proceed) {
+            for (size_t i = 0; i < mselected.size(); i++) {
+                mselected[i]->thumbnail->clearProcParams(FILEBROWSER);
+            }
+
+            queue_draw();
+        }
     } else if (m == resetdefaultprof) {
         for (size_t i = 0; i < mselected.size(); i++) {
             mselected[i]->thumbnail->createProcParamsForUpdate(false, true);

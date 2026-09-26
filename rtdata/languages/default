@@ -139,6 +139,8 @@ FILEBROWSER_DELETEDIALOG_HEADER;File delete confirmation:
 FILEBROWSER_DELETEDIALOG_ALL;Are you sure you want to delete all <b>%1</b> files in trash?
 FILEBROWSER_DELETEDIALOG_SELECTED;Are you sure you want to delete the selected <b>%1</b> files?
 FILEBROWSER_DELETEDIALOG_SELECTEDINCLPROC;Are you sure you want to delete the selected <b>%1</b> files <b>including</b> a queue-processed version?
+FILEBROWSER_CLEARPROFILE_SNAPSHOTS_TITLE;Clear profile confirmation
+FILEBROWSER_CLEARPROFILE_SNAPSHOTS_MSG;The <b>%1</b> file(s) below have snapshots that will be <b>permanently deleted</b> if you clear their processing profile. Proceed anyway?
 FILEBROWSER_EMPTYTRASHHINT;Permanently delete all files in trash.
 FILEBROWSER_EXTPROGMENU;User commands
 FILEBROWSER_FLATFIELD;Flat-Field
