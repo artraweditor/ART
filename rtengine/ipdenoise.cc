@@ -2471,8 +2471,19 @@ void ImProcFunctions::denoiseComputeParams(ImageSource *imgsrc,
      * at a fixed +log2(5) stops. */
     job.info_expcomp = std::log(5.f) / std::log(2.f);
 
-    if (!denoise::computeParamsGPU(job)) {
-        denoise::computeParamsCPU(job);
+    {
+        MyTime t1p, t2p;
+        t1p.set();
+        bool onGPU = denoise::computeParamsGPU(job);
+        if (!onGPU) {
+            denoise::computeParamsCPU(job);
+        }
+        if (settings->verbose) {
+            t2p.set();
+            std::cout << "denoiseComputeParams: executed on the "
+                      << (onGPU ? "GPU" : "CPU") << " in "
+                      << t2p.etime(t1p) << " usec" << std::endl;
+        }
     }
 
     denoise::computeParamsReduce(job, dnparams);
@@ -4067,8 +4078,17 @@ void RGB_denoise(ImProcData &im, Imagefloat *src,
      * timing line below still prints in that case, as it always has. */
     DenoisePrep prep;
     if (denoisePrepare(im, src, dnparams, prep)) {
-        if (!RGB_denoise_GPU(im, src, prep)) {
+        MyTime t1p, t2p;
+        t1p.set();
+        bool onGPU = RGB_denoise_GPU(im, src, prep);
+        if (!onGPU) {
             RGB_denoise_CPU(src, prep);
+        }
+        if (settings->verbose) {
+            t2p.set();
+            std::cout << "RGB_denoise: executed on the "
+                      << (onGPU ? "GPU" : "CPU") << " in "
+                      << t2p.etime(t1p) << " usec" << std::endl;
         }
     }
 
@@ -4085,10 +4105,13 @@ void RGB_denoise(ImProcData &im, Imagefloat *src,
 #undef blkrad
 
 
-void finalSmoothing(ImProcData &im, Imagefloat *img, 
+void finalSmoothing(ImProcData &im, Imagefloat *img,
                     const procparams::DenoiseParams &dnparams)
 {
-    if (!gpu::ops::finalSmoothingGPU(im, img, dnparams)) {
+    MyTime t1p, t2p;
+    t1p.set();
+    bool onGPU = gpu::ops::finalSmoothingGPU(im, img, dnparams);
+    if (!onGPU) {
         img->syncCpuForWrite();
         denoise::denoiseGuidedSmoothing(im, img);
         if (dnparams.nlStrength) {
@@ -4099,6 +4122,12 @@ void finalSmoothing(ImProcData &im, Imagefloat *img,
                              dnparams.nlDetail, im.scale, im.multiThread);
             img->setMode(Imagefloat::Mode::RGB, im.multiThread);
         }
+    }
+    if (settings->verbose) {
+        t2p.set();
+        std::cout << "finalSmoothing: executed on the "
+                  << (onGPU ? "GPU" : "CPU") << " in " << t2p.etime(t1p)
+                  << " usec" << std::endl;
     }
 }
 

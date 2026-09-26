@@ -527,8 +527,15 @@ void nlmeans_smoothing(Imagefloat *rgb,
                        int strength, int detail, int iterations, double scale,
                        bool multithread, gpu::Context *ctx, gpu::BufferPool *pool)
 {
+    MyTime t1p, t2p;
+    t1p.set();
     if (gpu::ops::nlmeans_smoothing(rgb, ws, iws, chan, strength, detail,
                                     iterations, scale, ctx, pool)) {
+        if (settings->verbose) {
+            t2p.set();
+            std::cout << "nlmeans_smoothing: executed on the GPU in "
+                      << t2p.etime(t1p) << " usec" << std::endl;
+        }
         return;
     }
 
@@ -598,6 +605,12 @@ void nlmeans_smoothing(Imagefloat *rgb,
                 }
             }
         }
+    }
+
+    if (settings->verbose) {
+        t2p.set();
+        std::cout << "nlmeans_smoothing: executed on the CPU in "
+                  << t2p.etime(t1p) << " usec" << std::endl;
     }
 }
 
@@ -799,8 +812,15 @@ void wavelet_smoothing(Imagefloat *rgb,
         return;
     }
 
+    MyTime t1p, t2p;
+    t1p.set();
     if (gpu::ops::wavelet_smoothing(rgb, ws, strength, levels, gamma, scale,
                                     chan, ctx, pool)) {
+        if (settings->verbose) {
+            t2p.set();
+            std::cout << "wavelet_smoothing: executed on the GPU in "
+                      << t2p.etime(t1p) << " usec" << std::endl;
+        }
         return;
     }
 
@@ -929,6 +949,12 @@ void wavelet_smoothing(Imagefloat *rgb,
                 rgb->b(y, x) = B[y][x];
             }
         }
+    }
+
+    if (settings->verbose) {
+        t2p.set();
+        std::cout << "wavelet_smoothing: executed on the CPU in "
+                  << t2p.etime(t1p) << " usec" << std::endl;
     }
 }
 
