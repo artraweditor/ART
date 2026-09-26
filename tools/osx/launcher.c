@@ -411,8 +411,7 @@ int main(int argc, char **argv)
     fmtpath(buf, sizeof(buf), "%s/Resources/exiftool", contents);
     set_env_plain("ART_EXIFTOOL_BASE_DIR", buf);
 
-    /* start the private session bus if it is not running already, and refresh
-     * the module caches while we are at it */
+    /* start the private session bus if it is not running already */
     if (!socket_is_live(sock)) {
         char daemon[PATH_MAX];
         char config[PATH_MAX];
@@ -433,18 +432,31 @@ int main(int argc, char **argv)
         dbus_args[4] = address;
         dbus_args[5] = NULL;
         run(dbus_args, "/dev/null");
-
-        fmtpath(buf, sizeof(buf), "%s/Resources/gdk-pixbuf-query-loaders",
-                contents);
-        fmtpath(pattern, sizeof(pattern),
-                "%s/Frameworks/libpixbufloader*svg.so", contents);
-        run_query_tool(buf, pattern, loaders);
-
-        fmtpath(buf, sizeof(buf), "%s/Resources/gtk-query-immodules-3.0",
-                contents);
-        fmtpath(pattern, sizeof(pattern), "%s/Frameworks/im-*.so", contents);
-        run_query_tool(buf, pattern, immodules);
     }
+
+    /* Refresh the module caches unconditionally, i.e. independently of
+     * whether the session bus above was just started or was already live.
+     * The session bus is deliberately long-lived across launches (its socket
+     * lives in a per-user directory that survives exit, see the comment
+     * above tmpdir's construction), so gating the cache refresh on
+     * socket_is_live() as well - as a single "first launch" condition used to
+     * do - means that once some old bundle's launcher has left a daemon
+     * running, every later launch of any rebuilt bundle finds the socket
+     * already live and never regenerates loader.cache / gtk.immodules again:
+     * they are left with whatever (or nothing, if the first run raced the
+     * daemon coming up) that first launch produced, no matter how many times
+     * the bundle is rebuilt afterwards. Querying the loaders/immodules is
+     * cheap, so just do it every time. */
+    fmtpath(buf, sizeof(buf), "%s/Resources/gdk-pixbuf-query-loaders",
+            contents);
+    fmtpath(pattern, sizeof(pattern),
+            "%s/Frameworks/libpixbufloader*svg.so", contents);
+    run_query_tool(buf, pattern, loaders);
+
+    fmtpath(buf, sizeof(buf), "%s/Resources/gtk-query-immodules-3.0",
+            contents);
+    fmtpath(pattern, sizeof(pattern), "%s/Frameworks/im-*.so", contents);
+    run_query_tool(buf, pattern, immodules);
 
     /* argv[0] is replaced by the real binary, and the process serial number
      * that LaunchServices may pass is dropped: the exec'd program gets it back

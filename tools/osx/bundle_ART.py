@@ -134,6 +134,19 @@ def gdk_pixbuf_loaders_dir(pref):
     return os.path.join(pref, 'lib/gdk-pixbuf-2.0/2.10.0/loaders')
 
 
+def find_under(pref, relpath):
+    """Return the first of pref/relpath and a few common secondary prefixes
+    that actually exists on disk, defaulting to pref/relpath if none do (so
+    that the caller's own "does this exist" check reports it missing, same as
+    before this function existed).
+    """
+    for p in [pref, '/opt/homebrew', '/opt/local', '/usr/local']:
+        candidate = os.path.join(p, relpath)
+        if os.path.exists(candidate):
+            return candidate
+    return os.path.join(pref, relpath)
+
+
 def getprefix(opts):
     if opts.prefix:
         return opts.prefix
@@ -246,19 +259,19 @@ def extra_files(opts):
                                 'lib/gtk-3.0/3*/immodules/*.so'))),
         ('Contents/Resources', [
             os.path.join(pref, 'bin/gtk-query-immodules-3.0'),
-            os.path.join(pref, 'bin/gdk-pixbuf-query-loaders'),
-            os.path.join(pref, 'bin/dbus-daemon')
+            find_under(pref, 'bin/gdk-pixbuf-query-loaders'),
+            find_under(pref, 'bin/dbus-daemon')
         ]),
         ('Contents/Resources/dbus-1', [
-            os.path.join(pref, 'share/dbus-1/session.conf')
+            find_under(pref, 'share/dbus-1/session.conf')
         ]),
         ('Contents/Resources/share/icons/Adwaita', [
-             P('share/icons/Adwaita/scalable'),
-             P('share/icons/Adwaita/index.theme'), 
-             P('share/icons/Adwaita/cursors'),
+             find_under(pref, 'share/icons/Adwaita/scalable'),
+             find_under(pref, 'share/icons/Adwaita/index.theme'),
+             find_under(pref, 'share/icons/Adwaita/cursors'),
         ]),
         ('Contents/Resources/share/icons', [
-             P('share/icons/hicolor'),
+             find_under(pref, 'share/icons/hicolor'),
         ]),
         ('Contents/Resources/share/glib-2.0/schemas', [
             P('share/glib-2.0/schemas/gschemas.compiled'),
@@ -270,7 +283,7 @@ def extra_files(opts):
             P('etc/gtk-3.0'),
         ]),
         ('Contents/Resources', [
-            P('etc/fonts/fonts.conf'),
+            find_under(pref, 'etc/fonts/fonts.conf'),
         ]),
     ] + extra + (vulkan_files(opts, pref) if vulkan_enabled(opts) else [])
 
