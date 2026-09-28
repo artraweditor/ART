@@ -1,0 +1,97 @@
+#version 450
+
+// Denoise's gamma warps (DenoiseContext::applyGamma/applyIGamma, Color::gamma55/igamma55), 3 planes/dispatch.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) buffer P2 { float v[]; } p2;
+
+/* Which warp to apply.  Kept as a push constant rather than four pipelines:
+ * MoltenVK recompiles per specialisation constant, and this branch is uniform
+ * across the whole dispatch. */
+#define DN_GAMMA_FWD  0u    /* applyGamma:  gammaf(v, gam, thresh, slope)   */
+#define DN_GAMMA_INV  1u    /* applyIGamma: gammaf(v, 1/gam, ithr, islope)  */
+#define DN_GAMMA_D55  2u    /* Color::gamma55  (denoiseGammaTab)            */
+#define DN_GAMMA_ID55 3u    /* Color::igamma55 (denoiseIGammaTab)           */
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint mode;
+    float gam;      // gam forward, 1/gam inverse
+    float thresh;
+    float slope;
+    /* D55/ID55 only: the last two entries of the CPU's table, taken from the
+     * LUT itself rather than recomputed, so the extrapolation below uses the
+     * exact floats the CPU extrapolates from.  See the tail note in warp(). */
+    float tail0;    // table[65534]
+    float tail1;    // table[65535]
+} pc;
+
+/* LUTf::operator[](float)'s `maxs` for a 65536-entry table (LUT.h:463). */
+#define DN_LUT_MAXS 65534.0
+
+// Color::gammaf (color.h:1329), evaluated directly rather than via the CPU's 65536-entry LUT: more
+// accurate, since the LUT carries sleef approximation error plus lerp error (as art_xyz2lab does for cachef).
+float dnGammaf(float x, float gamma, float start, float slope)
+{
+    return x <= start ? x * slope : exp(log(x) / gamma);
+}
+
+/* The D55 pair's out-of-table tail: denoiseGammaTab/denoiseIGammaTab are called unguarded and are unclipped
+ * LUTf tables, so above index 65534 the real lookup is a straight-line extrapolation of the table's tangent,
+ * not the curve -- and the two diverge wildly out there (e.g. v=104500: curve 374760, table 200051), so this
+ * must reproduce the table's line, not evaluate gamma55/igamma55 directly. No case is needed below 0: the
+ * table's downward extrapolation already coincides with the closed forms' own linear foot there. The
+ * guarded applyGamma/applyIGamma tables need none of this since they never consult the curve out of range. */
+float dnLutTail(float v)
+{
+    return pc.tail0 + (pc.tail1 - pc.tail0) * (v - DN_LUT_MAXS);
+}
+
+float warp(float v)
+{
+    if (pc.mode == DN_GAMMA_D55) {
+        /* Color::gamma55, color.h:1279.  Applied to the raw value with no
+         * v > 0 guard, matching denoiseGammaTab[v]. */
+        if (v > DN_LUT_MAXS) {
+            return dnLutTail(v);
+        }
+        const float x = v / 65535.0;
+        return 65535.0 * (x <= 0.013189
+                              ? x * 10.0
+                              : 1.593503 * exp(log(x) / 5.5) - 0.593503);
+    }
+    if (pc.mode == DN_GAMMA_ID55) {
+        /* Color::igamma55, color.h:1291. */
+        if (v > DN_LUT_MAXS) {
+            return dnLutTail(v);
+        }
+        const float x = v / 65535.0;
+        return 65535.0 * (x <= 0.131889
+                              ? x / 10.0
+                              : exp(log((x + 0.593503) / 1.593503) * 5.5));
+    }
+
+    /* applyGamma / applyIGamma both leave v <= 0 alone. */
+    if (v > 0.0) {
+        return dnGammaf(v / 65535.0, pc.gam, pc.thresh, pc.slope) * 65535.0;
+    }
+    return v;
+}
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint i = g.y * pc.w + g.x;
+    p0.v[i] = warp(p0.v[i]);
+    p1.v[i] = warp(p1.v[i]);
+    p2.v[i] = warp(p2.v[i]);
+}

@@ -85,7 +85,7 @@ void PipetteBuffer::resize(int newWidth, int newHeight,
 
             if (newSubscriber->getPipetteBufferType() == BT_LABIMAGE) {
                 if (LabBuffer &&
-                    (LabBuffer->W != newWidth && LabBuffer->H != newHeight)) {
+                    (LabBuffer->W != newWidth || LabBuffer->H != newHeight)) {
                     delete LabBuffer;
                     LabBuffer = nullptr;
                 }

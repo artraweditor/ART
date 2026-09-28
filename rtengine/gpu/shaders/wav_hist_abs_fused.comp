@@ -1,0 +1,37 @@
+#version 450
+
+// Fused multi-level histogram: builds `levels` independent histograms (each over its own
+// [0, maxAbs] range) in one dispatch instead of one call per level.
+// Global atomics, not local-histogram-then-merge: measured worse on this hardware (see gpu perf notes).
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+#define MAX_LEVELS 8u
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) buffer Hist { uint v[]; } hist;
+
+layout(push_constant) uniform PC {
+    uint n;
+    uint numBuckets;
+    uint levels;
+    float invMaxAbs[MAX_LEVELS];
+} pc;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.n * pc.levels) {
+        return;
+    }
+    uint level = gid / pc.n;
+    float inv = pc.invMaxAbs[level];
+    if (inv <= 0.0) {
+        return; // this level's maxAbs was 0 -- nothing to bucket
+    }
+    float a = abs(src.v[gid]) * inv;
+    uint bucket = uint(clamp(a * float(pc.numBuckets), 0.0,
+                            float(pc.numBuckets - 1u)));
+    atomicAdd(hist.v[level * pc.numBuckets + bucket], 1u);
+}

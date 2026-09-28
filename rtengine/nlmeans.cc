@@ -18,11 +18,14 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "nlmeans.h"
 #include "alignedbuffer.h"
+#include "array2D.h"
+#include "boxblur.h"
 #include "gauss.h"
 #include "improcfun.h"
-#include "ipdenoise.h"
 #include "rescale.h"
+#include "rt_math.h"
 #include "settings.h"
 #include "sleef.h"
 #ifdef _OPENMP
@@ -32,6 +35,11 @@
 
 #define BENCHMARK
 #include "StopWatch.h"
+
+#ifdef ART_USE_VULKAN
+#include "gpu/plane_io.h"
+#include "gpu/ops.h"
+#endif // ART_USE_VULKAN
 
 namespace rtengine {
 
@@ -303,3 +311,429 @@ void NLMeans(array2D<float> &img, float normcoeff, int strength,
 
 } // namespace denoise
 } // namespace rtengine
+
+namespace rtengine {
+namespace denoise {
+
+namespace {
+
+void laplacian(const array2D<float> &src, array2D<float> &dst, float threshold,
+               float ceiling, float factor, bool multiThread)
+{
+    const int W = src.width();
+    const int H = src.height();
+
+    const auto X = [W](int x) -> int {
+        return x < 0 ? x + 2 : (x >= W ? x - 2 : x);
+    };
+
+    const auto Y = [H](int y) -> int {
+        return y < 0 ? y + 2 : (y >= H ? y - 2 : y);
+    };
+
+    const auto get = [&src](int y, int x) -> float {
+        return std::max(src[y][x], 0.f);
+    };
+
+    dst(W, H);
+    const float f = factor / ceiling;
+
+#ifdef _OPENMP
+#pragma omp parallel for if (multiThread)
+#endif
+    for (int y = 0; y < H; ++y) {
+        int n = Y(y - 1), s = Y(y + 1);
+        for (int x = 0; x < W; ++x) {
+            int w = X(x - 1), e = X(x + 1);
+            float v = -8.f * get(y, x) + get(n, x) + get(s, x) + get(y, w) +
+                      get(y, e) + get(n, w) + get(n, e) + get(s, w) + get(s, e);
+            dst[y][x] = LIM(std::abs(v) - threshold, 0.f, ceiling) * f;
+        }
+    }
+}
+
+} // namespace
+
+void detail_mask(const array2D<float> &src, array2D<float> &mask, float scaling,
+                 float threshold, float ceiling, float factor,
+                 BlurType blur_type, float blur, bool multithread)
+{
+    const int W = src.width();
+    const int H = src.height();
+    mask(W, H);
+
+    if (W < 8 || H < 8) {
+        mask.fill(1.f);
+    } else {
+        array2D<float> L2(W / 4, H / 4, ARRAY2D_ALIGNED);
+        array2D<float> m2(W / 4, H / 4, ARRAY2D_ALIGNED);
+        rescaleBilinear(src, L2, multithread);
+#ifdef _OPENMP
+#pragma omp parallel for if (multithread)
+#endif
+        for (int y = 0; y < H / 4; ++y) {
+            for (int x = 0; x < W / 4; ++x) {
+                L2[y][x] = xlin2log(L2[y][x] / scaling, 50.f);
+            }
+        }
+        laplacian(L2, m2, threshold / scaling, ceiling / scaling, factor,
+                  multithread);
+        rescaleBilinear(m2, mask, multithread);
+
+        const auto scurve = [](float x) -> float {
+            constexpr float b = 101.f;
+            constexpr float a = 2.23f;
+            return xlin2log(pow_F(x, a), b);
+        };
+
+        const float thr = 1.f - factor;
+#ifdef _OPENMP
+#pragma omp parallel for if (multithread)
+#endif
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                mask[y][x] = scurve(LIM01(mask[y][x] + thr));
+            }
+        }
+
+        if (blur_type == BlurType::GAUSS) {
+#ifdef _OPENMP
+#pragma omp parallel if (multithread)
+#endif
+            {
+                gaussianBlur(mask, mask, W, H, blur);
+            }
+        } else if (blur_type == BlurType::BOX) {
+            if (int(blur) > 0) {
+                for (int i = 0; i < 3; ++i) {
+                    boxblur(mask, mask, blur, W, H, multithread);
+                }
+            }
+        }
+    }
+
+#if 0
+    {
+        Imagefloat tmp(W, H);
+        for (int i = 0; i < H; ++i) {
+            for (int j = 0; j < W; ++j) {
+                tmp.r(i, j) = tmp.g(i, j) = tmp.b(i, j) = mask[i][j] * 65535.f;
+            }
+        }
+        tmp.saveTIFF("/tmp/mask.tif", 16);
+    }
+#endif
+}
+
+
+} // namespace denoise
+} // namespace rtengine
+
+#ifdef ART_USE_VULKAN
+
+#include "settings.h"
+#include "boxblur.h"
+#include "gauss.h"
+#include "gpu/gpu.h"
+#include "gpu/ops.h"
+#include "gpu/vk_pass.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <memory>
+#include <mutex>
+
+namespace rtengine {
+
+extern const Settings *settings;
+
+namespace gpu {
+namespace ops {
+
+namespace {
+
+struct LogRemapPC { unsigned int w, h; float invScaling, base; };
+struct LaplacianPC { unsigned int w, h; float threshold, ceiling, f; };
+struct ScurvePC { unsigned int w, h; float thr; };
+
+// downloadPlane itself is gpu::downloadPlane, from gpu/plane_io.h -- this
+// file's own copy was identical and has been dropped in favour of it.
+
+} // namespace
+
+/* detail_mask() (above, nlmeans.cc:357): downscale 4x, log
+ * remap, laplacian, upscale, S-curve, Gaussian blur. Only BlurType::GAUSS is
+ * implemented -- the only blur type either caller ever requests. */
+bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
+                float scaling, float threshold, float ceiling, float factor,
+                float blurSigma, BufferPool *pool)
+{
+    const size_t bytes = (size_t)W * H * sizeof(float);
+    if (!maskOut.valid()) {
+        return false;
+    }
+    if (W < 8 || H < 8) {
+        /* uploadToBuffer takes the mapped() fast path when there is one, and
+         * stages through ctx's own staging pool otherwise -- maskOut itself
+         * may be an unmapped PreferDeviceLocal buffer on a discrete GPU. */
+        std::vector<float> ones((size_t)W * H, 1.f);
+        return uploadToBuffer(ctx, &ctx.stagingPoolForThisThread(),
+                              ones.data(), bytes, maskOut);
+    }
+
+    /* Scratch, from the pool when there is one.  The locals keep the
+     * non-pooled buffers alive for the whole function; `l2`/`m2` below point
+     * at whichever pair is in use. */
+    const int W4 = W / 4, H4 = H / 4;
+    const size_t bytes4 = (size_t)W4 * H4 * sizeof(float);
+    Buffer ownL2, ownM2;
+    Buffer *l2p, *m2p;
+    if (pool) {
+        l2p = pool->get(bytes4);
+        m2p = pool->get(bytes4);
+    } else {
+        ownL2 = ctx.createBuffer(bytes4, true);
+        ownM2 = ctx.createBuffer(bytes4, true);
+        l2p = &ownL2;
+        m2p = &ownM2;
+    }
+    /* Pure GPU-resident scratch -- l2/m2 are only ever produced and consumed
+     * by the dispatches below, never touched from the CPU. */
+    if (!l2p || !m2p || !l2p->valid() || !m2p->valid()) {
+        return false;
+    }
+    Buffer &l2 = *l2p;
+    Buffer &m2 = *m2p;
+
+    /* One Pass for the whole mask: six dispatches that used to be six
+     * submissions, each draining the queue and blocking this thread.  The
+     * barriers Pass derives order them inside the single command buffer, so
+     * nothing here needs a round trip -- the CPU never looks at an
+     * intermediate.  The weights upload below is the one exception and is
+     * recorded, not submitted, for the same reason. */
+    Pass pass(ctx, "nlmeans:detailMask");
+    if (!pass.valid()) {
+        return false;
+    }
+
+    if (!rescaleBilinear(pass, src, W, H, l2, W4, H4)) {
+        return false;
+    }
+    {
+        LogRemapPC pc{(unsigned)W4, (unsigned)H4, 1.f / scaling, 50.f};
+        std::vector<Pass::Binding> b;
+        b.push_back(Pass::Binding(&l2, true));
+        if (!pass.dispatch2D("nlm_logremap", b, &pc, sizeof(pc), W4, H4)) {
+            return false;
+        }
+    }
+    {
+        const float threshScaled = threshold / scaling;
+        const float ceilScaled = ceiling / scaling;
+        LaplacianPC pc{(unsigned)W4, (unsigned)H4, threshScaled, ceilScaled,
+                      factor / ceilScaled};
+        std::vector<Pass::Binding> b;
+        b.push_back(Pass::Binding(&l2, false));
+        b.push_back(Pass::Binding(&m2, true));
+        if (!pass.dispatch2D("nlm_laplacian", b, &pc, sizeof(pc), W4, H4)) {
+            return false;
+        }
+    }
+    if (!rescaleBilinear(pass, m2, W4, H4, maskOut, W, H)) {
+        return false;
+    }
+    {
+        ScurvePC pc{(unsigned)W, (unsigned)H, 1.f - factor};
+        std::vector<Pass::Binding> b;
+        b.push_back(Pass::Binding(&maskOut, true));
+        if (!pass.dispatch2D("nlm_scurve", b, &pc, sizeof(pc), W, H)) {
+            return false;
+        }
+    }
+    /* blurSigma <= 0 means no blur, matching BlurType::OFF on the CPU side.
+     * The non-pooled Buffers must stay alive until the submit below, so they
+     * are declared out here rather than inside the branch. */
+    Buffer ownWt, ownScratch;
+    {
+        const int radius = blurSigma > 0.f ? gaussRadius(blurSigma) : 0;
+        if (radius > 0) {
+            std::vector<float> wt;
+            gaussWeights(blurSigma, radius, wt);
+            const size_t wtBytes = wt.size() * sizeof(float);
+            Buffer *wtp, *scratchp;
+            if (pool) {
+                wtp = pool->get(wtBytes);
+                scratchp = pool->get(bytes);
+            } else {
+                ownWt = ctx.createBuffer(wtBytes, true);
+                ownScratch = ctx.createBuffer(bytes, true);
+                wtp = &ownWt;
+                scratchp = &ownScratch;
+            }
+            /* scratch is pure GPU-resident (ping-pong buffer inside
+             * gaussianBlurPasses); wtBuf is CPU-computed. */
+            if (!wtp || !scratchp || !wtp->valid() || !scratchp->valid()) {
+                return false;
+            }
+            Buffer &wtBuf = *wtp;
+            Buffer &scratch = *scratchp;
+            /* A Gaussian kernel is a handful of floats, so it rides inside
+             * the command buffer -- vkCmdUpdateBuffer copies it at record
+             * time, so `wt` need not outlive this call.  uploadToBuffer()
+             * would have been a whole staged submission of its own on any
+             * device where wtBuf is not host-visible.  Only a kernel too big
+             * for that (far larger than any sigma the UI allows) still needs
+             * the staged path. */
+            const bool wt_ok =
+                wtBytes <= Pass::maxUpdateBytes()
+                    ? pass.updateBuffer(wtBuf, wt.data(), 0, wtBytes)
+                    : uploadToBuffer(ctx, &ctx.stagingPoolForThisThread(),
+                                     wt.data(), wtBytes, wtBuf);
+            if (!wt_ok) {
+                return false;
+            }
+            if (!gaussianBlurPasses(pass, maskOut, scratch, wtBuf, W, H,
+                                   radius)) {
+                return false;
+            }
+        }
+    }
+    if (!pass.submitAndWait()) {
+        return false;
+    }
+    pass.reportTimings();
+    return true;
+}
+
+namespace {
+
+struct NlmPoolCheckout {
+    explicit NlmPoolCheckout(BufferPool &p): pool(p) {}
+    ~NlmPoolCheckout() { pool.recycle(); }
+    BufferPool &pool;
+
+private:
+    NlmPoolCheckout(const NlmPoolCheckout &);
+    NlmPoolCheckout &operator=(const NlmPoolCheckout &);
+};
+
+/* J. Froment, "Parameter-Free Fast Pixelwise Non-Local Means Denoising",
+ * IPOL 4 (2014), Algorithm 1 -- one dispatch, one thread per output pixel,
+ * direct O(D^2 d^2) search with no intermediate buffers at all (see
+ * nlm_simple.comp). */
+bool nlmeansSimpleOnDevice(Context &ctx, BufferPool &pool, Buffer &plane,
+                          int W, int H, float normcoeff, double scale,
+                          int strength, int detail_thresh)
+{
+    if (W <= 0 || H <= 0) {
+        return false;
+    }
+    if (!strength) {
+        return true; // matches NLMeans()'s own strength==0 no-op
+    }
+
+    constexpr int max_patch_radius = 2;
+    constexpr int max_search_radius = 5;
+    const int search_radius =
+        (int)std::ceil((float)max_search_radius / (float)scale);
+    const int patch_radius =
+        (int)std::ceil((float)max_patch_radius / (float)scale);
+    const float strengthTerm =
+        std::pow((float)strength / 100.f, 0.9f) / 10.f / (float)scale;
+    const float h2 = strengthTerm * strengthTerm;
+    const float amount =
+        std::max(0.f, std::min((float)detail_thresh / 100.f, 0.99f));
+
+    const size_t bytes = (size_t)W * H * sizeof(float);
+    if (bytes > ctx.caps().max_storage_buffer_range) {
+        logOnce("GPU: nlmeans plane exceeds maxStorageBufferRange; needs "
+               "tiling");
+        return false;
+    }
+
+    Buffer *maskBuf = pool.get(bytes);
+    Buffer *dstBuf = pool.get(bytes);
+    if (!maskBuf || !dstBuf) {
+        logOnce("GPU: nlmeans allocation failed; using the CPU");
+        return false;
+    }
+
+    if (!detailMask(ctx, *maskBuf, plane, W, H, normcoeff, 1e-3f * normcoeff,
+                    normcoeff, amount, 2.f / (float)scale, &pool)) {
+        return false;
+    }
+
+    struct SimplePC { int w, h, ds, Ds; float invH2; float invNormcoeff; };
+    Pass pass(ctx, "nlmeansSimple");
+    if (!pass.valid()) {
+        return false;
+    }
+    SimplePC pc{W, H, patch_radius, search_radius, 1.f / h2, 1.f / normcoeff};
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&plane, false));
+    b.push_back(Pass::Binding(maskBuf, false));
+    b.push_back(Pass::Binding(dstBuf, true));
+    if (!pass.dispatch2D("nlm_simple", b, &pc, sizeof(pc), W, H)) {
+        return false;
+    }
+    /* dstBuf is pool scratch, not `plane` -- the caller's buffer, which on
+     * nlmeansSmoothingRegion's path is itself a pooled working copy a
+     * different call may reclaim once this returns.  One more flat dispatch
+     * (denoise's own dn_plane_copy.comp, generic and already verified)
+     * rather than a new shader. */
+    struct CopyPC { unsigned int n; };
+    CopyPC cpc{(unsigned)(W * H)};
+    std::vector<Pass::Binding> cb;
+    cb.push_back(Pass::Binding(dstBuf, false));
+    cb.push_back(Pass::Binding(&plane, true));
+    if (!pass.dispatch1D("dn_plane_copy", cb, &cpc, sizeof(cpc),
+                         (size_t)W * H)) {
+        return false;
+    }
+    if (!pass.submitAndWait()) {
+        return false;
+    }
+    if (settings && settings->verbose > 1) {
+        pass.reportTimings();
+    }
+    return true;
+}
+
+} // namespace
+
+bool NLMeans(Context &ctx, BufferPool &pool, Buffer &plane, int W,
+             int H, float normcoeff, double scale, int strength,
+             int detail_thresh)
+{
+    return nlmeansSimpleOnDevice(ctx, pool, plane, W, H, normcoeff, scale,
+                                 strength, detail_thresh);
+}
+
+} // namespace ops
+} // namespace gpu
+} // namespace rtengine
+
+#else // !ART_USE_VULKAN
+
+namespace rtengine {
+namespace gpu {
+namespace ops {
+
+bool NLMeans(Context &ctx, BufferPool &pool, Buffer &plane, int W,
+             int H, float normcoeff, double scale, int strength,
+             int detail_thresh)
+{
+    return false;
+}
+
+} // namespace ops
+} // namespace gpu
+} // namespace rtengine
+
+#endif // ART_USE_VULKAN
+
+
+

@@ -703,12 +703,133 @@ void tmo_fattal02(size_t width, size_t height, const Array2Df &Y, Array2Df &L,
 // atimes(). This means the assembly of the right hand side F is different
 // for both solvers.
 
+/* A 2-D DCT-I (FFTW_REDFT00) of `in` into `out`, run as a pass of batched 1-D
+ * transforms over the rows followed by one over the columns, threaded here with
+ * OpenMP instead of by FFTW.
+ *
+ * FFTW's own threaded r2r cannot be used for this. For a sparse and
+ * unpredictable set of widths it is *dramatically slower* threaded than the
+ * identical plan on one thread -- measured on this machine, per transform, ten
+ * threads against one:
+ *
+ *   1501x1001     8.5 ms ->  660.6 ms   (0.01x)
+ *   1537x1025    19.0 ms ->  672.7 ms   (0.03x)
+ *   1025x1537     7.6 ms ->  687.7 ms   (0.01x)
+ *   8001x2049   107.2 ms -> 1691.8 ms   (0.06x)
+ *   3073x1025    15.9 ms ->    3.8 ms   (4.23x)
+ *   8065x2049    95.7 ms ->   20.6 ms   (4.65x)
+ *   8193x2049    95.0 ms ->   20.2 ms   (4.70x)
+ *   8641x2049    95.9 ms ->   20.3 ms   (4.72x)
+ *
+ * and the bad set is not screenable by a rule: 8001 loses 16x while both of its
+ * tested neighbours gain ~5x, and the factorisation of w-1 does not separate
+ * them either (8001-1 = 2^6*5^3 loses, 8641-1 = 2^6*3^3*5 wins). Driving the
+ * batches ourselves sidesteps the whole question and scales predictably.
+ *
+ * A 2-D REDFT00 is separable and unnormalised, so rows-then-columns is exactly
+ * the same transform FFTW's own 2-D plan computes; the scaling in the two
+ * callers below is unaffected.
+ *
+ * Each chunk gets its OWN plan, built over that chunk's own pointers, and no
+ * plan is ever executed by more than one thread. That is deliberate: only
+ * fftw_execute and its new-array variants are re-entrant, and a plan that
+ * internally buffers (which the strided column pass is a prime candidate for --
+ * FFTW's buffered/tiled copy routines show up in profiles of this very
+ * transform) keeps that scratch space in the plan, so executing one plan
+ * concurrently from several threads would race on it. Planning is serialised by
+ * construction here, which FFTW also requires, and is cheap under
+ * FFTW_ESTIMATE. */
+bool dct2dRedft00(int width, int height, float *in, float *out,
+                  bool multithread)
+{
+    if (width < 2 || height < 2) {
+        return false; // REDFT00 is undefined for n < 2
+    }
+
+    int nthreads = 1;
+#ifdef _OPENMP
+    if (multithread) {
+        nthreads = omp_get_max_threads();
+    }
+#endif
+
+    const fftw_r2r_kind kind = FFTW_REDFT00;
+    const unsigned flags = FFTW_ESTIMATE;
+    int nRow = width;
+    int nCol = height;
+
+    // rows: `height` transforms of length `width`, contiguous, stride 1
+    const int rowChunk = std::max(1, (height + nthreads - 1) / nthreads);
+    // columns: `width` transforms of length `height`, stride `width`, run in
+    // place on the row pass's output
+    const int colChunk = std::max(1, (width + nthreads - 1) / nthreads);
+
+    std::vector<fftwf_plan> plans;
+    const int nRowPlans = (height + rowChunk - 1) / rowChunk;
+    const int nColPlans = (width + colChunk - 1) / colChunk;
+    plans.reserve(nRowPlans + nColPlans);
+
+    bool ok = true;
+    for (int y = 0; y < height && ok; y += rowChunk) {
+        const int cnt = std::min(rowChunk, height - y);
+        fftwf_plan p = fftwf_plan_many_r2r(1, &nRow, cnt,
+                                           in + (size_t)y * width, nullptr,
+                                           1, width,
+                                           out + (size_t)y * width, nullptr,
+                                           1, width,
+                                           &kind, flags);
+        ok = (p != nullptr);
+        if (p) {
+            plans.push_back(p);
+        }
+    }
+    for (int x = 0; x < width && ok; x += colChunk) {
+        const int cnt = std::min(colChunk, width - x);
+        fftwf_plan p = fftwf_plan_many_r2r(1, &nCol, cnt,
+                                           out + x, nullptr, width, 1,
+                                           out + x, nullptr, width, 1,
+                                           &kind, flags);
+        ok = (p != nullptr);
+        if (p) {
+            plans.push_back(p);
+        }
+    }
+
+    if (!ok) {
+        for (size_t i = 0; i < plans.size(); ++i) {
+            fftwf_destroy_plan(plans[i]);
+        }
+        return false;
+    }
+
+    // the column pass reads what the row pass wrote, so the two are separate
+    // parallel regions with an implicit barrier between them
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) if (multithread)
+#endif
+    for (int i = 0; i < nRowPlans; ++i) {
+        fftwf_execute(plans[i]);
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) if (multithread)
+#endif
+    for (int i = 0; i < nColPlans; ++i) {
+        fftwf_execute(plans[nRowPlans + i]);
+    }
+
+    for (size_t i = 0; i < plans.size(); ++i) {
+        fftwf_destroy_plan(plans[i]);
+    }
+    return true;
+}
+
 // returns T = EVy A EVx^tr
 // note, modifies input data
-void transform_ev2normal(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithread)
+bool transform_ev2normal(Array2Df *A, Array2Df *T, bool multithread)
 {
     BENCHFUN
-        
+
     int width = A->getCols();
     int height = A->getRows();
     assert((int)T->getCols() == width && (int)T->getRows() == height);
@@ -734,40 +855,26 @@ void transform_ev2normal(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithrea
         (*A)(width - 1, y) *= 0.5f;
     }
 
-    // note, fftw provides its own memory allocation routines which
-    // ensure that memory is properly 16/32 byte aligned so it can
-    // use SSE/AVX operations (2/4 double ops in parallel), if our
-    // data is not properly aligned fftw won't use SSE/AVX
-    // (I believe new() aligns memory to 16 byte so avoid overhead here)
-    //
-    // double* in = (double*) fftwf_malloc(sizeof(double) * width*height);
-    // fftwf_free(in);
-
     // executes 2d discrete cosine transform
-    // fftwf_plan p;
-    // auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
-    // p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
-    //                       FFTW_REDFT00, flags);
-    fftwf_execute(p);
-    // fftwf_destroy_plan(p);
+    if (!dct2dRedft00(width, height, A->data(), T->data(), multithread)) {
+        return false;
+    }
+    return true;
 }
 
 // returns T = EVy^-1 * A * (EVx^-1)^tr
-void transform_normal2ev(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithread)
+bool transform_normal2ev(Array2Df *A, Array2Df *T, bool multithread)
 {
     BENCHFUN
-        
+
     int width = A->getCols();
     int height = A->getRows();
     assert((int)T->getCols() == width && (int)T->getRows() == height);
 
     // executes 2d discrete cosine transform
-    // fftwf_plan p;
-    // auto flags = FFTW_MEASURE; // FFTW_ESTIMATE
-    // p = fftwf_plan_r2r_2d(height, width, A->data(), T->data(), FFTW_REDFT00,
-    //                       FFTW_REDFT00, flags);
-    fftwf_execute(p);
-    // fftwf_destroy_plan(p);
+    if (!dct2dRedft00(width, height, A->data(), T->data(), multithread)) {
+        return false;
+    }
 
     // need to scale the output matrix to get the right transform
     float factor = (1.0f / ((height - 1) * (width - 1)));
@@ -789,6 +896,7 @@ void transform_normal2ev(fftwf_plan p, Array2Df *A, Array2Df *T, bool multithrea
         (*T)(0, y) *= 0.5f;
         (*T)(width - 1, y) *= 0.5f;
     }
+    return true;
 }
 
 // returns the eigenvalues of the 1d laplace operator
@@ -858,32 +966,23 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
     assert((int)U->getCols() == width && (int)U->getRows() == height);
     assert(buf->getCols() == width && buf->getRows() == height);
 
-    // activate parallel execution of fft routines
+    /* The transforms are driven by dct2dRedft00 above, which batches 1-D
+     * transforms and threads them with OpenMP; FFTW's own r2r threading is not
+     * used here (and must not be re-enabled -- see that function's comment for
+     * the measurements). fftwf_plan_with_nthreads is global and sticky, so pin
+     * it to 1 for the plans we are about to build in case another caller left
+     * it at the processor count, and put it back afterwards. */
 #ifdef RT_FFTW3F_OMP
-    if (multithread) {
+    int fftw_threads_natural = 1;
 #  ifdef _OPENMP
-        int n = omp_get_num_procs();
-#  else
-        int n = 1;
-#  endif
-        if (settings->verbose > 1) {
-            std::cout << "fftwf planning with " << n << " threads" << std::endl;
-        }
-        fftwf_plan_with_nthreads(n);
+    if (multithread) {
+        fftw_threads_natural = omp_get_num_procs();
     }
+#  endif
+    fftwf_plan_with_nthreads(1);
 #endif
 
     Array2Df *F_tr = buf;
-    
-    auto flags = FFTW_ESTIMATE;
-    fftwf_plan p1 = fftwf_plan_r2r_2d(height, width,
-                                      F->data(), F_tr->data(),
-                                      FFTW_REDFT00,
-                                      FFTW_REDFT00, flags);
-    fftwf_plan p2 = fftwf_plan_r2r_2d(height, width,
-                                      F_tr->data(), U->data(),
-                                      FFTW_REDFT00,
-                                      FFTW_REDFT00, flags);
 
     // in general there might not be a solution to the Poisson pde
     // with Neumann boundary conditions unless the boundary satisfies
@@ -897,7 +996,26 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
 
     // transforms F into eigenvector space: Ftr =
     // DEBUG_STR << "solve_pde_fft: transform F to ev space (fft)" << std::endl;
-    transform_normal2ev(p1, F, F_tr, multithread);
+    if (!transform_normal2ev(F, F_tr, multithread)) {
+        /* Only reachable if FFTW cannot make a plan at all; width and height
+         * are >= 2 by construction here. U would otherwise be left
+         * uninitialised, so zero it: exp(0) = 1 downstream, i.e. no
+         * attenuation, which is the right way to fail for a tone mapper. */
+        if (settings->verbose) {
+            std::cout << "solve_pde_fft: could not plan the transform, "
+                         "skipping the tone mapping"
+                      << std::endl;
+        }
+        for (int i = 0, n = width * height; i < n; ++i) {
+            (*U)(i) = 0.f;
+        }
+#ifdef RT_FFTW3F_OMP
+        if (fftw_threads_natural != 1) {
+            fftwf_plan_with_nthreads(fftw_threads_natural);
+        }
+#endif
+        return;
+    }
     // TODO: F no longer needed so could release memory, but as it is an
     // input parameter we won't do that
 
@@ -918,10 +1036,14 @@ void solve_pde_fft(Array2Df *F, Array2Df *U, Array2Df *buf,
     (*F_tr)(0, 0) = 0.f; // any value ok, only adds a const to the solution
 
     // transforms F_tr back to the normal space
-    transform_ev2normal(p2, F_tr, U, multithread);
+    transform_ev2normal(F_tr, U, multithread);
 
-    fftwf_destroy_plan(p2);
-    fftwf_destroy_plan(p1);
+#ifdef RT_FFTW3F_OMP
+    // put the global planner setting back for whoever plans next
+    if (fftw_threads_natural != 1) {
+        fftwf_plan_with_nthreads(fftw_threads_natural);
+    }
+#endif
 
     // the solution U as calculated will satisfy something like int U = 0
     // since for any constant c, U-c is also a solution and we are mainly
@@ -992,21 +1114,6 @@ inline float luminance(float r, float g, float b, TMatrix ws)
     return Color::rgbLuminance(r, g, b, ws);
 }
 
-inline int round_up_pow2(int dim)
-{
-    // from https://graphics.stanford.edu/~seander/bithacks.html
-    assert(dim > 0);
-    unsigned int v = dim;
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-    return v;
-}
-
 
 void ToneMapFattal02(Imagefloat *rgb, ImProcFunctions *ipf,
                      const ProcParams *params, bool multiThread)
@@ -1054,8 +1161,11 @@ void ToneMapFattal02(Imagefloat *rgb, ImProcFunctions *ipf,
     // median filter on the deep shadows, to avoid boosting noise
     // because w2 >= w and h2 >= h, we can use the L buffer as temporary buffer
     // for Median_Denoise()
-    int w2 = find_fast_fftw_dim(w);
-    int h2 = find_fast_fftw_dim(h);
+    // find_fast_dct_dim and not find_fast_fftw_dim: the solver below is a
+    // DCT-I (FFTW_REDFT00), whose effective transform length is 2*(w2-1) by
+    // 2*(h2-1) -- see the comment on the definition in rt_algo.cc
+    int w2 = find_fast_dct_dim(w);
+    int h2 = find_fast_dct_dim(h);
     Array2Df L(w2, h2);
     float scale_ratio = float(std::max(w, h)) / float(RT_dimension_cap);
     {

@@ -1,0 +1,62 @@
+#version 450
+
+// Exact-MadRgb histograms for every subband of all three wavelet detail directions, fused into one dispatch.
+// Segment s = direction s/levels, level s%levels; direction is workgroup-uniform by construction.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+#define PRIV 4096u
+
+layout(std430, set = 0, binding = 0) readonly buffer Hi1 { float v[]; } hi1;
+layout(std430, set = 0, binding = 1) readonly buffer Hi2 { float v[]; } hi2;
+layout(std430, set = 0, binding = 2) readonly buffer Hi3 { float v[]; } hi3;
+layout(std430, set = 0, binding = 3) buffer Hist { uint v[]; } hist;
+
+layout(push_constant) uniform PC {
+    uint n;        // coefficients per subband (level plane w*h)
+    uint levels;
+    uint wgPerSeg;
+} pc;
+
+shared uint h[PRIV];
+
+// Accumulation loop, instantiated per direction buffer: branching on `dir` inside the loop measured 1.6x
+// slower (3.05 vs 1.86 ms/137MiB), so it's hoisted by writing the loop three times instead.
+#define DN_MAD_ACCUM(SRC)                                                          for (uint i = wg * LX + tid; i < pc.n; i += stride) {                              uint b = uint(min(abs(SRC.v[base + i]), 65535.0));                             if (b < PRIV) {                                                                    atomicAdd(h[b], 1u);                                                       } else {                                                                           atomicAdd(hist.v[hbase + b], 1u);                                          }                                                                          }
+
+void main()
+{
+    uint tid = gl_LocalInvocationID.x;
+    uint seg = gl_WorkGroupID.x / pc.wgPerSeg;
+    uint wg = gl_WorkGroupID.x % pc.wgPerSeg;
+    if (seg >= 3u * pc.levels) {
+        return;
+    }
+    uint dir = seg / pc.levels;
+    uint lvl = seg % pc.levels;
+
+    for (uint i = tid; i < PRIV; i += LX) {
+        h[i] = 0u;
+    }
+    barrier();
+
+    uint base = lvl * pc.n;
+    uint hbase = seg * 65536u;
+    uint stride = pc.wgPerSeg * LX;
+    if (dir == 0u) {
+        DN_MAD_ACCUM(hi1)
+    } else if (dir == 1u) {
+        DN_MAD_ACCUM(hi2)
+    } else {
+        DN_MAD_ACCUM(hi3)
+    }
+    barrier();
+
+    for (uint i = tid; i < PRIV; i += LX) {
+        uint c = h[i];
+        if (c != 0u) {
+            atomicAdd(hist.v[hbase + i], c);
+        }
+    }
+}

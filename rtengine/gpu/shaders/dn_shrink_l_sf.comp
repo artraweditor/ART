@@ -1,0 +1,44 @@
+#version 450
+
+// Luma shrink, stage 1 of 3: per-coefficient shrink factor, feeding the box blur + recombination in
+// dn_shrink_blurv_apply.comp. sf = mag / (mag + m*exp(-mag/(9*m)) + eps), m = noisevarlum * levelFactor.
+//
+// Covers both CPU luma paths (ShrinkAllL and BiShrinkL's inlined equivalent) since they reduce to the
+// same formula; subbands are independent so one fused dispatch covers every level. `mad` is unsquared
+// (as waveletMadExact returns it) -- squared here. Exponent denominator association follows the SIMD
+// path (9*(noisevarlum*levelFactor)), differing from scalar in the last ulp. No guard against m == 0:
+// matches the CPU, which relies on the noisevarL > 0.00001 gate upstream.
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Coeff { float v[]; } band;
+layout(std430, set = 0, binding = 1) readonly buffer Nv { float v[]; } nv;
+layout(std430, set = 0, binding = 2) readonly buffer Mad { float v[]; } mad;
+layout(std430, set = 0, binding = 3) writeonly buffer Sf { float v[]; } sf;
+
+layout(push_constant) uniform PC {
+    uint n;       // coefficients per subband
+    uint levels;  // subbands processed here (min(maxlevel, 5) on the CPU)
+    uint madBase; // dir * madLevels: this direction's slice of `mad`
+    float eps;
+} pc;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.n * pc.levels) {
+        return;
+    }
+    uint lvl = gid / pc.n;
+    uint i = gid - lvl * pc.n;
+
+    float m0 = mad.v[pc.madBase + lvl];
+    float levelFactor = (m0 * m0) * 5.0 / float(lvl + 1u);
+
+    float c = band.v[gid];
+    float mag = c * c;
+    float m = nv.v[i] * levelFactor;
+
+    sf.v[gid] = mag / (mag + m * exp(-mag / (9.0 * m)) + pc.eps);
+}

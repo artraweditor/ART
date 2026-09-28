@@ -83,6 +83,17 @@ public:
 
     int thread_pool_size;
 
+    /* GPU (Vulkan compute) backend.
+     * gpu_enabled: whether to use the GPU backend at all. Defaults to off:
+     * the backend is opt-in for now.
+     * gpu_device: "auto" == best non-software device; a decimal integer
+     * selects by index; anything else is matched as a case-insensitive
+     * substring of the device name. Kept even when gpu_enabled is false, so
+     * re-enabling remembers the last selection. */
+    bool gpu_enabled;
+    Glib::ustring gpu_device;
+    bool gpu_allow_software;
+
     bool ctl_scripts_fast_preview;
 
     enum class StdMonitorProfile { SRGB, DISPLAY_P3, ADOBE_RGB };

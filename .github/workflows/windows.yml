@@ -54,12 +54,14 @@ jobs:
             export ART_COMPILER=gcc
             export ART_MSYS2_REPO=ucrt64
             export ART_PKG_PREFIX=mingw-w64-ucrt-x86_64
+            export ART_MSYS2_REPO_VER=1.0.2
           else
             export ART_COMPILER=clang
             export ART_MSYS2_REPO=clangarm64
             export ART_PKG_PREFIX=mingw-w64-clang-aarch64
+            export ART_MSYS2_REPO_VER=1.0.2
           fi
-          wget https://github.com/artraweditor/msys2-repo/releases/download/1.0/repo-${ART_MSYS2_REPO}.tar
+          wget https://github.com/artraweditor/msys2-repo/releases/download/${ART_MSYS2_REPO_VER}/repo-${ART_MSYS2_REPO}.tar
           tar xf repo-${ART_MSYS2_REPO}.tar
           echo "[options]" > /etc/pacman.conf
           echo "HoldPkg     = pacman" >> /etc/pacman.conf
@@ -72,7 +74,7 @@ jobs:
           echo "SigLevel = Optional TrustAll" >> /etc/pacman.conf
           echo "Server = file://${PWD}/repo-${ART_MSYS2_REPO}" >> /etc/pacman.conf
           pacman -Sy
-          for p in ${ART_COMPILER} cmake autotools ninja gtkmm3 lcms2 fftw lensfun mimalloc opencolorio; do
+          for p in ${ART_COMPILER} cmake autotools ninja gtkmm3 lcms2 fftw lensfun mimalloc opencolorio vulkan-headers shaderc; do
               pacman --noconfirm -S custom-${ART_MSYS2_REPO}/${ART_PKG_PREFIX}-${p}
           done
           
@@ -167,6 +169,7 @@ jobs:
             -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DBUILD_BUNDLE=1 \
             -DENABLE_SIMDE=${ART_SIMDE} \
+            -DENABLE_VULKAN=1 \
             -DCMAKE_CXX_FLAGS="${ART_CXX_FLAGS}" \
             ../repo
           cd ..

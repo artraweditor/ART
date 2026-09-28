@@ -1144,6 +1144,11 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
         }
     }
 
+    // magic constant c_factor: normally chromaticity is in [0; 42000] (see
+    // color.h), but here we use the constant to match how the chromaticity
+    // pipette works (see improcfun.cc lines 4705-4706 and color.cc line 1930
+    constexpr float c_factor = 327.68f * (42000.f / 48000.f);
+
     array2D<float> LL;
     if (has_lmask) {
         LL(W, H);
@@ -1185,11 +1190,6 @@ bool generateMasks(Imagefloat *rgb, const Glib::ustring &toolname,
         }
 #endif
     }
-
-    // magic constant c_factor: normally chromaticity is in [0; 42000] (see
-    // color.h), but here we use the constant to match how the chromaticity
-    // pipette works (see improcfun.cc lines 4705-4706 and color.cc line 1930
-    constexpr float c_factor = 327.68f * (42000.f / 48000.f);
 
     DeltaEEvaluator dE(masks);
 

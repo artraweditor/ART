@@ -20,6 +20,7 @@
 #include "preferences.h"
 #include "../rtengine/dfmanager.h"
 #include "../rtengine/ffmanager.h"
+#include "../rtengine/gpu/gpu.h"
 #include "addsetids.h"
 #include "cachemanager.h"
 #include "guiutils.h"
@@ -72,8 +73,8 @@ Glib::ustring getFontFamily(const Pango::FontDescription &fd)
 
 Preferences::Preferences(RTWindow *rtwindow)
     : Gtk::Dialog(M("MAIN_BUTTON_PREFERENCES"), *rtwindow, true),
-      splash(nullptr), rprofiles(nullptr), iprofiles(nullptr), parent(rtwindow),
-      newFont(false), newCPFont(false)
+      splash(nullptr), rprofiles(nullptr), iprofiles(nullptr),
+      gpuAvailable_(false), parent(rtwindow), newFont(false), newCPFont(false)
 {
     regex = Glib::Regex::create(Options::THEMEREGEXSTR,
                                 Glib::RegexCompileFlags::REGEX_CASELESS);
@@ -461,6 +462,54 @@ Gtk::Widget *Preferences::getPerformancePanel()
     Gtk::VBox *vbPerformance = Gtk::manage(new Gtk::VBox());
     vbPerformance->set_spacing(4);
 
+    Gtk::Frame *fgpu = Gtk::manage(new Gtk::Frame(M("PREFERENCES_GPU")));
+    Gtk::VBox *vbgpu = Gtk::manage(new Gtk::VBox());
+    gpuEnabled_ = Gtk::manage(
+        new Gtk::CheckButton(M("PREFERENCES_GPU_ENABLED") +
+                             " (" + M("PREFERENCES_APPLNEXTSTARTUP") + ")"));
+    gpuEnabled_->set_tooltip_text(M("PREFERENCES_GPU_TOOLTIP"));
+    vbgpu->pack_start(*gpuEnabled_);
+
+    Gtk::HBox *hbgpudev = Gtk::manage(new Gtk::HBox(false, 4));
+    hbgpudev->pack_start(
+        *Gtk::manage(new Gtk::Label(M("PREFERENCES_GPU_DEVICE_LABEL"))),
+        Gtk::PACK_SHRINK);
+    gpuDevice_ = Gtk::manage(new Gtk::ComboBoxText());
+    gpuDevice_->append("auto", M("PREFERENCES_GPU_DEVICE_AUTO"));
+    const std::vector<rtengine::gpu::DeviceInfo> gpuDevices =
+        rtengine::gpu::enumerateDevices();
+    for (const auto &dev : gpuDevices) {
+        gpuDevice_->append(std::to_string(dev.index), dev.name);
+    }
+    hbgpudev->pack_start(*gpuDevice_);
+    vbgpu->pack_start(*hbgpudev);
+
+    /* An empty list means no loader/ICD/device could be opened at all, in
+     * which case ticking the checkbox would do nothing and say so only on
+     * stderr (see gpu::available()) -- which a GUI started from a desktop
+     * launcher discards. Say it here instead. The stored setting is still
+     * shown and written back untouched, so moving the same options file
+     * between machines doesn't silently clear it. */
+    gpuAvailable_ = !gpuDevices.empty();
+    if (!gpuAvailable_) {
+        Gtk::Label *gpuNoDevLbl =
+            Gtk::manage(new Gtk::Label(M("PREFERENCES_GPU_NO_DEVICES")));
+        setExpandAlignProperties(gpuNoDevLbl, false, false, Gtk::ALIGN_START,
+                                 Gtk::ALIGN_START);
+        gpuNoDevLbl->set_line_wrap(true);
+        vbgpu->pack_start(*gpuNoDevLbl, Gtk::PACK_SHRINK, 4);
+        gpuEnabled_->set_sensitive(false);
+    }
+
+    gpuEnabled_->signal_toggled().connect([this]() {
+        gpuDevice_->set_sensitive(gpuAvailable_ && gpuEnabled_->get_active());
+    });
+
+    fgpu->add(*vbgpu);
+#ifdef ART_USE_VULKAN
+    vbPerformance->pack_start(*fgpu, Gtk::PACK_SHRINK, 4);
+#endif
+    
     Gtk::Frame *fprevdemo =
         Gtk::manage(new Gtk::Frame(M("PREFERENCES_PREVDEMO")));
     Gtk::HBox *hbprevdemo = Gtk::manage(new Gtk::HBox(false, 4));
@@ -2316,6 +2365,8 @@ void Preferences::storePreferences()
     moptions.thumb_cache_processed = thumb_cache_processed_->get_active();
     moptions.rtSettings.ctl_scripts_fast_preview =
         ctl_scripts_fast_preview_->get_active();
+    moptions.rtSettings.gpu_enabled = gpuEnabled_->get_active();
+    moptions.rtSettings.gpu_device = gpuDevice_->get_active_id();
 
 // Sounds only on Windows and Linux
 #if defined(WIN32) || defined(__linux__)
@@ -2625,6 +2676,18 @@ void Preferences::fillPreferences()
     thumb_cache_processed_->set_active(moptions.thumb_cache_processed);
     ctl_scripts_fast_preview_->set_active(
         moptions.rtSettings.ctl_scripts_fast_preview);
+
+    gpuEnabled_->set_active(moptions.rtSettings.gpu_enabled);
+    if (!gpuDevice_->set_active_id(moptions.rtSettings.gpu_device)) {
+        // stored value doesn't match "auto" or any enumerated device (e.g.
+        // the device is temporarily absent) -- add it verbatim so it isn't
+        // silently lost until the user picks something else
+        gpuDevice_->append(moptions.rtSettings.gpu_device,
+                           moptions.rtSettings.gpu_device);
+        gpuDevice_->set_active_id(moptions.rtSettings.gpu_device);
+    }
+    gpuDevice_->set_sensitive(gpuAvailable_ &&
+                              moptions.rtSettings.gpu_enabled);
 
     if (!moptions.rtSettings.darkFramesPath.empty()) {
         darkFrameDir->set_current_folder(moptions.rtSettings.darkFramesPath);

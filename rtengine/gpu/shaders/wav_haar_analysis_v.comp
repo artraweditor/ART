@@ -1,0 +1,45 @@
+#version 450
+
+// Haar a-trous wavelet analysis, vertical pass (level >=1), stride `skip`, no decimation.
+// "else" branch (0,0) mirrors the CPU's undefined fill when skip > h/2; not expected to be reachable.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Lo { float v[]; } lo;
+layout(std430, set = 0, binding = 2) writeonly buffer Hi { float v[]; } hi;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int skip;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    int y = int(g.y);
+    int h = int(pc.h);
+    float a = src.v[g.y * pc.w + g.x];
+    float outLo, outHi;
+    if (y < h - pc.skip) {
+        float b = src.v[uint(y + pc.skip) * pc.w + g.x];
+        outLo = 0.25 * (a + b);
+        outHi = 0.25 * (a - b);
+    } else if (y >= max(h - pc.skip, pc.skip)) {
+        float b = src.v[uint(y - pc.skip) * pc.w + g.x];
+        outLo = 0.25 * (a + b);
+        outHi = 0.25 * (a - b);
+    } else {
+        outLo = 0.0;
+        outHi = 0.0;
+    }
+    uint o = g.y * pc.w + g.x;
+    lo.v[o] = outLo;
+    hi.v[o] = outHi;
+}

@@ -167,6 +167,13 @@ protected:
     ProcParams params;
     ProcParams paramsBackup;
     TweakOperator *tweakOperator;
+    // Guards the span from backupParams()/tweakOperator->tweakParams() to
+    // restoreParams(): Crop::fullUpdate() and process() each temporarily
+    // overwrite the shared params/paramsBackup while a TweakOperator is
+    // active, on different threads; without this they can race (one
+    // freeing/reallocating paramsBackup's contents while the other reads
+    // or writes it), corrupting the heap.
+    MyMutex mTweak;
 
     // for optimization purpose, the output profile, output rendering intent and
     // output BPC will trigger a regeneration of the profile on parameter change

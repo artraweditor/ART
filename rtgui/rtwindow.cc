@@ -613,13 +613,13 @@ void RTWindow::on_realize()
         // Update the version parameter with the right value
         options.version = versionString;
 
-        splash = new Splash(*this);
-        splash->set_transient_for(*this);
-        splash->signal_delete_event().connect(
-            sigc::mem_fun(*this, &RTWindow::splashClosed));
+        // splash = new Splash(*this);
+        // splash->set_transient_for(*this);
+        // splash->signal_delete_event().connect(
+        //     sigc::mem_fun(*this, &RTWindow::splashClosed));
 
-        waitForSplash = true;
-        splash->show();
+        // waitForSplash = true;
+        // splash->show();
     }
 
     if (!waitForSplash) {

@@ -272,6 +272,10 @@ if(CTL_FOUND)
     include_directories(${CTL_INCLUDE_DIRS})
 endif()
 
+if(SIMDE_INCLUDE_DIRS)
+    include_directories("${SIMDE_INCLUDE_DIRS}")
+endif()
+
 # Create new executables targets
 add_executable(art ${EXTRA_SRC_NONCLI} ${NONCLISOURCEFILES})
 add_executable(art-cli ${EXTRA_SRC_CLI} ${CLISOURCEFILES})

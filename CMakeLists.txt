@@ -154,6 +154,8 @@ option(ENABLE_OCIO "Use OpenColorIOv2 for LUT application" ON)
 option(ENABLE_CTL "Enable support for the ACES Color Transformation Language" OFF)
 option(ENABLE_SIMDE "Build with SIMD Everywhere support" OFF)
 option(ENABLE_LCMS_FAST_FLOAT "Enable the fast-float plugin of LCMS2 (if available)" ON)
+option(ENABLE_VULKAN "Enable the Vulkan compute backend for GPU acceleration" OFF)
+option(ART_VULKAN_EMBED_SHADERS "Embed compiled SPIR-V modules in the binary instead of installing them as data files" ON)
 
 option(MACOS_LEGACY_BUNDLE "Use legacy method for building a macOS bundle using the tools/osx/macos_bundle.sh script" OFF)
 
@@ -718,6 +720,48 @@ else()
     set(ART_CTL_VERSION_INFO "N/A")
 endif()
 
+# Vulkan compute backend.  Headers only: the loader is opened at runtime with
+# dlopen/LoadLibrary through the vendored volk meta-loader, so a missing Vulkan
+# loader, a missing ICD or a missing device is a clean no-op rather than a
+# startup failure -- and so that the platform bundlers never pick up a loader
+# and shadow the host's one.
+set(VULKAN_FOUND 0)
+set(ART_VULKAN_VERSION_INFO "N/A")
+if(ENABLE_VULKAN)
+    find_path(VULKAN_INCLUDE_DIR
+        NAMES "vulkan/vulkan_core.h"
+        HINTS "$ENV{VULKAN_SDK}/include" "$ENV{VULKAN_SDK}/Include")
+    # NOTE: Vulkan_GLSLC_EXECUTABLE requires CMake 3.19 and
+    # find_package(Vulkan COMPONENTS glslc) requires 3.24; ART requires 3.9,
+    # so probe for the compiler directly.  Homebrew's shaderc ships glslc but
+    # not glslangValidator, hence the order.
+    find_program(ART_GLSL_COMPILER NAMES glslc glslangValidator
+        HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
+    if(NOT VULKAN_INCLUDE_DIR)
+        message(STATUS "Vulkan headers not found, GPU backend disabled")
+    elseif(NOT ART_GLSL_COMPILER)
+        message(STATUS "no GLSL compiler (glslc or glslangValidator) found, GPU backend disabled")
+    else()
+        file(STRINGS "${VULKAN_INCLUDE_DIR}/vulkan/vulkan_core.h"
+            _vk_hdr_line REGEX "^#define VK_HEADER_VERSION[ \t]+[0-9]+")
+        string(REGEX REPLACE "^#define VK_HEADER_VERSION[ \t]+([0-9]+).*" "\\1"
+            VULKAN_HEADER_VERSION "${_vk_hdr_line}")
+        if("${VULKAN_HEADER_VERSION}" STREQUAL "")
+            message(STATUS "could not parse VK_HEADER_VERSION from ${VULKAN_INCLUDE_DIR}, GPU backend disabled")
+        elseif("${VULKAN_HEADER_VERSION}" LESS 200)
+            message(STATUS "Vulkan headers at ${VULKAN_INCLUDE_DIR} are too old (VK_HEADER_VERSION ${VULKAN_HEADER_VERSION} < 200), GPU backend disabled")
+        else()
+            set(VULKAN_FOUND 1)
+            set(VULKAN_INCLUDE_DIRS "${VULKAN_INCLUDE_DIR}")
+            add_definitions(-DART_USE_VULKAN)
+            get_filename_component(_glsl_name "${ART_GLSL_COMPILER}" NAME)
+            set(ART_VULKAN_VERSION_INFO
+                "headers 1.x.${VULKAN_HEADER_VERSION}, shaders via ${_glsl_name}")
+            message(STATUS "Vulkan compute backend enabled (${ART_VULKAN_VERSION_INFO})")
+        endif()
+    endif()
+endif()
+
 
 # Find out whether we are building out of source:
 get_filename_component(ABS_SOURCE_DIR "${PROJECT_SOURCE_DIR}" ABSOLUTE)
@@ -822,6 +866,9 @@ else()
     list(APPEND ABOUT_COMMAND_WITH_ARGS
         -DART_CTL_VERSION_INFO:STRING="N/A")
 endif()
+
+list(APPEND ABOUT_COMMAND_WITH_ARGS
+    -DART_VULKAN_VERSION_INFO:STRING="${ART_VULKAN_VERSION_INFO}")
 
 list(APPEND ABOUT_COMMAND_WITH_ARGS "-DBUILDINFO_OS:STRING=${CMAKE_HOST_SYSTEM_NAME}" -P "${PROJECT_SOURCE_DIR}/UpdateInfo.cmake")
 

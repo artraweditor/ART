@@ -351,17 +351,23 @@ Thumbnail::createProcParamsForUpdate(bool returnParams, bool force,
             auto imageMetaData = getMetaData();
             auto pp = ProfileStore::getInstance()->loadDynamicProfile(
                 imageMetaData.get());
-            ProcParams params;
-            if (pp->applyTo(params) &&
-                params.save(cachemgr->getProgressListener(), outFName) == 0) {
+            ProcParamsWithSnapshots pws;
+            // preserve any snapshots already stored in the sidecar
+            pws.load(cachemgr->getProgressListener(), outFName);
+            pws.master.setDefaults();
+            if (pp->applyTo(pws.master) &&
+                pws.save(cachemgr->getProgressListener(), outFName) == 0) {
                 loadProcParams();
             }
         } else if (create && defProf != Options::DEFPROFILE_DYNAMIC) {
             const PartialProfile *p =
                 ProfileStore::getInstance()->getProfile(defProf);
-            ProcParams params;
-            if (p && p->applyTo(params) &&
-                params.save(cachemgr->getProgressListener(), outFName) == 0) {
+            ProcParamsWithSnapshots pws;
+            // preserve any snapshots already stored in the sidecar
+            pws.load(cachemgr->getProgressListener(), outFName);
+            pws.master.setDefaults();
+            if (p && p->applyTo(pws.master) &&
+                pws.save(cachemgr->getProgressListener(), outFName) == 0) {
                 loadProcParams();
             }
         }

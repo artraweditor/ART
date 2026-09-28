@@ -32,10 +32,6 @@ def getopts():
     p.add_argument('-p', '--prefix')
     p.add_argument('-n', '--no-dmg', action='store_true')
     p.add_argument('-d', '--dmg-name', default='ART')
-    p.add_argument('-s', '--shell', default='/bin/zsh')
-    p.add_argument('-l', '--use-launcher', action='store_true', default=False)
-    p.add_argument('-L', '--no-launcher', action='store_false',
-                   dest='use_launcher')
     p.add_argument('--debug', action='store_true')
     ret = p.parse_args()
     ret.outdir = os.path.join(ret.outdir, 'ART.app')
@@ -113,6 +109,44 @@ def getdlls(opts):
     return sorted(res.values())
 
 
+def pkgconfig_var(pkg, var):
+    """Ask pkg-config for a package variable, or None if unavailable.
+
+    Used to locate the gdk-pixbuf loaders directory: on a mixed-prefix setup
+    (e.g. GTK from one prefix, gdk-pixbuf/librsvg from another) the loaders
+    directory is not necessarily under the same prefix as libgtk-3.0.dylib,
+    and pkg-config is the only reliable way to ask gdk-pixbuf itself, since it
+    also picks up loaders (like the SVG one) that a separate formula such as
+    librsvg drops into a shared moduledir outside its own keg."""
+    try:
+        r = subprocess.run(['pkg-config', f'--variable={var}', pkg],
+                           capture_output=True, encoding='utf-8', check=True)
+    except (subprocess.CalledProcessError, OSError):
+        return None
+    val = r.stdout.strip()
+    return val or None
+
+
+def gdk_pixbuf_loaders_dir(pref):
+    d = pkgconfig_var('gdk-pixbuf-2.0', 'gdk_pixbuf_moduledir')
+    if d and os.path.isdir(d):
+        return d
+    return os.path.join(pref, 'lib/gdk-pixbuf-2.0/2.10.0/loaders')
+
+
+def find_under(pref, relpath):
+    """Return the first of pref/relpath and a few common secondary prefixes
+    that actually exists on disk, defaulting to pref/relpath if none do (so
+    that the caller's own "does this exist" check reports it missing, same as
+    before this function existed).
+    """
+    for p in [pref, '/opt/homebrew', '/opt/local', '/usr/local']:
+        candidate = os.path.join(p, relpath)
+        if os.path.exists(candidate):
+            return candidate
+    return os.path.join(pref, relpath)
+
+
 def getprefix(opts):
     if opts.prefix:
         return opts.prefix
@@ -127,6 +161,53 @@ def getprefix(opts):
         if 'libgtk-3.0' in lib:
             return os.path.dirname(os.path.dirname(lib))
     assert False, "can't determine prefix"
+
+
+def vulkan_enabled(opts):
+    """Whether the build being bundled has the GPU backend enabled, per the
+    'Vulkan: ...' line written into AboutThisBuild.txt by CMakeLists.txt
+    (ART_VULKAN_VERSION_INFO)."""
+    try:
+        with open('Contents/Resources/AboutThisBuild.txt') as f:
+            for line in f:
+                if line.startswith('Vulkan: '):
+                    return line.split(':', 1)[1].strip() != 'N/A'
+    except OSError:
+        pass
+    return False
+
+
+def vulkan_files(opts, pref):
+    """MoltenVK, the one thing the GPU backend needs that macOS does not
+    provide. No Vulkan loader and no ICD json: ART dlopens MoltenVK directly
+    (it finds the bundled copy through the
+    "@executable_path/../Frameworks/libMoltenVK.dylib" candidate), which is
+    why there is only ever one dylib to carry -- see the candidates() comment
+    in rtengine/gpu/vk_api.cc. The cost, documented there, is that Vulkan
+    layers (validation) are a loader feature and so are unavailable on macOS.
+
+    MoltenVK is dlopen'd, never linked, so getdlls() cannot find it; it has
+    to be copied explicitly. Best-effort: the GPU backend is optional and
+    never fatal (rtengine/gpu/gpu.h), so if it isn't installed on the build
+    machine the bundle just falls back to whatever the user has, exactly like
+    an unbundled build."""
+    name = 'libMoltenVK.dylib'
+    dirs = [os.path.join(pref, 'lib')]
+    sdk = os.environ.get('VULKAN_SDK')
+    if sdk:
+        dirs += [os.path.join(sdk, 'lib'), os.path.join(sdk, 'macOS/lib')]
+    dirs += ['/opt/homebrew/lib', '/opt/local/lib', '/usr/local/lib']
+    for d in dirs:
+        p = os.path.join(d, name)
+        if os.path.exists(p):
+            # copied by resolving the symlink, so that the Cellar/SDK layout
+            # it usually points into is not needed at runtime
+            return [('Contents/Frameworks', [(os.path.realpath(p), name)])]
+    sys.stderr.write(
+        'WARNING: %s not found in %s, not bundling it; GPU acceleration '
+        'will only work if the user has their own MoltenVK installed\n'
+        % (name, ', '.join(dirs)))
+    return []
 
 
 def extra_files(opts):
@@ -172,27 +253,26 @@ def extra_files(opts):
                         'bin')]))
     return [
         ('Contents/Frameworks',
-         glob.glob(os.path.join(pref,
-                                'lib/gdk-pixbuf-2.0/2.10.0/'
-                                'loaders/*.so'))),
+         glob.glob(os.path.join(gdk_pixbuf_loaders_dir(pref), '*.so'))),
         ('Contents/Frameworks',
          glob.glob(os.path.join(pref,
                                 'lib/gtk-3.0/3*/immodules/*.so'))),
         ('Contents/Resources', [
             os.path.join(pref, 'bin/gtk-query-immodules-3.0'),
-            os.path.join(pref, 'bin/gdk-pixbuf-query-loaders'),
-            os.path.join(pref, 'bin/dbus-daemon')
+            find_under(pref, 'bin/gdk-pixbuf-query-loaders'),
+            find_under(pref, 'bin/dbus-daemon')
         ]),
         ('Contents/Resources/dbus-1', [
-            os.path.join(pref, 'share/dbus-1/session.conf')
+            find_under(pref, 'share/dbus-1/session.conf')
         ]),
         ('Contents/Resources/share/icons/Adwaita', [
-             P('share/icons/Adwaita/scalable'),
-             P('share/icons/Adwaita/index.theme'), 
-             P('share/icons/Adwaita/cursors'),
+             find_under(pref, 'share/icons/Adwaita/scalable'),
+             find_under(pref, 'share/icons/Adwaita/symbolic'),
+             find_under(pref, 'share/icons/Adwaita/index.theme'),
+             find_under(pref, 'share/icons/Adwaita/cursors'),
         ]),
         ('Contents/Resources/share/icons', [
-             P('share/icons/hicolor'),
+             find_under(pref, 'share/icons/hicolor'),
         ]),
         ('Contents/Resources/share/glib-2.0/schemas', [
             P('share/glib-2.0/schemas/gschemas.compiled'),
@@ -204,9 +284,9 @@ def extra_files(opts):
             P('etc/gtk-3.0'),
         ]),
         ('Contents/Resources', [
-            P('etc/fonts/fonts.conf'),
+            find_under(pref, 'etc/fonts/fonts.conf'),
         ]),
-    ] + extra
+    ] + extra + (vulkan_files(opts, pref) if vulkan_enabled(opts) else [])
 
 
 def get_version(opts):
@@ -308,148 +388,46 @@ def make_dmg(opts):
                     cwd=os.path.join(opts.outdir, '..'),
                    check=True)
 
+def launcher_build_flags(binary):
+    """Return the clang flags needed for the launcher to match the
+    architectures and the deployment target of the main binary, so that it
+    doesn't end up restricting the bundle."""
+    flags = []
+    try:
+        out = subprocess.run(['lipo', '-archs', binary], check=True,
+                             capture_output=True).stdout.decode('utf-8')
+        for arch in out.split():
+            flags += ['-arch', arch]
+    except (subprocess.CalledProcessError, OSError) as e:
+        sys.stderr.write(f'WARNING: cannot determine the architectures of '
+                         f'{binary} ({e}), using the compiler default\n')
+    try:
+        out = subprocess.run(['otool', '-l', binary], check=True,
+                             capture_output=True).stdout.decode('utf-8')
+        # the "minos" entries of the LC_BUILD_VERSION load commands
+        vers = [line.split()[1] for line in out.splitlines()
+                if line.strip().startswith('minos ')]
+        if vers:
+            flags.append('-mmacosx-version-min=' +
+                         min(vers, key=lambda v: [int(b) for b in v.split('.')]))
+    except (subprocess.CalledProcessError, OSError, ValueError) as e:
+        sys.stderr.write(f'WARNING: cannot determine the deployment target of '
+                         f'{binary} ({e}), using the compiler default\n')
+    return flags
+
+
 def build_launcher(opts, prog):
-    cname = os.path.join(opts.tempdir, f'{prog}_launcher.c')
-    with open(cname, 'w') as out:
-        out.write("""
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <libgen.h>
-#include <stdio.h>
-
-
-int main(int argc, char *const argv[])
-{
-    char buf[4096];
-    char *d0 = realpath(argv[0], NULL);
-    strlcpy(buf, d0, 4096);
-    free(d0);
-    d0 = dirname(buf);
-
-    char buf2[4096];
-    strlcpy(buf2, d0, 4096);
-    """)
-        out.write(f'    strlcat(buf2, "/.{prog}.sh", 4096);\n')
-        out.write(f'    strlcpy(buf, "{opts.shell}", 4096);\n')
-        out.write("""
-    char **newargs = (char **)malloc(sizeof(char *) * (argc + 2));
-    newargs[0] = buf;
-    newargs[1] = buf2;
-    for (int i = 1; i < argc; ++i) {
-        newargs[i+1] = argv[i];
-    }
-    newargs[argc+1] = NULL;
-    
-    const char *dbg = getenv("ART_DEBUG");
-    if (dbg && atoi(dbg)) {
-        fprintf(stderr, "ART-launcher - running: %s %s", newargs[0], newargs[1]);
-        for (int i = 1; i < argc; ++i) {
-            fprintf(stderr, " %s", newargs[i+1]);
-        }
-        fprintf(stderr, "\\n");
-    }
-    return execv(buf, newargs);
-}
-""")
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       'launcher.c')
+    binary = os.path.join(opts.outdir, 'Contents/MacOS', prog)
+    dest = os.path.join(opts.outdir, f'Contents/MacOS/{prog}_launch')
+    flags = launcher_build_flags(binary)
+    if opts.debug:
+        flags.append('-DART_LAUNCHER_DEBUG=1')
     if opts.verbose:
         print(f'building launcher for {prog}...')
-    subprocess.run(['clang', cname, '-o',
-                    os.path.join(opts.outdir, f'Contents/MacOS/{prog}_launch')],
+    subprocess.run(['clang', '-O2', '-Wall'] + flags + [src, '-o', dest],
                    check=True)
-
-
-def write_launcher_script_gui(opts):
-    art_name = 'ART' if not opts.use_launcher else '.ART.sh'
-    with open(os.path.join(opts.outdir,
-                           f'Contents/MacOS/{art_name}'), 'w') as out:
-        if opts.use_launcher:
-            out.write("""#!/bin/zsh
-export ART_restore_GTK_CSD=$GTK_CSD
-export ART_restore_GDK_PIXBUF_MODULE_FILE=$GDK_PIXBUF_MODULE_FILE
-export ART_restore_GDK_PIXBUF_MODULEDIR=$GDK_PIXBUF_MODULEDIR
-export ART_restore_GIO_MODULE_DIR=$GIO_MODULE_DIR
-export ART_restore_DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH
-export ART_restore_FONTCONFIG_FILE=$FONTCONFIG_FILE
-export ART_restore_GTK_PATH=$GTK_PATH
-export ART_restore_GTK_IM_MODULE_FILE=$GTK_IM_MODULE_FILE
-export ART_restore_GSETTINGS_SCHEMA_DIR=$GSETTINGS_SCHEMA_DIR
-export ART_restore_XDG_DATA_DIRS=$XDG_DATA_DIRS
-export ART_restore_DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS
-
-d="$(/usr/bin/dirname "$(/bin/realpath "$0")")"
-d="$(/bin/realpath "${d}/..")"
-
-export DYLD_LIBRARY_PATH="$d/Frameworks"
-export GTK_CSD=0
-export GDK_PIXBUF_MODULEDIR="$d/Frameworks"
-export FONTCONFIG_FILE="$d/Resources/fonts.conf"
-export GTK_PATH="$d/Resources/etc/gtk-3.0"
-export GSETTINGS_SCHEMA_DIR="$d/Resources/share/glib-2.0/schemas"
-export XDG_DATA_DIRS="$d/Resources/share"
-export GDK_RENDERING=similar
-export ART_EXIFTOOL_BASE_DIR="$d/Resources/exiftool"
-
-t="${TMPDIR}ART-${USER}"
-/bin/mkdir -p "$t"
-
-DBUS_SOCK_FILE="$t/dbus.sock"
-export DBUS_SESSION_BUS_ADDRESS=unix:path=$DBUS_SOCK_FILE
-
-/usr/sbin/netstat -an | /usr/bin/grep -q $DBUS_SOCK_FILE
-if [ $? -ne 0 ]; then
-    /bin/rm -f $DBUS_SOCK_FILE
-    DBUS_PID=$("$d/Resources/dbus-daemon" --fork --print-pid --config-file="$d/Resources/dbus-1/session.conf" --address "$DBUS_SESSION_BUS_ADDRESS")
-
-    "$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader*svg.so > "$t/loader.cache"
-    "$d/Resources/gtk-query-immodules-3.0" "$d"/Frameworks/im-*.so > "$t/gtk.immodules"
-fi
-export GDK_PIXBUF_MODULE_FILE="$t/loader.cache"
-export GTK_IM_MODULE_FILE="$t/gtk.immodules"
-
-"$d/MacOS/.ART.bin" "$@"
-
-if [ "$DBUS_PID" != "" ]; then
-    /bin/rm -rf "$t"
-    kill $DBUS_PID
-    /bin/rm -f $DBUS_SOCK_FILE
-fi
-""")
-        else:
-            out.write("""#!/bin/zsh
-export ART_restore_GTK_CSD=$GTK_CSD
-export ART_restore_GDK_PIXBUF_MODULE_FILE=$GDK_PIXBUF_MODULE_FILE
-export ART_restore_GDK_PIXBUF_MODULEDIR=$GDK_PIXBUF_MODULEDIR
-export ART_restore_GIO_MODULE_DIR=$GIO_MODULE_DIR
-export ART_restore_DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH
-export ART_restore_FONTCONFIG_FILE=$FONTCONFIG_FILE
-export ART_restore_GTK_PATH=$GTK_PATH
-export ART_restore_GTK_IM_MODULE_FILE=$GTK_IM_MODULE_FILE
-export ART_restore_GSETTINGS_SCHEMA_DIR=$GSETTINGS_SCHEMA_DIR
-export ART_restore_XDG_DATA_DIRS=$XDG_DATA_DIRS
-d=$(dirname "$0")/..
-t=$(/usr/bin/mktemp -d)
-export DYLD_LIBRARY_PATH="$d/Frameworks"
-export GTK_CSD=0
-"$d/Resources/gdk-pixbuf-query-loaders" "$d/Frameworks/"libpixbufloader*svg.so > "$t/loader.cache"
-"$d/Resources/gtk-query-immodules-3.0" "$d"/Frameworks/im-*.so > "$t/gtk.immodules"
-export GDK_PIXBUF_MODULE_FILE="$t/loader.cache"
-export GTK_IM_MODULE_FILE="$t/gtk.immodules"
-export GDK_PIXBUF_MODULEDIR="$d/Frameworks"
-export FONTCONFIG_FILE="$d/Resources/fonts.conf"
-export GTK_PATH="$d/Resources/etc/gtk-3.0"
-export GSETTINGS_SCHEMA_DIR="$d/Resources/share/glib-2.0/schemas"
-export XDG_DATA_DIRS="$d/Resources/share"
-export GDK_RENDERING=similar
-export GTK_OVERLAY_SCROLLING=0
-export ART_EXIFTOOL_BASE_DIR="$d/Resources/exiftool"
-""")
-            if opts.debug:
-                out.write('export ASAN_OPTIONS=detect_container_overflow=0:new_delete_type_mismatch=0:halt_on_error=0\n')
-                out.write('"$d/MacOS/.ART.bin" "$@" 2>&1 | /usr/bin/tee ${HOME}/ART.log\n')
-            else:
-                out.write('"$d/MacOS/.ART.bin" "$@"\n')
-            out.write('/bin/rm -rf "$t"\n')
 
 
 def write_launcher_script_cli(opts):
@@ -517,8 +495,7 @@ def main():
         make_info_plist(opts)
         make_icns(opts)
 
-        if opts.use_launcher:
-            build_launcher(opts, 'ART')
+        build_launcher(opts, 'ART')
 
     os.makedirs(os.path.join(opts.outdir, 'Contents/Resources/share/gtk-3.0'))
     with open(os.path.join(opts.outdir,
@@ -533,11 +510,10 @@ def main():
         shutil.move(os.path.join(opts.outdir, 'Contents/MacOS', name),
                     os.path.join(opts.outdir, 'Contents/MacOS',
                                  '.' + name + '.bin'))
-    if opts.use_launcher:
-        shutil.move(os.path.join(opts.outdir, 'Contents/MacOS',
-                                 'ART_launch'),
-                    os.path.join(opts.outdir, 'Contents/MacOS', 'ART'))
-    write_launcher_script_gui(opts)
+    # the launcher takes the place of the GUI binary: it is what
+    # LaunchServices starts, and it execv's .ART.bin (see tools/osx/launcher.c)
+    shutil.move(os.path.join(opts.outdir, 'Contents/MacOS', 'ART_launch'),
+                os.path.join(opts.outdir, 'Contents/MacOS', 'ART'))
     write_launcher_script_cli(opts)
     for name in ('ART', 'ART-cli'):
         os.chmod(os.path.join(opts.outdir, 'Contents/MacOS', name), 0o755)

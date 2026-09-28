@@ -71,6 +71,11 @@ void multiply(Imagefloat *img, const array2D<float> &num,
 void inpaint(Imagefloat *img, const array2D<float> &mask, float threshold,
              int radius, int border, int limit, bool multithread, int skip);
 
+/* Round a dimension up to a size FFTW handles well. Pick the right one for the
+ * transform: find_fast_fftw_dim for r2c/c2r (effective length n),
+ * find_fast_dct_dim for DCT-I / FFTW_REDFT00 (effective length 2*(n-1), so it
+ * is n-1 that must be smooth -- see the comment on the definition). */
 int find_fast_fftw_dim(int dim);
+int find_fast_dct_dim(int dim);
 
 } // namespace rtengine

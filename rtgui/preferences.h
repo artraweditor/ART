@@ -159,6 +159,9 @@ class Preferences: public Gtk::Dialog, public ProfileStoreListener {
     Gtk::CheckButton *thumb_cache_processed_;
     Gtk::CheckButton *ctl_scripts_fast_preview_;
     Gtk::SpinButton *qinspect_size_;
+    Gtk::CheckButton *gpuEnabled_;
+    Gtk::ComboBoxText *gpuDevice_;
+    bool gpuAvailable_;
 
     // Gtk::CheckButton* ckbmenuGroupRank;
     // Gtk::CheckButton* ckbmenuGroupLabel;

@@ -1,0 +1,49 @@
+#version 450
+
+// nlmeans.cc's laplacian() (nlmeans.cc:320-353): 8-neighbour discrete laplacian magnitude, thresholded/clamped/scaled.
+// Boundary fold is exactly x<0?x+2:x>=W?x-2:x (not clamp/mirror) -- must match the CPU code literally.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float threshold;
+    float ceiling;
+    float f; // factor / ceiling
+} pc;
+
+int foldX(int x)
+{
+    return x < 0 ? x + 2 : (x >= int(pc.w) ? x - 2 : x);
+}
+
+int foldY(int y)
+{
+    return y < 0 ? y + 2 : (y >= int(pc.h) ? y - 2 : y);
+}
+
+float get(int y, int x)
+{
+    return max(src.v[uint(y) * pc.w + uint(x)], 0.0);
+}
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    int x = int(g.x);
+    int y = int(g.y);
+    int n = foldY(y - 1), s = foldY(y + 1);
+    int w = foldX(x - 1), e = foldX(x + 1);
+    float v = -8.0 * get(y, x) + get(n, x) + get(s, x) + get(y, w) +
+             get(y, e) + get(n, w) + get(n, e) + get(s, w) + get(s, e);
+    dst.v[g.y * pc.w + g.x] = clamp(abs(v) - pc.threshold, 0.0, pc.ceiling) * pc.f;
+}

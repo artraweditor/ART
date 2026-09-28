@@ -26,6 +26,7 @@
 #include "metadata.h"
 #include "mytime.h"
 #include "perspectivecorrection.h"
+#include "pipelineprofile.h"
 #include "refreshmap.h"
 #include "threadpool.h"
 #include <fstream>
@@ -146,13 +147,19 @@ void ImProcCoordinator::restoreParams() { params = paramsBackup; }
 // used
 void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
 {
-    MyMutex::MyLock processingLock(mProcessing);
+    ART_PIPELINE_TIME_REPORT("preview");
+
+    // mProcessing is locked by process(), our only caller, for the whole call
+    // (see there) -- it used to be locked here instead, but that put it inside
+    // mTweak's scope there, which could deadlock against Crop::fullUpdate()'s
+    // opposite lock order (mProcessing, then mTweak).
     int numofphases = 14;
     int readyphase = 0;
 
     DCPProfile *dcpProf = imgsrc->getDCP(params.icm, dcpApplyState);
     ipf.setDCPProfile(dcpProf, dcpApplyState);
     ipf.setViewport(0, 0, -1, -1);
+    ipf.setPipeline(ImProcFunctions::Pipeline::NAVIGATOR);
     ipf.setOutputHistograms(&histToneCurve, &histCCurve, &histLCurve);
 
     if (todo == CROP && ipf.needsPCVignetting()) {
@@ -438,17 +445,10 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 drcomp_11_dcrop_cache = nullptr;
             }
 
-            pipeline_stop_[0] = ipf.process(
-                ImProcFunctions::Pipeline::NAVIGATOR,
-                ImProcFunctions::Stage::STAGE_0, oprevi); // orig_prev);
-
-            // if (oprevi != orig_prev) {
-            //     delete oprevi;
-            // }
+            pipeline_stop_[0] =
+                ipf.process(ImProcFunctions::Stage::STAGE_0, oprevi);
         }
         stop = pipeline_stop_[0];
-
-        // oprevi = orig_prev;
 
         progress("Rotate / Distortion...", 100 * readyphase / numofphases);
         // Remove transformation if unneeded
@@ -522,8 +522,7 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 oprevi->copyTo(bufs_[0]);
                 pipeline_stop_[1] =
                     stop ||
-                    ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                ImProcFunctions::Stage::STAGE_1, bufs_[0]);
+                    ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
             }
 
             // compute L channel histogram
@@ -537,16 +536,14 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
         if (todo & M_LUMACURVE) {
             bufs_[0]->copyTo(bufs_[1]);
             pipeline_stop_[2] =
-                stop || ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                    ImProcFunctions::Stage::STAGE_2, bufs_[1]);
+                stop || ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
         }
         stop = stop || pipeline_stop_[2];
 
         if (todo & (M_LUMINANCE | M_COLOR)) {
             bufs_[1]->copyTo(bufs_[2]);
             pipeline_stop_[3] =
-                stop || ipf.process(ImProcFunctions::Pipeline::NAVIGATOR,
-                                    ImProcFunctions::Stage::STAGE_3, bufs_[2]);
+                stop || ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
         }
         stop = stop || pipeline_stop_[3];
 
@@ -590,6 +587,18 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 // from WCS->Output profile
                 delete workimg;
                 workimg = ipf.rgb2out(bufs_[2], 0, 0, pW, pH, params.icm);
+
+                /* Worker -> GUI handoff barrier.  bufs_[2] is read after this
+                 * point by the scope panels (updateLRGBHistograms below, and
+                 * updateWaveforms, via bufs_[2]->getLab), which also run from
+                 * the GTK thread through requestUpdateHistogram() et al.
+                 * without holding mProcessing.  Publishing it CPU-resident here,
+                 * while the lock IS held, keeps those readers off the residency
+                 * state entirely -- their per-pixel getLab() sync becomes a
+                 * branch instead of a device download inside an OpenMP region.
+                 *
+                 * Free: the two conversions above have already forced it. */
+                bufs_[2]->syncCpu();
             } catch (char *str) {
                 progress("Error converting file...", 0);
                 return;
@@ -1511,10 +1520,27 @@ void ImProcCoordinator::process()
         params = nextParams;
         int change = changeSinceLast;
         changeSinceLast = 0;
-        if (tweakOperator) {
+        // Cache the pointer once: setTweakOperator()/unsetTweakOperator() mutate
+        // tweakOperator from the GUI thread with no locking at all, so it could
+        // otherwise flip between the two checks below (across the
+        // updatePreviewImage() call, which can take a while) and leave mTweak
+        // locked forever.
+        TweakOperator *const tweakOp = tweakOperator;
+        // mProcessing is held for the whole span below (previously it was only
+        // locked inside updatePreviewImage() itself, now hoisted out here) so it
+        // can be acquired in the same order -- mProcessing then mTweak -- as
+        // Crop::fullUpdate(), which locks mProcessing for its own whole call and
+        // mTweak around its own backup/tweak/restore sequence. Locking them in a
+        // consistent order across both call sites avoids an ABBA deadlock.
+        mProcessing.lock();
+        if (tweakOp) {
             // TWEAKING THE PROCPARAMS FOR THE SPOT ADJUSTMENT MODE
+            // mTweak stays locked until restoreParams() below: Crop::fullUpdate()
+            // takes the same lock around its own backup/tweak/restore sequence,
+            // so the two can't race on the shared params/paramsBackup.
+            mTweak.lock();
             backupParams();
-            tweakOperator->tweakParams(params);
+            tweakOp->tweakParams(params);
         }
         /* TODODANCAT see if this is needed here anymore
         else if (paramsBackup) {
@@ -1531,9 +1557,11 @@ void ImProcCoordinator::process()
 
         paramsUpdateMutex.lock();
 
-        if (tweakOperator) {
+        if (tweakOp) {
             restoreParams();
+            mTweak.unlock();
         }
+        mProcessing.unlock();
     }
 
     paramsUpdateMutex.unlock();

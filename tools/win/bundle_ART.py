@@ -136,6 +136,10 @@ def extra_files(opts, msys_env, tempdir):
             tf.extractall(tempdir)
         extra.append(('imageio',
                       [(os.path.join(tempdir, 'ART-imageio-bin-win64'), 'bin')]))
+    # NOTE: nothing is bundled for the GPU backend on Windows: vulkan-1.dll
+    # ships with the OS and with every GPU driver, and the vendor ICD comes
+    # from the driver -- see the candidates() comment in
+    # rtengine/gpu/vk_api.cc.
     return [
         ('.', [
             D('bin/gdbus.exe'),
@@ -144,7 +148,8 @@ def extra_files(opts, msys_env, tempdir):
         ] + exiftool),
         ('share/icons/Adwaita', [
             D('share/icons/Adwaita/scalable'),
-            D('share/icons/Adwaita/index.theme'), 
+            D('share/icons/Adwaita/symbolic'),
+            D('share/icons/Adwaita/index.theme'),
             D('share/icons/Adwaita/cursors'),
         ]),
         ('lib', [

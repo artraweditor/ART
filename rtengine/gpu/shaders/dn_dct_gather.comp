@@ -1,0 +1,57 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Denoise phase 7: pixel-centric gather of overlapping block outputs into L (avoids the atomics a CPU-style scatter would need).
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) readonly buffer Blocks { float v[]; } blocks;
+layout(std430, set = 0, binding = 1) readonly buffer Totwt { float v[]; } totwt;
+layout(std430, set = 0, binding = 2) buffer L { float v[]; } lum;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint nbW;   // ceil(w/offset) -- RGBoutput_tile_row's count, not the fill's
+    uint nbH;
+} pc;
+
+#include "include/dn_dct.glsl"
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const int x = int(g.x), y = int(g.y);
+    const int vlast = DN_DCT_LAST_BLK(y);
+    const int hlast = DN_DCT_LAST_BLK(x);
+
+    float s = 0.0;
+    for (int ph = 0; ph < DN_DCT_PHASES; ++ph) {
+        const int vblk = DN_DCT_BLK_IN_PHASE(vlast, ph);
+        if (vblk >= 0 && vblk < int(pc.nbH)) {
+            const int i = y - (vblk - BLKRAD) * OFFSET;
+            if (i >= 0 && i < TS) {
+                for (int hblk = hlast - (DN_DCT_PHASES - 1); hblk <= hlast;
+                     ++hblk) {
+                    if (hblk >= 0 && hblk < int(pc.nbW)) {
+                        const int j = x - (hblk - BLKRAD) * OFFSET;
+                        if (j >= 0 && j < TS) {
+                            const uint base =
+                                (uint(vblk) * pc.nbW + uint(hblk)) *
+                                uint(TS * TS);
+                            s += blocks.v[base + uint(i) * uint(TS) +
+                                          uint(j)];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const uint p = uint(y) * pc.w + uint(x);
+    lum.v[p] += s / totwt.v[p];
+}

@@ -18,6 +18,7 @@
  *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <cmath>
+#include <cstdlib>
 
 #include "../rtgui/multilangmgr.h"
 #include "StopWatch.h"
@@ -49,50 +50,26 @@ namespace rtengine {
 // cooperation with Hanno Schwalm (hanno@schwalm-bremen.de) and Luis Sanz
 // Rodriguez this has been tuned for performance.
 
-void RawImageSource::rcd_demosaic()
+void rcd_demosaic_cpu(int W, int H, const unsigned int cfarray[2][2],
+                      const array2D<float> &rawData, array2D<float> &red,
+                      array2D<float> &green, array2D<float> &blue,
+                      ProgressListener *plistener, int tileSize,
+                      int tileBorder)
 {
     constexpr size_t chunkSize = 2;
-    constexpr bool measure = false;
-
-    // Test for RGB cfa
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 2; j++) {
-            if (FC(i, j) == 3) {
-                // avoid crash
-                std::cout << "rcd_demosaic supports only RGB Colour filter "
-                             "arrays. Falling back to igv_interpolate"
-                          << std::endl;
-                igv_interpolate(W, H);
-                return;
-            }
-        }
-    }
-
-    std::unique_ptr<StopWatch> stop;
-    if (measure) {
-        std::cout << "Demosaicing " << W << "x" << H << " image using rcd with "
-                  << chunkSize << " tiles per thread" << std::endl;
-        stop.reset(new StopWatch("rcd demosaic"));
-    }
 
     double progress = 0.0;
 
     if (plistener) {
-        plistener->setProgressStr(Glib::ustring::compose(
-            M("TP_RAW_DMETHOD_PROGRESSBAR"), M("TP_RAW_RCD")));
         plistener->setProgress(progress);
     }
 
-    const unsigned int cfarray[2][2] = {{FC(0, 0), FC(0, 1)},
-                                        {FC(1, 0), FC(1, 1)}};
-    constexpr int tileBorder = 9; // avoid tile-overlap errors
-    constexpr int rcdBorder = 9;
-    constexpr int tileSize = 194;
-    constexpr int tileSizeN = tileSize - 2 * tileBorder;
+    const int rcdBorder = tileBorder; // one and the same in this codebase
+    const int tileSizeN = tileSize - 2 * tileBorder;
     const int numTh = H / (tileSizeN) + ((H % (tileSizeN)) ? 1 : 0);
     const int numTw = W / (tileSizeN) + ((W % (tileSizeN)) ? 1 : 0);
-    constexpr int w1 = tileSize, w2 = 2 * tileSize, w3 = 3 * tileSize,
-                  w4 = 4 * tileSize;
+    const int w1 = tileSize, w2 = 2 * tileSize, w3 = 3 * tileSize,
+              w4 = 4 * tileSize;
     // Tolerance to avoid dividing by zero
     constexpr float eps = 1e-5f;
     constexpr float epssq = 1e-10f;
@@ -104,8 +81,11 @@ void RawImageSource::rcd_demosaic()
     {
         int progresscounter = 0;
         float *const cfa = (float *)calloc(tileSize * tileSize, sizeof *cfa);
-        float(*const rgb)[tileSize * tileSize] =
-            (float(*)[tileSize * tileSize]) malloc(3 * sizeof *rgb);
+        float *rgbStore[3] = {
+            (float *)malloc((size_t)tileSize * tileSize * sizeof(float)),
+            (float *)malloc((size_t)tileSize * tileSize * sizeof(float)),
+            (float *)malloc((size_t)tileSize * tileSize * sizeof(float))};
+        float *const *const rgb = rgbStore;
         float *const VH_Dir =
             (float *)calloc(tileSize * tileSize, sizeof *VH_Dir);
         float *const PQ_Dir =
@@ -115,6 +95,10 @@ void RawImageSource::rcd_demosaic()
             (float *)calloc(tileSize * tileSize / 2, sizeof *P_CDiff_Hpf);
         float *const Q_CDiff_Hpf =
             (float *)calloc(tileSize * tileSize / 2, sizeof *Q_CDiff_Hpf);
+        float *const bufferVFlat =
+            (float *)malloc(3 * (size_t)(tileSize - 8) * sizeof(float));
+        float *const bufferH =
+            (float *)malloc((size_t)(tileSize - 6) * sizeof(float));
 
 #ifdef _OPENMP
 #pragma omp for schedule(dynamic, chunkSize) collapse(2) nowait
@@ -146,14 +130,18 @@ void RawImageSource::rcd_demosaic()
                 }
 
                 // Step 1: Find cardinal and diagonal interpolation directions
-                float bufferV[3][tileSize - 8];
 
                 // Step 1.1: Calculate the square of the vertical and horizontal
                 // color difference high pass filter
+                float *const bV0 = bufferVFlat;
+                float *const bV1 = bufferVFlat + (tileSize - 8);
+                float *const bV2 = bufferVFlat + 2 * (tileSize - 8);
                 for (int row = 3; row < std::min(tileRows - 3, 5); ++row) {
+                    float *const rowbuf =
+                        row == 3 ? bV0 : (row == 4 ? bV1 : bV2);
                     for (int col = 4, indx = row * tileSize + col;
                          col < tilecols - 4; ++col, ++indx) {
-                        bufferV[row - 3][col - 4] =
+                        rowbuf[col - 4] =
                             SQR((cfa[indx - w3] - cfa[indx - w1] -
                                  cfa[indx + w1] + cfa[indx + w3]) -
                                 3.f * (cfa[indx - w2] + cfa[indx + w2]) +
@@ -163,10 +151,9 @@ void RawImageSource::rcd_demosaic()
 
                 // Step 1.2: Obtain the vertical and horizontal directional
                 // discrimination strength
-                float bufferH[tileSize - 6] ALIGNED16;
-                float *V0 = bufferV[0];
-                float *V1 = bufferV[1];
-                float *V2 = bufferV[2];
+                float *V0 = bV0;
+                float *V1 = bV1;
+                float *V2 = bV2;
                 for (int row = 4; row < tileRows - 4; ++row) {
                     for (int col = 3, indx = row * tileSize + col;
                          col < tilecols - 3; ++col, ++indx) {
@@ -503,18 +490,61 @@ void RawImageSource::rcd_demosaic()
         }
 
         free(cfa);
-        free(rgb);
+        free(rgbStore[0]);
+        free(rgbStore[1]);
+        free(rgbStore[2]);
         free(VH_Dir);
         free(PQ_Dir);
         free(P_CDiff_Hpf);
         free(Q_CDiff_Hpf);
+        free(bufferVFlat);
+        free(bufferH);
     }
-
-    border_interpolate2(W, H, rcdBorder, rawData, red, green, blue);
 
     if (plistener) {
         plistener->setProgress(1);
     }
+}
+
+void RawImageSource::rcd_demosaic()
+{
+    constexpr bool measure = false;
+
+    // Test for RGB cfa
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            if (FC(i, j) == 3) {
+                // avoid crash
+                std::cout << "rcd_demosaic supports only RGB Colour filter "
+                             "arrays. Falling back to igv_interpolate"
+                          << std::endl;
+                igv_interpolate(W, H);
+                return;
+            }
+        }
+    }
+
+    std::unique_ptr<StopWatch> stop;
+    if (measure) {
+        std::cout << "Demosaicing " << W << "x" << H
+                  << " image using rcd" << std::endl;
+        stop.reset(new StopWatch("rcd demosaic"));
+    }
+
+    const unsigned int cfarray[2][2] = {{FC(0, 0), FC(0, 1)},
+                                        {FC(1, 0), FC(1, 1)}};
+
+    if (plistener) {
+        plistener->setProgressStr(Glib::ustring::compose(
+            M("TP_RAW_DMETHOD_PROGRESSBAR"), M("TP_RAW_RCD")));
+    }
+
+    constexpr int tileBorder = 9; // avoid tile-overlap errors
+    constexpr int tileSize = 194;
+    rcd_demosaic_cpu(W, H, cfarray, rawData, red, green, blue, plistener,
+                     tileSize, tileBorder);
+
+    border_interpolate2(W, H, 9, rawData, red, green, blue);
 }
 
 } // namespace rtengine

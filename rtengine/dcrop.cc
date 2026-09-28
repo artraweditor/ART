@@ -184,6 +184,7 @@ void Crop::update(int todo)
     // Tells to the ImProcFunctions' tool what is the preview scale, which may
     // lead to some simplifications
     parent->ipf.setScale(skip);
+    parent->ipf.setPipeline(ImProcFunctions::Pipeline::PREVIEW);
     parent->ipf.setPipetteBuffer(this);
     parent->ipf.setViewport(0, 0, -1, -1);
     parent->ipf.setOutputHistograms(nullptr, nullptr, nullptr);
@@ -201,8 +202,8 @@ void Crop::update(int todo)
             if (params.filmNegative.colorSpace ==
                 FilmNegativeParams::ColorSpace::WORKING) {
                 converted = true;
-                parent->imgsrc->convertColorSpace(img, params.icm,
-                                                  parent->currWB);
+                parent->imgsrc->convertColorSpace(
+                    img, params.icm, parent->currWB);
             }
             parent->ipf.filmNegativeProcess(img, img, params.filmNegative,
                                             params.raw, parent->imgsrc,
@@ -225,8 +226,8 @@ void Crop::update(int todo)
                                  params.exposure, params.raw);
 
         if (!invert_negative(origCrop)) {
-            parent->imgsrc->convertColorSpace(origCrop, params.icm,
-                                              parent->currWB);
+            parent->imgsrc->convertColorSpace(
+                origCrop, params.icm, parent->currWB);
         }
     }
 
@@ -254,7 +255,7 @@ void Crop::update(int todo)
             }
 
             parent->ipf.denoise(parent->imgsrc, parent->currWB, denoiseCrop,
-                                parent->denoiseInfoStore, params.denoise);
+                                params.denoise);
 
             if (parent->adnListener &&
                 params.denoise.chrominanceMethod ==
@@ -336,14 +337,15 @@ void Crop::update(int todo)
                 parent->imgsrc->getImage(parent->currWB, tr, f, pp,
                                          params.exposure, params.raw);
                 if (!invert_negative(f)) {
-                    parent->imgsrc->convertColorSpace(f, params.icm,
-                                                      parent->currWB);
+                    parent->imgsrc->convertColorSpace(
+                        f, params.icm, parent->currWB);
                 }
 
                 if (copy_from_earlier_steps) {
                     // copy the denoised crop
                     int oy = trafy / skip;
                     int ox = trafx / skip;
+                    baseCrop->syncCpu();
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -367,8 +369,7 @@ void Crop::update(int todo)
 
         if (need_drcomp) {
             pipeline_stop_[0] =
-                parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                    ImProcFunctions::Stage::STAGE_0, f);
+                parent->ipf.process(ImProcFunctions::Stage::STAGE_0, f);
         }
         stop = pipeline_stop_[0];
 
@@ -377,6 +378,7 @@ void Crop::update(int todo)
         if (need_cropping) {
             int oy = trafy / skip;
             int ox = trafx / skip;
+            f->syncCpu();
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -390,6 +392,7 @@ void Crop::update(int todo)
                     baseCrop->b(y, x) = f->b(cy, cx);
                 }
             }
+            baseCrop->residency().invalidateGPU();
         } else {
             f->copyTo(baseCrop);
         }
@@ -428,8 +431,7 @@ void Crop::update(int todo)
         workingCrop->copyTo(bufs_[0]);
         pipeline_stop_[1] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_1, bufs_[0]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
 
         if (workingCrop != baseCrop) {
             delete workingCrop;
@@ -442,8 +444,7 @@ void Crop::update(int todo)
 
         pipeline_stop_[2] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_2, bufs_[1]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
     }
     stop = stop || pipeline_stop_[2];
 
@@ -452,8 +453,7 @@ void Crop::update(int todo)
 
         pipeline_stop_[3] =
             stop ||
-            parent->ipf.process(ImProcFunctions::Pipeline::PREVIEW,
-                                ImProcFunctions::Stage::STAGE_3, bufs_[2]);
+            parent->ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
     }
     stop = stop || pipeline_stop_[3];
 
@@ -804,16 +804,29 @@ void Crop::fullUpdate()
     // If there are more update request, the following WHILE will collect it
     newUpdatePending = true;
 
-    if (parent->tweakOperator) {
+    // Cache the pointer once: setTweakOperator()/unsetTweakOperator() mutate
+    // parent->tweakOperator from the GUI thread with no locking at all, so it
+    // could otherwise flip between the two checks below (across the update(ALL)
+    // loop, which can take a while) and leave mTweak locked forever.
+    TweakOperator *const tweakOperator = parent->tweakOperator;
+
+    if (tweakOperator) {
+        // mTweak stays locked until restoreParams() below: ImProcCoordinator::process()
+        // takes the same lock around its own backup/tweak/restore sequence, so the
+        // two can't race on the shared params/paramsBackup (they used to, causing a
+        // heap-use-after-free when panning while the spot removal tool's edit mode
+        // was active).
+        parent->mTweak.lock();
         parent->backupParams();
-        parent->tweakOperator->tweakParams(parent->params);
+        tweakOperator->tweakParams(parent->params);
     }
     while (newUpdatePending) {
         newUpdatePending = false;
         update(ALL);
     }
-    if (parent->tweakOperator) {
+    if (tweakOperator) {
         parent->restoreParams();
+        parent->mTweak.unlock();
     }
 
     updating = false; // end of crop update

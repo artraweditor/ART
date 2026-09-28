@@ -1,0 +1,25 @@
+#version 450
+
+// Gamma pre/post-warp for wavelet smoothing: pow(max(x,0), exponent), in place.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) buffer Buf { float v[]; } buf;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    float exponent;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    buf.v[o] = pow(max(buf.v[o], 0.0), pc.exponent);
+}

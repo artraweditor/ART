@@ -32,14 +32,17 @@
 
 namespace rtengine {
 
-Imagefloat::Imagefloat(): color_space_("sRGB"), mode_(Mode::RGB)
+Imagefloat::Imagefloat():
+    color_space_("sRGB"), mode_(Mode::RGB), scale_(Scale::U16),
+    residency_(new ImageResidency(this))
 {
     ws_[0][0] = RT_INFINITY_F;
     iws_[0][0] = RT_INFINITY_F;
 }
 
-Imagefloat::Imagefloat(int w, int h, const Imagefloat *state_from)
-    : color_space_("sRGB"), mode_(Mode::RGB)
+Imagefloat::Imagefloat(int w, int h, const Imagefloat *state_from):
+    color_space_("sRGB"), mode_(Mode::RGB), scale_(Scale::U16),
+    residency_(new ImageResidency(this))
 {
     allocate(w, h);
     ws_[0][0] = RT_INFINITY_F;
@@ -55,6 +58,7 @@ Imagefloat::~Imagefloat() {}
 void Imagefloat::setScanline(int row, unsigned char *buffer, int bps,
                              unsigned int numSamples)
 {
+    syncCpuForWrite();   // GPU residency boundary: this writes the planes
     if (data == nullptr) {
         return;
     }
@@ -125,6 +129,7 @@ void Imagefloat::setScanline(int row, unsigned char *buffer, int bps,
 void Imagefloat::getScanline(int row, unsigned char *buffer, int bps,
                              bool isFloat) const
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
 
     if (data == nullptr) {
         return;
@@ -178,14 +183,23 @@ Imagefloat *Imagefloat::copy() const
 
 void Imagefloat::copyTo(Imagefloat *dst) const
 {
-    copyData(dst);
     copyState(dst);
+    /* If we are GPU-resident, copy on the device: the stage checkpoints in
+     * ImProcCoordinator and Crop call this between every stage, and doing it
+     * on the host would force a download and a re-upload at each boundary. */
+    if (residency_->copyTo(dst->residency())) {
+        return;
+    }
+    syncCpu();
+    copyData(dst);
+    dst->residency().invalidateGPU();
 }
 
 void Imagefloat::copyState(Imagefloat *to) const
 {
     to->color_space_ = color_space_;
     to->mode_ = mode_;
+    to->scale_ = scale_;
     to->ws_[0][0] = RT_INFINITY_F;
     to->iws_[0][0] = RT_INFINITY_F;
 }
@@ -195,6 +209,7 @@ void Imagefloat::copyState(Imagefloat *to) const
 void Imagefloat::getStdImage(const ColorTemp &ctemp, int tran,
                              Imagefloat *image, PreviewProps pp) const
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
 
     // compute channel multipliers
     float rm = 1.f, gm = 1.f, bm = 1.f;
@@ -367,6 +382,7 @@ void Imagefloat::getStdImage(const ColorTemp &ctemp, int tran,
 
 Image8 *Imagefloat::to8() const
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
     Image8 *img8 = new Image8(width, height);
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
@@ -385,6 +401,7 @@ Image8 *Imagefloat::to8() const
 
 Image16 *Imagefloat::to16() const
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
     Image16 *img16 = new Image16(width, height);
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
@@ -403,6 +420,7 @@ Image16 *Imagefloat::to16() const
 
 void Imagefloat::multiply(float factor, bool multithread)
 {
+    syncCpuForWrite();   // GPU residency boundary: this writes the planes
     const int W = width;
     const int H = height;
 #ifdef ART_SIMD
@@ -438,6 +456,7 @@ void Imagefloat::multiply(float factor, bool multithread)
 void Imagefloat::normalizeFloatTo1(bool multithread)
 {
     multiply(1.f / 65535.f, multithread);
+    scale_ = Scale::UNIT;
 }
 
 // convert values's range to [0;65535 ; this method assumes that the input
@@ -445,11 +464,13 @@ void Imagefloat::normalizeFloatTo1(bool multithread)
 void Imagefloat::normalizeFloatTo65535(bool multithread)
 {
     multiply(65535.f, multithread);
+    scale_ = Scale::U16;
 }
 
 void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale,
                                       LUTu &hist)
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
 
     hist.clear();
 
@@ -504,6 +525,7 @@ void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale,
 // Parallelized transformation; create transform with cmsFLAGS_NOCACHE!
 void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread)
 {
+    syncCpuForWrite();   // GPU residency boundary: this writes the planes
 
     // LittleCMS cannot parallelize planar setups -- Hombre: LCMS2.4 can! But it
     // we use this new feature, memory allocation have to be modified too to
@@ -547,6 +569,8 @@ void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform, bool multithread)
 void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform,
                                   const Imagefloat *src, bool multithread)
 {
+    syncCpuForWrite();   // GPU residency boundary
+    src->syncCpu();
     mode_ = Mode::RGB;
     constexpr int cx = 0, cy = 0;
 
@@ -629,8 +653,10 @@ inline void Imagefloat::get_ws()
 void Imagefloat::setMode(Mode mode, bool multithread)
 {
     if (mode == this->mode()) {
-        return;
+        return;   // no pixel access, so no residency work either
     }
+
+    syncCpuForWrite();
 
     switch (this->mode()) {
     case Mode::RGB:
@@ -827,6 +853,7 @@ void Imagefloat::yuv_to_xyz(bool multithread)
 
 void Imagefloat::toLab(LabImage &dst, bool multithread)
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
     setMode(Mode::LAB, multithread);
 
 #ifdef _OPENMP
@@ -1022,6 +1049,7 @@ void Imagefloat::lab_to_yuv(bool multithread)
 
 void Imagefloat::getLab(int y, int x, float &L, float &a, float &b)
 {
+    syncCpu();   // GPU residency boundary: this reads the planes
     get_ws();
     switch (mode()) {
     case Mode::RGB:

@@ -331,7 +331,10 @@ void Color::init()
 #endif
         for (int i = 0; i < maxindex; ++i) {
             jzazbz_pq_[i] = PQ(float(i) / 65535.f);
-            jzazbz_pq_inv_[i] = PQ_inv(float(i) / 65535.f);
+            /* Sampled over [0, jzazbzPQInvMax()], not [0,1] -- see the comment
+             * on jzazbzPQInvMax() in color.h. */
+            jzazbz_pq_inv_[i] =
+                PQ_inv(jzazbzPQInvMax() * float(i) / 65535.f);
         }
     }
 }
@@ -7178,8 +7181,11 @@ void Color::xyz2jzazbz(float X, float Y, float Z, float &Jz, float &az,
 void Color::jzazbz2xyz(float Jz, float az, float bz, float &X, float &Y,
                        float &Z)
 {
+    const float pq_inv_max = jzazbzPQInvMax();
+    const float pq_inv_scale = 65535.f / pq_inv_max;
     const auto get_PQ_inv = [&](float x) -> float {
-        return (x >= 0.f && x <= 1.f) ? jzazbz_pq_inv_[x * 65535.f] : PQ_inv(x);
+        return (x >= 0.f && x <= pq_inv_max) ? jzazbz_pq_inv_[x * pq_inv_scale]
+                                             : PQ_inv(x);
     };
 
     Jz = Jz + 1.6295499532821566e-11f;
@@ -7265,10 +7271,12 @@ float Color::eval_PQ_curve(float x, bool oetf)
         return 0.f;
     }
 
+    // 203 nits is Operational Target as Standardized by ITU-R BT.2408
+    constexpr float sdr_peak_nits = 203.f;
+    constexpr float scaling = 10000.f / sdr_peak_nits;
     float res = 0.f;
     if (oetf) {
-        // assume 1.0 is 100 nits, normalise so that 1.0 is 10000 nits
-        float p = std::pow(std::max(x, 0.f) / 100.f, M1);
+        float p = std::pow(std::max(x, 0.f) / scaling, M1);
         float num = C1 + C2 * p;
         float den = 1.f + C3 * p;
         res = std::pow(num / den, M2);
@@ -7276,7 +7284,7 @@ float Color::eval_PQ_curve(float x, bool oetf)
         float p = std::pow(x, 1.f / M2);
         float num = std::max(p - C1, 0.f);
         float den = C2 - C3 * p;
-        res = std::pow(num / den, 1.f / M1) * 100.f;
+        res = std::pow(num / den, 1.f / M1) * scaling;
     }
     return res;
 }
@@ -7293,15 +7301,16 @@ float Color::eval_HLG_curve(float x, bool oetf)
         return 0.f;
     }
 
+    constexpr float sdr_peak_nits = 203.f;
+    constexpr float scaling = 1000.f / sdr_peak_nits;
     float res = 0.f;
     if (oetf) {
-        // assume 1.0 is 100 nits, normalise so that 1.0 is 1000 nits
-        float e = LIM01(x / 10.f);
+        float e = LIM01(x / scaling);
         res = (e <= 1.f / 12.f) ? std::sqrt(3.f * e)
                                 : A * std::log(12.f * e - B) + C;
     } else {
         res = (x <= 0.5f) ? SQR(x) / 3.f : (std::exp((x - C) / A) + B) / 12.f;
-        res *= 10.f;
+        res *= scaling;
     }
 
     return res;

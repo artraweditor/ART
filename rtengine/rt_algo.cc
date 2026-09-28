@@ -945,7 +945,39 @@ int find_fast_fftw_dim(int dim)
     }
 
     assert(false);
-    return dim;    
+    return dim;
+}
+
+
+int find_fast_dct_dim(int dim)
+{
+    // The DCT-I (FFTW_REDFT00) of logical size n is computed by FFTW as a real
+    // transform of length 2*(n-1), so it is n-1 -- NOT n -- that has to be
+    // smooth. Rounding n itself up to a 2^a 3^b 5^c 7^d number, the way
+    // find_fast_fftw_dim above does, is right for the r2c/c2r transforms (whose
+    // effective length is n) but actively harmful here: a smooth n tends to
+    // leave n-1 prime, which drops FFTW onto its Bluestein/Rader path for a
+    // several-thousand-sized prime factor. Measured on a 8183x5455 image, where
+    // find_fast_fftw_dim picks 8192x6144 and hence 2*(n-1) = 2*8191 and 2*6143
+    // with both 8191 and 6143 prime: 3274 ms single-threaded and 4726 ms on ten
+    // threads (threading makes that path *slower*) for one transform, against
+    // 342 ms and 62.5 ms at 8193x5489. Same transform, same flags, 53x.
+    //
+    // So: round up to the smallest n >= dim whose n-1 factors into 2, 3, 5 and
+    // 7 only. Such numbers are dense enough that the search is a handful of
+    // iterations, and the result is usually *smaller* than find_fast_fftw_dim's
+    // (45.0 vs 50.3 Mpix in the example above).
+    for (int n = std::max(dim, 2); ; ++n) {
+        int m = n - 1;
+        for (int p : {2, 3, 5, 7}) {
+            while (m % p == 0) {
+                m /= p;
+            }
+        }
+        if (m == 1) {
+            return n;
+        }
+    }
 }
 
 

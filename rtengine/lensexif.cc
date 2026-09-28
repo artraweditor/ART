@@ -43,6 +43,8 @@
 #include "metadata.h"
 #include "settings.h"
 #include <array>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 namespace rtengine {
@@ -331,6 +333,271 @@ public:
     bool has_ca() const override { return ca_ok; }
 };
 
+// Nikon Z-series correction data. Reverse-engineered from the blob that the
+// cameras store in tag 0xc7d5 of the raw SubIFD (ExifTool calls it "NEFInfo");
+// it is *not* part of the Nikon makernote. The blob is a nested TIFF: a 6-byte
+// "Nikon\0" magic plus 4 version bytes, then an ordinary TIFF header and a
+// single IFD whose entries 0x05, 0x06 and 0x07 carry the distortion,
+// vignetting and (apparently) the lateral CA parameters.
+//
+// Those three entries share a common header:
+//
+//     0x00  char[4]   version, "0100"
+//     0x04  uint8     correction flag: 0 no lens, 1 on (optional), 2 off,
+//                     3 on (required). Deliberately not acted upon -- the data
+//                     is offered whenever it is there, and the user decides.
+//     0x08  uint32  \ a radius in mm, always 21.6 (the half-diagonal of a
+//     0x0c  uint32  / full-frame sensor) -- on a DX-cropped frame and on a
+//                     native DX body alike, both of which record about 14.2mm,
+//                     so it is a constant and not a usable normalisation. Do
+//                     not scale by it; see below for what r is relative to.
+//     0x10  uint32    n, the number of rationals that follow
+//     0x14  n * { int32 num, int32 den }
+//
+// followed by a 28-byte trailer of unknown meaning and what looks like a
+// checksum. Entry 0x07 packs two such coefficient sets, the second one
+// starting right after the first (see parse() below).
+//
+// The radius the polynomials take is relative to the corner of the *recorded*
+// image, so a crop mode needs no scaling of the knots. A Z 5 shooting the same
+// lens at the same focal length in FX and in DX writes different coefficients,
+// and evaluating the FX polynomial over the DX radius range reproduces the DX
+// one to ~0.1% of the half-diagonal: the camera renormalises the profile to
+// whatever it actually recorded.
+//
+// Verified on FX frames from a Z 5II and a Z 7II, on a DX crop from a Z 5, and
+// on a native DX body (Z 50II with a DX lens). Still unknown: the trailer, and
+// whether F-mount bodies write the tag at all -- if they do not, parse() fails
+// and ART falls back to lensfun as before.
+//
+// Entry 0x07 is the one part of the format that is still a guess: it holds
+// two independent polynomials of the same shape, of a magnitude (~1e-4,
+// i.e. about a pixel of radial shift at the corner) that fits lateral CA
+// for red and blue. Empirically seems to work, with the first set for
+// the red channel and the second for blue.
+//
+// Credit to the folks at discuss.pixls.us for their insightful findings.
+// References:
+// https://discuss.pixls.us/t/reverse-engineering-nikon-z-series-lens-correction
+// https://discuss.pixls.us/t/reverse-engineering-nikon-z-series-lens-correction-part-2
+//
+// Coded with the help of Claude Opus 5
+class NikonCorrectionData: public ExifLensCorrection::CorrectionData {
+public:
+    std::vector<float> dist_k;
+    std::vector<float> vig_c;
+    std::array<std::vector<float>, 2> ca_k;
+    std::array<float, 2> ca_s;
+    bool ca_ok;
+
+    NikonCorrectionData(): ca_s{0.f, 0.f}, ca_ok(false) {}
+
+    void get_coeffs(std::vector<float> &knots, std::vector<float> &dist,
+                    std::vector<float> &vig,
+                    std::array<std::vector<float>, 3> &ca,
+                    bool &is_dng) const override
+    {
+        is_dng = false;
+        constexpr int nc = 32;
+
+        knots.resize(nc);
+        dist.resize(nc);
+        vig.resize(nc);
+        for (int i = 0; i < 3; ++i) {
+            ca[i].resize(nc);
+        }
+
+        const int red = 0;
+        const bool with_ca = has_ca();
+
+        for (int i = 0; i < nc; ++i) {
+            const float r = float(i) / (nc - 1);
+            knots[i] = r;
+
+            // The ratio between the radius in the distorted input and the
+            // radius in the corrected output, which is what
+            // correctDistortion() wants.
+            dist[i] = poly(dist_k, r);
+
+            // The same polynomial is the gain to apply for vignetting.
+            // processVignette() divides by the square of what we store here,
+            // so store 1/sqrt(gain).
+            const float g = poly(vig_c, r);
+            vig[i] = g > 0.f ? 1.f / std::sqrt(g) : 1.f;
+
+            ca[0][i] = ca[1][i] = ca[2][i] = 1.f;
+            if (with_ca) {
+                ca[0][i] = ca_s[red] + poly(ca_k[red], r);
+                ca[2][i] = ca_s[1 - red] + poly(ca_k[1 - red], r);
+            }
+        }
+    }
+
+    bool has_dist() const override { return nonzero(dist_k); }
+    bool has_vign() const override { return nonzero(vig_c); }
+    bool has_ca() const override { return ca_ok; }
+
+    static NikonCorrectionData *parse(const std::vector<Exiv2::byte> &buf)
+    {
+        constexpr size_t hdr = 10; // "Nikon\0" plus 4 version bytes
+        if (buf.size() < hdr + 8 || memcmp(&buf[0], "Nikon", 6) != 0) {
+            return nullptr;
+        }
+
+        const Exiv2::byte *base = &buf[hdr];
+        const size_t size = buf.size() - hdr;
+
+        Exiv2::ByteOrder bo;
+        if (base[0] == 'I' && base[1] == 'I') {
+            bo = Exiv2::littleEndian;
+        } else if (base[0] == 'M' && base[1] == 'M') {
+            bo = Exiv2::bigEndian;
+        } else {
+            return nullptr;
+        }
+        if (Exiv2::getUShort(base + 2, bo) != 42) {
+            return nullptr;
+        }
+
+        const uint32_t ifd = Exiv2::getULong(base + 4, bo);
+        if (ifd + 2 > size) {
+            return nullptr;
+        }
+        const uint16_t n = Exiv2::getUShort(base + ifd, bo);
+
+        NikonCorrectionData ret;
+        for (uint16_t i = 0; i < n; ++i) {
+            const size_t e = size_t(ifd) + 2 + size_t(i) * 12;
+            if (e + 12 > size) {
+                break;
+            }
+            const uint16_t tag = Exiv2::getUShort(base + e, bo);
+            if (tag < 5 || tag > 7) {
+                continue;
+            }
+            const uint32_t count = Exiv2::getULong(base + e + 4, bo);
+            const uint32_t off = Exiv2::getULong(base + e + 8, bo);
+            // the three entries of interest are all undef[] and much larger
+            // than 4 bytes, so the value is always stored out of line
+            if (count <= 4 || off > size || count > size - off) {
+                continue;
+            }
+            const Exiv2::byte *p = base + off;
+
+            size_t pos = 0x10;
+            if (tag == 5) {
+                read_coeffs(p, count, bo, pos, ret.dist_k);
+            } else if (tag == 6) {
+                read_coeffs(p, count, bo, pos, ret.vig_c);
+            } else {
+                ret.ca_ok = read_coeffs(p, count, bo, pos, ret.ca_k[0],
+                                        &ret.ca_s[0]) &&
+                            read_coeffs(p, count, bo, pos, ret.ca_k[1],
+                                        &ret.ca_s[1]);
+            }
+        }
+
+        if (!ret.has_dist() && !ret.has_vign()) {
+            return nullptr;
+        }
+
+        if (settings->verbose) {
+            std::cout << "NIKON LENS CORRECTION: distortion";
+            for (auto v : ret.dist_k) {
+                std::cout << " " << v;
+            }
+            std::cout << " | vignetting";
+            for (auto v : ret.vig_c) {
+                std::cout << " " << v;
+            }
+            if (ret.ca_ok) {
+                for (int i = 0; i < 2; ++i) {
+                    std::cout << " | ca" << i << " " << ret.ca_s[i] << " +";
+                    for (auto v : ret.ca_k[i]) {
+                        std::cout << " " << v;
+                    }
+                }
+            }
+            std::cout << std::endl;
+        }
+
+        return new NikonCorrectionData(ret);
+    }
+
+private:
+    // The coefficients are stored highest power first, one slot per power
+    // down to r^1, with an implicit constant term of 1:
+    //
+    //     1 + c[0]*r^n + c[1]*r^(n-1) + ... + c[n-1]*r
+    //
+    // That single rule explains both blocks. Vignetting has n = 8 with the
+    // odd-power slots always zero, i.e. the even 8th-order polynomial
+    // ExifTool's notes guess at; distortion has n = 4 with the r^1 slot always
+    // zero. It is also the only reading under which the gain at the centre
+    // comes out as 1: the slot at 0x14, which ExifTool does not expose, is
+    // non-zero on plenty of lenses, and taking it for the constant term gives
+    // a centre gain of 0.37 on e.g. a Z 6III with the 24-120/4 at 24mm.
+    //
+    // Consecutive powers rather than even ones (r^2, r^4, r^6) because the
+    // FX/DX pair above separates the two: reparametrising the FX polynomial
+    // over the DX radius range reproduces the DX polynomial to 2.4px RMS with
+    // consecutive powers and 5.2px with even ones, over a 2380px
+    // half-diagonal.
+    static float poly(const std::vector<float> &c, float r)
+    {
+        float p = 0.f;
+        for (size_t j = 0; j < c.size(); ++j) {
+            p = p * r + c[j];
+        }
+        return 1.f + p * r;
+    }
+
+    static bool nonzero(const std::vector<float> &c)
+    {
+        for (auto v : c) {
+            if (v) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Reads a count followed by that many rationals, starting at pos, and
+    // leaves pos just past the trailing scalar so that the next set (entry
+    // 0x07 has two) can be read with another call.
+    static bool read_coeffs(const Exiv2::byte *p, size_t size,
+                            Exiv2::ByteOrder bo, size_t &pos,
+                            std::vector<float> &out, float *scalar = nullptr)
+    {
+        if (pos + 4 > size) {
+            return false;
+        }
+        const uint32_t n = Exiv2::getULong(p + pos, bo);
+        // n is 4 for distortion, 8 for vignetting and 3 for each CA set; the
+        // bound is just a guard against a misparse
+        if (!n || n > 32 || pos + 4 + 8 * (size_t(n) + 1) > size) {
+            return false;
+        }
+        pos += 4;
+        out.resize(n);
+        for (uint32_t i = 0; i < n; ++i, pos += 8) {
+            out[i] = to_float(p + pos, bo);
+        }
+        if (scalar) {
+            *scalar = to_float(p + pos, bo);
+        }
+        pos += 8;
+        return true;
+    }
+
+    static float to_float(const Exiv2::byte *p, Exiv2::ByteOrder bo)
+    {
+        const int32_t num = Exiv2::getLong(p, bo);
+        const int32_t den = Exiv2::getLong(p + 4, bo);
+        return den ? float(num) / float(den) : 0.f;
+    }
+};
+
 float interpolate(const std::vector<float> &xi, const std::vector<float> &yi,
                   float x)
 {
@@ -371,7 +638,8 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width,
 
     std::string make = Glib::ustring(meta->getMake()).uppercase();
     static const std::unordered_set<std::string> makers = {
-        "SONY", "FUJIFILM", "OLYMPUS", "OM DIGITAL SOLUTIONS"};
+        "SONY",   "FUJIFILM",         "OLYMPUS",
+        "NIKON",  "NIKON CORPORATION", "OM DIGITAL SOLUTIONS"};
     if (makers.find(make) == makers.end() && !meta->isDNG()) {
         return;
     }
@@ -416,6 +684,23 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width,
                     for (int i = 0; i < 6; ++i) {
                         od->cacorr[i] = 0;
                     }
+                }
+            }
+        } else if (make == "NIKON" || make == "NIKON CORPORATION") {
+            md.load();
+            auto &exif = md.exifData();
+            // the blob lives in the raw SubIFD, whose index is not stable
+            // across bodies, so look it up by tag rather than by a fixed key
+            for (auto it = exif.begin(); it != exif.end(); ++it) {
+                if (it->tag() == 0xc7d5 &&
+                    it->groupName().compare(0, 8, "SubImage") == 0) {
+                    std::vector<Exiv2::byte> buf;
+                    buf.resize(it->value().size());
+                    if (!buf.empty()) {
+                        it->value().copy(&buf[0], Exiv2::invalidByteOrder);
+                        data_.reset(NikonCorrectionData::parse(buf));
+                    }
+                    break;
                 }
             }
         } else {

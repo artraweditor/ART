@@ -1939,3 +1939,87 @@ void gaussianBlur(float **src, float **dst, const int W, const int H,
 {
     gaussianBlurImpl<float>(src, dst, W, H, sigma, buffer, gausstype, buffer2);
 }
+
+#ifdef ART_USE_VULKAN
+
+#include "settings.h"
+#include "gpu/gpu.h"
+#include "gpu/vk_pass.h"
+
+#include <cmath>
+#include <cstring>
+#include <vector>
+
+namespace rtengine {
+
+extern const Settings *settings;
+
+namespace gpu {
+namespace ops {
+
+namespace {
+struct GaussPC {
+    unsigned int w, h, radius;
+};
+} // namespace
+
+/* Truncated, normalised Gaussian.  3 sigma captures ~99.7% of the kernel; the
+ * remaining tail is below float precision against the normalisation.
+ * Declared in gauss.h: ipsmoothing.cc needs the same weights to build its
+ * own device-resident Gaussian blur. */
+int gaussRadius(double sigma)
+{
+    int r = (int)std::ceil(3.0 * sigma);
+    if (r < 1) {
+        r = 1;
+    }
+    return r;
+}
+
+void gaussWeights(double sigma, int radius, std::vector<float> &out)
+{
+    out.resize(2 * radius + 1);
+    const double inv = 1.0 / (2.0 * sigma * sigma);
+    double sum = 0.0;
+    for (int k = -radius; k <= radius; ++k) {
+        const double v = std::exp(-double(k) * double(k) * inv);
+        out[k + radius] = (float)v;
+        sum += v;
+    }
+    const float norm = (float)(1.0 / sum);
+    for (size_t i = 0; i < out.size(); ++i) {
+        out[i] *= norm;
+    }
+}
+
+/* Run the two separable Gaussian passes over an already device-resident
+ * W x H plane pair -- a is input and output, b is scratch, weights must
+ * already hold gaussWeights(sigma, radius, ...). */
+bool gaussianBlurPasses(Pass &pass, Buffer &a, Buffer &b, Buffer &weights,
+                        int W, int H, int radius)
+{
+    struct GaussPC pc;
+    pc.w = (unsigned int)W;
+    pc.h = (unsigned int)H;
+    pc.radius = (unsigned int)radius;
+
+    std::vector<Pass::Binding> hb;
+    hb.push_back(Pass::Binding(&a, false));
+    hb.push_back(Pass::Binding(&b, true));
+    hb.push_back(Pass::Binding(&weights, false));
+    if (!pass.dispatch2D("gauss_h", hb, &pc, sizeof(pc), W, H)) {
+        return false;
+    }
+
+    std::vector<Pass::Binding> vb;
+    vb.push_back(Pass::Binding(&b, false));
+    vb.push_back(Pass::Binding(&a, true));
+    vb.push_back(Pass::Binding(&weights, false));
+    return pass.dispatch2D("gauss_v", vb, &pc, sizeof(pc), W, H);
+}
+
+} // namespace ops
+} // namespace gpu
+} // namespace rtengine
+
+#endif // ART_USE_VULKAN

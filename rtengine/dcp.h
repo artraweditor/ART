@@ -1,4 +1,5 @@
-/*
+/* -*- C++ -*-
+ *  
  *  This file is part of RawTherapee.
  *
  *  Copyright (c) 2012 Oliver Duis <www.oliverduis.de>
@@ -85,6 +86,8 @@ public:
     void step2ApplyTile(float *r, float *g, float *b, int width, int height,
                         int tile_width, const ApplyState &as_in) const;
 
+    bool needStep2(const ApplyState &as) const;
+    
 private:
     struct HsbModify {
         float hue_shift;

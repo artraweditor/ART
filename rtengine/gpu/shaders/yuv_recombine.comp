@@ -1,0 +1,53 @@
+#version 450
+
+// Recombines chroma (from one image) with a target luminance, with optional chroma "bump" rescaling.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer ChromaR { float v[]; } chR;
+layout(std430, set = 0, binding = 1) readonly buffer ChromaG { float v[]; } chG;
+layout(std430, set = 0, binding = 2) readonly buffer ChromaB { float v[]; } chB;
+layout(std430, set = 0, binding = 3) readonly buffer TargetY { float v[]; } tY;
+layout(std430, set = 0, binding = 4) writeonly buffer OutR { float v[]; } oR;
+layout(std430, set = 0, binding = 5) writeonly buffer OutG { float v[]; } oG;
+layout(std430, set = 0, binding = 6) writeonly buffer OutB { float v[]; } oB;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int bump;
+    float ws1x;
+    float ws1y;
+    float ws1z;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    float cr = chR.v[o], cg = chG.v[o], cb = chB.v[o];
+    float chromaY = cr * pc.ws1x + cg * pc.ws1y + cb * pc.ws1z;
+    float u = chromaY - cb;
+    float v = cr - chromaY;
+
+    float newY = tY.v[o];
+
+    if (pc.bump != 0) {
+        float s = newY > 1e-5 ? chromaY / newY : 1.0;
+        u *= s;
+        v *= s;
+    }
+
+    float newB = newY - u;
+    float newR = v + newY;
+    float newG = (newY - newR * pc.ws1x - newB * pc.ws1z) / pc.ws1y;
+
+    oR.v[o] = newR;
+    oG.v[o] = newG;
+    oB.v[o] = newB;
+}

@@ -1,0 +1,41 @@
+#version 450
+
+// Guided filter stage 4/4: vertical mean of stage 3's horizontal means, producing meanA/meanB.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer HA { float v[]; } ha;
+layout(std430, set = 0, binding = 1) readonly buffer HB { float v[]; } hb;
+layout(std430, set = 0, binding = 2) writeonly buffer MeanA { float v[]; } meanA;
+layout(std430, set = 0, binding = 3) writeonly buffer MeanB { float v[]; } meanB;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int radius;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+
+    int ylo = max(0, int(g.y) - pc.radius);
+    int yhi = min(int(g.y) + pc.radius, int(pc.h) - 1);
+    int cnt = yhi - ylo + 1;
+
+    vec2 sum = vec2(0.0);
+    for (int y = ylo; y <= yhi; ++y) {
+        uint o = uint(y) * pc.w + g.x;
+        sum += vec2(ha.v[o], hb.v[o]);
+    }
+
+    uint o = g.y * pc.w + g.x;
+    float invCnt = 1.0 / float(cnt);
+    meanA.v[o] = sum.x * invCnt;
+    meanB.v[o] = sum.y * invCnt;
+}

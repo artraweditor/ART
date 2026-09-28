@@ -27,7 +27,7 @@
 #endif
 
 #include "array2D.h"
-#include "cplx_wavelet_dec.h"
+#include "wavelet.h"
 #include "curves.h"
 #include "gauss.h"
 #include "improcfun.h"

@@ -13,6 +13,7 @@ LCMS2: ${LCMS_VERSION_INFO}
 LibRaw: ${ART_LIBRAW_VERSION_INFO}
 OpenColorIO: ${ART_OCIO_VERSION_INFO}
 CTL interpreter: ${ART_CTL_VERSION_INFO}
+Vulkan: ${ART_VULKAN_VERSION_INFO}
 Build type: ${BUILD_TYPE}
 Build flags: ${CXX_FLAGS}
 Link flags: ${LFLAGS}

@@ -1,0 +1,39 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// Denoise phase 8, Lab colour space: Color::lab2rgb (color.h:712), in place; inverse of dn_rgb2lab.comp.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 8;
+
+layout(std430, set = 0, binding = 0) buffer P0 { float v[]; } p0;
+layout(std430, set = 0, binding = 1) buffer P1 { float v[]; } p1;
+layout(std430, set = 0, binding = 2) buffer P2 { float v[]; } p2;
+
+/* Rows first: see the note in dn_rgb2lab.comp. */
+layout(push_constant) uniform PC {
+    vec4 iws0;
+    vec4 iws1;
+    vec4 iws2;
+    uint w;
+    uint h;
+} pc;
+
+#include "include/art_color.glsl"
+
+void main()
+{
+    const uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    const uint i = g.y * pc.w + g.x;
+
+    const vec3 xyz = art_lab2xyz(p1.v[i], p2.v[i], p0.v[i]);
+    const vec3 rgb = art_mat3_row_mul(pc.iws0, pc.iws1, pc.iws2, xyz);
+
+    p0.v[i] = rgb.x;
+    p1.v[i] = rgb.y;
+    p2.v[i] = rgb.z;
+}

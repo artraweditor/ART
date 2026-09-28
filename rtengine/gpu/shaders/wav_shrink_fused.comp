@@ -1,0 +1,36 @@
+#version 450
+
+// Fused multi-level wavelet coefficient shrinkage: applies `levels` independent per-level
+// thresholds in one dispatch instead of one per level (purely pointwise, no shared state).
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+#define MAX_LEVELS 8u
+
+layout(std430, set = 0, binding = 0) buffer Coeffs { float v[]; } coeffs;
+
+layout(push_constant) uniform PC {
+    uint n;
+    uint levels;
+    float eps;
+    float levelFactorS[MAX_LEVELS];
+    float nineLevelFactorS[MAX_LEVELS];
+} pc;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.n * pc.levels) {
+        return;
+    }
+    uint level = gid / pc.n;
+    float c = coeffs.v[gid];
+    float mag = c * 65535.0;
+    mag = mag * mag;
+    float lf = pc.levelFactorS[level];
+    float nlf = pc.nineLevelFactorS[level];
+    float sf = mag / (mag + lf * exp(-mag / nlf) + pc.eps);
+    float f = (sf * sf) / (sf + pc.eps);
+    coeffs.v[gid] = c * f;
+}

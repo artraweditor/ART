@@ -17,8 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _BOXBLUR_H_
-#define _BOXBLUR_H_
+#pragma once
 
 #include "StopWatch.h"
 #include "alignedbuffer.h"
@@ -38,8 +37,11 @@ template <class T, class A>
 void boxblur(T **src, A **dst, int radx, int rady, int W, int H)
 {
     // box blur image; box range = (radx,rady)
+    // NDEBUG builds strip assert(), so also clamp for real below
     assert(2 * radx + 1 < W);
     assert(2 * rady + 1 < H);
+    radx = max(0, min(radx, (W - 1) / 2));
+    rady = max(0, min(rady, (H - 1) / 2));
 
     AlignedBuffer<float> *buffer = new AlignedBuffer<float>(W * H);
     float *temp = buffer->data;
@@ -143,6 +145,8 @@ template <class T, class A>
 void boxblur(T **src, A **dst, T *buffer, int radx, int rady, int W, int H)
 {
     // box blur image; box range = (radx,rady)
+    radx = max(0, min(radx, (W - 1) / 2));
+    rady = max(0, min(rady, (H - 1) / 2));
 
     float *temp = buffer;
 
@@ -623,6 +627,12 @@ void boxblur(T *src, A *dst, A *buffer, int radx, int rady, int W, int H)
     // box blur image; box range = (radx,rady) i.e. box size is
     // (2*radx+1)x(2*rady+1)
 
+    // the ramp-up/ramp-down loops below read up to 2*radx (resp. 2*rady)
+    // pixels ahead of the current column/row, so the radius can't exceed
+    // what the buffer actually holds in that dimension
+    radx = max(0, min(radx, (W - 1) / 2));
+    rady = max(0, min(rady, (H - 1) / 2));
+
     float *temp = buffer;
 
     if (radx == 0) {
@@ -1008,4 +1018,3 @@ void boxabsblur(T *src, A *dst, int radx, int rady, int W, int H, float *temp)
 }
 
 } // namespace rtengine
-#endif /* _BOXBLUR_H_ */

@@ -1693,7 +1693,7 @@ bool BackBuffer::setDrawRectangle(Glib::RefPtr<Gdk::Window> window, int newX,
 
     x = newX;
     y = newY;
-    if (newH > 0) {
+    if (newW > 0) {
         w = newW;
     }
     if (newH > 0) {
@@ -1733,7 +1733,7 @@ bool BackBuffer::setDrawRectangle(Cairo::Format format, int newX, int newY,
 
     x = newX;
     y = newY;
-    if (newH > 0) {
+    if (newW > 0) {
         w = newW;
     }
     if (newH > 0) {

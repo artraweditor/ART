@@ -1,0 +1,41 @@
+#version 450
+
+// FIR wavelet synthesis, vertical pass, level 0 (final upsample to full res).
+// `blend` hardcoded to 1.0 (only value used here), so dst = 4*tot outright.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer SrcLo { float v[]; } srcLo;
+layout(std430, set = 0, binding = 1) readonly buffer SrcHi { float v[]; } srcHi;
+layout(std430, set = 0, binding = 2) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h2;
+    uint h;
+    int skip;
+    int shift;
+    float filterLo[6];
+    float filterHi[6];
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    int i = int(g.y) + pc.shift;
+    int isrc = i / 2;
+    int begin = i - isrc * 2;
+
+    float tot = 0.0;
+    for (int j = begin, l = 0; j < 6; j += 2, l += pc.skip) {
+        int arg = clamp(isrc - l, 0, int(pc.h2) - 1);
+        uint o = uint(arg) * pc.w + g.x;
+        tot += pc.filterLo[j] * srcLo.v[o] + pc.filterHi[j] * srcHi.v[o];
+    }
+    dst.v[g.y * pc.w + g.x] = 4.0 * tot;
+}

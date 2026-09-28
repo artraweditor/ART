@@ -36,7 +36,15 @@ void LUT3D::init(int dim, initializer &f, bool input_is_01)
     dim_minus_one_ = dim - 1;
     input_is_01_ = input_is_01;
 
+#ifdef ART_SIMD
+    // one float of padding so the vectorized tetrahedral interpolation can
+    // always do a 4-wide unaligned load starting at the last LUT entry's
+    // red component (the loaded 4th lane, belonging to the next entry, is
+    // never used)
+    lut_.resize(SQR(dim_) * dim_ * 3 + 1);
+#else
     lut_.resize(SQR(dim_) * dim_ * 3);
+#endif
     size_t index = 0;
     float r, g, b;
     for (int i = 0; i < dim_; ++i) {
@@ -87,6 +95,27 @@ inline int GetLut3DIndexBlueFast(int indexR, int indexG, int indexB, int dim,
 
 } // namespace
 
+#ifdef ART_SIMD
+
+namespace {
+
+// Accumulates w0*lut[c0] + w1*lut[c1] + w2*lut[c2] + w3*lut[c3] for the
+// r/g/b triple stored contiguously at each corner, in a single 4-wide
+// (r, g, b, unused) vector instead of one scalar FMA chain per channel.
+inline vfloat interp_corners(const float *lut, float w0, int c0, float w1,
+                             int c1, float w2, int c2, float w3, int c3)
+{
+    vfloat out = vmulf(F2V(w0), LVFU(lut[c0]));
+    out = vmlaf(F2V(w1), LVFU(lut[c1]), out);
+    out = vmlaf(F2V(w2), LVFU(lut[c2]), out);
+    out = vmlaf(F2V(w3), LVFU(lut[c3]), out);
+    return out;
+}
+
+} // namespace
+
+#endif // ART_SIMD
+
 inline void LUT3D::apply_tetra(float &r, float &g, float &b)
 {
     const float dimMinusOne = dim_minus_one_;
@@ -94,7 +123,9 @@ inline void LUT3D::apply_tetra(float &r, float &g, float &b)
     constexpr int m_components = 3;
     const int m_dim = dim_;
     const float *m_optLut = lut_.data;
+#ifndef ART_SIMD
     float out[3];
+#endif
 
     float idx[3];
     idx[0] = r * m_step;
@@ -141,6 +172,38 @@ inline void LUT3D::apply_tetra(float &r, float &g, float &b)
                                            indexHigh[2], m_dim, m_components);
     const int n111 = GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1],
                                            indexHigh[2], m_dim, m_components);
+
+#ifdef ART_SIMD
+    vfloat outv;
+
+    if (fx > fy) {
+        if (fy > fz) {
+            outv = interp_corners(m_optLut, 1 - fx, n000, fx - fy, n100,
+                                  fy - fz, n110, fz, n111);
+        } else if (fx > fz) {
+            outv = interp_corners(m_optLut, 1 - fx, n000, fx - fz, n100,
+                                  fz - fy, n101, fy, n111);
+        } else {
+            outv = interp_corners(m_optLut, 1 - fz, n000, fz - fx, n001,
+                                  fx - fy, n101, fy, n111);
+        }
+    } else {
+        if (fz > fy) {
+            outv = interp_corners(m_optLut, 1 - fz, n000, fz - fy, n001,
+                                  fy - fx, n011, fx, n111);
+        } else if (fz > fx) {
+            outv = interp_corners(m_optLut, 1 - fy, n000, fy - fz, n010,
+                                  fz - fx, n011, fx, n111);
+        } else {
+            outv = interp_corners(m_optLut, 1 - fy, n000, fy - fx, n010,
+                                  fx - fz, n110, fz, n111);
+        }
+    }
+
+    float out[4] ALIGNED16;
+    STVFU(out[0], outv);
+#else
+    float out[3];
 
     if (fx > fy) {
         if (fy > fz) {
@@ -213,6 +276,7 @@ inline void LUT3D::apply_tetra(float &r, float &g, float &b)
                      (fx - fz) * m_optLut[n110 + 2] + (fz)*m_optLut[n111 + 2];
         }
     }
+#endif // ART_SIMD
 
     r = out[0];
     g = out[1];

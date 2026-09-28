@@ -271,3 +271,227 @@ void guidedFilterLog(float base, array2D<float> &chan, int r, float eps,
 }
 
 } // namespace rtengine
+
+#ifdef ART_USE_VULKAN
+
+#include "gpu/gpu.h"
+#include "gpu/ops.h"
+#include "gpu/vk_pass.h"
+
+namespace rtengine {
+namespace gpu {
+namespace ops {
+
+namespace {
+
+/* guidedfilter.cc's calculate_subsampling, ported verbatim: pure integer
+ * arithmetic, no GPU-specific behaviour to reconsider. */
+int calcSubsampling(int w, int h, int r)
+{
+    if (r == 1) {
+        return 1;
+    }
+    if (std::max(w, h) <= 600) {
+        return 1;
+    }
+    for (int s = 5; s > 0; --s) {
+        if (r % s == 0) {
+            return s;
+        }
+    }
+    int v = r / 2;
+    return std::min(std::max(v, 2), 4);
+}
+
+int clampBoxRadius(float rad_f, int w, int h)
+{
+    int rad = (int)rad_f;
+    int lim = (std::min(w, h) - 1) / 2 - 1;
+    return std::max(0, std::min(rad, lim));
+}
+
+struct GfPass1PC { unsigned int w, h; int radius; };
+struct GfPass2PC { unsigned int w, h; int radius; float epsilon; };
+struct RescalePC { unsigned int ws, hs, wd, hd; };
+
+bool rescale(Pass &pass, Buffer &src, Buffer &dst, int ws, int hs, int wd,
+            int hd)
+{
+    RescalePC pc{(unsigned)ws, (unsigned)hs, (unsigned)wd, (unsigned)hd};
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&src, false));
+    b.push_back(Pass::Binding(&dst, true));
+    return pass.dispatch2D("mask_rescale_bilinear", b, &pc, sizeof(pc), wd, hd);
+}
+
+/* Stage 1/4 (horizontal): shrinking-window horizontal mean of I, p, I^2,
+ * I*p, fused into one dispatch -- see gf_pass1_horiz.comp. */
+bool gfPass1(Pass &pass, Buffer &I, Buffer &p, Buffer &hI, Buffer &hp,
+            Buffer &hII, Buffer &hIp, int w, int h, int radius)
+{
+    GfPass1PC pc{(unsigned)w, (unsigned)h, radius};
+    std::vector<Pass::Binding> b;
+    b.push_back(Pass::Binding(&I, false));
+    b.push_back(Pass::Binding(&p, false));
+    b.push_back(Pass::Binding(&hI, true));
+    b.push_back(Pass::Binding(&hp, true));
+    b.push_back(Pass::Binding(&hII, true));
+    b.push_back(Pass::Binding(&hIp, true));
+    return pass.dispatch2D("gf_pass1_horiz", b, &pc, sizeof(pc), w, h);
+}
+
+/* Stage 2/4 (vertical + coefficients): completes the 2D shrinking-window
+ * mean and derives a,b in the same dispatch -- see gf_pass2_vert_ab.comp. */
+bool gfPass2(Pass &pass, Buffer &hI, Buffer &hp, Buffer &hII, Buffer &hIp,
+            Buffer &a, Buffer &b, int w, int h, int radius, float epsilon)
+{
+    GfPass2PC pc{(unsigned)w, (unsigned)h, radius, epsilon};
+    std::vector<Pass::Binding> bd;
+    bd.push_back(Pass::Binding(&hI, false));
+    bd.push_back(Pass::Binding(&hp, false));
+    bd.push_back(Pass::Binding(&hII, false));
+    bd.push_back(Pass::Binding(&hIp, false));
+    bd.push_back(Pass::Binding(&a, true));
+    bd.push_back(Pass::Binding(&b, true));
+    return pass.dispatch2D("gf_pass2_vert_ab", bd, &pc, sizeof(pc), w, h);
+}
+
+/* Stage 3/4 (horizontal): shrinking-window horizontal mean of a,b -- see
+ * gf_pass3_horiz_ab.comp. */
+bool gfPass3(Pass &pass, Buffer &a, Buffer &b, Buffer &ha, Buffer &hb, int w,
+            int h, int radius)
+{
+    GfPass1PC pc{(unsigned)w, (unsigned)h, radius};
+    std::vector<Pass::Binding> bd;
+    bd.push_back(Pass::Binding(&a, false));
+    bd.push_back(Pass::Binding(&b, false));
+    bd.push_back(Pass::Binding(&ha, true));
+    bd.push_back(Pass::Binding(&hb, true));
+    return pass.dispatch2D("gf_pass3_horiz_ab", bd, &pc, sizeof(pc), w, h);
+}
+
+/* Stage 4/4 (vertical): completes box(a),box(b) -- see gf_pass4_vert_ab.comp.
+ */
+bool gfPass4(Pass &pass, Buffer &ha, Buffer &hb, Buffer &meanA, Buffer &meanB,
+            int w, int h, int radius)
+{
+    GfPass1PC pc{(unsigned)w, (unsigned)h, radius};
+    std::vector<Pass::Binding> bd;
+    bd.push_back(Pass::Binding(&ha, false));
+    bd.push_back(Pass::Binding(&hb, false));
+    bd.push_back(Pass::Binding(&meanA, true));
+    bd.push_back(Pass::Binding(&meanB, true));
+    return pass.dispatch2D("gf_pass4_vert_ab", bd, &pc, sizeof(pc), w, h);
+}
+
+} // namespace
+
+/* guidedfilter.cc's guidedFilter, Algorithm 2 of the Fast Guided Filter
+ * paper, rewritten as a 4-stage separable pipeline (adapted from a classic
+ * 4-pass "horizontal / vertical+ab / horizontal / vertical+compose" GLSL
+ * fragment-shader formulation of the fast guided filter) instead of the
+ * previous chain of ~10 generic elementwise + 2D-box-blur dispatches.
+ * guideFull/srcFull/dstFull are W x H; dstFull may alias srcFull.
+ *
+ * The 4 stages (gf_pass1_horiz / gf_pass2_vert_ab / gf_pass3_horiz_ab /
+ * gf_pass4_vert_ab) fuse the I*I/I*p products into stage 1's horizontal
+ * box-mean sweep, and the var/cov/a/b elementwise algebra into stage 2's
+ * vertical box-mean sweep, cutting the box-filtering + coefficient part of
+ * this function from ~10 dispatches (2D box blur, O(radius^2) per pixel,
+ * over 4 separate planes) down to these 4 (O(radius) per pixel, one
+ * horizontal or vertical sweep at a time). */
+bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
+                     Buffer &srcFull, Buffer &dstFull, int W, int H, int r,
+                     float epsilon)
+{
+    const int subsampling = calcSubsampling(W, H, r);
+    const int w = std::max(1, W / subsampling);
+    const int h = std::max(1, H / subsampling);
+    const float r1 = float(r) / float(subsampling);
+    const int radius = clampBoxRadius(r1, w, h);
+    const size_t subBytes = (size_t)w * h * sizeof(float);
+
+    /* I1/p1 hold the subsampled guide/src until stage 1 consumes them, then
+     * are reused to hold stage 2's a,b output.
+     *
+     * Pure GPU-resident scratch -- never touched from the CPU, so a discrete
+     * GPU's DEVICE_LOCAL-only (unmapped) buffer is fine here, and so is a
+     * pooled one.  They come from the caller's pool rather than six fresh
+     * createBuffer() calls because this runs per mask per channel, and
+     * vkAllocateMemory on that path is exactly what BufferPool exists to keep
+     * off the hot path (vk_context.h).  The caller must not recycle the pool
+     * before submitting and waiting on `pass`. */
+    Buffer *bufs[6];
+    for (int i = 0; i < 6; ++i) {
+        bufs[i] = pool.get(subBytes);
+        if (!bufs[i] || !bufs[i]->valid()) {
+            logOnce("GPU: guided filter buffer allocation failed; using the "
+                    "CPU");
+            return false;
+        }
+    }
+    Buffer &I1 = *bufs[0];
+    Buffer &p1 = *bufs[1];
+    Buffer &hI = *bufs[2];
+    Buffer &hp = *bufs[3];
+    Buffer &hII = *bufs[4];
+    Buffer &hIp = *bufs[5];
+
+    if (!rescale(pass, guideFull, I1, W, H, w, h)) {
+        return false;
+    }
+    if (!rescale(pass, srcFull, p1, W, H, w, h)) {
+        return false;
+    }
+
+    // Stage 1: horizontal shrinking-window mean of I, p, I^2, I*p.
+    if (!gfPass1(pass, I1, p1, hI, hp, hII, hIp, w, h, radius)) {
+        return false;
+    }
+
+    // Stage 2: vertical mean completes the 2D mean; derive a,b into I1,p1
+    if (!gfPass2(pass, hI, hp, hII, hIp, I1, p1, w, h, radius, epsilon)) {
+        return false;
+    }
+
+    // Stage 3: horizontal mean of a,b (I1,p1 -> ha,hb into hI,hp).
+    if (!gfPass3(pass, I1, p1, hI, hp, w, h, radius)) {
+        return false;
+    }
+
+    // Stage 4: vertical mean completes box(a),box(b) (hI,hp -> meanA,meanB
+    // into hII,hIp).
+    if (!gfPass4(pass, hI, hp, hII, hIp, w, h, radius)) {
+        return false;
+    }
+
+    // dst = bilinear(meanA)*guideFull + bilinear(meanB)
+    RescalePC cpc{(unsigned)w, (unsigned)h, (unsigned)W, (unsigned)H};
+    std::vector<Pass::Binding> cb;
+    cb.push_back(Pass::Binding(&hII, false));
+    cb.push_back(Pass::Binding(&hIp, false));
+    cb.push_back(Pass::Binding(&guideFull, false));
+    cb.push_back(Pass::Binding(&dstFull, true));
+    return pass.dispatch2D("mask_guided_combine", cb, &cpc, sizeof(cpc), W, H);
+}
+
+bool guidedFilterGPU(Context &ctx, Buffer &guideFull, Buffer &srcFull,
+                     Buffer &dstFull, int W, int H, int r, float epsilon)
+{
+    BufferPool pool(ctx, HostMemoryMode::PREFER_DEVICE_LOCAL);
+    Pass pass(ctx, "generateMasks:guidedFilter");
+    if (!pass.valid() ||
+        !guidedFilterGPU(pass, pool, guideFull, srcFull, dstFull, W, H, r,
+                         epsilon) ||
+        !pass.submitAndWait()) {
+        return false;
+    }
+    pass.reportTimings();
+    return true;
+}
+
+} // namespace ops
+} // namespace gpu
+} // namespace rtengine
+
+#endif // ART_USE_VULKAN

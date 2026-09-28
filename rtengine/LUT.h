@@ -209,6 +209,13 @@ public:
      */
     unsigned int getSize() const { return size; }
 
+    /** @brief Read-only access to the contiguous backing array.
+     *  Needed to hand a LUT to a GPU kernel, which must see exactly the same
+     *  values as the CPU rather than a recomputed approximation.
+     *  @return pointer to getSize() elements, or nullptr if unallocated
+     */
+    const T *rawData() const { return data; }
+
     /** @brief Get the highest value possible (i.e. dimension of the array)
      *  For a LUT(500), it will return 499, because 500 elements, starting from
      * 0, goes up to 499

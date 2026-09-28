@@ -582,6 +582,9 @@ void ImProcFunctions::transform(Imagefloat *original, Imagefloat *transformed,
                                 int fW, int fH, const FramesMetaData *metadata,
                                 int rawRotationDeg, bool highQuality)
 {
+    original->syncCpu();
+    transformed->syncCpuForWrite();
+
     double focalLen = metadata->getFocalLen();
     double focalLen35mm = metadata->getFocalLen35mm();
     float focusDist = metadata->getFocusDist();

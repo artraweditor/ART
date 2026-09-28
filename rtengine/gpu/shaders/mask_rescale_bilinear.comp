@@ -1,0 +1,47 @@
+#version 450
+
+// Bilinear resample between two differently-sized W x H buffers (rescale.h's getBilinearValue/rescaleBilinear). src and dst must be distinct.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint ws;
+    uint hs;
+    uint wd;
+    uint hd;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.wd || g.y >= pc.hd) {
+        return;
+    }
+    float col_scale = float(pc.ws) / float(pc.wd);
+    float row_scale = float(pc.hs) / float(pc.hd);
+    float x = float(g.x) * col_scale;
+    float y = float(g.y) * row_scale;
+
+    int Ws = int(pc.ws);
+    int Hs = int(pc.hs);
+    int xi = min(int(x), Ws - 1);
+    int yi = min(int(y), Hs - 1);
+    float xf = x - float(xi);
+    float yf = y - float(yi);
+    int xi1 = min(xi + 1, Ws - 1);
+    int yi1 = min(yi + 1, Hs - 1);
+
+    float bl = src.v[yi * Ws + xi];
+    float br = src.v[yi * Ws + xi1];
+    float tl = src.v[yi1 * Ws + xi];
+    float tr = src.v[yi1 * Ws + xi1];
+
+    float bot = xf * br + (1.0 - xf) * bl;
+    float top = xf * tr + (1.0 - xf) * tl;
+    dst.v[g.y * pc.wd + g.x] = yf * top + (1.0 - yf) * bot;
+}

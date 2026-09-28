@@ -1,0 +1,27 @@
+#version 450
+
+// Median search step: reduce each segment's 65536 bins to 256 group sums, one thread per (segment, group).
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 0) const uint LX = 256;
+
+layout(std430, set = 0, binding = 0) readonly buffer Hist { uint v[]; } hist;
+layout(std430, set = 0, binding = 1) writeonly buffer Gsum { uint v[]; } gsum;
+
+layout(push_constant) uniform PC {
+    uint segments;
+} pc;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.segments * 256u) {
+        return;
+    }
+    uint base = gid * 256u; // (seg * 256 + group) * 256
+    uint s = 0u;
+    for (uint i = 0u; i < 256u; ++i) {
+        s += hist.v[base + i];
+    }
+    gsum.v[gid] = s;
+}

@@ -1,0 +1,56 @@
+#version 450
+
+// Guided filter, stage 2/4 (vertical + coefficients): vertically means stage 1's horizontal means to
+// complete the 2D shrinking-window mean (see gf_pass1_horiz.comp), then fuses in the linear-model
+// coefficient derivation: var_I = mean_II - mean_I^2, cov_Ip = mean_Ip - mean_I*mean_p,
+// a = cov_Ip/(var_I+epsilon), b = mean_p - a*mean_I.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer HI { float v[]; } hI;
+layout(std430, set = 0, binding = 1) readonly buffer HP { float v[]; } hp;
+layout(std430, set = 0, binding = 2) readonly buffer HII { float v[]; } hII;
+layout(std430, set = 0, binding = 3) readonly buffer HIP { float v[]; } hIp;
+layout(std430, set = 0, binding = 4) writeonly buffer Aout { float v[]; } aOut;
+layout(std430, set = 0, binding = 5) writeonly buffer Bout { float v[]; } bOut;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    int radius;
+    float epsilon;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+
+    int ylo = max(0, int(g.y) - pc.radius);
+    int yhi = min(int(g.y) + pc.radius, int(pc.h) - 1);
+    int cnt = yhi - ylo + 1;
+
+    vec4 sum = vec4(0.0);
+    for (int y = ylo; y <= yhi; ++y) {
+        uint o = uint(y) * pc.w + g.x;
+        sum += vec4(hI.v[o], hp.v[o], hII.v[o], hIp.v[o]);
+    }
+    vec4 mean = sum / float(cnt);
+    float meanI = mean.x;
+    float meanP = mean.y;
+    float meanII = mean.z;
+    float meanIp = mean.w;
+
+    float varI = meanII - meanI * meanI;
+    float covIp = meanIp - meanI * meanP;
+    float a = covIp / (varI + pc.epsilon);
+    float b = meanP - a * meanI;
+
+    uint o = g.y * pc.w + g.x;
+    aOut.v[o] = a;
+    bOut.v[o] = b;
+}

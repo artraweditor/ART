@@ -945,6 +945,7 @@ DCPProfile::DCPProfile(const Glib::ustring &filename)
     DCPMetadata md(file);
     if (!md.parse()) {
         // printf ("Unable to load DCP profile '%s' !", filename.c_str());
+        fclose(file);
         return;
     }
 
@@ -2177,4 +2178,10 @@ DCPStore::getCameraProfile(const Glib::ustring &requested_cam_short_name) const
     }
 
     return nullptr;
+}
+
+
+bool DCPProfile::needStep2(const ApplyState &as) const
+{
+    return !(!as.data->use_tone_curve && !as.data->apply_look_table && as.data->bl_scale == 1.f);
 }

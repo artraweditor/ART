@@ -1,0 +1,34 @@
+#version 450
+
+// Copies between a residency plane (row-padded, see gpu/residency.cc) and a tightly-packed W x H scratch plane.
+// `scaling` is not cosmetic: xlin2log is scale-dependent, so dropping the 1/65535<->65535 factor changes the filter.
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) buffer Packed { float v[]; } packed;
+layout(std430, set = 0, binding = 1) buffer Strided { float v[]; } strided;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint stride; // floats per row in `strided`
+    uint toStrided;
+    float scaling;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint pIdx = g.y * pc.w + g.x;
+    uint sIdx = g.y * pc.stride + g.x;
+    if (pc.toStrided != 0u) {
+        strided.v[sIdx] = packed.v[pIdx] * pc.scaling;
+    } else {
+        packed.v[pIdx] = strided.v[sIdx] * pc.scaling;
+    }
+}

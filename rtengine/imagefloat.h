@@ -24,9 +24,12 @@
 #ifndef _IMAGEFLOAT_
 #define _IMAGEFLOAT_
 
+#include "gpu/residency.h"
 #include "imageio.h"
 #include "labimage.h"
 #include "rtengine.h"
+
+#include <memory>
 
 namespace rtengine {
 using namespace procparams;
@@ -107,7 +110,12 @@ public:
         LAB      // g = L, r = A, b = B
     };
 
+    // The numeric range the planes are currently in.
+    enum class Scale { U16, UNIT };
+
     Mode mode() const { return mode_; }
+    Scale scale() const { return scale_; }
+    void assignScale(Scale s) { scale_ = s; }
     const Glib::ustring colorSpace() const { return color_space_; }
 
     void assignColorSpace(const Glib::ustring &space);
@@ -118,6 +126,23 @@ public:
 
     void toLab(LabImage &dst, bool multithread);
     void getLab(int y, int x, float &L, float &a, float &b);
+
+    //----------------------------------------------------------------------
+    // GPU residency
+    //
+    // Only these three entry points are needed by ordinary engine code.  Call
+    // syncCpu() before reading r/g/b directly, syncCpuForWrite() before
+    // writing them.  Both are a load and a branch when there is no GPU.
+    //----------------------------------------------------------------------
+    ImageResidency &residency() const { return *residency_; }
+
+    void syncCpu() const { residency_->syncToCpu(); }
+
+    void syncCpuForWrite()
+    {
+        residency_->syncToCpu();
+        residency_->invalidateGPU();
+    }
 
 private:
     void rgb_to_xyz(bool multithread);
@@ -139,6 +164,8 @@ private:
 
     Glib::ustring color_space_;
     Mode mode_;
+    Scale scale_;
+    std::unique_ptr<ImageResidency> residency_;   // never null
     float ws_[3][3];
     float iws_[3][3];
 #ifdef ART_SIMD

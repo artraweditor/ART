@@ -1,0 +1,32 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+// in-place log/linear transformation
+
+#include "include/art_color.glsl"
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
+layout(constant_id = 0) const uint LX = 16;
+layout(constant_id = 1) const uint LY = 16;
+
+layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
+layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
+
+layout(push_constant) uniform PC {
+    uint w;
+    uint h;
+    uint inverse; // 0 = forward (xlin2log), 1 = inverse (xlog2lin)
+    float base;
+} pc;
+
+void main()
+{
+    uvec2 g = gl_GlobalInvocationID.xy;
+    if (g.x >= pc.w || g.y >= pc.h) {
+        return;
+    }
+    uint o = g.y * pc.w + g.x;
+    float v = max(src.v[o], 0.0);
+    dst.v[o] = pc.inverse != 0u ? art_xlog2lin(v, pc.base)
+                               : art_xlin2log(v, pc.base);
+}

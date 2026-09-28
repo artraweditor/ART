@@ -1383,6 +1383,16 @@ void Options::readFromFile(Glib::ustring fname)
                         "Performance", "ThumbCacheProcessed");
                 }
 
+                if (keyFile.has_key("Performance", "GPUEnabled")) {
+                    rtSettings.gpu_enabled =
+                        keyFile.get_boolean("Performance", "GPUEnabled");
+                }
+
+                if (keyFile.has_key("Performance", "GPUDevice")) {
+                    rtSettings.gpu_device =
+                        keyFile.get_string("Performance", "GPUDevice");
+                }
+
                 if (keyFile.has_key("Performance", "CTLScriptsFastPreview")) {
                     rtSettings.ctl_scripts_fast_preview = keyFile.get_boolean(
                         "Performance", "CTLScriptsFastPreview");
@@ -2329,6 +2339,9 @@ void Options::saveToFile(Glib::ustring fname)
                             thumb_cache_processed);
         keyFile.set_boolean("Performance", "CTLScriptsFastPreview",
                             rtSettings.ctl_scripts_fast_preview);
+        keyFile.set_boolean("Performance", "GPUEnabled",
+                            rtSettings.gpu_enabled);
+        keyFile.set_string("Performance", "GPUDevice", rtSettings.gpu_device);
         keyFile.set_integer("Performance", "WBPreviewMode", wb_preview_mode);
         keyFile.set_integer("Performance", "RAWImageIOCacheSize",
                             rtSettings.imgio_raw_cache_size);

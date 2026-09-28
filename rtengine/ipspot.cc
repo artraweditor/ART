@@ -107,14 +107,14 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
     const vfloat w2v = F2V(w2);
     const vint iZEROv = vcast_vi_i(0);
 
-    const auto vnext = [&](float **chan, int x, int y) -> void {
+    const auto vnext = [&](float **chan, int x, int y, vmask nz) -> void {
         vfloat cur = LVFU(chan[y][x]);
         vfloat left = LVFU(chan[y][x - 1]);
         vfloat top = LVFU(chan[y - 1][x]);
         vfloat right = LVFU(chan[y][x + 1]);
         vfloat bottom = LVFU(chan[y + 1][x]);
         vfloat upd = cur * w1v + (left + top + right + bottom) * w2v;
-        STVFU(chan[y][x], upd);
+        STVFU(chan[y][x], vself(nz, upd, cur));
     };
 #endif
 
@@ -127,10 +127,11 @@ void heal_laplace_loop(Imagefloat *img, const array2D<int32_t> &mask)
 #ifdef ART_SIMD
             for (; x < width - 1 - 3; x += 4) {
                 vint m = _mm_loadu_si128(reinterpret_cast<vint *>(&mask[y][x]));
-                if (vtest(vnotm(vmaski_eq(m, iZEROv)))) {
-                    vnext(img->r.ptrs, x, y);
-                    vnext(img->g.ptrs, x, y);
-                    vnext(img->b.ptrs, x, y);
+                vmask nz = vnotm(vmaski_eq(m, iZEROv));
+                if (vtest(nz)) {
+                    vnext(img->r.ptrs, x, y, nz);
+                    vnext(img->g.ptrs, x, y, nz);
+                    vnext(img->b.ptrs, x, y, nz);
                 }
             }
 #endif
@@ -262,7 +263,7 @@ public:
             }
             if (intersection) {
                 // There's no intersection, we delete the Rectangle structure
-                intersection.release();
+                intersection.reset();
             }
             return false;
         }
@@ -368,6 +369,9 @@ public:
             delete image;
         }
     }
+
+    SpotBox(const SpotBox &) = delete;
+    SpotBox &operator=(const SpotBox &) = delete;
 
     SpotBox &operator/=(int v)
     {
@@ -521,13 +525,17 @@ public:
 
         const float sigma = find_sigma(radius, featherRadius);
 
+        const int W = x2 - x1 + 1;
+        const int H = y2 - y1 + 1;
+
+        // prevent guidedFilter() from rounding the size to 0
+        const bool use_detail = detail > 0 && std::min(W, H) >= 5;
+
         array2D<float> srcY;
         array2D<float> dstY;
 
         constexpr float detail_blend = 0.6f;
-        if (detail > 0) {
-            int W = x2 - x1 + 1;
-            int H = y2 - y1 + 1;
+        if (use_detail) {
             srcY(W, H);
             dstY(W, H);
 
@@ -577,7 +585,7 @@ public:
                     continue;
                 }
 
-                if (detail == 0) {
+                if (!use_detail) {
                     dstImg->r(dstImgY, dstImgX) =
                         intp(blend, image->r(srcImgY, srcImgX),
                              dstImg->r(dstImgY, dstImgX));
@@ -682,6 +690,12 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
                                   const ColorManagementParams *cmp, int tr,
                                   DenoiseInfoStore *dnstore)
 {
+    /* Residency boundary: the heal/clone loops both read and write img's
+     * planes, and the caller hands us a copyTo() destination -- copyTo
+     * deliberately preserves device residency (imagefloat.cc:190), so this
+     * arrives GPU-resident. */
+    img->syncCpuForWrite();
+
     // Get the clipped image areas (src & dst) from the source image
 
     std::vector<std::shared_ptr<SpotBox>> srcSpotBoxs;
@@ -695,9 +709,8 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
                     pp.getY() + pp.getHeight() - 1, 0, 0, img,
                     SpotBox::Type::FINAL);
 
-    std::set<int>
-        visibleSpots; // list of dest spots intersecting the preview's crop
-    int i = 0;
+    // list of dest spots intersecting the preview's crop
+    std::set<int> visibleSpots;
 
     const auto convert = [&](Imagefloat *img) -> void {
         bool converted = false;
@@ -715,7 +728,7 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
         }
         if (params->denoise.enabled && dnstore &&
             std::max(img->getWidth(), img->getHeight()) > 16) {
-            denoise(imgsrc, currWB, img, *dnstore, params->denoise);
+            denoise(imgsrc, currWB, img, params->denoise);
         }
     };
 
@@ -728,14 +741,13 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
             !dstSpotBox->setIntersectionWith(fullImageBox) ||
             !srcSpotBox->imageIntersects(*dstSpotBox, true)) {
             continue;
-            ++i;
         }
 
-        // If spot intersect the preview image, add it to the visible spots
-        if (dstSpotBox->spotIntersects(cropBox)) {
-            visibleSpots.insert(i);
-        }
-        ++i;
+        // Does the spot intersect the preview image? We can only record its
+        // index once we know the box actually made it into the vectors below,
+        // otherwise the index would name a different spot -- or no spot at
+        // all, and the .at() calls further down would throw.
+        const bool visible = dstSpotBox->spotIntersects(cropBox);
 
         // Source area
         PreviewProps spp(srcSpotBox->imgArea.x1, srcSpotBox->imgArea.y1,
@@ -771,6 +783,9 @@ void ImProcFunctions::removeSpots(rtengine::Imagefloat *img,
 
         // Update the intersectionArea between src and dest
         if (srcSpotBox->mutuallyClipImageArea(*dstSpotBox)) {
+            if (visible) {
+                visibleSpots.insert(int(srcSpotBoxs.size()));
+            }
             srcSpotBoxs.push_back(srcSpotBox);
             dstSpotBoxs.push_back(dstSpotBox);
         }
