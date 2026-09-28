@@ -1,18 +1,19 @@
 """공개 원문 저장소에서 RawPedia 영문 Markdown 코퍼스를 수집한다.
 
-RawPedia는 2025년에 MediaWiki에서 Hugo로 전환했다. 저장소는 문서별
-디렉터리의 ``index.md``를 영문 원문으로, ``index.<언어>.md``를 번역본으로
-관리한다. 이 수집기는 ``content/`` 아래 Markdown 전체를 후보로 기록한 뒤
-영문 원문만 문서별 파일로 저장한다.
+RawPedia는 2025년에 MediaWiki에서 Hugo로 전환했다. ``content/`` 아래의
+Markdown 전체를 후보로 남기고, 리디렉션·번역·관리 문서·편집기 잠금 파일을
+제외한 영문 원문을 페이지별 Markdown 파일로 저장한다.
 """
 
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path, PurePosixPath
 import re
 import time
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 
@@ -26,9 +27,33 @@ RAW_CONTENT = f"https://raw.githubusercontent.com/{REPOSITORY}"
 RAWPEDIA_SITE = "https://rawpedia.rawtherapee.com"
 REQUEST_INTERVAL_SECONDS = 0.5
 USER_AGENT = "ART-RawPedia-corpus/1.0 (+https://github.com/artpixls/ART)"
-TRANSLATION_INDEX_RE = re.compile(
-    r"^index\.([a-z]{2,3}(?:-[a-z0-9]+)?)\.md$", re.IGNORECASE
+TRANSLATION_FILENAME_RE = re.compile(
+    r"^(?:_?index)\.([a-z]{2,3}(?:-[a-z0-9]+)?)\.md$", re.IGNORECASE
 )
+BODY_REDIRECT_RE = re.compile(r"^\s*(?:\d+\.\s*)?REDIRECT\b", re.IGNORECASE | re.MULTILINE)
+
+# 원문을 확인해 관리자·기여 안내임을 판정한 경로만 명시적으로 제외한다.
+MANAGEMENT_DOCUMENT_REASONS = {
+    "content/Coding_Rawpedia_pages.md": "관리 문서: RawPedia 작성 규칙",
+    "content/Contributing.md": "관리 문서: 기여 안내",
+    "content/How_to_Coverity.md": "관리 문서: 정적 분석 운영 절차",
+    "content/How_to_release_RawTherapee.md": "관리 문서: 릴리스 절차",
+    "content/RawPedia_Book.md": "관리 문서: RawPedia 책 생성 절차",
+    "content/changes.md": "관리 문서: 변경 이력",
+    "content/Translating_RawPedia/index.md": "관리 문서: RawPedia 번역 기여 안내",
+    "content/Translating_RawTherapee/index.md": "관리 문서: RawTherapee 번역 기여 안내",
+}
+
+# 이전 MediaWiki 원문 중 파일명과 내용을 확인해 비영문임을 판정한 파일이다.
+NON_ENGLISH_DOCUMENT_REASONS = {
+    "content/Bordi_e_Microcrontasto.md": "비영문 문서: 이탈리아어",
+    "content/Creare_profili_di_elaborazione_per_uso_generale.md": "비영문 문서: 이탈리아어",
+    "content/Nitidezza.md": "비영문 문서: 이탈리아어",
+    "content/Profili_di_elaborazione_dinamici.md": "비영문 문서: 이탈리아어",
+    "content/Riduzione_Rumore_Puntuale.md": "비영문 문서: 이탈리아어",
+    "content/Sidecar_Files_-_Profili_di_sviluppo.md": "비영문 문서: 이탈리아어",
+    "content/Wavelets/pv.md": "비영문 문서: 프랑스어",
+}
 
 
 @dataclass(frozen=True)
@@ -38,6 +63,11 @@ class CollectionDecision:
     status: str
     reason: str
     output_path: Optional[Path]
+
+
+def utc_now() -> str:
+    """수집 기록에 사용할 초 단위 UTC 시각을 반환한다."""
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def split_front_matter(document: str) -> tuple[str, str]:
@@ -55,43 +85,53 @@ def split_front_matter(document: str) -> tuple[str, str]:
     return "", document
 
 
-def is_redirect_only(document: str) -> bool:
-    """Hugo 리디렉션 목적지만 선언한 원문인지 확인한다."""
+def is_redirect_document(document: str) -> bool:
+    """프런트매터 또는 기존 RawPedia 본문의 리디렉션 표기를 찾는다."""
     front_matter, body = split_front_matter(document)
-    has_redirect = any(
+    has_front_matter_redirect = any(
         line.strip().lower().startswith(("redirect:", "redirect_to:"))
         for line in front_matter.splitlines()
     )
-    return has_redirect and not body.strip()
+    return has_front_matter_redirect or bool(BODY_REDIRECT_RE.search(body))
 
 
 def output_path_for(source_path: str) -> Path:
-    """``content/Foo/index.md``를 추적 가능한 ``Foo.md``로 대응시킨다."""
-    relative_directory = PurePosixPath(source_path).parent.relative_to(CONTENT_PREFIX)
-    return Path(*relative_directory.parts).with_suffix(".md")
+    """원문 경로를 페이지별 로컬 Markdown 경로로 대응시킨다."""
+    relative = PurePosixPath(source_path).relative_to(CONTENT_PREFIX)
+    if relative.name == "index.md":
+        return Path(*relative.parent.parts).with_suffix(".md")
+    return Path(*relative.parts)
 
 
 def classify_content_path(
     source_path: str, document: Optional[str] = None
 ) -> CollectionDecision:
-    """공개된 RawPedia 영문 문서 원문만 선택한다."""
+    """영문 본문·번역·리디렉션·관리 후보를 결정 가능한 규칙으로 분류한다."""
     source = PurePosixPath(source_path)
     filename = source.name
 
     if not source_path.startswith(CONTENT_PREFIX) or source.suffix != ".md":
         return CollectionDecision("excluded", "콘텐츠 Markdown 파일이 아님", None)
-    if filename == "_index.md":
-        return CollectionDecision("excluded", "Hugo 섹션 메타데이터", None)
 
-    translation = TRANSLATION_INDEX_RE.match(filename)
+    translation = TRANSLATION_FILENAME_RE.match(filename)
     if translation:
         return CollectionDecision(
             "excluded", f"번역본 ({translation.group(1).lower()})", None
         )
-    if filename != "index.md":
-        return CollectionDecision("excluded", "일반 문서 페이지가 아닌 Hugo 파일", None)
-    if document is not None and is_redirect_only(document):
-        return CollectionDecision("excluded", "본문 없는 리디렉션 문서", None)
+    if filename == "_index.md":
+        return CollectionDecision("excluded", "Hugo 섹션 메타데이터", None)
+    if filename.startswith(".#"):
+        return CollectionDecision("excluded", "편집기 잠금 파일", None)
+    if source_path in MANAGEMENT_DOCUMENT_REASONS:
+        return CollectionDecision(
+            "excluded", MANAGEMENT_DOCUMENT_REASONS[source_path], None
+        )
+    if source_path in NON_ENGLISH_DOCUMENT_REASONS:
+        return CollectionDecision(
+            "excluded", NON_ENGLISH_DOCUMENT_REASONS[source_path], None
+        )
+    if document is not None and is_redirect_document(document):
+        return CollectionDecision("excluded", "리디렉션 문서", None)
 
     return CollectionDecision(
         "included", "영문 문서 원문", output_path_for(source_path)
@@ -99,18 +139,35 @@ def classify_content_path(
 
 
 def hugo_url_segment(segment: str) -> str:
-    """원문 디렉터리에 적용되는 단순한 Hugo URL 경로 정규화를 재현한다."""
+    """원문 경로에 적용되는 단순한 Hugo URL 경로 정규화를 재현한다."""
     normalized = segment.lower().replace(" ", "-")
     normalized = re.sub(r"[^a-z0-9_-]", "", normalized)
     normalized = re.sub(r"-+", "-", normalized).strip("-")
     return normalized
 
 
-def rawpedia_page_url(source_path: str) -> str:
-    """Hugo 문서 원문 경로에 대응하는 공개 RawPedia URL을 반환한다."""
-    directory = PurePosixPath(source_path).parent.relative_to(CONTENT_PREFIX)
-    parts = [hugo_url_segment(part) for part in directory.parts]
-    return f"{RAWPEDIA_SITE}/{'/'.join(parts)}/"
+def rawpedia_page_url(source_path: str) -> Optional[str]:
+    """원문 경로에 대응하는 RawPedia 공개 페이지 URL을 반환한다."""
+    relative = PurePosixPath(source_path).relative_to(CONTENT_PREFIX)
+    filename = relative.name
+    if filename.startswith(".#"):
+        return None
+    if filename == "index.md" or TRANSLATION_FILENAME_RE.match(filename):
+        route_parts = relative.parent.parts
+    elif filename == "_index.md":
+        route_parts = ()
+    else:
+        route_parts = relative.with_suffix("").parts
+
+    normalized_parts = [hugo_url_segment(part) for part in route_parts]
+    path = "/".join(part for part in normalized_parts if part)
+    return f"{RAWPEDIA_SITE}/{path}/" if path else f"{RAWPEDIA_SITE}/"
+
+
+def git_blob_sha(content: bytes) -> str:
+    """Git tree의 blob SHA와 비교할 수 있는 SHA-1을 계산한다."""
+    header = f"blob {len(content)}\0".encode("ascii")
+    return hashlib.sha1(header + content).hexdigest()
 
 
 class PacedGitHubClient:
@@ -138,16 +195,36 @@ class PacedGitHubClient:
     def get_json(self, url: str) -> dict:
         return self.get(url).json()
 
-    def get_text(self, url: str) -> str:
-        return self.get(url).text
+    def get_bytes(self, url: str) -> bytes:
+        return self.get(url).content
 
 
 def source_url_for(commit: str, source_path: str) -> str:
-    return f"{GITHUB_WEB}/blob/{commit}/{source_path}"
+    """고정 커밋의 GitHub 원문 보기 URL을 반환한다."""
+    return f"{GITHUB_WEB}/blob/{commit}/{quote(source_path, safe='/')}"
 
 
 def raw_url_for(commit: str, source_path: str) -> str:
-    return f"{RAW_CONTENT}/{commit}/{source_path}"
+    """고정 커밋의 원문 바이트 URL을 반환한다."""
+    return f"{RAW_CONTENT}/{commit}/{quote(source_path, safe='/')}"
+
+
+def get_source_bytes(
+    client: PacedGitHubClient,
+    destination: Path,
+    blob_sha: str,
+    source_url: str,
+) -> tuple[bytes, bool]:
+    """현재 Git blob과 일치하는 로컬 원문만 재사용하고 나머지는 다시 받는다."""
+    if destination.is_file():
+        local_bytes = destination.read_bytes()
+        if git_blob_sha(local_bytes) == blob_sha:
+            return local_bytes, True
+
+    downloaded = client.get_bytes(source_url)
+    if git_blob_sha(downloaded) != blob_sha:
+        raise ValueError("다운로드한 원문이 Git tree의 blob SHA와 일치하지 않습니다.")
+    return downloaded, False
 
 
 def markdown_link(label: str, url: Optional[str]) -> str:
@@ -156,7 +233,9 @@ def markdown_link(label: str, url: Optional[str]) -> str:
 
 def write_manifest(
     manifest_path: Path,
-    collected_at: str,
+    outdir: Path,
+    candidate_checked_at: str,
+    collection_completed_at: str,
     commit: str,
     candidates: list[dict],
 ) -> None:
@@ -170,27 +249,29 @@ def write_manifest(
         "",
         "## 고정 수집 범위",
         "",
-        f"- 실행 시각(UTC): {collected_at}",
+        f"- 실행일(UTC): {candidate_checked_at[:10]}",
+        f"- 후보 확인 시각(UTC): {candidate_checked_at}",
+        f"- 수집 완료 시각(UTC): {collection_completed_at}",
         f"- 후보 모수: `RawTherapee/RawPedia` `content/` 아래 Markdown 파일 {len(candidates)}개",
         f"- 고정 소스 커밋: `{commit}`",
-        f"- 포함 문서: {included}개",
+        f"- 최종 문서: {included}개",
+        f"- 원문 입력 범위: 완료 — 포함 문서 {included}개를 T8 입력 범위로 고정",
         f"- 제외 문서: {excluded}개",
         f"- 미수집 문서: {pending}개",
         "- 저장 단위: 원본 페이지 1개당 Markdown 파일 1개",
-        "- 저장 위치: `data/rawpedia/` (소스 디렉터리의 `index.md`를 대응 경로의 `.md`로 저장)",
+        f"- 저장 위치: `{outdir}`",
         f"- 업스트림: {GITHUB_WEB}",
         "",
-        "RawPedia는 2025년에 MediaWiki에서 Hugo/Markdown으로 전환되었다. 이 목록은 "
-        "공개 원문 저장소의 고정 커밋을 후보 모수로 사용하며, 원본 페이지 URL과 "
-        "소스 스냅샷 URL을 모두 남긴다.",
+        "RawPedia 공개 원문 저장소의 고정 커밋을 후보 모수로 사용한다. 각 후보는 "
+        "RawPedia 공개 페이지와 GitHub 원문 스냅샷으로 추적한다.",
         "",
         "## 선택 규칙",
         "",
-        "- 포함: `content/**/index.md`의 영어 본문 문서.",
-        "- 제외: `index.{언어코드}.md` 번역본, Hugo `_index.md` 섹션/목록 메타데이터, "
-        "리디렉션 대상만 선언하고 본문이 없는 문서, 일반 문서가 아닌 Markdown 파일.",
-        "- 리디렉션은 문서 원문이 없는 경우에만 제외한다. 본문이 있는 문서의 Hugo alias는 "
-        "원문 페이지의 이전 URL일 수 있으므로 제외 근거로 사용하지 않는다.",
+        "- 포함: 영문 본문 Markdown. 디렉터리형 `index.md`와 평면 `.md` 모두를 후보별로 판정한다.",
+        "- 제외: `index.{언어코드}.md` 및 `_index.{언어코드}.md` 번역본, Hugo `_index.md` 메타데이터, "
+        "편집기 잠금 파일, 리디렉션 문서, 원문 확인을 거친 관리·기여 문서와 비영문 레거시 문서.",
+        "- 리디렉션: Hugo 프런트매터의 `redirect`/`redirect_to`와 본문의 `REDIRECT` 표기를 모두 제외한다.",
+        "- 재실행: 기존 파일은 현재 Git tree의 blob SHA와 일치할 때만 재사용한다.",
         f"- HTTP 요청 간 최소 간격: {REQUEST_INTERVAL_SECONDS:.1f}초.",
         "- 이 수집은 원문만 보관하며 청킹·임베딩·범위 축소를 수행하지 않는다.",
         "",
@@ -228,15 +309,21 @@ def fetch_corpus(outdir: Path, manifest_path: Path) -> int:
             "RawPedia Git 트리 응답이 잘려 있어 불완전한 범위는 저장하지 않습니다."
         )
 
-    candidate_paths = sorted(
-        item["path"]
-        for item in tree_data["tree"]
-        if item["type"] == "blob"
-        and item["path"].startswith(CONTENT_PREFIX)
-        and item["path"].endswith(".md")
+    candidate_items = sorted(
+        (
+            item
+            for item in tree_data["tree"]
+            if item["type"] == "blob"
+            and item["path"].startswith(CONTENT_PREFIX)
+            and item["path"].endswith(".md")
+        ),
+        key=lambda item: item["path"],
     )
+    candidate_checked_at = utc_now()
     candidates = []
-    for source_path in candidate_paths:
+    for item in candidate_items:
+        source_path = item["path"]
+        blob_sha = item["sha"]
         decision = classify_content_path(source_path)
         page_url = rawpedia_page_url(source_path)
         source_url = source_url_for(commit, source_path)
@@ -244,21 +331,24 @@ def fetch_corpus(outdir: Path, manifest_path: Path) -> int:
 
         if decision.status == "included":
             planned_output = decision.output_path
-            destination = (outdir / planned_output) if planned_output else None
+            assert planned_output is not None
+            destination = outdir / planned_output
             try:
-                if destination and destination.exists() and destination.stat().st_size > 0:
-                    document = destination.read_text(encoding="utf-8")
-                else:
-                    document = client.get_text(raw_url_for(commit, source_path))
+                source_bytes, reused = get_source_bytes(
+                    client, destination, blob_sha, raw_url_for(commit, source_path)
+                )
+                document = source_bytes.decode("utf-8")
                 decision = classify_content_path(source_path, document)
                 if decision.status == "included":
                     output_path = decision.output_path
+                    assert output_path is not None
                     destination = outdir / output_path
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.write_text(document, encoding="utf-8")
-            except requests.RequestException as error:
+                    if not reused:
+                        destination.parent.mkdir(parents=True, exist_ok=True)
+                        destination.write_bytes(source_bytes)
+            except (requests.RequestException, UnicodeDecodeError, ValueError) as error:
                 decision = CollectionDecision(
-                    "pending", f"다운로드 실패: {error.__class__.__name__}", None
+                    "pending", f"원문 확인 실패: {error.__class__.__name__}", None
                 )
 
         candidates.append(
@@ -268,14 +358,19 @@ def fetch_corpus(outdir: Path, manifest_path: Path) -> int:
                 "reason": decision.reason,
                 "page_url": page_url,
                 "source_url": source_url,
-                "output_path": str(Path("data/rawpedia") / output_path)
-                if output_path
-                else None,
+                "output_path": str(outdir / output_path) if output_path else None,
             }
         )
 
-    collected_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    write_manifest(manifest_path, collected_at, commit, candidates)
+    collection_completed_at = utc_now()
+    write_manifest(
+        manifest_path,
+        outdir,
+        candidate_checked_at,
+        collection_completed_at,
+        commit,
+        candidates,
+    )
     pending = sum(item["status"] == "pending" for item in candidates)
     print(
         f"후보: {len(candidates)}개; 포함: "

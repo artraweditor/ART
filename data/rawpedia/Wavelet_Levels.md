@@ -12,7 +12,7 @@ toc: true
 ---
 
 
-![](daffodil_split.jpg "daffodil_split.jpg")
+![](/images/daffodil_split.jpg "/images/daffodil_split.jpg")
 
 
 __TOC__
@@ -70,7 +70,7 @@ precision when analyzing the data.
 a very simplistic explanation: mathematicians would surely have a lot to
 say here...\]</span>
 
-![](wavelet_daubechies20.jpg "Wavelet_daubechies20.jpg")RawTherapee uses
+![](/images/wavelet_daubechies20.jpg "/images/Wavelet_daubechies20.jpg")RawTherapee uses
 wavelets in various tools, and in this one in particular it uses the
 [Daubechies](https://en.wikipedia.org/wiki/Daubechies_wavelet) wavelet,
 to decompose the elements of the image into the components of the
@@ -141,7 +141,7 @@ residual image, or with all of them combined.
 The size of the details included in each level is:
 
 
-![]wavelet_detail_size.jpg "wavelet_detail_size.jpg")
+![](/images/wavelet_detail_size.jpg "/images/wavelet_detail_size.jpg")
 <figcaption>wavelet_detail_size.jpg</figcaption>
 
 
@@ -456,14 +456,14 @@ SSZZZ
 <div>
 
 
-![](wavelet_pic.jpg "wavelet_pic.jpg")
+![](/images/wavelet_pic.jpg "/images/wavelet_pic.jpg")
 
-![](wavelet_config_l2.jpg "wavelet_config_l2.jpg")
+![](/images/wavelet_config_l2.jpg "/images/wavelet_config_l2.jpg")
 
 
-![](wavelet_config_l4.jpg "wavelet_config_l4.jpg")
+![](/images/wavelet_config_l4.jpg "/images/wavelet_config_l4.jpg")
 
-![](wavelet_config_ri.jpg "wavelet_config_ri.jpg")
+![](/images/wavelet_config_ri.jpg "/images/wavelet_config_ri.jpg")
 
 
 </div>
@@ -498,7 +498,7 @@ the levels are analyzed and sorted before being modified and
 progressively attenuated similar to the following curve :
 
 
-![](wavelet_beta.png "wavelet_beta.png")
+![](/images/wavelet_beta.png "/images/wavelet_beta.png")
 
 
 Broadly speaking and for each level, the graph shows that:
@@ -528,7 +528,7 @@ fundamental points:
 
 ### Contrast Levels
 
-![](wavelet_contrast_buttons.jpg "wavelet_contrast_buttons.jpg") 
+![](/images/wavelet_contrast_buttons.jpg "/images/wavelet_contrast_buttons.jpg") 
 
 The
 number of levels shown is defined by the ***Wavelet levels*** and you
@@ -568,11 +568,11 @@ as explained in [Analysis of the contrasts in each level](#analysis_of_the_contr
     <div>
 
   
-      ![](wavelet_beta+damper.png "wavelet_beta+damper.png")
+      ![](/images/wavelet_beta+damper.png "/images/wavelet_beta+damper.png")
 
 
 
-      ![]wavelet_beta-damper.png "wavelet_beta-damper.png")
+      ![](/images/wavelet_beta-damper.png /images/"wavelet_beta-damper.png")
 
 
     </div>
@@ -581,7 +581,7 @@ as explained in [Analysis of the contrasts in each level](#analysis_of_the_contr
     By shifting the curve to the right, the higher contrast values will
     vary more, whereas with negative slider values, the lower contrast
     values will be modified more. Graphically:
-    ![](wavelet_beta+offset.png "wavelet_beta+offset.png")
+    ![](/images/wavelet_beta+offset.png "/images/wavelet_beta+offset.png")
 3.  ***Low contrast threshold***: this is the minimum contrast value
     that the details in the decomposition level must have for them to be
     taken into account. Lower contrast values, which have a value lower
@@ -621,7 +621,7 @@ the result. i.e.:
     <div style="overflow: hidden">
 
 
-    ![](wavelet_contrast_highlight.jpg "wavelet_contrast_highlight.jpg")
+    ![](/images/wavelet_contrast_highlight.jpg "/images/wavelet_contrast_highlight.jpg")
 
     </div>
   - If you move your mouse over it, you will see where the default
@@ -660,7 +660,7 @@ the result. i.e.:
     <div style="overflow: hidden">
 
 
-    ![](wavelet_contrast_shadow.jpg "wavelet_contrast_shadow.jpg")
+    ![](/images/wavelet_contrast_shadow.jpg "/images/wavelet_contrast_shadow.jpg")
 
 
     </div>
@@ -724,13 +724,13 @@ control points on the curves, ...).
 <div>
 
 
-![](wavelet_pic.jpg "wavelet_pic.jpg")
+![](/images/wavelet_pic.jpg "/images/wavelet_pic.jpg")
 
-![](wavelet_contrast_15c+_wl.jpg "wavelet_contrast_15C+_wl.jpg")
+![](/images/wavelet_contrast_15c+_wl.jpg "/images/wavelet_contrast_15C+_wl.jpg")
 
-![](wavelet_contrast_15c+_h3s6.jpg "wavelet_contrast_15c+_h3s6.jpg")
+![](/images/wavelet_contrast_15c+_h3s6.jpg "/images/wavelet_contrast_15c+_h3s6.jpg")
 
-![](wavelet_contrast_15c+_h3s6_str50.jpg "wavelet_contrast_15c+_h3s6_str50.jpg")
+![](/images/wavelet_contrast_15c+_h3s6_str50.jpg "/images/wavelet_contrast_15c+_h3s6_str50.jpg")
 
 </div>
 
@@ -741,10 +741,10 @@ effect.
 
 <div>
 
-![](wavelet_pic.jpg "wavelet_pic.jpg")
+![](/images/wavelet_pic.jpg "/images/wavelet_pic.jpg")
 
 
-![](wavelet_contrast_15c+_h3s6_str50.jpg "wavelet_contrast_15c+_H3s6_str50.jpg")
+![](/images/wavelet_contrast_15c+_h3s6_str50.jpg "/images/wavelet_contrast_15c+_H3s6_str50.jpg")
 
 
 </div>
@@ -794,13 +794,13 @@ whether there are any deviations from the initial value.
 <div>
 
 
-![](wavelet_contrast_15c+_h3s6.jpg "wavelet_contrast_15c+_h3s6.jpg")
+![](/images/wavelet_contrast_15c+_h3s6.jpg "/images/wavelet_contrast_15c+_h3s6.jpg")
 
-![](wavelet_chrom_wc_full.jpg "wavelet_chrom_wc_full.jpg")
+![](/images/wavelet_chrom_wc_full.jpg "/images/wavelet_chrom_wc_full.jpg")
 
-![](wavelet_chrom_wc_l1l2full.jpg "wavelet_chrom_wc_l1l2full.jpg")
+![](/images/wavelet_chrom_wc_l1l2full.jpg "/images/wavelet_chrom_wc_l1l2full.jpg")
 
-![](wavelet_chrom_wc_detail.jpg "wavelet_chrom_wc_detail.jpg")
+![](/images/wavelet_chrom_wc_detail.jpg "/images/wavelet_chrom_wc_detail.jpg")
 
 
 </div>
@@ -838,7 +838,7 @@ curves above.
     effective
 
 
-  ![](wavelet_chrom_pastel.jpg "wavelet_chrom_pastel.jpg")
+  ![](/images/wavelet_chrom_pastel.jpg "/images/wavelet_chrom_pastel.jpg")
   - it should be noted that the dark area of the gradient corresponds
     to the pastel tones and the lighter area corresponds to the
     saturated tones (following [this explanation of saturation](https://en.wikipedia.org/wiki/Colorfulness))*
@@ -853,7 +853,7 @@ curves above.
     Top-Right: 100, Bottom-Right: 130*
 
 
-  ![](wavelet_chrom_chrom.jpg "wavelet_chrom_chrom.jpg")
+  ![]/images/(wavelet_chrom_chrom.jpg "/images/wavelet_chrom_chrom.jpg")
 
 
   - although the values of both curves do not overlap, you can see an
@@ -871,16 +871,16 @@ artifacts.
 <div>
 
 
-  ![](wavelet_contrast_15c+_h3s6.jpg "wavelet_contrast_15c+_h3s6.jpg")
+  ![](/images/(wavelet_contrast_15c+_h3s6.jpg "/images/wavelet_contrast_15c+_h3s6.jpg")
 
 
-  ![](wavelet_chrom_wc_l1l2full.jpg "wavelet_chrom_wc_l1l2full.jpg")
+  ![](/images/wavelet_chrom_wc_l1l2full.jpg "/images/wavelet_chrom_wc_l1l2full.jpg")
 
 
-  ![](wavelet_chrom_sp_l1l2full_l3_60.jpg "wavelet_chrom_sp_l1l2full_l3_60.jpg")
+  ![](/images/(wavelet_chrom_sp_l1l2full_l3_60.jpg "/images/wavelet_chrom_sp_l1l2full_l3_60.jpg")
 
 
-  ![](wavelet_contrast_15c+_h3s6.jpg "wavelet_contrast_15c+_h3s6.jpg")
+  ![](/images/wavelet_contrast_15c+_h3s6.jpg "/images/wavelet_contrast_15c+_h3s6.jpg")
 
 
 </div>
@@ -912,16 +912,16 @@ effects without producing artifacts that will ruin the photo.
 <div>
 
 
-  ![](wavelet_chrom_link_100.jpg "wavelet_chrom_link_100.jpg")
+  ![](/images/wavelet_chrom_link_100.jpg "/images/wavelet_chrom_link_100.jpg")
 
-  ![](wavelet_chrom_link_50.jpg "wavelet_chrom_link_50.jpg")
-
-
-  ![](wavelet_chrom_link_50_str50.jpg "wavelet_chrom_link_50_str50.jpg")
+  ![](/images/wavelet_chrom_link_50.jpg "/images/wavelet_chrom_link_50.jpg")
 
 
+  ![](/images/wavelet_chrom_link_50_str50.jpg "/images/wavelet_chrom_link_50_str50.jpg")
 
-  ![](wavelet_contrast_15c+_h3s6_str50.jpg "wavelet_contrast_15c+_h3s6_str50.jpg")
+
+
+  ![](/images/(wavelet_contrast_15c+_h3s6_str50.jpg "/images/wavelet_contrast_15c+_h3s6_str50.jpg")
 
 
 </div>
@@ -962,10 +962,10 @@ this tool.
 <div>
 
 
-  ![](wavelets_gamut_nosky.jpg "wavelets_gamut_nosky.jpg")
+  ![](/images/wavelets_gamut_nosky.jpg "/images/wavelets_gamut_nosky.jpg")
 
 
-  ![](wavelets_gamut_sky.jpg "wavelets_gamut_sky.jpg")
+  ![](/images/wavelets_gamut_sky.jpg "/images/wavelets_gamut_sky.jpg")
 
 
 </div>
@@ -982,7 +982,7 @@ For the examples that follow, the following (rather restrictive) range
 of red tones has been chosen:
 
 
-![](wavelets_gamut_skin_hue.jpg "wavelets_gamut_skin_hue.jpg")
+![](/images/wavelets_gamut_skin_hue.jpg "/images/wavelets_gamut_skin_hue.jpg")
 
 
 ### Skin targetting/protection
@@ -1003,17 +1003,17 @@ rest of the colors.
 
 <div>
 
- ![](wavelets_gamut_skin.jpg "wavelets_gamut_skin.jpg")\]
+ ![](w/images/avelets_gamut_skin.jpg "/images/wavelets_gamut_skin.jpg")\]
 
 
-  ![](wavelets_gamut_skin_target0.jpg "wavelets_gamut_skin_target0.jpg")
+  ![](/images/wavelets_gamut_skin_target0.jpg "/images/wavelets_gamut_skin_target0.jpg")
 
 
 
-  ![](wavelets_gamut_skin_target-100.jpg "wavelets_gamut_skin_target-100.jpg")
+  ![](/images/(wavelets_gamut_skin_target-100.jpg "/images/wavelets_gamut_skin_target-100.jpg")
 
 
-  ![](wavelets_gamut_skin_target+100.jpg "wavelets_gamut_skin_target+100.jpg")
+  ![](/images/wavelets_gamut_skin_target+100.jpg "/images/wavelets_gamut_skin_target+100.jpg")
 
 </div>
 
@@ -1031,10 +1031,10 @@ into account regardless of the colors modified with the curve.
 <div>
 
 
-  ![](wavelets_gamut_curve_target100.jpg "wavelets_gamut_curve_target100.jpg")
+  ![](/images/(wavelets_gamut_curve_target100.jpg "/images/wavelets_gamut_curve_target100.jpg")
 
 
-  ![](wavelets_gamut_curve.jpg "wavelets_gamut_curve.jpg")
+  ![](/images/wavelets_gamut_curve.jpg "/images/wavelets_gamut_curve.jpg")
 
 
 </div>
@@ -1079,7 +1079,7 @@ intuitive, especially when selecting yellow tones. Perceptually they are
 equivalent to a graph such as the one below:
 
 
-![](cielab_8x8.jpg "cielab_8x8.jpg")
+![](/images/cielab_8x8.jpg "/images/cielab_8x8.jpg")
 
 
 In the center of the graph there is a white dot which, when dragged,
@@ -1136,8 +1136,8 @@ don't miss this [front view of the *L\*a\*b\* color space*](https://upload.wikim
 The bottom of the top view matches the front of the front view.
 
 In the interface you will find two *curve types:* *Linear*
-(![](wavelet_toning_linear.jpg "wavelet_toning_linear.jpg")) and
-*Equalizer* (![](wavelet_toning_curve.jpg "wavelet_toning_curve.jpg")).
+(![](/images/wavelet_toning_linear.jpg "/images/wavelet_toning_linear.jpg")) and
+*Equalizer* (![](/images/wavelet_toning_curve.jpg "/images/wavelet_toning_curve.jpg")).
 To choose between one or the other, click on the small triangle on the
 right.
 
@@ -1192,25 +1192,25 @@ colors have been excluded:
 
 <div>
 
-  ![](wavelet_chrom_link_50_str50.jpg "wavelet_chrom_link_50_str50.jpg")
+  ![](/images/wavelet_chrom_link_50_str50.jpg "/images/wavelet_chrom_link_50_str50.jpg")
 
 
-  ![](wavelet_toning_opbyfull.jpg "wavelet_toning_opbyfull.jpg")
+  ![](/images/wavelet_toning_opbyfull.jpg "/images/wavelet_toning_opbyfull.jpg")
 
 
 
-  ![](wavelet_toning_opbyfull_curve.jpg "wavelet_toning_opbyfull_curve.jpg")
+  ![](/images/wavelet_toning_opbyfull_curve.jpg "/images/wavelet_toning_opbyfull_curve.jpg")
 
 </div>
 <div>
 
-![](wavelet_toning_opby.jpg "wavelet_toning_opby.jpg")
+![](/images/wavelet_toning_opby.jpg "/images/wavelet_toning_opby.jpg")
 
 
-![](wavelet_toning_opby_str50.jpg "wavelet_toning_opby_str50.jpg")
+![](/images/wavelet_toning_opby_str50.jpg "/images/wavelet_toning_opby_str50.jpg")
 
 
-![](wavelet_toning_opby_curve.jpg "wavelet_toning_opby_curve.jpg")
+![](/images/wavelet_toning_opby_curve.jpg "/images/wavelet_toning_opby_curve.jpg")
 
 </div>
 
@@ -1351,53 +1351,53 @@ next level.
 <div>
 
 
-  ![](wavelet_denoise_orig.jpg "wavelet_denoise_orig.jpg")
+  ![](/images/wavelet_denoise_orig.jpg "/images/wavelet_denoise_orig.jpg")
 
 
-  ![](wavelet_denoise_l2d00s100.jpg "wavelet_denoise_l2d00s100.jpg")
-
-
-
-  ![](wavelet_denoise_l2d30s100.jpg "wavelet_denoise_l2d30s100.jpg")
+  ![](/images/wavelet_denoise_l2d00s100.jpg "/images/wavelet_denoise_l2d00s100.jpg")
 
 
 
-  ![](wavelet_denoise_l2d30s27.jpg "wavelet_denoise_l2d30s27.jpg")
+  ![](/images/wavelet_denoise_l2d30s100.jpg "/images/wavelet_denoise_l2d30s100.jpg")
+
+
+
+  ![](/images/wavelet_denoise_l2d30s27.jpg "/images/wavelet_denoise_l2d30s27.jpg")
 
 
 </div>
 <div>
 
- ![](wavelet_denoise_l1d00s00.jpg "wavelet_denoise_l1d00s00.jpg")
+ ![](/images/wavelet_denoise_l1d00s00.jpg "/images/wavelet_denoise_l1d00s00.jpg")
 >
 
 
-  ![](wavelet_denoise_l1d00s100.jpg "wavelet_denoise_l1d00s100.jpg")
+  ![](/images/(wavelet_denoise_l1d00s100.jpg "/images/wavelet_denoise_l1d00s100.jpg")
 
 
 
-  ![](wavelet_denoise_l1d12s100.jpg "wavelet_denoise_l1d12s100.jpg")
+  ![](/images/(wavelet_denoise_l1d12s100.jpg "/images/wavelet_denoise_l1d12s100.jpg")
 
 
 
-  ![](wavelet_denoise_l1d12s-17.jpg "wavelet_denoise_l1d12s-17.jpg")
+  ![](/images/wavelet_denoise_l1d12s-17.jpg "/images/wavelet_denoise_l1d12s-17.jpg")
 
 
 </div>
 <div>
 
-  ![](wavelet_denoise_orig.jpg "wavelet_denoise_orig.jpg")
+  ![](/images/wavelet_denoise_orig.jpg "/images/wavelet_denoise_orig.jpg")
 
 
-  ![](wavelet_denoise_final.jpg "wavelet_denoise_final.jpg")
-
-
-
-  ![](wavelet_denoise_orig100.jpg "wavelet_denoise_orig100.jpg")
+  ![](/images/wavelet_denoise_final.jpg "/images/wavelet_denoise_final.jpg")
 
 
 
-  ![](wavelet_denoise_final100.jpg "wavelet_denoise_final100.jpg")
+  ![](/images/wavelet_denoise_orig100.jpg "/images/wavelet_denoise_orig100.jpg")
+
+
+
+  ![](/images/wavelet_denoise_final100.jpg "/images/wavelet_denoise_final100.jpg")
 
 </div>
 
@@ -1534,15 +1534,15 @@ representation makes it easier to understand:
 <div>
 
 
-  ![](wavelet_edge_sharpening_d-50.png "wavelet_edge_sharpening_d-50.png")
+  ![](/images/wavelet_edge_sharpening_d-50.png "/images/wavelet_edge_sharpening_d-50.png")
 
 
 
-  ![](wavelet_edge_sharpening_unchanged.png "wavelet_edge_sharpening_unchanged.png")
+  ![](/images/wavelet_edge_sharpening_unchanged.png "/images/wavelet_edge_sharpening_unchanged.png")
   <figcaption>wavelet_edge_sharpening_unchanged.png</figcaption>
 
 
-  ![](wavelet_edge_sharpening_d100.png "wavelet_edge_sharpening_d100.png")
+  ![](/images/wavelet_edge_sharpening_d100.png "/images/wavelet_edge_sharpening_d100.png")
   <figcaption>wavelet_edge_sharpening_d100.png</figcaption>
 
 
@@ -1572,7 +1572,7 @@ maximum at *Radius: 20*. It then slowly reduces back to *Radius:100*.
 Graphically:
 
 
-![](wavelet_edge_sharpening_reduced.png "wavelet_edge_sharpening_reduced.png")
+![](/images/wavelet_edge_sharpening_reduced.png "/images/wavelet_edge_sharpening_reduced.png")
 <figcaption>wavelet_edge_sharpening_reduced.png</figcaption>
 
 
@@ -1649,7 +1649,7 @@ parameters:
 <div class="parrpad">
 
 
-![](wavelet_local_contrast_thresholds.jpg "wavelet_local_contrast_thresholds.jpg")
+![](/images/wavelet_local_contrast_thresholds.jpg "/images/wavelet_local_contrast_thresholds.jpg")
 <figcaption>wavelet_local_contrast_threshold.jpg</figcaption>
 
 
@@ -1693,7 +1693,7 @@ In practice:
 <div class="parrpad">
 
 
-![](wavelet_local_contrast_gauss.jpg "wavelet_local_contrast_gauss.jpg")
+![](/images/wavelet_local_contrast_gauss.jpg "/images/wavelet_local_contrast_gauss.jpg")
 <figcaption>wavelet_local_contrast_gaus.jpg</figcaption>
 
 </div>
@@ -1711,7 +1711,7 @@ will be affected (as with the slider points), whereas moving it up or
 down will increase or decrease the strength of the changes in detail.
 
 With the default curve shape (which you can reset with the
-![<File:ResetButton.png>](ResetButton.png "File:ResetButton.png")
+![<File:ResetButton.png>](/images/ResetButton.png "File:/images/ResetButton.png")
 button) the effect achieved is similar to a
 [HIRALOAM](https://www.ledet.com/margulis/Makeready/MA69-Life_on_the_Edge.pdf):
 it enhances the contrast values by controlling the shadows, while making
@@ -1735,17 +1735,17 @@ horizontal line).
 <div>
 
 
-  ![](wavelet_local_contrast_curves_o.jpg "wavelet_local_contrast_curves_o.jpg")
+  ![](/images/wavelet_local_contrast_curves_o.jpg "/images/wavelet_local_contrast_curves_o.jpg")
   <figcaption>wavelet_local_contrast_curves_o.jpg</figcaption>
 
 
 
-  ![](wavelet_local_contrast_curves_t.jpg "wavelet_local_contrast_curves_t.jpg")
+  ![](/images/wavelet_local_contrast_curves_t.jpg "/images/wavelet_local_contrast_curves_t.jpg")
   <figcaption>wavelet_local_contrast_curves_t.jpg</figcaption>
 
 
 
-  ![](wavelet_local_contrast_curves_g.jpg "wavelet_local_contrast_curves_g.jpg")
+  ![](/images/wavelet_local_contrast_curves_g.jpg "/images/wavelet_local_contrast_curves_g.jpg")
   <figcaption>wavelet_local_contrast_curves_g.jpg</figcaption>
 
 
@@ -1825,7 +1825,7 @@ aspects of the edge detection algorithm:
 
 <div>
 
-![](wavelet_edge_sharpness.jpg "wavelet_edge_sharpness.jpg")
+![](/images/wavelet_edge_sharpness.jpg "/images/wavelet_edge_sharpness.jpg")
 <figcaption>wavelet_edge_sharpness.jpg</figcaption>
 
 
@@ -1923,11 +1923,11 @@ In both cases you have 3 sliders to adjust the changes:
 
 <div>
 
-  ![](wavelet_smc_original.jpg "wavelet_smc_original.jpg")
+  ![](/images/wavelet_smc_original.jpg "/images/wavelet_smc_original.jpg")
 
-  ![](wavelet_sharpm_ml60mc30.jpg "wavelet_sharpm_ml60mc30.jpg")
+  ![](/images/wavelet_sharpm_ml60mc30.jpg "/images/wavelet_sharpm_ml60mc30.jpg")
 
-  ![](wavelet_clarity_ml60mc30.jpg "wavelet_clarity_ml60mc30.jpg")
+  ![](/images/wavelet_clarity_ml60mc30.jpg "/images/wavelet_clarity_ml60mc30.jpg")
 
 
 </div>
@@ -1956,18 +1956,18 @@ in the residual image will have almost no effect on the noise.
 
 <div>
 
-![](wavelets_residual_original.jpg "wavelets_residual_original.jpg")
+![](/images/wavelets_residual_original.jpg "/images/wavelets_residual_original.jpg")
 
 
-![](wavelets_residual_l5.jpg "wavelets_residual_l5.jpg")
+![](/images/wavelets_residual_l5.jpg "/images/wavelets_residual_l5.jpg")
   <figcaption>wavelets_residual_l5.jpg</figcaption>
 
 
-![](wavelets_residual_l7.jpg "wavelets_residual_l7.jpg")
+![](/images/wavelets_residual_l7.jpg "/images/wavelets_residual_l7.jpg")
   <figcaption>wavelets_residual_l7.jpg</figcaption>
 
 
-![](wavelets_residual_l8.jpg "wavelets_residual_l8.jpg")
+![](/images/wavelets_residual_l8.jpg "/images/wavelets_residual_l8.jpg")
   <figcaption>wavelets_residual_l8.jpg</figcaption>
 
 
@@ -2004,17 +2004,17 @@ brightness of the highlights:
 <div>
 
 
-  ![](wavelets_residual_original.jpg "wavelets_residual_original.jpg")
+  ![](/images/wavelets_residual_original.jpg "/images/wavelets_residual_original.jpg")
   <figcaption>wavelets_residual_original.jpg</figcaption>
 
 
 
-  ![](wavelets_residual_sh.jpg "wavelets_residual_sh.jpg")
+  ![](/images/(wavelets_residual_sh.jpg "/images/wavelets_residual_sh.jpg")
   <figcaption>wavelets_residual_sh.jpg</figcaption>
 
 
 
-  ![](wavelets_residual_sh-out.jpg "wavelets_residual_sh-out.jpg")
+  ![](/images/wavelets_residual_sh-out.jpg "/images/wavelets_residual_sh-out.jpg")
   <figcaption>wavelets_residual_sh-out.jpg</figcaption>
 
 
@@ -2048,16 +2048,16 @@ tab. However, note that this tool does not have the ability to
 <div>
 
 
-  ![](wavelets_residual_shneg_original.jpg "wavelets_residual_shneg_original.jpg")
+  ![](/images/wavelets_residual_shneg_original.jpg "/images/wavelets_residual_shneg_original.jpg")
   <figcaption>wavelets_residual_shneg_original.jpg</figcaption>
 
 
 
-  ![](wavelets_residual_shneg_old.jpg "wavelets_residual_shneg_old.jpg")
+  ![](/images/wavelets_residual_shneg_old.jpg "/images/wavelets_residual_shneg_old.jpg")
   <figcaption>wavelets_residual_shneg_old.jpg</figcaption>
 
 
-  ![](wavelets_residual_shneg_new.jpg "wavelets_residual_shneg_new.jpg")
+  ![](/images/wavelets_residual_shneg_new.jpg "/images/wavelets_residual_shneg_new.jpg")
   <figcaption>wavelets_residual_shneg_new.jpg</figcaption>
 
 
@@ -2100,12 +2100,12 @@ residual image will allow you to achieve some interesting effects:
 <div>
 
 
-  ![](wavelets_residual_contrast-.jpg "wavelets_residual_contrast-.jpg")
+  ![]/images/(wavelets_residual_contrast-.jpg "/images/wavelets_residual_contrast-.jpg")
   <figcaption>wavelets_residual_contrast-.jpg</figcaption>
 
 
 
-![](wavelets_residual_contrast+.jpg "wavelets_residual_contrast+.jpg")
+![](/images/wavelets_residual_contrast+.jpg "/images/wavelets_residual_contrast+.jpg")
   <figcaption>wavelets_residual_contrast+.jpg</figcaption>
 
 
@@ -2340,19 +2340,4 @@ Finally, you also have a ***Soft Radius*** slider that allows you to
 apply a blur to selected areas so that they blend in better with the
 image.
 
-## Final comparison
 
-
-
-<div>
-
-
-  ![](wavelets_original_big.png "wavelets_original_big.png")
-  <figcaption>wavelets_original_big.png</figcaption>
-
-
-  ![](wavelets_final_big.jpg "wavelets_final_big.jpg")
-  <figcaption>wavelets_final_big.jpg</figcaption>
-
-
-</div>
