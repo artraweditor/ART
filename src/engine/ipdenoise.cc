@@ -4175,7 +4175,13 @@ gpu::TiledResult RGB_denoise_tiled(ImProcData &im, Imagefloat *src,
         return denoisePrepare(im, &img, dnparams, wp) &&
                RGB_denoise_GPU(im, &img, wp);
     };
-    return gpu::processTiled(src, halo, 50, 3, 1, op, phases, &whole, cap);
+    /* CPU/GPU is ~2.0 here (measured, M4) and a tiled denoise costs ~0.55 per
+     * unit of cost (the gathering phases skip the shrink), so tiling pays only
+     * up to ~3.7: with 3 replays, halos below ~20% of the tile.  Beyond that
+     * the CPU is faster (at 384 MiB tiles: 4.1 s tiled vs 2.5 s CPU). */
+    constexpr double max_cost = 3.7;
+    return gpu::processTiled(src, halo, 50, 3, 1, op, phases, &whole, cap,
+                             max_cost);
 }
 
 void RGB_denoise(ImProcData &im, Imagefloat *src,
@@ -6467,6 +6473,9 @@ bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb,
     const std::function<bool(Imagefloat &)> whole = [&](Imagefloat &img) {
         return finalSmoothingWhole(im, &img, dnparams, nullptr);
     };
+    /* One pass, k ~ 1.07; CPU ~1.7x slower than the whole-image GPU run
+     * (measured, M4). */
+    constexpr double max_cost = 1.5;
     switch (processTiled(rgb, halo, 2, 3, 1,
                          [&](Imagefloat &tile, const Tile &t, int) {
                              const TileFrame frame = {t.padded.x, t.padded.y,
@@ -6474,7 +6483,7 @@ bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb,
                              return finalSmoothingWhole(im, &tile, dnparams,
                                                         &frame);
                          },
-                         1, &whole)) {
+                         1, &whole, 0, max_cost)) {
     case TiledResult::DONE:
         return true;
     case TiledResult::FAILED:

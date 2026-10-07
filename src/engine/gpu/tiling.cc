@@ -21,7 +21,9 @@
 #include "gpu.h"
 
 #include <cstring>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <memory>
 
 #include <algorithm>
@@ -181,7 +183,7 @@ TiledResult processTiled(
     Imagefloat *img, int halo, int align, int planes, int scratch_factor,
     const std::function<bool(Imagefloat &, const Tile &, int phase)> &op,
     int phases, const std::function<bool(Imagefloat &)> *whole,
-    size_t cap_pixels)
+    size_t cap_pixels, double max_cost)
 {
     const int W = img->getWidth();
     const int H = img->getHeight();
@@ -199,6 +201,25 @@ TiledResult processTiled(
     }
     if (tiles.size() == 1) {
         return TiledResult::NOT_NEEDED;
+    }
+
+    if (max_cost > 0.0 && !std::getenv("ART_GPU_TILE_FORCE") &&
+        !std::getenv("ART_GPU_TILE_VERIFY")) {
+        double area = 0.0;
+        for (size_t i = 0; i < tiles.size(); ++i) {
+            area += double(tiles[i].padded.w) * double(tiles[i].padded.h);
+        }
+        const double cost =
+            double(std::max(phases, 1)) * area / (double(W) * double(H));
+        if (cost > max_cost) {
+            std::ostringstream os;
+            os << "GPU: tiling would cost ~" << std::fixed
+               << std::setprecision(1) << cost
+               << " whole-image passes (limit " << max_cost
+               << "), slower than the CPU; using the CPU";
+            logOnce(os.str());
+            return TiledResult::FAILED;
+        }
     }
 
     img->syncCpu();

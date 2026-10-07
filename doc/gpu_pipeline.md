@@ -690,6 +690,26 @@ of a count).  Still whole-image only: the automatic-chrominance analysis
 (`denoiseComputeParams`, nine crops of ~a quarter of the image) and the CPU-only
 tools.
 
+**When tiling loses to the CPU.**  A tiled run is not free: halos are
+recomputed and the multi-phase ops replay the tile loop.  `processTiled`
+estimates `cost = phases * sum(padded tile areas) / image area` from the plan
+and returns FAILED (CPU) when it exceeds the op's `max_cost`.  Measured on the
+M4 (CPU time / whole-image GPU time -> limit = that / k, k being the cost of
+one unit of `cost`):
+
+| op | phases | CPU / GPU | k | limit | in practice |
+|---|---|---|---|---|---|
+| NL-means, final smoothing | 1 | 1.6-1.7 | ~1.05 | 1.5 | always tiles (cost 1.0-1.15) |
+| wavelet smoothing | 3 | 1.7 | ~0.7 | 2.4 | never (cost >= 3 even without halo): oversize -> CPU |
+| denoise | 3 (2) | 2.0 | ~0.55 | 3.7 | only when the halo adds <~20% (a few big tiles) |
+
+For the test image at a 128 MiB budget the whole export goes from 23.0 s
+(everything tiled) to 11.9 s (NL-means and final smoothing tiled, denoise and
+wavelet on the CPU), against 14.9 s all-CPU and 9.6 s untiled.  The constants
+are for that machine: a discrete GPU, with a much larger CPU/GPU ratio but PCIe
+staging, will want them re-measured.  `ART_GPU_TILE_FORCE=1` ignores the limits
+(`ART_GPU_TILE_VERIFY=1` implies it), which is how the exactness checks run.
+
 **Changing a shared shader's push constants.**  `mask_rescale_bilinear` and
 `mask_guided_combine` are dispatched from more than one file
 (`gpu/ops.cc`, `guidedfilter.cc`).  Growing a push-constant block without

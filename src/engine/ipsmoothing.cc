@@ -1874,7 +1874,11 @@ bool wavelet_smoothing(Imagefloat *rgb,
         return waveletSmoothingWhole(&img, ws, strength, levels, gamma, scale,
                                      chan, ctx, pool, nullptr);
     };
-    switch (processTiled(rgb, halo, 2, 3, 1, tiled, 3, &whole)) {
+    /* Three replays: even with no halo the tiled run costs ~3 * 0.7 = 2.1
+     * whole-image runs, against a CPU that is only ~1.7x slower than one
+     * (measured, M4): oversize wavelet smoothing is faster on the CPU. */
+    constexpr double max_cost = 2.4;
+    switch (processTiled(rgb, halo, 2, 3, 1, tiled, 3, &whole, 0, max_cost)) {
     case TiledResult::DONE:
         return true;
     case TiledResult::FAILED:
@@ -2021,12 +2025,15 @@ bool nlmeans_smoothing(Imagefloat *rgb,
         return nlmeansSmoothingWhole(&img, ws, iws, chan, strength, detail,
                                      iterations, scale, ctx, pool, nullptr);
     };
+    /* One pass, k ~ 1.05; the CPU is ~1.6x slower than the whole-image GPU
+     * run (measured, M4): worth tiling until the halos cost ~50%. */
+    constexpr double max_cost = 1.5;
     switch (processTiled(rgb, halo, 4, 3, 1, [&](Imagefloat &tile, const Tile &t, int) {
         const TileFrame frame = {t.padded.x, t.padded.y, rgb->getWidth(),
                                  rgb->getHeight()};
         return nlmeansSmoothingWhole(&tile, ws, iws, chan, strength, detail,
                                      iterations, scale, ctx, pool, &frame);
-    }, 1, &whole)) {
+    }, 1, &whole, 0, max_cost)) {
     case TiledResult::DONE:
         return true;
     case TiledResult::FAILED:

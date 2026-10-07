@@ -114,6 +114,16 @@ enum class TiledResult {
  * `cap_pixels`, when nonzero, lowers the per-tile pixel budget (for ops whose
  * memory use is not just their planes).
  *
+ * `max_cost`, when nonzero, is the op's CPU-offload cutoff: the plan's cost is
+ * phases * (sum of the tiles' padded areas) / (image area) -- how many
+ * whole-image passes of work the tiling amounts to, halos and replays
+ * included -- and when it exceeds max_cost the call returns FAILED, so the
+ * caller uses the CPU.  A tiled run costs about k * cost whole-image GPU runs
+ * (k ~ 0.55 denoise, 0.7 wavelet, ~1.05 for single-phase ops, measured), so
+ * the right limit is (CPU time / whole-image GPU time) / k: past it the CPU
+ * is faster.  ART_GPU_TILE_FORCE=1 (implied by ART_GPU_TILE_VERIFY) ignores
+ * the limit, so tests can tile with tiny budgets.
+ *
  * ART_GPU_TILE_VERIFY=1 additionally runs `whole` (when given) on a copy of the
  * input and reports the largest difference to the tiled result on stderr --
  * the check that a tiled op is exact, without the downstream noise of a full
@@ -123,6 +133,6 @@ TiledResult processTiled(
     const std::function<bool(Imagefloat &, const Tile &, int phase)> &op,
     int phases = 1,
     const std::function<bool(Imagefloat &)> *whole = nullptr,
-    size_t cap_pixels = 0);
+    size_t cap_pixels = 0, double max_cost = 0.0);
 
 }}} // namespace art::engine::gpu
