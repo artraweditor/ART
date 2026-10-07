@@ -469,13 +469,15 @@ struct ScurvePC { unsigned int w, h; float thr; };
  * implemented -- the only blur type either caller ever requests. */
 bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
                 float scaling, float threshold, float ceiling, float factor,
-                float blurSigma, BufferPool *pool)
+                float blurSigma, BufferPool *pool, const TileFrame *frame)
 {
     const size_t bytes = (size_t)W * H * sizeof(float);
+    const TileFrame whole = {0, 0, W, H};
+    const TileFrame &fr = frame ? *frame : whole;
     if (!maskOut.valid()) {
         return false;
     }
-    if (W < 8 || H < 8) {
+    if (fr.fw < 8 || fr.fh < 8) {
         /* uploadToBuffer takes the mapped() fast path when there is one, and
          * stages through ctx's own staging pool otherwise -- maskOut itself
          * may be an unmapped PreferDeviceLocal buffer on a discrete GPU. */
@@ -487,7 +489,19 @@ bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
     /* Scratch, from the pool when there is one.  The locals keep the
      * non-pooled buffers alive for the whole function; `l2`/`m2` below point
      * at whichever pair is in use. */
-    const int W4 = W / 4, H4 = H / 4;
+    /* The coarse grid belongs to the whole image: W4 x H4 samples spaced
+     * fw/W4 apart, not 4 apart.  A tile computes just the coarse samples whose
+     * 2x2 source footprint lies inside it (all the way to the border where the
+     * tile touches the image's), so every value it shares with the whole-image
+     * run is the same. */
+    const int FW4 = fr.fw / 4, FH4 = fr.fh / 4;
+    int cx0, cx1, cy0, cy1;
+    coarseRange(fr.ox, W, fr.fw, FW4, cx0, cx1);
+    coarseRange(fr.oy, H, fr.fh, FH4, cy0, cy1);
+    const int W4 = cx1 - cx0 + 1, H4 = cy1 - cy0 + 1;
+    if (W4 < 2 || H4 < 2) {
+        return false;
+    }
     const size_t bytes4 = (size_t)W4 * H4 * sizeof(float);
     Buffer ownL2, ownM2;
     Buffer *l2p, *m2p;
@@ -519,7 +533,9 @@ bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
         return false;
     }
 
-    if (!rescaleBilinear(pass, src, W, H, l2, W4, H4)) {
+    if (!rescaleBilinear(pass, src, W, H, l2, W4, H4,
+                         RescaleFrame{fr.fw, fr.fh, FW4, FH4, fr.ox, fr.oy,
+                                      cx0, cy0})) {
         return false;
     }
     {
@@ -542,7 +558,9 @@ bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
             return false;
         }
     }
-    if (!rescaleBilinear(pass, m2, W4, H4, maskOut, W, H)) {
+    if (!rescaleBilinear(pass, m2, W4, H4, maskOut, W, H,
+                         RescaleFrame{FW4, FH4, fr.fw, fr.fh, cx0, cy0,
+                                      fr.ox, fr.oy})) {
         return false;
     }
     {
@@ -626,7 +644,8 @@ private:
  * nlm_simple.comp). */
 bool nlmeansSimpleOnDevice(Context &ctx, BufferPool &pool, Buffer &plane,
                           int W, int H, float normcoeff, double scale,
-                          int strength, int detail_thresh)
+                          int strength, int detail_thresh,
+                          const TileFrame *frame)
 {
     if (W <= 0 || H <= 0) {
         return false;
@@ -662,7 +681,8 @@ bool nlmeansSimpleOnDevice(Context &ctx, BufferPool &pool, Buffer &plane,
     }
 
     if (!detailMask(ctx, *maskBuf, plane, W, H, normcoeff, 1e-3f * normcoeff,
-                    normcoeff, amount, 2.f / (float)scale, &pool)) {
+                    normcoeff, amount, 2.f / (float)scale, &pool,
+                    frame)) {
         return false;
     }
 
@@ -706,10 +726,10 @@ bool nlmeansSimpleOnDevice(Context &ctx, BufferPool &pool, Buffer &plane,
 
 bool NLMeans(Context &ctx, BufferPool &pool, Buffer &plane, int W,
              int H, float normcoeff, double scale, int strength,
-             int detail_thresh)
+             int detail_thresh, const TileFrame *frame)
 {
     return nlmeansSimpleOnDevice(ctx, pool, plane, W, H, normcoeff, scale,
-                                 strength, detail_thresh);
+                                 strength, detail_thresh, frame);
 }
 
 } // namespace ops
@@ -724,7 +744,7 @@ namespace ops {
 
 bool NLMeans(Context &ctx, BufferPool &pool, Buffer &plane, int W,
              int H, float normcoeff, double scale, int strength,
-             int detail_thresh)
+             int detail_thresh, const TileFrame *frame)
 {
     return false;
 }

@@ -14,6 +14,9 @@ layout(push_constant) uniform PC {
     uint n;       // real elements per segment (level)
     uint paddedN; // ceil(n/LX)*LX -- elements per segment as dispatched
     uint levels;
+    uint bw;      // band width, and the rectangle [x0,x1) x [y0,y1) of it that
+    uint x0, x1;  // counts (a tile's interior; the whole band otherwise)
+    uint y0, y1;
 } pc;
 
 shared float sdata[256];
@@ -24,7 +27,9 @@ void main()
     uint gid = gl_GlobalInvocationID.x;
     uint level = gid / pc.paddedN;
     uint local = gid % pc.paddedN;
-    float v = (level < pc.levels && local < pc.n)
+    uint px = local % pc.bw, py = local / pc.bw;
+    bool inside = px >= pc.x0 && px < pc.x1 && py >= pc.y0 && py < pc.y1;
+    float v = (level < pc.levels && local < pc.n && inside)
                   ? abs(src.v[level * pc.n + local])
                   : 0.0;
     sdata[tid] = v;

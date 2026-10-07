@@ -16,6 +16,9 @@ layout(push_constant) uniform PC {
     uint n;
     uint numBuckets;
     uint levels;
+    uint bw;      // band width, and the rectangle [x0,x1) x [y0,y1) of it that
+    uint x0, x1;  // counts (a tile's interior; the whole band otherwise)
+    uint y0, y1;
     float invMaxAbs[MAX_LEVELS];
 } pc;
 
@@ -26,6 +29,11 @@ void main()
         return;
     }
     uint level = gid / pc.n;
+    uint local = gid % pc.n;
+    uint px = local % pc.bw, py = local / pc.bw;
+    if (px < pc.x0 || px >= pc.x1 || py < pc.y0 || py >= pc.y1) {
+        return; // halo: belongs to a neighbouring tile
+    }
     float inv = pc.invMaxAbs[level];
     if (inv <= 0.0) {
         return; // this level's maxAbs was 0 -- nothing to bucket

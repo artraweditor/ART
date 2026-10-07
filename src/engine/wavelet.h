@@ -353,6 +353,27 @@ bool waveletReconstruct(Context &ctx, Pass &pass, BufferPool &pool,
 bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
                      WaveletBandsGPU &bands, Buffer &madOut);
 
+/* waveletMadExact in its two halves, for a tiled run whose statistics span
+ * the whole image (see gpu/tiling.h).
+ *
+ * waveletMadHist records the histograms (3*levels segments of 65536 bins, in
+ * the pool buffer it returns) over the whole of each band, or, when
+ * `rect.masked`, only over [x0,x1) x [y0,y1) of its bw-wide plane -- a tile's
+ * interior.  The caller may download and sum such histograms across tiles.
+ * waveletMadFinish turns a histogram buffer into the medians, reading `n` as
+ * the number of samples per segment -- the whole image's, not the tile's.
+ * Both record into `pass` without submitting. */
+struct MadRect {
+    bool masked;
+    unsigned int bw, x0, x1, y0, y1;
+};
+bool waveletMadHist(Context &ctx, Pass &pass, BufferPool &pool,
+                    WaveletBandsGPU &bands, const MadRect &rect,
+                    Buffer *&histOut);
+bool waveletMadFinish(Context &ctx, Pass &pass, BufferPool &pool,
+                      WaveletBandsGPU &bands, size_t n, Buffer &hist,
+                      Buffer &madOut);
+
 } // namespace ops
 } // namespace gpu
 #endif // ART_USE_VULKAN

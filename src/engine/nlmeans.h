@@ -20,6 +20,7 @@
 
 #include "array2D.h"
 #include "gpu/gpu.h"
+#include "gpu/tiling.h"
 
 #ifdef ART_USE_VULKAN
 #include "gpu/vk_pass.h"
@@ -46,13 +47,15 @@ class Buffer;
 class BufferPool;
 namespace ops {
 
+
 bool detailMask(Context &ctx, Buffer &maskOut, Buffer &src, int W, int H,
                 float scaling, float threshold, float ceiling, float factor,
-                float blurSigma, BufferPool *pool);
+                float blurSigma, BufferPool *pool,
+                const TileFrame *frame = nullptr);
 
 bool NLMeans(Context &ctx, BufferPool &pool, Buffer &plane, int W,
              int H, float normcoeff, double scale, int strength,
-             int detail_thresh);
+             int detail_thresh, const TileFrame *frame = nullptr);
 
 } // namespace ops
 } // namespace gpu

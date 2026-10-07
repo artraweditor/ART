@@ -31,7 +31,11 @@ struct RgbLuminancePC { unsigned int w, h; float ws1[3]; };
 struct YuvRecombinePC { unsigned int w, h; int bump; float ws1[3]; };
 struct Rgb2YuvPC { unsigned int w, h; float ws1[3]; };
 struct Yuv2RgbPC { unsigned int w, h; float ws1[3]; };
-struct RescalePC { unsigned int ws, hs, wd, hd; };
+struct RescalePC {
+    int ws, hs, wd, hd;
+    int fws, fhs, fwd, fhd;
+    int sox, soy, dox, doy;
+};
 
 /* Wraps a single recording helper back up as its own submission, for the
  * Context & forms below.  Every one of them used to be written out by hand,
@@ -75,10 +79,12 @@ bool logGuidedFilterSelf(Pass &pass, BufferPool &pool, Buffer &chan, int W,
 /* guidedFilterLog(10.f, guide, chan, r, eps): a separate, already-log-space
  * guide. */
 bool logGuidedFilterWithGuide(Pass &pass, BufferPool &pool, Buffer &guide,
-                              Buffer &chan, int W, int H, int r, float epsilon)
+                              Buffer &chan, int W, int H, int r, float epsilon,
+                              const TileFrame *frame)
 {
     return logTransform(pass, chan, W, H, false, 10.f, chan) &&
-           guidedFilterGPU(pass, pool, guide, chan, chan, W, H, r, epsilon) &&
+           guidedFilterGPU(pass, pool, guide, chan, chan, W, H, r, epsilon,
+                           frame) &&
            logTransform(pass, chan, W, H, true, 10.f, chan);
 }
 
@@ -142,7 +148,15 @@ bool yuv2rgb(Pass &pass, Buffer &Y, Buffer &U, Buffer &V, int W, int H,
 bool rescaleBilinear(Pass &pass, Buffer &src, int ws, int hs, Buffer &dst,
                      int wd, int hd)
 {
-    RescalePC pc{(unsigned)ws, (unsigned)hs, (unsigned)wd, (unsigned)hd};
+    return rescaleBilinear(pass, src, ws, hs, dst, wd, hd,
+                           RescaleFrame{ws, hs, wd, hd, 0, 0, 0, 0});
+}
+
+bool rescaleBilinear(Pass &pass, Buffer &src, int ws, int hs, Buffer &dst,
+                     int wd, int hd, const RescaleFrame &f)
+{
+    RescalePC pc{ws, hs, wd, hd, f.fws, f.fhs, f.fwd, f.fhd,
+                 f.sox, f.soy, f.dox, f.doy};
     std::vector<Pass::Binding> b;
     b.push_back(Pass::Binding(&src, false));
     b.push_back(Pass::Binding(&dst, true));
@@ -193,11 +207,12 @@ bool logGuidedFilterSelf(Context &ctx, const std::string &labelPrefix,
 
 bool logGuidedFilterWithGuide(Context &ctx, const std::string &labelPrefix,
                               Buffer &guide, Buffer &chan, int W, int H, int r,
-                              float epsilon)
+                              float epsilon, const TileFrame *frame)
 {
     BufferPool pool(ctx, HostMemoryMode::PREFER_DEVICE_LOCAL);
     return submitOne(ctx, labelPrefix.c_str(), [&](Pass &p) {
-        return logGuidedFilterWithGuide(p, pool, guide, chan, W, H, r, epsilon);
+        return logGuidedFilterWithGuide(p, pool, guide, chan, W, H, r, epsilon,
+                                        frame);
     });
 }
 
