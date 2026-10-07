@@ -966,6 +966,14 @@ Buffer Context::allocateBuffer(size_t bytes, const VkMemoryPropertyFlags *tiers,
  * Fixing that is the prerequisite for revisiting this default; until then,
  * mapping wins wherever it is available.
  *
+ * That holds for *writes* (upload).  Whole-image *reads* are another matter:
+ * on a discrete GPU, ImageResidency::download() memcpys out of the BAR window
+ * uncached on one thread, and the tile loop (gpu/tiling.cc) does one per tile
+ * -- 40 s instead of 8 s on the RTX 4500 Ada.  So ImageResidency reads back
+ * through a staging buffer (HOST_CACHED system memory, first tier of
+ * STAGING_ONLY) on discrete devices: one device copy plus a cached memcpy.
+ * See ImageResidency::stagedReadback() / ART_GPU_STAGED_READBACK.
+ *
  * So: take the mapped path whenever the device offers it, which is what this
  * backend did before the tier was made configurable.  ART_GPU_HOST_VISIBLE_
  * DEVICE_LOCAL=0/1 forces it either way, and =0 is how to measure the staging
@@ -992,7 +1000,12 @@ Buffer Context::createBuffer(size_t bytes, HostMemoryMode mode)
         VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
     // no tier requires DEVICE_LOCAL: every conformant device has some
     // HOST_VISIBLE|HOST_COHERENT type, which is all staging needs
-    static const VkMemoryPropertyFlags staging_only[2] = {
+    // cached host memory first: staging is read back by the host, and the BAR
+    // window (DEVICE_LOCAL|HOST_VISIBLE on a discrete GPU) is uncached there
+    static const VkMemoryPropertyFlags staging_only[3] = {
+        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                              VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
         VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
@@ -1003,7 +1016,7 @@ Buffer Context::createBuffer(size_t bytes, HostMemoryMode mode)
     case HostMemoryMode::DEVICE_LOCAL_ONLY:
         return allocateBuffer(bytes, device_local_only, 1);
     case HostMemoryMode::STAGING_ONLY:
-        return allocateBuffer(bytes, staging_only, 2);
+        return allocateBuffer(bytes, staging_only, 3);
     case HostMemoryMode::PREFER_DEVICE_LOCAL:
     default:
         // debug aid, see doc/gpu_pipeline.md §4 (ART_GPU_FORCE_DISCRETE_STAGING)

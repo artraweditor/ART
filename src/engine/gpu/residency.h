@@ -85,8 +85,12 @@ private:
     void poisonCpuPlanes();
     void trace(const char *what);
     /* Lazily allocates staging_buf_; a no-op (staging_buf_ stays null) when
-     * buf_ is already mapped. */
+     * buf_ is already mapped and device->host transfers may read it directly. */
     bool ensureStagingBuffer();
+    /* Whether device->host transfers go through staging_buf_ even though buf_
+     * is mapped: true on a discrete GPU, where the mapping is the PCIe BAR
+     * window and host reads of it are uncached (ART_GPU_STAGED_READBACK). */
+    static bool stagedReadback();
 
     Imagefloat *owner_;
     gpu::Buffer *buf_;      // owned; raw so this header needs no <memory>

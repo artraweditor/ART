@@ -208,6 +208,15 @@ So the default is to map wherever the device offers it, and
 only ~256 MB, so a large image would fail the allocation and stage anyway;
 that case has not been measured.
 
+**Read-back is the exception.** `ImageResidency::download()` and `copyTo()` go
+through a `HOST_CACHED` staging buffer on a discrete GPU (`stagedReadback()`,
+`ART_GPU_STAGED_READBACK=0/1`): they are one big copy, not the three-pass
+`plane_io.h` packing, and a single-threaded memcpy out of the BAR window is
+uncached. The tile loop does one per tile, which on the RTX 4500 Ada made a
+128 MiB-budget export take 40 s (of which `finalSmoothing` and
+`nlmeans_smoothing` 16–24 s each, `memcpy` in `download()` in every stack
+sample) instead of 8 s untiled. Uploads still write the mapped window.
+
 **`BufferPool`** (`vk_context.h:148`) exists purely for performance:
 allocating a fresh `VkDeviceMemory` per call was measured as ~28% of wall
 time in the wavelet denoise port (first-touch page faults dominate). A pool

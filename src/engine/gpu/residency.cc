@@ -162,9 +162,22 @@ bool ImageResidency::ensureBuffer()
     return true;
 }
 
+bool ImageResidency::stagedReadback()
+{
+    static const int forced = [] {
+        const char *v = std::getenv("ART_GPU_STAGED_READBACK");
+        return (v && *v) ? (std::strcmp(v, "0") != 0 ? 1 : 0) : -1;
+    }();
+    if (forced >= 0) {
+        return forced == 1;
+    }
+    gpu::Context *ctx = gpu::Context::get();
+    return ctx && !ctx->caps().unified_memory;
+}
+
 bool ImageResidency::ensureStagingBuffer()
 {
-    if (buf_->hostVisible()) {
+    if (buf_->hostVisible() && !stagedReadback()) {
         return true;    // no staging needed
     }
     if (staging_buf_) {
@@ -210,7 +223,7 @@ bool ImageResidency::upload()
 bool ImageResidency::download()
 {
     const size_t bytes = deviceBytes();
-    if (buf_->hostVisible()) {
+    if (buf_->hostVisible() && !stagedReadback()) {
         buf_->invalidate(0, bytes);
         std::memcpy(owner_->r.ptrs[0], buf_->mapped(), bytes);
         return true;
@@ -327,7 +340,7 @@ bool ImageResidency::copyTo(ImageResidency &dst)
     }
 
     bool ok;
-    if (buf_->hostVisible() && dst.buf_->hostVisible()) {
+    if (buf_->hostVisible() && dst.buf_->hostVisible() && !stagedReadback()) {
         buf_->invalidate(0, bytes);
         std::memcpy(dst.buf_->mapped(), buf_->mapped(), bytes);
         dst.buf_->flush(0, bytes);
