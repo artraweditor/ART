@@ -740,7 +740,7 @@ float polyFill(float **buffer, int width, int height,
         std::sort(nodeX.begin(), nodeX.end());
 
         //  Fill the pixels between node pairs.
-        for (size_t i = 0; i < nodeX.size(); i += 2) {
+        for (size_t i = 0; i + 1 < nodeX.size(); i += 2) {
             if (nodeX.at(i) > xEnd)
                 break;
             if (nodeX.at(i + 1) > xStart) {

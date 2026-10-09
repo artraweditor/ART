@@ -236,7 +236,7 @@ bool ProfileStore::parseDir(Glib::ustring &realPath, Glib::ustring &virtualPath,
             if (Glib::file_test(fname, Glib::FILE_TEST_IS_DIR)) {
                 Glib::ustring vp(Glib::build_filename(virtualPath, currDir));
                 Glib::ustring rp(Glib::build_filename(realPath, currDir));
-                fileFound = parseDir(rp, vp, currDir, folder, level + 1, 0);
+                fileFound |= parseDir(rp, vp, currDir, folder, level + 1, 0);
             } else {
                 size_t lastdot = currDir.find_last_of('.');
 
@@ -277,14 +277,15 @@ bool ProfileStore::parseDir(Glib::ustring &realPath, Glib::ustring &virtualPath,
         }
 
         delete dir;
-    }
 
-    if (!fileFound && (level > 0 || displayLevel0)) {
-        // no files found in this level, we delete the subdirectory entry
-        folders.pop_back();
+        if (!fileFound && (level > 0 || displayLevel0)) {
+            // no files found in this level, we delete the subdirectory entry
+            // (only if it was added above, i.e. the directory exists)
+            folders.pop_back();
 
-        delete entries.back();
-        entries.pop_back();
+            delete entries.back();
+            entries.pop_back();
+        }
     }
 
     return fileFound;
@@ -480,7 +481,10 @@ const PartialProfile *ProfileStore::getDefaultPartialProfile(bool isRaw)
 Glib::ustring ProfileStore::getPathFromId(int folderId)
 {
     // initialization must have been done when calling this
-    return folders.at(folderId);
+    if (folderId < 0 || size_t(folderId) >= folders.size()) {
+        return Glib::ustring();
+    }
+    return folders[folderId];
 }
 
 void ProfileStore::clearFileList()
