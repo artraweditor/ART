@@ -803,7 +803,7 @@ void ImProcFunctions::removeSpots(art::engine::Imagefloat *img,
             for (int j = spotNbr - 1; j >= 0; --j) {
                 if ((srcSpotBoxs.at(spotNbr))
                         ->imageIntersects(*dstSpotBoxs.at(j))) {
-                    requiredSpots.insert(spotNbr);
+                    requiredSpots.insert(j);
                 }
             }
         }
