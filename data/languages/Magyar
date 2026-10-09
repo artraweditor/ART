@@ -1,7 +1,7 @@
 #00 Hungary - Hungarian
 #01 Developers should add translations to this file and then run the 'generateTranslationDiffs' Bash script to update other locales.
 #02 Translators please append a comment here with the current date and your name(s) as used in the RawTherapee/ART forum or Bitbucket page, e.g.:
-#03 2026-06-11 Bereczky Péter
+#03 2026-10-09 Bereczky Péter
 # ART version: 1.26.6
 ABOUT_TAB_BUILD;Verzió
 ABOUT_TAB_CREDITS;Szerzők
@@ -1094,7 +1094,7 @@ PREFERENCES_GIMPPATH;GIMP telepítés könyvtára
 PREFERENCES_GPU;GPU-gyorsítás
 PREFERENCES_GPU_DEVICE_AUTO;Automatikus
 PREFERENCES_GPU_DEVICE_LABEL;Eszköz:
-PREFERENCES_GPU_ENABLED;GPU-gyorsítás használata néhány erőforrásigényes művelethez
+PREFERENCES_GPU_ENABLED;GPU-gyorsítás használata néhány erőforrás-igényes művelethez
 PREFERENCES_GPU_NO_DEVICES;Ezen a rendszeren nem található Vulkan-eszköz, ezért a GPU-gyorsítás nem érhető el. Ez általában azt jelenti, hogy nincs telepítve Vulkan-betöltő vagy -illesztőprogram.
 PREFERENCES_GPU_TOOLTIP;Ha nem található megfelelő eszköz, automatikusan a CPU-ra vált.
 PREFERENCES_HIGHLIGHT_SELECTED_THUMBNAILS;Kijelölt bélyegképek kiemelése
@@ -1263,6 +1263,7 @@ PROGRESSBAR_LOADTIFF;TIFF fájl betöltése...
 PROGRESSBAR_NOIMAGES;Nem találhatók képek
 PROGRESSBAR_PROCESSING;Kép feldolgozása...
 PROGRESSBAR_PROCESSING_PROFILESAVED;Feldolgozási profil elmentve
+PROGRESSBAR_READY_TIME;Kész - %1
 PROGRESSBAR_READY;Kész
 PROGRESSBAR_SAVEJPEG;JPEG fájl mentése...
 PROGRESSBAR_SAVEPNG;PNG fájl mentése...
@@ -1280,6 +1281,7 @@ QUEUE_AUTOSTART;Automatikus indítás
 QUEUE_AUTOSTART_TOOLTIP;Automatikusan elkezdi a feldolgozást, ha új feladat érkezik.
 QUEUE_DESTFILENAME;Útvonal és fájlnév
 QUEUE_FORMAT_TITLE;Fájlformátum
+QUEUE_LASTEXPORT_TIME;Utolsó exportálás: %1
 QUEUE_LOCATION_FOLDER;Mentés mappába
 QUEUE_LOCATION_TEMPLATE;Sablon használata
 QUEUE_LOCATION_TEMPLATE_TOOLTIP;Adja meg a kimeneti helyet a forrásfotó helye, értékelése, a kuka állapota, vagy a sorban elfoglalt helye alapján.\n\nPélda az elérési út használatára:\n<b>/home/tom/photos/2010-10-31/photo1.raw</b>\na formázási karakterláncok jelentése a következő:\n<b>%d4</b> = <i>home</i>\n<b>%d3</b> = <i>tom</i>\n<b>%d2</b> = <i>photos</i>\n<b>%d1</b> = <i>2010-10-31</i>\n<b>%f</b> = <i>photo1</i>\n<b>%p1</b> = <i>/home/tom/photos/2010-10-31/</i>\n<b>%p2</b> = <i>/home/tom/photos/</i>\n<b>%p3</b> = <i>/home/tom/</i>\n<b>%p4</b> = <i>/home/</i>\n\n<b>%r</b> helyébe a fotó értékelése kerül. Ha a fotó még nem értékelt, '<i>0</i>' lesz alkalmazva. Ha a fotó a kukában van, '<i>x</i>' lesz alkalmazva.\n\n<b>%s1</b>, ..., <b>%s9</b> helyettesítve lesz a képnek a sor indításakor a sorban elfoglalt pozíciójával. A számérték határozza meg a kitöltést, pl. <b>%s3</b> eredménye '<i>001</i>'.\n\n<b>%n</b> helyébe az aktuálisan alkalmazott pillanatkép neve kerül. Ha nem létezik a pillanatkép, vagy nincs kiválasztva, akkor üres karakterlánc kerül alkalmazásra. <b>%u</b> alkalmazható <b>%n</b> helyett, amely aláhúzásra cseréli a szóközöket a pillanatkép nevében.\n\nHa a kimeneti képet a forráskép mellé szeretné menteni, írja ezt:\n<b>%p1/%f</b>\n\nHa a kimeneti képet egy '<i>converted</i>' nevű mappába szeretné menteni, amely a forrásfotó mappájában található, írja be:\n<b>%p1/converted/%f</b>\n\nHa el szeretné menteni a kimeneti képet a\n'<i>/home/tom/photos/converted/2010-10-31</i>' könyvtárba, írja ezt:\n<b>%p2/converted/%d1/%f</b>
