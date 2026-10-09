@@ -1215,6 +1215,7 @@ bool ImProcFunctions::guidedSmoothing(Imagefloat *rgb)
 #include "gpu/vk_pass.h"
 #include "gpu/plane_io.h"
 #include "gpu/ops.h"
+#include "gpu/tiling.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1249,13 +1250,36 @@ constexpr unsigned kHistBuckets = 4096;
  * that no workgroup ever straddles a level boundary -- required by the
  * shared-memory tree reduction in reduce_max_abs_fused.comp, where every
  * thread in a workgroup must belong to the same level. */
+/* The part of a band that a reduction/histogram counts: all of it for a
+ * whole-image run, a tile's interior (in band coordinates) for a tiled one --
+ * the halo's coefficients are not exact and belong to the neighbour anyway. */
+struct BandRect {
+    unsigned int bw, x0, x1, y0, y1;
+};
+
+/* State of one tiled wavelet_smoothing: the shrink thresholds come from
+ * whole-image statistics, so it takes three passes over the tiles -- the
+ * per-level maxima, then the histograms over [0, max], then the shrink
+ * itself -- with the statistics accumulated here across tiles. */
+struct WaveletTile {
+    enum Phase { MAX, HIST, APPLY };
+    Phase phase = MAX;
+    BandRect interior = {0, 0, 0, 0, 0};
+    size_t totalN = 0; // W0 * H0 of the whole image
+    struct Chan {
+        std::vector<float> maxAbs[3];
+        std::vector<unsigned> hist[3];
+    } ch[3];
+};
+
 struct FusedReduceJob {
     Buffer dst;
     unsigned int lx = 0, groupsPerLevel = 0;
 };
 
 bool reduceMaxAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band,
-                               int levels, size_t n, FusedReduceJob &job)
+                               int levels, size_t n, FusedReduceJob &job,
+                               const BandRect &r)
 {
     unsigned int lx = 256;
     if (lx > ctx.caps().max_workgroup_invocations) {
@@ -1275,8 +1299,9 @@ bool reduceMaxAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band,
     if (!job.dst.valid()) {
         return false;
     }
-    struct { unsigned int n, paddedN, levels; } pc{
-        (unsigned)n, job.groupsPerLevel * lx, (unsigned)levels};
+    struct { unsigned int n, paddedN, levels, bw, x0, x1, y0, y1; } pc{
+        (unsigned)n, job.groupsPerLevel * lx, (unsigned)levels,
+        r.bw, r.x0, r.x1, r.y0, r.y1};
     std::vector<Pass::Binding> b;
     b.push_back(Pass::Binding(&band, false));
     b.push_back(Pass::Binding(&job.dst, true));
@@ -1319,7 +1344,7 @@ struct FusedHistJob {
 
 bool histAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band, int levels,
                           size_t n, const std::vector<float> &maxAbsPerLevel,
-                          FusedHistJob &job)
+                          FusedHistJob &job, const BandRect &r)
 {
     job.maxAbsPerLevel = maxAbsPerLevel;
     const size_t totalBuckets = (size_t)kHistBuckets * (size_t)levels;
@@ -1342,12 +1367,17 @@ bool histAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band, int levels,
     }
 
     struct {
-        unsigned int n, numBuckets, levels;
+        unsigned int n, numBuckets, levels, bw, x0, x1, y0, y1;
         float invMaxAbs[kMaxFusedLevels];
     } pc{};
     pc.n = (unsigned)n;
     pc.numBuckets = kHistBuckets;
     pc.levels = (unsigned)levels;
+    pc.bw = r.bw;
+    pc.x0 = r.x0;
+    pc.x1 = r.x1;
+    pc.y0 = r.y0;
+    pc.y1 = r.y1;
     for (int lvl = 0; lvl < levels; ++lvl) {
         pc.invMaxAbs[lvl] =
             maxAbsPerLevel[lvl] > 0.f ? 1.f / maxAbsPerLevel[lvl] : 0.f;
@@ -1359,37 +1389,51 @@ bool histAbsFusedDispatch(Context &ctx, Pass &pass, Buffer &band, int levels,
                           n * (size_t)levels);
 }
 
-bool madEstimateFusedFinish(Context &ctx, FusedHistJob &job, size_t n,
-                            std::vector<float> &madOut)
+bool histDownload(Context &ctx, FusedHistJob &job, std::vector<unsigned> &out)
 {
     const int levels = (int)job.maxAbsPerLevel.size();
+    out.resize((size_t)kHistBuckets * levels);
+    return downloadFromBuffer(ctx, &ctx.stagingPoolForThisThread(), job.hist, 0,
+                              out.data(), out.size() * sizeof(unsigned));
+}
+
+/* The median of each level's |coefficient| histogram over `n` samples. */
+void madFromHist(const std::vector<unsigned> &hist,
+                 const std::vector<float> &maxAbsPerLevel, size_t n,
+                 std::vector<float> &madOut)
+{
+    const int levels = (int)maxAbsPerLevel.size();
     madOut.resize(levels);
-    const size_t histBytes = (size_t)kHistBuckets * levels * sizeof(unsigned);
-    std::vector<unsigned> readback((size_t)kHistBuckets * levels);
-    if (!downloadFromBuffer(ctx, &ctx.stagingPoolForThisThread(), job.hist, 0,
-                            readback.data(), histBytes)) {
-        return false;
-    }
-    const unsigned *h = readback.data();
+    const unsigned *h = hist.data();
     const size_t target = n / 2;
     for (int lvl = 0; lvl < levels; ++lvl) {
-        if (job.maxAbsPerLevel[lvl] <= 0.f) {
+        if (maxAbsPerLevel[lvl] <= 0.f) {
             madOut[lvl] = 0.f;
             continue;
         }
         const unsigned *hb = h + (size_t)lvl * kHistBuckets;
         size_t cum = 0;
-        float median = job.maxAbsPerLevel[lvl];
+        float median = maxAbsPerLevel[lvl];
         for (unsigned i = 0; i < kHistBuckets; ++i) {
             cum += hb[i];
             if (cum >= target) {
-                median =
-                    (float(i) + 0.5f) / float(kHistBuckets) * job.maxAbsPerLevel[lvl];
+                median = (float(i) + 0.5f) / float(kHistBuckets) *
+                         maxAbsPerLevel[lvl];
                 break;
             }
         }
         madOut[lvl] = median / 0.6745f;
     }
+}
+
+bool madEstimateFusedFinish(Context &ctx, FusedHistJob &job, size_t n,
+                            std::vector<float> &madOut)
+{
+    std::vector<unsigned> readback;
+    if (!histDownload(ctx, job, readback)) {
+        return false;
+    }
+    madFromHist(readback, job.maxAbsPerLevel, n, madOut);
     return true;
 }
 
@@ -1442,13 +1486,21 @@ bool waveletShrinkFusedDispatch(Pass &pass, Buffer &band, size_t n,
  *   pass 3: shrinkFused (each direction) + reconstruct
  */
 bool waveletShrink(Context &ctx, Buffer &data, int W, int H, int nlevels,
-                   float s, float eps)
+                   float s, float eps, WaveletTile *tile = nullptr,
+                   int chan = 0)
 {
     if (nlevels > kMaxFusedLevels) {
         logOnce("GPU: wavelet levels exceeds fused-shrink budget; using the "
                "CPU");
         return false;
     }
+
+    /* A whole-image run does all three steps on one decomposition.  A tile
+     * does one of them per call (see WaveletTile), decomposing again each
+     * time rather than keeping every tile's bands alive. */
+    const bool doMax = !tile || tile->phase == WaveletTile::MAX;
+    const bool doHist = !tile || tile->phase == WaveletTile::HIST;
+    const bool doApply = !tile || tile->phase == WaveletTile::APPLY;
 
     WaveletBandsGPU bands;
     Buffer *ll = nullptr;
@@ -1472,12 +1524,18 @@ bool waveletShrink(Context &ctx, Buffer &data, int W, int H, int nlevels,
                               ll, llW, llH)) {
             return false;
         }
+        const BandRect rect = tile ? tile->interior
+                                   : BandRect{(unsigned)bands.w, 0,
+                                              (unsigned)bands.w, 0,
+                                              (unsigned)bands.h};
         Buffer *dirs[3] = {bands.hi1, bands.hi2, bands.hi3};
         const size_t n = (size_t)bands.w * bands.h;
-        for (int d = 0; d < 3; ++d) {
-            if (!reduceMaxAbsFusedDispatch(ctx, pass, *dirs[d], nlevels, n,
-                                          reduceJobs[d])) {
-                return false;
+        if (doMax) {
+            for (int d = 0; d < 3; ++d) {
+                if (!reduceMaxAbsFusedDispatch(ctx, pass, *dirs[d], nlevels, n,
+                                              reduceJobs[d], rect)) {
+                    return false;
+                }
             }
         }
         if (!pass.submitAndWait()) {
@@ -1485,22 +1543,46 @@ bool waveletShrink(Context &ctx, Buffer &data, int W, int H, int nlevels,
         }
         pass.reportTimings();
     }
-    for (int d = 0; d < 3; ++d) {
-        if (!reduceMaxAbsFusedFinish(ctx, reduceJobs[d], nlevels, maxAbs[d])) {
-            return false;
+    if (doMax) {
+        for (int d = 0; d < 3; ++d) {
+            if (!reduceMaxAbsFusedFinish(ctx, reduceJobs[d], nlevels,
+                                         maxAbs[d])) {
+                return false;
+            }
+            if (tile) {
+                auto &acc = tile->ch[chan].maxAbs[d];
+                acc.resize(nlevels, 0.f);
+                for (int l = 0; l < nlevels; ++l) {
+                    acc[l] = std::max(acc[l], maxAbs[d][l]);
+                }
+            }
+        }
+        if (tile) {
+            return true;
+        }
+    } else {
+        for (int d = 0; d < 3; ++d) {
+            maxAbs[d] = tile->ch[chan].maxAbs[d];
+            if ((int)maxAbs[d].size() != nlevels) {
+                return false;
+            }
         }
     }
 
-    {
+    if (doHist) {
         Pass pass(ctx, "wavelet:hist");
         if (!pass.valid()) {
             return false;
         }
+        const BandRect rect = tile ? tile->interior
+                                   : BandRect{(unsigned)bands.w, 0,
+                                              (unsigned)bands.w, 0,
+                                              (unsigned)bands.h};
         Buffer *dirs[3] = {bands.hi1, bands.hi2, bands.hi3};
         const size_t n = (size_t)bands.w * bands.h;
         for (int d = 0; d < 3; ++d) {
             if (!histAbsFusedDispatch(ctx, pass, *dirs[d], nlevels, n,
-                                     maxAbs[d], histJobs[d])) {
+                                     maxAbs[d], histJobs[d], rect)) {
                 return false;
             }
         }
@@ -1509,12 +1591,37 @@ bool waveletShrink(Context &ctx, Buffer &data, int W, int H, int nlevels,
         }
         pass.reportTimings();
     }
-    for (int d = 0; d < 3; ++d) {
-        if (!madEstimateFusedFinish(ctx, histJobs[d], (size_t)bands.w * bands.h,
-                                    mad[d])) {
-            return false;
+    if (doHist) {
+        for (int d = 0; d < 3; ++d) {
+            if (tile) {
+                std::vector<unsigned> h;
+                if (!histDownload(ctx, histJobs[d], h)) {
+                    return false;
+                }
+                auto &acc = tile->ch[chan].hist[d];
+                acc.resize(h.size(), 0u);
+                for (size_t i = 0; i < h.size(); ++i) {
+                    acc[i] += h[i];
+                }
+            } else if (!madEstimateFusedFinish(
+                           ctx, histJobs[d], (size_t)bands.w * bands.h,
+                           mad[d])) {
+                return false;
+            }
+        }
+        if (tile) {
+            return true;
+        }
+    } else {
+        for (int d = 0; d < 3; ++d) {
+            const auto &h = tile->ch[chan].hist[d];
+            if (h.size() != (size_t)kHistBuckets * nlevels) {
+                return false;
+            }
+            madFromHist(h, maxAbs[d], tile->totalN, mad[d]);
         }
     }
+    (void)doApply;
 
     {
         Pass pass(ctx, "wavelet:shrink+reconstruct");
@@ -1608,15 +1715,11 @@ bool imageToPlanes(Pass &pass, Imagefloat *rgb, Buffer *R, Buffer *G,
 
 } // namespace
 
-bool wavelet_smoothing(Imagefloat *rgb,
+static bool waveletSmoothingWhole(Imagefloat *rgb,
                        const TMatrix &ws, float strength, int levels,
                        float gamma, double scale, Channel chan,
-                       Context *ctx, BufferPool *pool)
+                       Context *ctx, BufferPool *pool, WaveletTile *tc)
 {
-    if (!ctx || !pool || !opEnabled("smoothing") || !available()) {
-        return false;
-    }
-
     const int W = rgb->getWidth();
     const int H = rgb->getHeight();
     const size_t bytes = size_t(W) * H * sizeof(float);
@@ -1677,9 +1780,9 @@ bool wavelet_smoothing(Imagefloat *rgb,
         if (!seq.flush()) {
             return false;
         }
-        if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps) ||
-            !waveletShrink(*ctx, wG, W, H, nlevels, s, eps) ||
-            !waveletShrink(*ctx, wB, W, H, nlevels, s, eps)) {
+        if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps, tc, 0) ||
+            !waveletShrink(*ctx, wG, W, H, nlevels, s, eps, tc, 1) ||
+            !waveletShrink(*ctx, wB, W, H, nlevels, s, eps, tc, 2)) {
             return false;
         }
     } else {
@@ -1693,12 +1796,12 @@ bool wavelet_smoothing(Imagefloat *rgb,
             return false;
         }
         if (chan == Channel::L) {
-            if (!waveletShrink(*ctx, wG, W, H, nlevels, s, eps)) {
+            if (!waveletShrink(*ctx, wG, W, H, nlevels, s, eps, tc, 1)) {
                 return false;
             }
         } else { // Channel::C
-            if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps) ||
-                !waveletShrink(*ctx, wB, W, H, nlevels, s, eps)) {
+            if (!waveletShrink(*ctx, wR, W, H, nlevels, s, eps, tc, 0) ||
+                !waveletShrink(*ctx, wB, W, H, nlevels, s, eps, tc, 2)) {
                 return false;
             }
         }
@@ -1736,14 +1839,64 @@ bool wavelet_smoothing(Imagefloat *rgb,
 }
 
 
-bool nlmeans_smoothing(Imagefloat *rgb,
-                       const TMatrix &ws, const TMatrix &iws, Channel chan,
-                       int strength, int detail, int iterations, double scale,
+bool wavelet_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, float strength, int levels,
+                       float gamma, double scale, Channel chan,
                        Context *ctx, BufferPool *pool)
 {
     if (!ctx || !pool || !opEnabled("smoothing") || !available()) {
         return false;
     }
+
+    const int nlevels = std::max(levels - (int)std::log2(scale), 2);
+    /* Analysis and synthesis each reach ~2^nlevels band samples (the a-trous
+     * Haar skip doubles per level), i.e. ~2^(nlevels+1) pixels apiece after
+     * level 0's decimation by 2; add the FIR taps and a margin.  Origins on
+     * even coordinates keep level 0's decimation phase-aligned. */
+    const int halo = 4 * (1 << nlevels) + 64;
+    const int FW = rgb->getWidth();
+    const int FH = rgb->getHeight();
+    WaveletTile tc;
+    tc.totalN = size_t((FW + 1) / 2) * size_t((FH + 1) / 2);
+
+    const auto tiled = [&](Imagefloat &tile, const Tile &t, int phase) {
+        tc.phase = WaveletTile::Phase(phase);
+        const int ix = t.interior.x - t.padded.x;
+        const int iy = t.interior.y - t.padded.y;
+        tc.interior = BandRect{
+            (unsigned)((t.padded.w + 1) / 2), (unsigned)(ix / 2),
+            (unsigned)((ix + t.interior.w + 1) / 2), (unsigned)(iy / 2),
+            (unsigned)((iy + t.interior.h + 1) / 2)};
+        return waveletSmoothingWhole(&tile, ws, strength, levels, gamma, scale,
+                                     chan, ctx, pool, &tc);
+    };
+    const std::function<bool(Imagefloat &)> whole = [&](Imagefloat &img) {
+        return waveletSmoothingWhole(&img, ws, strength, levels, gamma, scale,
+                                     chan, ctx, pool, nullptr);
+    };
+    /* Three replays: even with no halo the tiled run costs ~3 * 0.7 = 2.1
+     * whole-image runs, against a CPU that is only ~1.7x slower than one
+     * (measured, M4): oversize wavelet smoothing is faster on the CPU. */
+    constexpr double max_cost = 2.4;
+    switch (processTiled(rgb, halo, 2, 3, 1, tiled, 3, &whole, 0, max_cost)) {
+    case TiledResult::DONE:
+        return true;
+    case TiledResult::FAILED:
+        return false;
+    default:
+        break;
+    }
+    return waveletSmoothingWhole(rgb, ws, strength, levels, gamma, scale, chan,
+                                 ctx, pool, nullptr);
+}
+
+
+static bool nlmeansSmoothingWhole(Imagefloat *rgb,
+                       const TMatrix &ws, const TMatrix &iws, Channel chan,
+                       int strength, int detail, int iterations, double scale,
+                       Context *ctx, BufferPool *pool,
+                       const TileFrame *frame)
+{
 
     const int W = rgb->getWidth();
     const int H = rgb->getHeight();
@@ -1777,7 +1930,7 @@ bool nlmeans_smoothing(Imagefloat *rgb,
     const auto runPlaneNlmeans = [&](Buffer &plane) -> bool {
         for (int it = 0; it < iterations; ++it) {
             if (!NLMeans(*ctx, *pool, plane, W, H, 1.f, scale,
-                         strength, detail)) {
+                         strength, detail, frame)) {
                 return false;
             }
         }
@@ -1848,6 +2001,48 @@ bool nlmeans_smoothing(Imagefloat *rgb,
     
     rgb->syncCpu();
     return true;
+}
+
+bool nlmeans_smoothing(Imagefloat *rgb,
+                       const TMatrix &ws, const TMatrix &iws, Channel chan,
+                       int strength, int detail, int iterations, double scale,
+                       Context *ctx, BufferPool *pool)
+{
+    if (!ctx || !pool || !opEnabled("smoothing") || !available()) {
+        return false;
+    }
+
+    /* Per iteration: search radius + patch radius, plus the detail mask's
+     * Gaussian (sigma 2/scale, 3 sigma reach) and a margin for the coarse
+     * grid's border (up to ~10 px of the mask is wrong next to a tile edge;
+     * see the TileFrame handling in detailMask). */
+    const int per_it = int(std::ceil(5.0 / scale)) + int(std::ceil(2.0 / scale)) +
+                       int(std::ceil(6.0 / scale)) + 16;
+    const int halo = per_it * std::max(iterations, 1);
+    /* 3 planes in the residency buffer; scratch buffers are plane-sized and
+     * individually bounded by the same range. */
+    const std::function<bool(Imagefloat &)> whole = [&](Imagefloat &img) {
+        return nlmeansSmoothingWhole(&img, ws, iws, chan, strength, detail,
+                                     iterations, scale, ctx, pool, nullptr);
+    };
+    /* One pass, k ~ 1.05; the CPU is ~1.6x slower than the whole-image GPU
+     * run (measured, M4): worth tiling until the halos cost ~50%. */
+    constexpr double max_cost = 1.5;
+    switch (processTiled(rgb, halo, 4, 3, 1, [&](Imagefloat &tile, const Tile &t, int) {
+        const TileFrame frame = {t.padded.x, t.padded.y, rgb->getWidth(),
+                                 rgb->getHeight()};
+        return nlmeansSmoothingWhole(&tile, ws, iws, chan, strength, detail,
+                                     iterations, scale, ctx, pool, &frame);
+    }, 1, &whole, 0, max_cost)) {
+    case TiledResult::DONE:
+        return true;
+    case TiledResult::FAILED:
+        return false;
+    default:
+        break;
+    }
+    return nlmeansSmoothingWhole(rgb, ws, iws, chan, strength, detail,
+                                 iterations, scale, ctx, pool, nullptr);
 }
 
 

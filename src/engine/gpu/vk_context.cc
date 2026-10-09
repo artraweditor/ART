@@ -120,7 +120,7 @@ VkResult createInstance(VkInstance *out, bool &portability_requested)
 
     const char *exts[1] = {"VK_KHR_portability_enumeration"};
     const char *layers[1] = {"VK_LAYER_KHRONOS_validation"};
-    const bool want_validation = envFlag("ART_VULKAN_VALIDATION");
+    static const bool want_validation = envFlag("ART_VULKAN_VALIDATION");
 
     VkInstanceCreateInfo ci;
     std::memset(&ci, 0, sizeof(ci));
@@ -382,9 +382,11 @@ void Context::configure(const Glib::ustring &user_settings_dir,
 {
     cfg_user_settings_dir_ = user_settings_dir;
     cfg_device_preference_ = device_preference;
-    cfg_allow_software_ = allow_software || envFlag("ART_VULKAN_ALLOW_SOFTWARE");
+    static const bool env_allow_software =
+        envFlag("ART_VULKAN_ALLOW_SOFTWARE");
+    cfg_allow_software_ = allow_software || env_allow_software;
 
-    const std::string art_gpu = envOr("ART_GPU", "");
+    static const std::string art_gpu = envOr("ART_GPU", "");
     if (art_gpu == "0") {
         cfg_device_preference_ = "off";
     } else if (art_gpu == "1" || art_gpu == "force") {
@@ -392,7 +394,7 @@ void Context::configure(const Glib::ustring &user_settings_dir,
             cfg_device_preference_ = "auto";
         }
     }
-    const std::string dev = envOr("ART_VULKAN_DEVICE", "");
+    static const std::string dev = envOr("ART_VULKAN_DEVICE", "");
     if (!dev.empty()) {
         cfg_device_preference_ = dev;
     }
@@ -968,11 +970,11 @@ Buffer Context::allocateBuffer(size_t bytes, const VkMemoryPropertyFlags *tiers,
  *
  * That holds for *writes* (upload).  Whole-image *reads* are another matter:
  * on a discrete GPU, ImageResidency::download() memcpys out of the BAR window
- * uncached on one thread.  So ImageResidency reads back through a staging
- * buffer (HOST_CACHED system memory, first tier of STAGING_ONLY) on discrete
- * devices: one device copy plus a cached memcpy.  (STAGING_ONLY buffers also
- * serve plane_io.h, which is why that tier is now cached host memory first.)  See ImageResidency::stagedReadback() /
- * ART_GPU_STAGED_READBACK.
+ * uncached on one thread, and the tile loop (gpu/tiling.cc) does one per tile
+ * -- 40 s instead of 8 s on the RTX 4500 Ada.  So ImageResidency reads back
+ * through a staging buffer (HOST_CACHED system memory, first tier of
+ * STAGING_ONLY) on discrete devices: one device copy plus a cached memcpy.
+ * See ImageResidency::stagedReadback() / ART_GPU_STAGED_READBACK.
  *
  * So: take the mapped path whenever the device offers it, which is what this
  * backend did before the tier was made configurable.  ART_GPU_HOST_VISIBLE_
@@ -980,11 +982,11 @@ Buffer Context::allocateBuffer(size_t bytes, const VkMemoryPropertyFlags *tiers,
  * path again once plane_io.h no longer copies three times. */
 bool Context::hostVisibleDeviceLocalWanted() const
 {
-    const char *v = std::getenv("ART_GPU_HOST_VISIBLE_DEVICE_LOCAL");
-    if (v && *v) {
-        return std::strcmp(v, "0") != 0;
-    }
-    return true;
+    static const int forced = []() {
+        const char *v = std::getenv("ART_GPU_HOST_VISIBLE_DEVICE_LOCAL");
+        return (v && *v) ? (std::strcmp(v, "0") != 0 ? 1 : 0) : -1;
+    }();
+    return forced < 0 || forced == 1;
 }
 
 Buffer Context::createBuffer(size_t bytes, HostMemoryMode mode)

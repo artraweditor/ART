@@ -447,39 +447,25 @@ bool waveletReconstruct(Context &ctx, Pass &pass, BufferPool &pool,
     return firSynthesisV(pass, *firLo, *firHi, W, llH, H, dstFull);
 }
 
-bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
-                     WaveletBandsGPU &bands, Buffer &madOut)
+bool waveletMadHist(Context &ctx, Pass &pass, BufferPool &pool,
+                    WaveletBandsGPU &bands, const MadRect &rect,
+                    Buffer *&histOut)
 {
     (void)ctx;
     const int levels = bands.levels;
-    if (levels <= 0 || !madOut.valid()) {
+    const size_t n = (size_t)bands.w * bands.h;
+    if (levels <= 0 || !n) {
         return false;
     }
     const size_t segments = 3u * (size_t)levels;
-    const size_t n = (size_t)bands.w * bands.h;
-    if (!n) {
-        return false;
-    }
-    if (madOut.size() < segments * sizeof(float)) {
-        return false;
-    }
-
     Buffer *hist = pool.get(segments * 65536u * sizeof(unsigned int));
-    Buffer *gsum = pool.get(segments * 256u * sizeof(unsigned int));
-    if (!hist || !gsum) {
+    if (!hist) {
         return false;
     }
 
     /* Measured flat from 8 to 256 workgroups per segment and worse past
      * that; 128 is the middle of the plateau. */
     const unsigned int wgPerSeg = 128;
-
-    struct SegPC {
-        unsigned int segments;
-    } gpc{(unsigned)segments};
-    struct FinPC {
-        unsigned int n, segments;
-    } fpc{(unsigned)n, (unsigned)segments};
 
     /* The pool may hand back a buffer larger than the histogram needs, so
      * clear only the range in use rather than the whole allocation. */
@@ -489,8 +475,9 @@ bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
     }
 
     struct HistPC {
-        unsigned int n, levels, wgPerSeg;
-    } hpc{(unsigned)n, (unsigned)levels, wgPerSeg};
+        unsigned int n, levels, wgPerSeg, masked, bw, x0, x1, y0, y1;
+    } hpc{(unsigned)n, (unsigned)levels, wgPerSeg, rect.masked ? 1u : 0u,
+          rect.bw, rect.x0, rect.x1, rect.y0, rect.y1};
     std::vector<Pass::Binding> bh;
     bh.push_back(Pass::Binding(bands.hi1, false));
     bh.push_back(Pass::Binding(bands.hi2, false));
@@ -500,9 +487,37 @@ bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
                         segments * wgPerSeg * 256u)) {
         return false;
     }
+    histOut = hist;
+    return true;
+}
+
+bool waveletMadFinish(Context &ctx, Pass &pass, BufferPool &pool,
+                      WaveletBandsGPU &bands, size_t n, Buffer &hist,
+                      Buffer &madOut)
+{
+    (void)ctx;
+    const int levels = bands.levels;
+    if (levels <= 0 || !madOut.valid() || !n) {
+        return false;
+    }
+    const size_t segments = 3u * (size_t)levels;
+    if (madOut.size() < segments * sizeof(float)) {
+        return false;
+    }
+    Buffer *gsum = pool.get(segments * 256u * sizeof(unsigned int));
+    if (!gsum) {
+        return false;
+    }
+
+    struct SegPC {
+        unsigned int segments;
+    } gpc{(unsigned)segments};
+    struct FinPC {
+        unsigned int n, segments;
+    } fpc{(unsigned)n, (unsigned)segments};
 
     std::vector<Pass::Binding> bg;
-    bg.push_back(Pass::Binding(hist, false));
+    bg.push_back(Pass::Binding(&hist, false));
     bg.push_back(Pass::Binding(gsum, true));
     if (!pass.dispatch1D("dn_mad_group", bg, &gpc, sizeof(gpc),
                         segments * 256u)) {
@@ -510,14 +525,20 @@ bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
     }
 
     std::vector<Pass::Binding> bf;
-    bf.push_back(Pass::Binding(hist, false));
+    bf.push_back(Pass::Binding(&hist, false));
     bf.push_back(Pass::Binding(gsum, false));
     bf.push_back(Pass::Binding(&madOut, true));
-    if (!pass.dispatch1D("dn_mad_finalize", bf, &fpc, sizeof(fpc), segments)) {
-        return false;
-    }
+    return pass.dispatch1D("dn_mad_finalize", bf, &fpc, sizeof(fpc), segments);
+}
 
-    return true;
+bool waveletMadExact(Context &ctx, Pass &pass, BufferPool &pool,
+                     WaveletBandsGPU &bands, Buffer &madOut)
+{
+    Buffer *hist = nullptr;
+    const MadRect whole = {false, 0, 0, 0, 0, 0};
+    return waveletMadHist(ctx, pass, pool, bands, whole, hist) &&
+           waveletMadFinish(ctx, pass, pool, bands,
+                            (size_t)bands.w * bands.h, *hist, madOut);
 }
 
 } // namespace ops

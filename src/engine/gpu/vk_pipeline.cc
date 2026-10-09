@@ -65,8 +65,11 @@ std::mutex cache_mutex_;
 bool findShader(const char *name, const unsigned int **words, size_t *nbytes,
                 std::vector<unsigned int> &scratch)
 {
-    const char *dir = std::getenv("ART_SHADER_PATH");
-    if (dir && *dir) {
+    static const std::string dir = []() {
+        const char *v = std::getenv("ART_SHADER_PATH");
+        return std::string(v ? v : "");
+    }();
+    if (!dir.empty()) {
         const std::string path =
             Glib::build_filename(dir, std::string(name) + ".spv");
         std::ifstream f(path.c_str(), std::ios::binary | std::ios::ate);

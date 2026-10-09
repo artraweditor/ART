@@ -212,11 +212,11 @@ that case has not been measured.
 through a `HOST_CACHED` staging buffer on a discrete GPU (`stagedReadback()`,
 `ART_GPU_STAGED_READBACK=0/1`): they are one big copy, not the three-pass
 `plane_io.h` packing, and a single-threaded memcpy out of the BAR window is
-uncached. Uploads still write the mapped window. On the RTX 4500 Ada the
-untiled test export does not call `download()` enough for the switch to show
-(3.96-4.13 s either way); the 8.2 s -> 4.0 s improvement that came with this
-change is most likely the new `HOST_CACHED` first tier of `STAGING_ONLY`, which
-`plane_io.h`'s staging buffers also use -- not isolated by a measurement.
+uncached. The tile loop does one per tile, which on the RTX 4500 Ada made a
+128 MiB-budget export take 40 s (of which `finalSmoothing` and
+`nlmeans_smoothing` 16–24 s each, `memcpy` in `download()` in every stack
+sample) instead of 8 s untiled. Uploads still write the mapped window.
+
 
 **`BufferPool`** (`vk_context.h:148`) exists purely for performance:
 allocating a fresh `VkDeviceMemory` per call was measured as ~28% of wall
@@ -597,6 +597,135 @@ and each GPU path re-uploads through `ImageResidency` on entry. That upload is
 cheap — one buffer for the image's lifetime, one contiguous transfer — but it
 isn't free, which is the whole reason the list exists; re-populating it is the
 lever for a tool that turns out to be worth running end to end on the device.
+
+## 3b. Tiling (images larger than one device buffer)
+
+`ImageResidency` and most ops need the whole image in one buffer, bounded by
+`max_storage_buffer_range`.  Oversize images are handled by a **host-side tile
+loop** (`gpu/tiling.h`), not by teaching every shader about tiles:
+
+* `planTiles(W, H, halo, align, max_pixels)` partitions the image into
+  interiors and pads each by the op's halo, clipped to the image, so a tile on
+  a true border still clamps like the whole-image run.  Origins are multiples
+  of `align`.  `tilePixelBudget()` derives the pixel budget from the device
+  limit; `ART_GPU_MAX_TILE_BYTES=<n>` lowers it so tiling is exercised on a
+  machine that never needs it (the same idea as
+  `ART_GPU_FORCE_DISCRETE_STAGING`).
+* `processTiled(img, halo, align, planes, scratch, op)` copies each padded tile
+  into its own `Imagefloat`, runs the *unchanged whole-image GPU op* on it, and
+  keeps only the interior in a separate output (later tiles must still read
+  unfiltered halos).  `img` is overwritten only if every tile succeeded, so a
+  failure falls through to the CPU path as usual.  It returns `NOT_NEEDED` when
+  one tile suffices; callers then run the untiled path, which is unchanged.
+
+**A tile is not just a crop.** Anything that samples on a grid defined by the
+whole image's dimensions must be told where the tile sits.  The NL-means detail
+mask is the example: it downsamples by `W/4` (integer division, so the real
+ratio is e.g. 4.0014), and a tile with its own `W/4` samples a different grid.
+`nlmeans.h`'s `TileFrame {ox, oy, fw, fh}` and `ops::RescaleFrame` carry the
+tile's origin and the full size to `mask_rescale_bilinear.comp`, which computes
+sample positions in the full frame; `detailMask` computes just the coarse
+samples the tile needs.  With that, tiled `nlmeans_smoothing` is **bit-identical**
+to the whole-image result (checked in the NLM stage itself, two layouts).
+Downstream the final image differs only at the usual ~1 LSB noise, because
+the input here also contains NaN pixels whose handling is chaotic.
+
+Halo: per iteration search + patch radius + the mask Gaussian's reach + a
+16 px margin for the coarse grid's border (the Laplacian folds at the edge of
+a tile's coarse grid, so ~10 px of mask are wrong next to a tile edge).
+
+**Whole-image statistics: three passes.**  Wavelet shrink thresholds come from
+per-level, per-direction statistics of the *whole* image (max |coefficient|,
+then a 4096-bucket histogram over [0, max], then its median).  A tiled
+`wavelet_smoothing` therefore runs the tile loop three times
+(`processTiled(..., phases = 3, ...)`; `WaveletTile` in `ipsmoothing.cc`):
+1. per tile, decompose and take the max over the tile's *interior*
+   coefficients; the maxima accumulate across tiles;
+2. per tile, decompose again and add the interior coefficients to the global
+   histograms, bucketed by the global maxima;
+3. per tile, decompose, derive the thresholds from the global histograms
+   (`madFromHist`), shrink and reconstruct; the interior is kept.
+
+Counting only interior coefficients is what makes the totals exact: a halo
+coefficient is not (it sees clamped edges) and belongs to a neighbour anyway.
+`reduce_max_abs_fused.comp` and `wav_hist_abs_fused.comp` take the interior
+rectangle in band coordinates (`BandRect`); a whole-image run passes the whole
+band.  Level 0 decimates by 2, so tile origins are even and band coordinate
+`k` is source pixel `2k`.  Halo: `4 * 2^levels + 64` (analysis and synthesis
+each reach ~`2^levels` band samples).  Re-decomposing three times is the price
+of not keeping every tile's bands resident.
+
+**Checking a tiled op.**  `ART_GPU_TILE_VERIFY=1` makes `processTiled` also run
+the op untiled on a copy and print the largest difference
+(`GPU tile verify (...): N tiles, max ...`).  `NaN` and equal infinities are
+handled, since real images here carry both.  Always check that the check can
+fail: a halo of 0, or statistics over a 3x3 corner, must show up (they do for
+wavelets: max difference ~0.04 and millions of values off).  On the test
+profile NL-means and wavelet smoothing are both bit-exact (max 0) at 4, 6 and
+12 tiles.
+
+**Guided filter.**  Its subsampling grid is `W/N` samples (`N` from the radius
+and the *whole* image's size), so like the detail mask it takes a `TileFrame`
+(`guidedFilterGPU(..., frame)`): the coarse range comes from `coarseRange`, the
+box radius is clamped against the whole image's coarse size, and both
+`mask_rescale_bilinear` and `mask_guided_combine` compute sample positions in
+the full frame.  `denoise::finalSmoothing` (guided chroma + NL-means) is tiled
+with it, halo `2*radius + 160`.
+
+**Denoise.**  Everything in the wavelet core is local except the noise
+estimates, which are medians over the whole image: `madL` (luma), and for each
+chroma channel one estimate -- two in aggressive mode, the second taken *after*
+a first shrink.  They are exact 65536-bin histograms (`dn_mad_hist_bands`),
+which sum across tiles (`waveletMadHist` over a tile's interior;
+`waveletMadFinish` on the summed histogram).  Because a later estimate depends
+on an earlier one, `RGB_denoise_tiled` replays the tile loop once per
+dependency level (`DenoiseTile`, `ipdenoise.h`): phase 0 gathers whatever needs
+nothing unknown and stops (`stopped` in `denoiseShrinkChroma`, `gathering` on
+the tile), the next phase finalises those and gathers the next, and the last
+runs everything and keeps the interior -- 2 phases (standard) or 3
+(aggressive).  Tile origins are multiples of 50 (even for the half-resolution
+noise maps and the wavelet decimation, and a multiple of detail recovery's
+25 px block grid, which is anchored at the image's origin); the detail mask
+takes the `TileFrame`; the level count comes from the whole image
+(`denoisePrepare`'s `levwavOverride`).  Halo `4*2^levels + 512`.  A tile must
+stay on the device throughout (`RGB_denoise_GPU`'s `bail`): a CPU fallback
+would compute tile-local statistics, so any decline abandons the tiled run and
+the whole image goes to the CPU, as before.  Tile size also respects
+`denoiseTilePixelCap` (the denoise's ~8 band sets).
+
+Status: `nlmeans_smoothing`, `wavelet_smoothing`, `denoise::finalSmoothing` and
+`RGB_denoise` are tiled, each bit-exact against its untiled run
+(`ART_GPU_TILE_VERIFY`; detail recovery's float atomics can differ by ~0.005
+of a count).  Still whole-image only: the automatic-chrominance analysis
+(`denoiseComputeParams`, nine crops of ~a quarter of the image) and the CPU-only
+tools.
+
+**When tiling loses to the CPU.**  A tiled run is not free: halos are
+recomputed and the multi-phase ops replay the tile loop.  `processTiled`
+estimates `cost = phases * sum(padded tile areas) / image area` from the plan
+and returns FAILED (CPU) when it exceeds the op's `max_cost`.  Measured on the
+M4 (CPU time / whole-image GPU time -> limit = that / k, k being the cost of
+one unit of `cost`):
+
+| op | phases | CPU / GPU | k | limit | in practice |
+|---|---|---|---|---|---|
+| NL-means, final smoothing | 1 | 1.6-1.7 | ~1.05 | 1.5 | always tiles (cost 1.0-1.15) |
+| wavelet smoothing | 3 | 1.7 | ~0.7 | 2.4 | never (cost >= 3 even without halo): oversize -> CPU |
+| denoise | 3 (2) | 2.0 | ~0.55 | 3.7 | only when the halo adds <~20% (a few big tiles) |
+
+For the test image at a 128 MiB budget the whole export goes from 23.0 s
+(everything tiled) to 11.9 s (NL-means and final smoothing tiled, denoise and
+wavelet on the CPU), against 14.9 s all-CPU and 9.6 s untiled.  The constants
+are for that machine: a discrete GPU, with a much larger CPU/GPU ratio but PCIe
+staging, will want them re-measured.  `ART_GPU_TILE_FORCE=1` ignores the limits
+(`ART_GPU_TILE_VERIFY=1` implies it), which is how the exactness checks run.
+
+**Changing a shared shader's push constants.**  `mask_rescale_bilinear` and
+`mask_guided_combine` are dispatched from more than one file
+(`gpu/ops.cc`, `guidedfilter.cc`).  Growing a push-constant block without
+updating *every* dispatcher doesn't fail: the shader reads whatever the
+missing bytes happen to hold.  `grep` the shader's name across `src/` before
+touching it.
 
 ## 4. Pitfalls, environment variables, and testing the discrete-GPU path
 

@@ -9,39 +9,51 @@ layout(constant_id = 1) const uint LY = 16;
 layout(std430, set = 0, binding = 0) readonly buffer Src { float v[]; } src;
 layout(std430, set = 0, binding = 1) writeonly buffer Dst { float v[]; } dst;
 
+// The *Full fields give the frame the sample positions are computed in, and
+// sox/soy, dox/doy the global origin of src and dst within it, so a tile of a
+// larger image samples exactly the grid the whole image would (a whole-image
+// call passes fws=ws, fwd=wd, and zero origins).
 layout(push_constant) uniform PC {
-    uint ws;
-    uint hs;
-    uint wd;
-    uint hd;
+    int ws;
+    int hs;
+    int wd;
+    int hd;
+    int fws;
+    int fhs;
+    int fwd;
+    int fhd;
+    int sox;
+    int soy;
+    int dox;
+    int doy;
 } pc;
 
 void main()
 {
     uvec2 g = gl_GlobalInvocationID.xy;
-    if (g.x >= pc.wd || g.y >= pc.hd) {
+    if (g.x >= uint(pc.wd) || g.y >= uint(pc.hd)) {
         return;
     }
-    float col_scale = float(pc.ws) / float(pc.wd);
-    float row_scale = float(pc.hs) / float(pc.hd);
-    float x = float(g.x) * col_scale;
-    float y = float(g.y) * row_scale;
+    float col_scale = float(pc.fws) / float(pc.fwd);
+    float row_scale = float(pc.fhs) / float(pc.fhd);
+    float x = float(int(g.x) + pc.dox) * col_scale;
+    float y = float(int(g.y) + pc.doy) * row_scale;
 
-    int Ws = int(pc.ws);
-    int Hs = int(pc.hs);
-    int xi = min(int(x), Ws - 1);
-    int yi = min(int(y), Hs - 1);
-    float xf = x - float(xi);
-    float yf = y - float(yi);
-    int xi1 = min(xi + 1, Ws - 1);
-    int yi1 = min(yi + 1, Hs - 1);
+    int xg = min(int(x), pc.fws - 1);
+    int yg = min(int(y), pc.fhs - 1);
+    float xf = x - float(xg);
+    float yf = y - float(yg);
+    int xi = clamp(xg - pc.sox, 0, pc.ws - 1);
+    int yi = clamp(yg - pc.soy, 0, pc.hs - 1);
+    int xi1 = clamp(min(xg + 1, pc.fws - 1) - pc.sox, 0, pc.ws - 1);
+    int yi1 = clamp(min(yg + 1, pc.fhs - 1) - pc.soy, 0, pc.hs - 1);
 
-    float bl = src.v[yi * Ws + xi];
-    float br = src.v[yi * Ws + xi1];
-    float tl = src.v[yi1 * Ws + xi];
-    float tr = src.v[yi1 * Ws + xi1];
+    float bl = src.v[yi * pc.ws + xi];
+    float br = src.v[yi * pc.ws + xi1];
+    float tl = src.v[yi1 * pc.ws + xi];
+    float tr = src.v[yi1 * pc.ws + xi1];
 
     float bot = xf * br + (1.0 - xf) * bl;
     float top = xf * tr + (1.0 - xf) * tl;
-    dst.v[g.y * pc.wd + g.x] = yf * top + (1.0 - yf) * bot;
+    dst.v[int(g.y) * pc.wd + int(g.x)] = yf * top + (1.0 - yf) * bot;
 }

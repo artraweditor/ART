@@ -21,6 +21,7 @@
 #pragma once
 
 #include "array2D.h"
+#include "gpu/tiling.h"
 
 namespace art { namespace engine {
 
@@ -55,10 +56,11 @@ namespace ops {
  * which must not be recycled before the caller submits and waits. */
 bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
                      Buffer &srcFull, Buffer &dstFull, int W, int H, int r,
-                     float epsilon);
+                     float epsilon, const TileFrame *frame = nullptr);
 
 bool guidedFilterGPU(Context &ctx, Buffer &guideFull, Buffer &srcFull,
-                     Buffer &dstFull, int W, int H, int r, float epsilon);
+                     Buffer &dstFull, int W, int H, int r, float epsilon,
+                     const TileFrame *frame = nullptr);
 
 } // namespace ops
 } // namespace gpu

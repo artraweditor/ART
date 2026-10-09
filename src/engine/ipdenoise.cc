@@ -3652,7 +3652,8 @@ private:
  * the one thing here a GPU driver would rather not pay for; moving the map
  * onto the device is what would let the entry sync go with it. */
 bool denoisePrepare(ImProcData &im, Imagefloat *src,
-                    const procparams::DenoiseParams &dnparams, DenoisePrep &p)
+                    const procparams::DenoiseParams &dnparams, DenoisePrep &p,
+                    int levwavOverride = 0)
 {
     const ProcParams *params = im.params;
 
@@ -3750,8 +3751,12 @@ bool denoisePrepare(ImProcData &im, Imagefloat *src,
     p.noisevarab_r = SQR(p.realred);
     p.noisevarab_b = SQR(p.realblue);
 
-    p.levwav =
-        waveletLevels(p.realred, p.realblue, p.nrQuality, p.scale, p.W, p.H);
+    /* The level count depends on the image's size; a tile must use the whole
+     * image's. */
+    p.levwav = levwavOverride > 0
+                   ? levwavOverride
+                   : waveletLevels(p.realred, p.realblue, p.nrQuality, p.scale,
+                                   p.W, p.H);
 
     p.numthreads = 1;
 
@@ -3848,7 +3853,9 @@ void RGB_denoise_CPU(Imagefloat *src, const DenoisePrep &prep)
  * phase 7 on the host" is a configuration real hardware lands in; an
  * all-or-nothing gate would demote those runs to fully-CPU.  Every fallback is
  * decided before the dispatch that would make it unsafe. */
-bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
+bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep,
+                     gpu::ops::DenoiseTile *tile = nullptr,
+                     const gpu::TileFrame *frame = nullptr)
 {
     gpu::Context *gpuCtx = im.ipf ? im.ipf->getGPUContext() : nullptr;
     if (!denoiseGPUUsable(gpuCtx)) {
@@ -3918,15 +3925,29 @@ bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
         }
     }
 
+    /* A tile of a tiled run must stay on the device throughout: a phase that
+     * fell back to the CPU would use tile-local statistics, which is exactly
+     * what tiling must not do.  So any decline abandons the tiled run (the
+     * caller then runs the whole image on the CPU, as it would have anyway). */
+    const auto bail = [&]() {
+        delete labdn;
+        delete Lin;
+        return false;
+    };
+    if (tile && !(onDevice && nvOnDevice)) {
+        return bail();
+    }
+
     /* Phases 2-6.  No unconditional sync between phase 1 and here: both sides
      * have on-device entries, so the planes stay where phase 1 left them and
      * `onDevice` records where that is.  The crossing this used to make
      * unconditional is three planes each way, ~20 ms at 24 Mpix, spent purely
      * to hand one device kernel's output to another. */
     {
-        const gpu::ops::DenoiseWaveletGPU wp =
+        gpu::ops::DenoiseWaveletGPU wp =
             makeWaveletParams(ctx, prep.levwav, prep.nrQuality, prep.autoch,
                               prep.denoiseLuminance);
+        wp.tile = tile;
 
         /* Already on the device: run in place and leave them there.  This is
          * the case that matters -- the host-plane entry below costs a full
@@ -3934,6 +3955,14 @@ bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
          * 2 and phase 6's to phase 7, ~35 ms at 24 Mpix.  Lin stays on the
          * device too, so the host copy is never made. */
         bool wavDone = onDevice && session.waveletCore(wp, gpuCtx);
+        if (tile && !wavDone) {
+            return bail();
+        }
+        if (tile && tile->gathering) {
+            delete labdn;
+            delete Lin;
+            return true; // statistics gathered; the output waits for a later phase
+        }
 
         if (!wavDone) {
             /* Phase 1 ran on the CPU, or the on-device attempt declined.
@@ -3984,7 +4013,11 @@ bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
             drp.detail_thresh = prep.detail_thresh;
             drp.mask = nullptr;
             drp.scale = prep.scale;
+            drp.frame = frame;
             dctDone = session.detailRecovery(drp, gpuCtx);
+        }
+        if (tile && !dctDone) {
+            return bail();
         }
 
         if (!dctDone) {
@@ -4040,6 +4073,9 @@ bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
                 onDevice = false; // session planes are spent; dst holds RGB
             }
         }
+        if (tile && !outOnDevice) {
+            return bail();
+        }
         if (!outOnDevice) {
             if (onDevice) {
                 ART_PROFILE_SCOPE("denoise:gpu:down");
@@ -4062,6 +4098,92 @@ bool RGB_denoise_GPU(ImProcData &im, Imagefloat *src, const DenoisePrep &prep)
     return true;
 }
 
+/* A denoise too large for one device buffer, on the GPU in tiles.  Tiles of
+ * the image are denoised with their halo and only the interior is kept; the
+ * wavelet shrink's noise estimates are whole-image medians, which the
+ * DenoiseTile phases (see ipdenoise.h) gather across the tiles first.
+ *
+ * Halo: the wavelet's analysis and synthesis (~4 * 2^levels, as for
+ * wavelet_smoothing), the chroma/luma shrink's box blurs, detail recovery's
+ * 64 px blocks, and the detail mask's Gaussian and coarse grid.  Tile origins
+ * sit on a multiple of 50: even, for the half-resolution noise maps and the
+ * wavelet's decimation, and a multiple of detail recovery's 25 px block grid,
+ * which is anchored at the image's origin. */
+gpu::TiledResult RGB_denoise_tiled(ImProcData &im, Imagefloat *src,
+                              const procparams::DenoiseParams &dnparams,
+                              const DenoisePrep &prep)
+{
+    gpu::Context *gpuCtx = im.ipf ? im.ipf->getGPUContext() : nullptr;
+    if (!denoiseGPUUsable(gpuCtx) || !prep.denoiseLuminance) {
+        // (Without luma denoise there is no detail recovery, but the tiled
+        // path is only validated with it; keep the whole-image behaviour.)
+        return gpuCtx ? gpu::TiledResult::NOT_NEEDED : gpu::TiledResult::FAILED;
+    }
+
+    const int W = prep.W, H = prep.H;
+    const int levels = prep.levwav;
+    const int halo = 4 * (1 << levels) + 512;
+    const bool aggressive = prep.nrQuality == QUALITY_HIGH;
+    const int phases = aggressive ? 3 : 2;
+
+    gpu::ops::DenoiseTile st;
+    st.bw = 0;
+    st.totalN = size_t((W + 1) / 2) * size_t((H + 1) / 2);
+    int curPhase = -1;
+
+    const std::function<bool(Imagefloat &, const gpu::Tile &, int)> op =
+        [&](Imagefloat &tile, const gpu::Tile &t, int phase) {
+            if (phase != curPhase) {
+                /* First tile of a new phase: what the earlier phases gathered
+                 * is now whole-image, hence known. */
+                curPhase = phase;
+                for (int i = 0; i < gpu::ops::DenoiseTile::NUM_SLOTS; ++i) {
+                    st.known[i] = !st.hist[i].empty();
+                }
+            }
+            const int ix = t.interior.x - t.padded.x;
+            const int iy = t.interior.y - t.padded.y;
+            st.bw = unsigned((t.padded.w + 1) / 2);
+            st.x0 = unsigned(ix / 2);
+            st.x1 = unsigned((ix + t.interior.w + 1) / 2);
+            st.y0 = unsigned(iy / 2);
+            st.y1 = unsigned((iy + t.interior.h + 1) / 2);
+            st.pending.clear();
+            st.gathering = false;
+
+            DenoisePrep tp;
+            if (!denoisePrepare(im, &tile, dnparams, tp, levels)) {
+                return false;
+            }
+            const gpu::TileFrame frame = {t.padded.x, t.padded.y, W, H};
+            const bool last = phase == phases - 1;
+            if (!RGB_denoise_GPU(im, &tile, tp, &st, &frame)) {
+                return false;
+            }
+            /* The final phase must have produced output; an earlier one must
+             * only have gathered (otherwise the replay logic is wrong). */
+            return last ? !st.gathering : true;
+        };
+
+    const size_t cap = gpu::ops::denoiseTilePixelCap(levels);
+    if (!cap) {
+        return gpu::TiledResult::FAILED;
+    }
+    /* For ART_GPU_TILE_VERIFY: the same denoise, untiled. */
+    const std::function<bool(Imagefloat &)> whole = [&](Imagefloat &img) {
+        DenoisePrep wp;
+        return denoisePrepare(im, &img, dnparams, wp) &&
+               RGB_denoise_GPU(im, &img, wp);
+    };
+    /* CPU/GPU is ~2.0 here (measured, M4) and a tiled denoise costs ~0.55 per
+     * unit of cost (the gathering phases skip the shrink), so tiling pays only
+     * up to ~3.7: with 3 replays, halos below ~20% of the tile.  Beyond that
+     * the CPU is faster (at 384 MiB tiles: 4.1 s tiled vs 2.5 s CPU). */
+    constexpr double max_cost = 3.7;
+    return gpu::processTiled(src, halo, 50, 3, 1, op, phases, &whole, cap,
+                             max_cost);
+}
+
 void RGB_denoise(ImProcData &im, Imagefloat *src,
                  const procparams::DenoiseParams &dnparams)
 {
@@ -4080,7 +4202,17 @@ void RGB_denoise(ImProcData &im, Imagefloat *src,
     if (denoisePrepare(im, src, dnparams, prep)) {
         MyTime t1p, t2p;
         t1p.set();
-        bool onGPU = RGB_denoise_GPU(im, src, prep);
+        bool onGPU = false;
+        switch (RGB_denoise_tiled(im, src, dnparams, prep)) {
+        case gpu::TiledResult::DONE:
+            onGPU = true;
+            break;
+        case gpu::TiledResult::NOT_NEEDED:
+            onGPU = RGB_denoise_GPU(im, src, prep);
+            break;
+        default:
+            break;
+        }
         if (!onGPU) {
             RGB_denoise_CPU(src, prep);
         }
@@ -4200,14 +4332,81 @@ unsigned int dwShrinkLumaDispatches(int passes)
 
 } // namespace
 
+/* One MAD estimate: the whole-image run (`tile` null), or a tile's part of a
+ * tiled one -- its interior's histogram when the estimate is not known yet
+ * (`gathered`: the caller must not use `madOut` nor anything that depends on
+ * it), the finalised median from the summed histograms when it is. */
+static bool dnMad(Context &ctx, Pass &pass, BufferPool &pool, DenoiseTile *tile,
+                  int slot, WaveletBandsGPU &bands, Buffer &madOut,
+                  bool &gathered)
+{
+    gathered = false;
+    if (!tile) {
+        return waveletMadExact(ctx, pass, pool, bands, madOut);
+    }
+    const size_t bytes = size_t(3 * bands.levels) * 65536u * sizeof(unsigned);
+    if (tile->known[slot]) {
+        const std::vector<unsigned> &h = tile->hist[slot];
+        if (h.size() * sizeof(unsigned) != bytes) {
+            return false;
+        }
+        Buffer *hb = pool.get(bytes);
+        if (!hb || !uploadToBuffer(ctx, &ctx.stagingPoolForThisThread(),
+                                   h.data(), bytes, *hb)) {
+            return false;
+        }
+        return waveletMadFinish(ctx, pass, pool, bands, tile->totalN, *hb,
+                                madOut);
+    }
+    const MadRect rect = {true, tile->bw, tile->x0, tile->x1, tile->y0,
+                          tile->y1};
+    Buffer *hb = nullptr;
+    if (!waveletMadHist(ctx, pass, pool, bands, rect, hb)) {
+        return false;
+    }
+    DenoiseTile::Pending pd = {slot, hb, bytes};
+    tile->pending.push_back(pd);
+    gathered = true;
+    return true;
+}
+
+/* Adds the histograms a tile gathered to the running sums.  The GPU must have
+ * run them (flush first) and the pool must not have recycled them yet. */
+static bool dnCollect(Context &ctx, DenoiseTile *tile)
+{
+    if (!tile) {
+        return true;
+    }
+    for (size_t i = 0; i < tile->pending.size(); ++i) {
+        const DenoiseTile::Pending &pd = tile->pending[i];
+        std::vector<unsigned> h(pd.bytes / sizeof(unsigned));
+        if (!downloadFromBuffer(ctx, &ctx.stagingPoolForThisThread(), *pd.buf,
+                                0, h.data(), pd.bytes)) {
+            return false;
+        }
+        std::vector<unsigned> &acc = tile->hist[pd.slot];
+        if (acc.empty()) {
+            acc.assign(h.size(), 0u);
+        }
+        for (size_t k = 0; k < h.size(); ++k) {
+            acc[k] += h[k];
+        }
+    }
+    tile->pending.clear();
+    return true;
+}
+
 /* Denoise phase 4 -- see denoiseShrinkChroma's contract in ipdenoise.h. */
 bool denoiseShrinkChroma(Context &ctx, Pass &pass, BufferPool &pool,
                          WaveletBandsGPU &lBands, WaveletBandsGPU &abBands,
                          Buffer &noisevarchrom, Buffer &madL,
                          const int *radius, float noisevarAb, bool autoch,
-                         bool useNoiseCCurve, bool aggressive)
+                         bool useNoiseCCurve, bool aggressive,
+                         DenoiseTile *tile, int slot1, int slot2,
+                         bool &stopped)
 {
     const int kMaxSegments = 24; // MAX_SEGMENTS in dn_boxblur_seg_h.comp
+    stopped = false;
 
     const int levels = abBands.levels;
     if (levels <= 0 || levels > kMaxSegments || lBands.levels != levels ||
@@ -4331,8 +4530,13 @@ bool denoiseShrinkChroma(Context &ctx, Pass &pass, BufferPool &pool,
         /* madab from the *original* chroma coefficients.  BiShrinkAB
          * computes all of them in an omp-for that finishes before any shrink
          * begins, so every level's estimate predates every modification. */
-        if (!waveletMadExact(ctx, pass, pool, abBands, *madAb)) {
+        bool gathered = false;
+        if (!dnMad(ctx, pass, pool, tile, slot1, abBands, *madAb, gathered)) {
             return false;
+        }
+        if (gathered) {
+            stopped = true; // everything below needs this estimate
+            return true;
         }
 
         const float scaleHigh = useNoiseCCurve ? noisevarAb
@@ -4370,8 +4574,13 @@ bool denoiseShrinkChroma(Context &ctx, Pass &pass, BufferPool &pool,
      * after a bi-shrink means the shrunk ones.  That second estimate is not
      * an oversight in the CPU; ShrinkAllAB only skips the recomputation when
      * its caller passes madCalculated, and this caller does not. */
-    if (!waveletMadExact(ctx, pass, pool, abBands, *madAb)) {
+    bool gathered2 = false;
+    if (!dnMad(ctx, pass, pool, tile, slot2, abBands, *madAb, gathered2)) {
         return false;
+    }
+    if (gathered2) {
+        stopped = true;
+        return true;
     }
     const float scaleAll = useNoiseCCurve ? 1.f : noisevarAb;
     return blurredPath(0, levels, scaleAll);
@@ -4506,6 +4715,10 @@ bool waveletCoreImpl(Context &ctx, BufferPool &pool, PassSeq &seq, int W,
                      const DenoiseWaveletGPU &p)
 {
     const int levels = p.levels;
+    DenoiseTile *tile = p.tile;
+    /* Tiled: true once any estimate of this call was only gathered, in which
+     * case the call stops short of the work that needed it (see DenoiseTile). */
+    bool gatheredAny = false;
 
     Buffer *bMadL = pool.get(size_t(levels) * 3u * sizeof(float));
     if (!bMadL) {
@@ -4532,7 +4745,8 @@ bool waveletCoreImpl(Context &ctx, BufferPool &pool, PassSeq &seq, int W,
         if (!ps ||
             !waveletDecompose(ctx, *ps, pool, bL, W, H, levels, lBands, llL,
                               llW, llH) ||
-            !waveletMadExact(ctx, *ps, pool, lBands, *bMadL)) {
+            !dnMad(ctx, *ps, pool, tile, DenoiseTile::L_MAD, lBands, *bMadL,
+                   gatheredAny)) {
             logOnce("GPU: denoise wavelet decompose/mad failed; using the CPU");
             return false;
         }
@@ -4554,27 +4768,42 @@ bool waveletCoreImpl(Context &ctx, BufferPool &pool, PassSeq &seq, int W,
         int aW = 0, aH = 0;
         Pass *ps = seq.reserve(dwDecomposeDispatches(levels) +
                                dwShrinkChromaDispatches(p.aggressive));
+        bool stopped = false;
         if (!ps ||
             !waveletDecompose(ctx, *ps, pool, plane, W, H, levels, abBands,
                               llAb, aW, aH) ||
             !denoiseShrinkChroma(ctx, *ps, pool, lBands, abBands, bNvChrom,
                                  *bMadL, radius, noisevarAb, p.autoch,
-                                 p.useNoiseCCurve, p.aggressive)) {
+                                 p.useNoiseCCurve, p.aggressive, tile,
+                                 DenoiseTile::A_MAD1 + ch,
+                                 DenoiseTile::A_MAD2 + ch, stopped)) {
             logOnce("GPU: denoise chroma shrink failed; using the CPU");
             return false;
         }
-        ps = seq.reserve(dwDecomposeDispatches(levels));
-        if (!ps || !waveletReconstruct(ctx, *ps, pool, abBands, llAb, aW, aH,
-                                       plane, W, H)) {
-            logOnce("GPU: denoise chroma reconstruct failed; using the CPU");
-            return false;
+        if (stopped) {
+            gatheredAny = true; // nothing to reconstruct yet
+        } else {
+            ps = seq.reserve(dwDecomposeDispatches(levels));
+            if (!ps || !waveletReconstruct(ctx, *ps, pool, abBands, llAb, aW,
+                                           aH, plane, W, H)) {
+                logOnce("GPU: denoise chroma reconstruct failed; using the "
+                        "CPU");
+                return false;
+            }
         }
         /* The channel's bands and scratch may only go back to the pool once
          * the GPU has actually run the dispatches that read them. */
-        if (!seq.flush()) {
+        if (!seq.flush() || !dnCollect(ctx, tile)) {
             return false;
         }
         pool.release(mark);
+    }
+
+    if (tile) {
+        tile->gathering = gatheredAny;
+        if (gatheredAny) {
+            return true; // statistics only; the rest waits for the next phase
+        }
     }
 
     /* Phases 5 and 6 for L.  Skipped entirely when the luminance slider is
@@ -5365,6 +5594,19 @@ size_t dnMemoryBudget(Context *ctx)
     return quarter > floor ? quarter : floor;
 }
 
+size_t denoiseTilePixelCap(int levels)
+{
+    Context *ctx = Context::get();
+    if (!ctx || ctx->deviceLost()) {
+        return 0;
+    }
+    /* dwGeometryOk's peak is ~8 band sets (levels * a quarter-resolution plane
+     * of 4 bytes each, i.e. `levels` bytes per pixel apiece) plus ~20 bytes of
+     * scratch and planes; detail recovery's blocks add ~26.  80 covers both
+     * with room. */
+    return dnMemoryBudget(ctx) / size_t(8 * levels + 80);
+}
+
 void dnLogOverBudget(const char *phase, size_t want, size_t budget)
 {
     std::ostringstream os;
@@ -5659,7 +5901,8 @@ bool DenoiseSession::detailRecovery(const DetailRecoveryGPU &params,
         const float amount =
             std::min(1.f, std::max(0.f, float(params.detail_thresh) / 100.f));
         if (!detailMask(*ctx, *bMask, p_->labL(), p_->W, p_->H, 65535.f, 25.f,
-                        10000.f, amount, 25.f / float(params.scale), pool)) {
+                        10000.f, amount, 25.f / float(params.scale), pool,
+                        params.frame)) {
             logOnce("GPU: denoise detail mask failed; using the CPU");
             return false;
         }
@@ -6078,8 +6321,9 @@ bool denoiseInfo(Imagefloat *src, Imagefloat *provicalc,
 }
 
 
-bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb, 
-                       const procparams::DenoiseParams &dnparams)
+static bool finalSmoothingWhole(ImProcData &im, Imagefloat *rgb,
+                                const procparams::DenoiseParams &dnparams,
+                                const TileFrame *frame)
 {
     if (!im.ipf) {
         return false;
@@ -6162,18 +6406,18 @@ bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb,
         constexpr float epsilon = 0.001f;
 
         if (!logGuidedFilterWithGuide(*ctx, "guidedSmoothing", guide, wR, W, H,
-                                      radius, epsilon) ||
+                                      radius, epsilon, frame) ||
             !logGuidedFilterWithGuide(*ctx, "guidedSmoothing", guide, wG, W, H,
-                                      radius, epsilon) ||
+                                      radius, epsilon, frame) ||
             !logGuidedFilterWithGuide(*ctx, "guidedSmoothing", guide, wB, W, H,
-                                      radius, epsilon)) {
+                                      radius, epsilon, frame)) {
             return false;
         }
     }
 
     if (dnparams.nlStrength > 0 && 
         !NLMeans(*ctx, pool, luma, W, H, 1.f, im.scale,
-                 dnparams.nlStrength, dnparams.nlDetail)) {
+                 dnparams.nlStrength, dnparams.nlDetail, frame)) {
         return false;
     }
 
@@ -6205,11 +6449,59 @@ bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb,
 }
 
 
+bool finalSmoothingGPU(ImProcData &im, Imagefloat *rgb,
+                       const procparams::DenoiseParams &dnparams)
+{
+    if (!im.ipf || !available() || !im.ipf->getGPUContext()) {
+        return false;
+    }
+
+    const int radius =
+        std::max(int(std::lround(dnparams.guidedChromaRadius / im.scale)), 0);
+    if (radius == 0 && !dnparams.nlStrength) {
+        return true;
+    }
+
+    /* Local op: the guided filter's box means run twice (a, b), each over
+     * `radius` pixels of the subsampled grid (<= 5x subsampled), then the
+     * NL-means search + patch + detail mask (see nlmeans_smoothing); the
+     * coarse grids' borders add ~10 samples.  Their sampling grids come from
+     * the whole image's size, which is what the TileFrame carries. */
+    const int halo = 2 * radius + 160;
+    const int FW = rgb->getWidth();
+    const int FH = rgb->getHeight();
+    const std::function<bool(Imagefloat &)> whole = [&](Imagefloat &img) {
+        return finalSmoothingWhole(im, &img, dnparams, nullptr);
+    };
+    /* One pass, k ~ 1.07; CPU ~1.7x slower than the whole-image GPU run
+     * (measured, M4). */
+    constexpr double max_cost = 1.5;
+    switch (processTiled(rgb, halo, 2, 3, 1,
+                         [&](Imagefloat &tile, const Tile &t, int) {
+                             const TileFrame frame = {t.padded.x, t.padded.y,
+                                                      FW, FH};
+                             return finalSmoothingWhole(im, &tile, dnparams,
+                                                        &frame);
+                         },
+                         1, &whole, 0, max_cost)) {
+    case TiledResult::DONE:
+        return true;
+    case TiledResult::FAILED:
+        return false;
+    default:
+        break;
+    }
+    return finalSmoothingWhole(im, rgb, dnparams, nullptr);
+}
+
+
 }}}} // namespace art::engine::gpu::ops
 
 #else // !ART_USE_VULKAN
 
 namespace art { namespace engine { namespace gpu { namespace ops {
+
+size_t denoiseTilePixelCap(int) { return 0; }
 
 bool denoiseWaveletGPU(int, int, float **, float **, float **,
                        const DenoiseWaveletGPU &, BufferPool *, Context *)

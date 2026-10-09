@@ -24,7 +24,11 @@
 
 #include "curves.h"
 #include "gpu/gpu.h"
+#include "gpu/tiling.h"
 #include "improcfun.h"
+
+#include <utility>
+#include <vector>
 
 #ifdef ART_USE_VULKAN
 #include "gpu/vk_pass.h"
@@ -186,6 +190,7 @@ struct DenoiseContext {
 } // namespace denoise
 
 namespace gpu {
+class Buffer;
 namespace ops {
 
 /* ---------------------------------------------------------------------------
@@ -229,11 +234,57 @@ namespace ops {
  *
  * Returns false having changed nothing if the GPU cannot take it, and the
  * caller runs the CPU path unchanged. */
+/* The whole-image statistics of a tiled denoise.  The wavelet shrink's noise
+ * estimates are medians of the detail coefficients over the *whole* image --
+ * L's (madL), and each chroma channel's, which in aggressive mode is taken
+ * twice, the second time after a first shrink.  A tile can contribute only
+ * its interior's histogram, and a later estimate may depend on an earlier
+ * one, so a tiled denoise replays the tile loop once per estimate:
+ *
+ *   phase 0   decompose; every estimate that depends on nothing unknown is
+ *             gathered (histograms summed over the tiles), nothing else runs
+ *   phase k   the estimates known so far are finalised from the summed
+ *             histograms, the work that needed them runs, and the next
+ *             estimates are gathered
+ *   last      everything is known: the whole of denoise runs, and its
+ *             interior is kept
+ *
+ * Each estimate is a "slot".  `known` is set by the driver between phases;
+ * `gathering` is set by the wavelet core when its call only gathered. */
+struct DenoiseTile {
+    enum Slot { L_MAD, A_MAD1, B_MAD1, A_MAD2, B_MAD2, NUM_SLOTS };
+
+    DenoiseTile(): bw(0), x0(0), x1(0), y0(0), y1(0), totalN(0),
+                   gathering(false)
+    {
+        for (int i = 0; i < NUM_SLOTS; ++i) {
+            known[i] = false;
+        }
+    }
+
+    /* This tile's interior in band coordinates (the bands are half the
+     * resolution of the planes, bw wide), and the whole image's number of
+     * band samples per level. */
+    unsigned int bw, x0, x1, y0, y1;
+    size_t totalN;
+
+    bool known[NUM_SLOTS];
+    std::vector<unsigned int> hist[NUM_SLOTS]; // 3*levels*65536, summed over tiles
+    bool gathering;
+    struct Pending {
+        int slot;
+        Buffer *buf;   // pool buffer holding this tile's histogram
+        size_t bytes;
+    };
+    std::vector<Pending> pending; // gathered, not yet downloaded
+};
+
 struct DenoiseWaveletGPU {
     DenoiseWaveletGPU():
         levels(0), scale(1.0), aggressive(false), autoch(false),
         useNoiseCCurve(false), denoiseLuminance(true), noisevarab_r(0.f),
-        noisevarab_b(0.f), noisevarlum(nullptr), noisevarchrom(nullptr)
+        noisevarab_b(0.f), noisevarlum(nullptr), noisevarchrom(nullptr),
+        tile(nullptr)
     {
     }
 
@@ -250,7 +301,13 @@ struct DenoiseWaveletGPU {
      * rely on to index every level with the same offset. */
     const float *noisevarlum;
     const float *noisevarchrom;
+    DenoiseTile *tile;           // non-null: one tile of a tiled run
 };
+
+/* The most pixels of one tile a tiled denoise should take, given the device's
+ * memory budget and the wavelet level count (the peak is ~8 band sets).  0
+ * without a device. */
+size_t denoiseTilePixelCap(int levels);
 
 bool denoiseWaveletGPU(int W, int H, float **L, float **a, float **b,
                        const DenoiseWaveletGPU &params, BufferPool *poolp,
@@ -359,6 +416,7 @@ struct DetailRecoveryGPU {
     int detail_thresh;      // dnparams.luminanceDetailThreshold
     float **mask;           // W x H, only when detail_thresh > 0
     double scale;
+    const TileFrame *frame = nullptr; // where this is a tile of a larger image
 };
 
 bool denoiseDetailRecovery(int W, int H, float **L, float **Lin,

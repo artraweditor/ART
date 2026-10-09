@@ -312,16 +312,21 @@ int clampBoxRadius(float rad_f, int w, int h)
 
 struct GfPass1PC { unsigned int w, h; int radius; };
 struct GfPass2PC { unsigned int w, h; int radius; float epsilon; };
-struct RescalePC { unsigned int ws, hs, wd, hd; };
+/* Must match mask_rescale_bilinear.comp's push constants; a whole-image
+ * resample is the frame fws=ws, fwd=wd with zero origins. */
+struct RescalePC {
+    int ws, hs, wd, hd;
+    int fws, fhs, fwd, fhd;
+    int sox, soy, dox, doy;
+};
 
-bool rescale(Pass &pass, Buffer &src, Buffer &dst, int ws, int hs, int wd,
-            int hd)
+bool rescale(Pass &pass, Buffer &src, Buffer &dst, const RescalePC &pc)
 {
-    RescalePC pc{(unsigned)ws, (unsigned)hs, (unsigned)wd, (unsigned)hd};
     std::vector<Pass::Binding> b;
     b.push_back(Pass::Binding(&src, false));
     b.push_back(Pass::Binding(&dst, true));
-    return pass.dispatch2D("mask_rescale_bilinear", b, &pc, sizeof(pc), wd, hd);
+    return pass.dispatch2D("mask_rescale_bilinear", b, &pc, sizeof(pc), pc.wd,
+                          pc.hd);
 }
 
 /* Stage 1/4 (horizontal): shrinking-window horizontal mean of I, p, I^2,
@@ -402,13 +407,26 @@ bool gfPass4(Pass &pass, Buffer &ha, Buffer &hb, Buffer &meanA, Buffer &meanB,
  * horizontal or vertical sweep at a time). */
 bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
                      Buffer &srcFull, Buffer &dstFull, int W, int H, int r,
-                     float epsilon)
+                     float epsilon, const TileFrame *frame)
 {
-    const int subsampling = calcSubsampling(W, H, r);
-    const int w = std::max(1, W / subsampling);
-    const int h = std::max(1, H / subsampling);
+    /* The subsampling, the coarse grid and the box-radius clamp all belong to
+     * the whole image; a tile computes just the coarse samples it needs (see
+     * coarseRange) so that it reads the same ones. */
+    const TileFrame whole = {0, 0, W, H};
+    const TileFrame &fr = frame ? *frame : whole;
+    const int subsampling = calcSubsampling(fr.fw, fr.fh, r);
+    const int FW4 = std::max(1, fr.fw / subsampling);
+    const int FH4 = std::max(1, fr.fh / subsampling);
+    int cx0, cx1, cy0, cy1;
+    coarseRange(fr.ox, W, fr.fw, FW4, cx0, cx1);
+    coarseRange(fr.oy, H, fr.fh, FH4, cy0, cy1);
+    const int w = cx1 - cx0 + 1;
+    const int h = cy1 - cy0 + 1;
+    if (w < 1 || h < 1) {
+        return false;
+    }
     const float r1 = float(r) / float(subsampling);
-    const int radius = clampBoxRadius(r1, w, h);
+    const int radius = clampBoxRadius(r1, FW4, FH4);
     const size_t subBytes = (size_t)w * h * sizeof(float);
 
     /* I1/p1 hold the subsampled guide/src until stage 1 consumes them, then
@@ -437,10 +455,12 @@ bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
     Buffer &hII = *bufs[4];
     Buffer &hIp = *bufs[5];
 
-    if (!rescale(pass, guideFull, I1, W, H, w, h)) {
+    const RescalePC down{W, H, w, h, fr.fw, fr.fh, FW4, FH4,
+                         fr.ox, fr.oy, cx0, cy0};
+    if (!rescale(pass, guideFull, I1, down)) {
         return false;
     }
-    if (!rescale(pass, srcFull, p1, W, H, w, h)) {
+    if (!rescale(pass, srcFull, p1, down)) {
         return false;
     }
 
@@ -466,7 +486,7 @@ bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
     }
 
     // dst = bilinear(meanA)*guideFull + bilinear(meanB)
-    RescalePC cpc{(unsigned)w, (unsigned)h, (unsigned)W, (unsigned)H};
+    RescalePC cpc{w, h, W, H, FW4, FH4, fr.fw, fr.fh, cx0, cy0, fr.ox, fr.oy};
     std::vector<Pass::Binding> cb;
     cb.push_back(Pass::Binding(&hII, false));
     cb.push_back(Pass::Binding(&hIp, false));
@@ -476,13 +496,14 @@ bool guidedFilterGPU(Pass &pass, BufferPool &pool, Buffer &guideFull,
 }
 
 bool guidedFilterGPU(Context &ctx, Buffer &guideFull, Buffer &srcFull,
-                     Buffer &dstFull, int W, int H, int r, float epsilon)
+                     Buffer &dstFull, int W, int H, int r, float epsilon,
+                     const TileFrame *frame)
 {
     BufferPool pool(ctx, HostMemoryMode::PREFER_DEVICE_LOCAL);
     Pass pass(ctx, "generateMasks:guidedFilter");
     if (!pass.valid() ||
         !guidedFilterGPU(pass, pool, guideFull, srcFull, dstFull, W, H, r,
-                         epsilon) ||
+                         epsilon, frame) ||
         !pass.submitAndWait()) {
         return false;
     }

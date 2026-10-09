@@ -93,9 +93,12 @@ bool loadVulkanLibrary(std::string &err)
         return true;
     }
 
-    const char *override_path = std::getenv("ART_VULKAN_LIBRARY");
-    if (override_path && *override_path) {
-        lib_ = openLib(override_path);
+    static const std::string override_path = []() {
+        const char *v = std::getenv("ART_VULKAN_LIBRARY");
+        return std::string(v ? v : "");
+    }();
+    if (!override_path.empty()) {
+        lib_ = openLib(override_path.c_str());
         if (!lib_) {
             err = std::string("could not open ART_VULKAN_LIBRARY=") +
                   override_path;

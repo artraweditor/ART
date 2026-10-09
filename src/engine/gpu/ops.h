@@ -22,6 +22,7 @@
 #ifdef ART_USE_VULKAN
 
 #include "vk_pass.h"
+#include "tiling.h"
 #include "../iccstore.h"
 
 #include <string>
@@ -50,7 +51,7 @@ bool logGuidedFilterSelf(Pass &pass, BufferPool &pool, Buffer &chan, int W,
 
 bool logGuidedFilterWithGuide(Pass &pass, BufferPool &pool, Buffer &guide,
                               Buffer &chan, int W, int H, int r,
-                              float epsilon);
+                              float epsilon, const TileFrame *frame = nullptr);
 
 bool rgbLuminance(Pass &pass, Buffer &rC, Buffer &gC, Buffer &bC, int W, int H,
                   const TMatrix &ws, Buffer &yOut);
@@ -68,6 +69,17 @@ bool yuv2rgb(Pass &pass, Buffer &Y, Buffer &U, Buffer &V, int W, int H,
 bool rescaleBilinear(Pass &pass, Buffer &src, int ws, int hs, Buffer &dst,
                      int wd, int hd);
 
+/* Same, for a src/dst that are sub-rectangles of larger images: sample
+ * positions are computed in the full (fws x fhs) -> (fwd x fhd) frame, with
+ * src's origin at (sox, soy) and dst's at (dox, doy) in it.  A tile therefore
+ * reads the very samples the whole-image call would. */
+struct RescaleFrame {
+    int fws, fhs, fwd, fhd;
+    int sox, soy, dox, doy;
+};
+bool rescaleBilinear(Pass &pass, Buffer &src, int ws, int hs, Buffer &dst,
+                     int wd, int hd, const RescaleFrame &frame);
+
 bool logTransform(Context &ctx, const std::string &label, Buffer &src,
                   int W, int H, bool inverse, float base, Buffer &out);
 
@@ -81,7 +93,8 @@ bool logGuidedFilterSelf(Context &ctx, const std::string &labelPrefix,
 bool logGuidedFilterWithGuide(Context &ctx,
                               const std::string &labelPrefix,
                               Buffer &guide, Buffer &chan, int W,
-                              int H, int r, float epsilon);
+                              int H, int r, float epsilon,
+                              const TileFrame *frame = nullptr);
 
 /* Bridges one plane of `strided` (residency buffer: rows padded to 16 bytes,
  * planes `plane_stride` floats apart) and `packed`, a tightly-packed W x H

@@ -17,13 +17,31 @@ layout(push_constant) uniform PC {
     uint n;        // coefficients per subband (level plane w*h)
     uint levels;
     uint wgPerSeg;
+    uint masked;   // nonzero: count only [x0,x1) x [y0,y1) of a bw-wide plane
+    uint bw;       // (a tile's interior; the whole plane when not masked)
+    uint x0, x1;
+    uint y0, y1;
 } pc;
 
 shared uint h[PRIV];
 
 // Accumulation loop, instantiated per direction buffer: branching on `dir` inside the loop measured 1.6x
 // slower (3.05 vs 1.86 ms/137MiB), so it's hoisted by writing the loop three times instead.
-#define DN_MAD_ACCUM(SRC)                                                          for (uint i = wg * LX + tid; i < pc.n; i += stride) {                              uint b = uint(min(abs(SRC.v[base + i]), 65535.0));                             if (b < PRIV) {                                                                    atomicAdd(h[b], 1u);                                                       } else {                                                                           atomicAdd(hist.v[hbase + b], 1u);                                          }                                                                          }
+#define DN_MAD_ACCUM(SRC) \
+    for (uint i = wg * LX + tid; i < pc.n; i += stride) { \
+        if (pc.masked != 0u) { \
+            uint px = i % pc.bw, py = i / pc.bw; \
+            if (px < pc.x0 || px >= pc.x1 || py < pc.y0 || py >= pc.y1) { \
+                continue; \
+            } \
+        } \
+        uint b = uint(min(abs(SRC.v[base + i]), 65535.0)); \
+        if (b < PRIV) { \
+            atomicAdd(h[b], 1u); \
+        } else { \
+            atomicAdd(hist.v[hbase + b], 1u); \
+        } \
+    }
 
 void main()
 {

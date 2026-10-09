@@ -11,32 +11,44 @@ layout(std430, set = 0, binding = 1) readonly buffer MeanB { float v[]; } meanB;
 layout(std430, set = 0, binding = 2) readonly buffer Guide { float v[]; } guide;
 layout(std430, set = 0, binding = 3) writeonly buffer Dst { float v[]; } dst;
 
+// Same frame convention as mask_rescale_bilinear.comp: sample positions are
+// computed in the full image's coarse -> fine frame, so a tile reads the very
+// samples the whole-image run would (whole image: fws=ws, fwd=wd, origins 0).
 layout(push_constant) uniform PC {
-    uint ws;   // meanA/meanB width
-    uint hs;
-    uint wd;   // guide/dst width (full resolution)
-    uint hd;
+    int ws;   // meanA/meanB width
+    int hs;
+    int wd;   // guide/dst width (full resolution)
+    int hd;
+    int fws;
+    int fhs;
+    int fwd;
+    int fhd;
+    int sox;
+    int soy;
+    int dox;
+    int doy;
 } pc;
 
 void main()
 {
     uvec2 g = gl_GlobalInvocationID.xy;
-    if (g.x >= pc.wd || g.y >= pc.hd) {
+    if (g.x >= uint(pc.wd) || g.y >= uint(pc.hd)) {
         return;
     }
-    float col_scale = float(pc.ws) / float(pc.wd);
-    float row_scale = float(pc.hs) / float(pc.hd);
-    float x = float(g.x) * col_scale;
-    float y = float(g.y) * row_scale;
+    float col_scale = float(pc.fws) / float(pc.fwd);
+    float row_scale = float(pc.fhs) / float(pc.fhd);
+    float x = float(int(g.x) + pc.dox) * col_scale;
+    float y = float(int(g.y) + pc.doy) * row_scale;
 
-    int Ws = int(pc.ws);
-    int Hs = int(pc.hs);
-    int xi = min(int(x), Ws - 1);
-    int yi = min(int(y), Hs - 1);
-    float xf = x - float(xi);
-    float yf = y - float(yi);
-    int xi1 = min(xi + 1, Ws - 1);
-    int yi1 = min(yi + 1, Hs - 1);
+    int Ws = pc.ws;
+    int xg = min(int(x), pc.fws - 1);
+    int yg = min(int(y), pc.fhs - 1);
+    float xf = x - float(xg);
+    float yf = y - float(yg);
+    int xi = clamp(xg - pc.sox, 0, Ws - 1);
+    int yi = clamp(yg - pc.soy, 0, pc.hs - 1);
+    int xi1 = clamp(min(xg + 1, pc.fws - 1) - pc.sox, 0, Ws - 1);
+    int yi1 = clamp(min(yg + 1, pc.fhs - 1) - pc.soy, 0, pc.hs - 1);
 
     float a_bl = meanA.v[yi * Ws + xi];
     float a_br = meanA.v[yi * Ws + xi1];
@@ -54,6 +66,6 @@ void main()
     float b_top = xf * b_tr + (1.0 - xf) * b_tl;
     float b = yf * b_top + (1.0 - yf) * b_bot;
 
-    uint od = g.y * pc.wd + g.x;
+    uint od = g.y * uint(pc.wd) + g.x;
     dst.v[od] = a * guide.v[od] + b;
 }

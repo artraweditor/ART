@@ -55,11 +55,13 @@ Stats stats_;
 
 void parseDisabledOps()
 {
-    const char *v = std::getenv("ART_GPU_DISABLE_OPS");
-    if (!v || !*v) {
+    static const std::string s = []() {
+        const char *v = std::getenv("ART_GPU_DISABLE_OPS");
+        return std::string(v ? v : "");
+    }();
+    if (s.empty()) {
         return;
     }
-    std::string s(v);
     size_t pos = 0;
     while (pos <= s.size()) {
         const size_t comma = s.find(',', pos);
@@ -202,10 +204,12 @@ bool init(const Glib::ustring &user_settings_dir,
     Context::configure(user_settings_dir, device_preference, allow_software);
 
     // recorded so a later failure reports as degraded, not "off by choice"
-    const char *art_gpu = std::getenv("ART_GPU");
-    const std::string pref = art_gpu && *art_gpu
-                                 ? std::string(art_gpu)
-                                 : std::string(device_preference.raw());
+    static const std::string art_gpu = []() {
+        const char *v = std::getenv("ART_GPU");
+        return std::string(v ? v : "");
+    }();
+    const std::string pref =
+        !art_gpu.empty() ? art_gpu : std::string(device_preference.raw());
     wanted_ = !(pref.empty() || pref == "off" || pref == "0");
     return wanted_;
 }
