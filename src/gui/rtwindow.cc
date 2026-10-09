@@ -715,10 +715,6 @@ void RTWindow::on_mainNB_switch_page(Gtk::Widget *widget, guint page_num)
                 }
             }
         } else {
-            if (mainNB->get_nth_page(page_num) == bpanel) {
-                bpanel->refreshProfiles();
-            }
-
             // in single tab mode with command line filename epanel does not
             // exist yet
             if (isSingleTabMode() && epanel) {

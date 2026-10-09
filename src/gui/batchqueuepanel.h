@@ -84,8 +84,6 @@ public:
     bool canStartNext() override;
     void lastExportTimes(const art::engine::PipelineTimes &t) override;
 
-    void refreshProfiles();
-
 private:
     void startBatchProc();
     void stopBatchProc();

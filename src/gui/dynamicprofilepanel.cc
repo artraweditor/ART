@@ -39,6 +39,7 @@ DynamicProfilePanel::EditDialog::EditDialog(const Glib::ustring &title,
     : Gtk::Dialog(title, parent)
 {
     profilepath_ = Gtk::manage(new ProfileStoreComboBox());
+    profilepath_->setAutoRefresh(true);
     Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
     hb->pack_start(*Gtk::manage(new Gtk::Label(M("DYNPROFILEEDITOR_PROFILE"))),
                    false, false, 4);

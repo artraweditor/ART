@@ -44,6 +44,46 @@ ProfileStoreComboBox::ProfileStoreComboBox()
     setPreferredWidth(50, 120);
 }
 
+ProfileStoreComboBox::~ProfileStoreComboBox() {}
+
+void ProfileStoreComboBox::setAutoRefresh(bool yes)
+{
+    if (!yes) {
+        autoRefresh_.reset();
+    } else if (!autoRefresh_) {
+        autoRefresh_.reset(new AutoRefresh(*this));
+    }
+}
+
+ProfileStoreComboBox::AutoRefresh::AutoRefresh(ProfileStoreComboBox &cb):
+    cb_(cb)
+{
+    art::engine::ProfileStore::getInstance()->addListener(this);
+}
+
+ProfileStoreComboBox::AutoRefresh::~AutoRefresh()
+{
+    art::engine::ProfileStore::getInstance()->removeListener(this);
+}
+
+void ProfileStoreComboBox::AutoRefresh::storeCurrentValue()
+{
+    // called before the store deletes its entries
+    stored_ = cb_.getFullPathFromActiveRow();
+}
+
+void ProfileStoreComboBox::AutoRefresh::updateProfileList()
+{
+    cb_.updateProfileList();
+}
+
+void ProfileStoreComboBox::AutoRefresh::restoreValue()
+{
+    if (!cb_.setActiveRowFromFullPath(stored_)) {
+        cb_.unset_active();
+    }
+}
+
 Glib::ustring ProfileStoreComboBox::getCurrentLabel()
 {
     Glib::ustring currLabel;

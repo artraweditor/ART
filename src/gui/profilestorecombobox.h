@@ -20,6 +20,7 @@
 
 #include <glibmm.h>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "../engine/noncopyable.h"
@@ -58,6 +59,25 @@ public:
 };
 
 class ProfileStoreComboBox: public MyComboBox {
+    /**
+     * Keeps the combo box in sync with the ProfileStore: when the profile
+     * directories are parsed again the store deletes all of its entries, so
+     * the (non-owning) entry pointers held by the model would dangle. On every
+     * re-parse this rebuilds the list and restores the previous selection.
+     */
+    class AutoRefresh: public art::engine::ProfileStoreListener {
+    public:
+        explicit AutoRefresh(ProfileStoreComboBox &cb);
+        ~AutoRefresh() override;
+
+        void storeCurrentValue() override;
+        void updateProfileList() override;
+        void restoreValue() override;
+
+    private:
+        ProfileStoreComboBox &cb_;
+        Glib::ustring stored_;
+    };
 
 protected:
     class MethodColumns: public Gtk::TreeModel::ColumnRecord {
@@ -73,6 +93,7 @@ protected:
 
     Glib::RefPtr<Gtk::TreeStore> refTreeModel;
     MethodColumns methodColumns;
+    std::unique_ptr<AutoRefresh> autoRefresh_;
     void refreshProfileList_(
         Gtk::TreeModel::Row *parentRow, int parentFolderId, bool initial,
         const std::vector<const art::engine::ProfileStoreEntry *> *entryList);
@@ -83,6 +104,15 @@ protected:
 
 public:
     ProfileStoreComboBox();
+    ~ProfileStoreComboBox() override;
+
+    /**
+     * Rebuild the list (keeping the selection) whenever the ProfileStore is
+     * parsed again. To be enabled by users that don't already do it
+     * themselves by being a ProfileStoreListener (e.g. ProfilePanel).
+     */
+    void setAutoRefresh(bool yes);
+
     void updateProfileList();
     Glib::ustring getCurrentLabel();
     const art::engine::ProfileStoreEntry *getSelectedEntry();

@@ -165,6 +165,7 @@ BatchQueuePanel::BatchQueuePanel(FileCatalog *aFileCatalog): parent(nullptr)
             new Gtk::CheckButton(M("QUEUE_APPLY_BATCH_PROFILE") + ": "));
         apply_batch_profile_->set_active(false);
         profiles_cb_ = Gtk::manage(new ProfileStoreComboBox());
+        profiles_cb_->setAutoRefresh(true);
         Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
         hb->pack_start(*apply_batch_profile_, Gtk::PACK_SHRINK, 4);
         hb->pack_start(*profiles_cb_, Gtk::PACK_EXPAND_WIDGET, 4);
@@ -513,15 +514,6 @@ void BatchQueuePanel::applyBatchProfileToggled()
         options.export_profile_map[saveFormatPanel->getFormat().getKey()];
     info.enabled = apply_batch_profile_->get_active();
     info.profile = profiles_cb_->getFullPathFromActiveRow();
-}
-
-void BatchQueuePanel::refreshProfiles()
-{
-    auto pth = profiles_cb_->getFullPathFromActiveRow();
-    profiles_cb_->updateProfileList();
-    if (!profiles_cb_->setActiveRowFromFullPath(pth)) {
-        profiles_cb_->unset_active();
-    }
 }
 
 

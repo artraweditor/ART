@@ -181,6 +181,7 @@ SaveAsDialog::SaveAsDialog(const Glib::ustring &initialDir, Gtk::Window *parent)
             new Gtk::CheckButton(M("QUEUE_APPLY_BATCH_PROFILE") + ": "));
         apply_export_profile_->set_active(false);
         profiles_cb_ = Gtk::manage(new ProfileStoreComboBox());
+        profiles_cb_->setAutoRefresh(true);
         setExpandAlignProperties(profiles_cb_, true, false, Gtk::ALIGN_FILL,
                                  Gtk::ALIGN_START);
         Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
