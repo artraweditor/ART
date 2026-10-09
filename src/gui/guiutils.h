@@ -20,6 +20,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <map>
 
 #include <gtkmm.h>
@@ -380,6 +381,62 @@ public:
     MyComboBox();
 
     void setPreferredWidth(int minimum_width, int natural_width);
+};
+
+/**
+ * A combo-box-like button whose popover holds a search entry and a tree of
+ * the (tree) model. Typing in the entry filters the rows dynamically:
+ * only the rows containing the typed text (case-insensitive) are shown, and
+ * parents with no matching descendants are hidden. The interface mirrors the
+ * subset of Gtk::ComboBox used by the lens profile panel; the iterators it
+ * returns/accepts belong to the underlying (unfiltered) model.
+ */
+class SearchableTreeCombo: public Gtk::MenuButton {
+public:
+    SearchableTreeCombo();
+
+    void setModel(const Glib::RefPtr<Gtk::TreeStore> &model,
+                  const Gtk::TreeModelColumn<Glib::ustring> &text_column);
+    void setPreferredWidth(int minimum_width, int natural_width);
+
+    Gtk::TreeModel::iterator get_active() const;
+    void set_active(const Gtk::TreeModel::iterator &it);
+    void set_active(int index); // only -1 (no selection) is supported
+
+    sigc::signal<void> signal_changed() { return signal_changed_; }
+
+private:
+    void get_preferred_width_vfunc(int &minimum_width,
+                                   int &natural_width) const override;
+    void get_preferred_width_for_height_vfunc(int height, int &minimum_width,
+                                              int &natural_width) const override;
+
+    bool rowVisible(const Gtk::TreeModel::const_iterator &it) const;
+    Glib::ustring rowText(const Gtk::TreeModel::const_iterator &it) const;
+    bool anyVisible(const Gtk::TreeModel::const_iterator &it) const;
+    void onSearchChanged();
+    void onSearchActivated();
+    void onRowActivated(const Gtk::TreeModel::Path &path,
+                        Gtk::TreeViewColumn *column);
+    void onPopoverShown();
+    void revealActive();
+    void choose(const Gtk::TreeModel::Path &filter_path);
+
+    int minimumWidth_;
+    int naturalWidth_;
+    Glib::RefPtr<Gtk::TreeStore> model_;
+    Glib::RefPtr<Gtk::TreeModelFilter> filter_;
+    const Gtk::TreeModelColumn<Glib::ustring> *textColumn_;
+    Glib::ustring query_;
+    std::unique_ptr<Gtk::TreeRowReference> active_;
+
+    Gtk::Label label_;
+    Gtk::Popover popover_;
+    Gtk::Box box_;
+    Gtk::SearchEntry entry_;
+    Gtk::ScrolledWindow scroll_;
+    Gtk::TreeView view_;
+    sigc::signal<void> signal_changed_;
 };
 
 /**

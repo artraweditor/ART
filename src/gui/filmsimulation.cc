@@ -204,11 +204,8 @@ void FilmSimulation::write(art::engine::procparams::ProcParams *pp)
     pp->filmSimulation.enabled = getEnabled();
     const Glib::ustring clutFName = m_clutComboBox->getSelectedClut().first;
 
-    if (clutFName != "NULL") { // We do not want to set "NULL" in clutFilename,
-                               // even if "unedited"
-        pp->filmSimulation.clutFilename =
-            stripPrefixDir(clutFName, options.clutsDir);
-    }
+    pp->filmSimulation.clutFilename =
+        stripPrefixDir(clutFName, options.clutsDir);
 
     pp->filmSimulation.strength = m_strength->getValue();
     pp->filmSimulation.after_tone_curve = after_tone_curve_->get_active();
@@ -223,64 +220,30 @@ void FilmSimulation::trimValues(art::engine::procparams::ProcParams *pp)
 //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 std::unique_ptr<ClutComboBox::ClutModel> ClutComboBox::cm;
-std::unique_ptr<ClutComboBox::ClutModel> ClutComboBox::cm2;
 
 ClutComboBox::ClutComboBox(const std::vector<Glib::ustring> &paths)
-    : MyComboBox()
+    : SearchableTreeCombo()
 {
     if (!cm) {
         cm.reset(new ClutModel(paths));
     }
-    if (!cm2 && options.multiDisplayMode) {
-        cm2.reset(new ClutModel(paths));
-    }
 
-    set_model(m_model());
-
-    if (cm->count > 0) {
-        pack_start(m_columns().label, false);
-    }
-
-    if (!options.multiDisplayMode) {
-        signal_map().connect(
-            sigc::mem_fun(*this, &ClutComboBox::updateUnchangedEntry));
-    }
+    setModel(m_model(), m_columns().label);
 }
 
 inline Glib::RefPtr<Gtk::TreeStore> &ClutComboBox::m_model()
 {
-    if (!options.multiDisplayMode) {
-        return cm->m_model;
-    } else {
-        return cm2->m_model;
-    }
+    return cm->m_model;
 }
 
 inline ClutComboBox::ClutColumns &ClutComboBox::m_columns()
 {
-    if (!options.multiDisplayMode) {
-        return cm->m_columns;
-    } else {
-        return cm2->m_columns;
-    }
+    return cm->m_columns;
 }
 
 void ClutComboBox::cleanup()
 {
     cm.reset();
-    cm2.reset();
-}
-
-void ClutComboBox::updateUnchangedEntry()
-{
-    auto c = m_model()->children();
-
-    if (c.size() > 0) {
-        Gtk::TreeModel::Row row = c[c.size() - 1];
-        if (row[m_columns().clutFilename] == "NULL") {
-            m_model()->erase(row);
-        }
-    }
 }
 
 ClutComboBox::ClutColumns::ClutColumns()

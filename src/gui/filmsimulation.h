@@ -31,7 +31,7 @@
 namespace art { namespace gui {
 
 
-class ClutComboBox: public MyComboBox {
+class ClutComboBox: public SearchableTreeCombo {
 public:
     explicit ClutComboBox(const std::vector<Glib::ustring> &paths);
     // int fillFromDir (const Glib::ustring& path);
@@ -42,13 +42,6 @@ public:
     static void cleanup();
 
 private:
-    void
-    updateUnchangedEntry(); // in batchMode we need to add an extra entry
-                            // "(Unchanged)". We do this whenever the widget is
-                            // mapped (connecting to signal_map()), unless
-                            // options.multiDisplayMode (see the comment below
-                            // about cm2 in this case)
-
     class ClutColumns: public Gtk::TreeModel::ColumnRecord {
     public:
         Gtk::TreeModelColumn<Glib::ustring> label;
@@ -71,13 +64,9 @@ private:
     Gtk::TreeIter findRowByClutFilename(Gtk::TreeModel::Children childs,
                                         Glib::ustring filename);
 
-    static std::unique_ptr<ClutModel>
-        cm; // we use a shared TreeModel for all the combo boxes, to save time
-            // (no need to reparse the clut dir multiple times)...
-    static std::unique_ptr<ClutModel>
-        cm2; // ... except when options.multiDisplayMode (i.e. editors in their
-             // own window), where we need two. This is because we might have
-             // two combo boxes displayed at the same time in this case
+    // we use a shared TreeModel for all the combo boxes, to save time
+    // (no need to reparse the clut dir multiple times)
+    static std::unique_ptr<ClutModel> cm; 
 };
 
 class FilmSimulation: public ToolParamBlock,

@@ -24,6 +24,7 @@
 #include "rtimage.h"
 #include <cairomm/cairomm.h>
 
+#include <algorithm>
 #include <assert.h>
 #include <iomanip>
 #include <iostream>
@@ -2399,6 +2400,241 @@ void MyFontButton::on_btn_clicked()
     }
         
     dialog.hide();
+}
+
+
+//-----------------------------------------------------------------------------
+// SearchableTreeCombo
+//-----------------------------------------------------------------------------
+
+SearchableTreeCombo::SearchableTreeCombo():
+    minimumWidth_(70),
+    naturalWidth_(70),
+    textColumn_(nullptr),
+    box_(Gtk::ORIENTATION_VERTICAL, 4)
+{
+    // button contents: label + arrow
+    if (get_child()) {
+        remove();
+    }
+    auto *hb = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4));
+    label_.set_halign(Gtk::ALIGN_START);
+    label_.set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+    label_.set_width_chars(1);
+    hb->pack_start(label_, Gtk::PACK_EXPAND_WIDGET);
+    hb->pack_end(*Gtk::manage(new Gtk::Image("pan-down-symbolic",
+                                             Gtk::ICON_SIZE_BUTTON)),
+                 Gtk::PACK_SHRINK);
+    // internal padding, to match the height of a regular combo box
+    hb->set_margin_top(2);
+    hb->set_margin_bottom(2);
+    add(*hb);
+    hb->show_all();
+
+    scroll_.set_policy(Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC);
+    scroll_.set_min_content_width(320);
+    scroll_.set_min_content_height(350);
+    scroll_.add(view_);
+    view_.set_headers_visible(false);
+    view_.set_activate_on_single_click(true);
+    view_.set_hover_selection(true); // highlight the row under the pointer
+    view_.set_enable_search(false);
+
+    box_.set_border_width(6);
+    box_.pack_start(entry_, Gtk::PACK_SHRINK);
+    box_.pack_start(scroll_, Gtk::PACK_EXPAND_WIDGET);
+    box_.show_all();
+    popover_.add(box_);
+    set_popover(popover_);
+
+    entry_.signal_search_changed().connect(
+        sigc::mem_fun(*this, &SearchableTreeCombo::onSearchChanged));
+    entry_.signal_activate().connect(
+        sigc::mem_fun(*this, &SearchableTreeCombo::onSearchActivated));
+    view_.signal_row_activated().connect(
+        sigc::mem_fun(*this, &SearchableTreeCombo::onRowActivated));
+    popover_.signal_show().connect(
+        sigc::mem_fun(*this, &SearchableTreeCombo::onPopoverShown));
+}
+
+void SearchableTreeCombo::setModel(
+    const Glib::RefPtr<Gtk::TreeStore> &model,
+    const Gtk::TreeModelColumn<Glib::ustring> &text_column)
+{
+    model_ = model;
+    textColumn_ = &text_column;
+    active_.reset();
+    label_.set_text("");
+
+    filter_ = Gtk::TreeModelFilter::create(model_);
+    filter_->set_visible_func(
+        sigc::mem_fun(*this, &SearchableTreeCombo::rowVisible));
+    view_.set_model(filter_);
+    view_.remove_all_columns();
+    view_.append_column("", text_column);
+}
+
+void SearchableTreeCombo::setPreferredWidth(int minimum_width,
+                                            int natural_width)
+{
+    minimumWidth_ = minimum_width;
+    naturalWidth_ = natural_width;
+}
+
+void SearchableTreeCombo::get_preferred_width_vfunc(int &minimum_width,
+                                                    int &natural_width) const
+{
+    minimum_width = std::max(minimumWidth_, 10);
+    natural_width = std::max(naturalWidth_, minimum_width);
+}
+
+void SearchableTreeCombo::get_preferred_width_for_height_vfunc(
+    int, int &minimum_width, int &natural_width) const
+{
+    get_preferred_width_vfunc(minimum_width, natural_width);
+}
+
+Gtk::TreeModel::iterator SearchableTreeCombo::get_active() const
+{
+    if (active_ && model_) {
+        const auto path = active_->get_path();
+        if (!path.empty()) {
+            return model_->get_iter(path);
+        }
+    }
+    return Gtk::TreeModel::iterator();
+}
+
+void SearchableTreeCombo::set_active(const Gtk::TreeModel::iterator &it)
+{
+    if (!it || !model_) {
+        set_active(-1);
+        return;
+    }
+    const auto path = model_->get_path(it);
+    if (active_ && active_->get_path() == path) {
+        return;
+    }
+    active_.reset(new Gtk::TreeRowReference(model_, path));
+    label_.set_text((*it)[*textColumn_]);
+    signal_changed_.emit();
+}
+
+void SearchableTreeCombo::set_active(int)
+{
+    if (!active_) {
+        return;
+    }
+    active_.reset();
+    label_.set_text("");
+    signal_changed_.emit();
+}
+
+Glib::ustring
+SearchableTreeCombo::rowText(const Gtk::TreeModel::const_iterator &it) const
+{
+    Glib::ustring ret = (*it)[*textColumn_];
+    // a row is also matched against the text of its ancestors (e.g. the
+    // make), so that "canon 50" finds a Canon lens whose own name omits the
+    // make
+    for (auto p = (*it).parent(); p; p = (*p).parent()) {
+        ret = (*p)[*textColumn_] + " " + ret;
+    }
+    return ret.casefold();
+}
+
+bool SearchableTreeCombo::rowVisible(
+    const Gtk::TreeModel::const_iterator &it) const
+{
+    return query_.empty() || anyVisible(it);
+}
+
+bool SearchableTreeCombo::anyVisible(
+    const Gtk::TreeModel::const_iterator &it) const
+{
+    if (it->children().empty()) {
+        return rowText(it).find(query_) != Glib::ustring::npos;
+    }
+    // parents are shown only if at least one descendant is
+    for (auto child = it->children().begin(); child != it->children().end();
+         ++child) {
+        if (anyVisible(child)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void SearchableTreeCombo::onSearchChanged()
+{
+    query_ = entry_.get_text().casefold();
+    filter_->refilter();
+    if (query_.empty()) {
+        view_.collapse_all();
+    }
+    revealActive();
+}
+
+void SearchableTreeCombo::onSearchActivated()
+{
+    // Enter selects the first visible leaf
+    Gtk::TreeModel::const_iterator it = filter_->children().begin();
+    while (it && !it->children().empty()) {
+        it = it->children().begin();
+    }
+    if (it) {
+        choose(filter_->get_path(it));
+    }
+}
+
+void SearchableTreeCombo::onRowActivated(const Gtk::TreeModel::Path &path,
+                                         Gtk::TreeViewColumn *)
+{
+    const auto it = filter_->get_iter(path);
+    if (it && !it->children().empty()) {
+        if (view_.row_expanded(path)) {
+            view_.collapse_row(path);
+        } else {
+            view_.expand_row(path, false);
+        }
+    } else {
+        choose(path);
+    }
+}
+
+void SearchableTreeCombo::choose(const Gtk::TreeModel::Path &filter_path)
+{
+    const auto path = filter_->convert_path_to_child_path(filter_path);
+    popover_.popdown();
+    set_active(model_->get_iter(path));
+}
+
+void SearchableTreeCombo::onPopoverShown()
+{
+    if (entry_.get_text().empty()) {
+        query_.clear();
+        filter_->refilter();
+        view_.collapse_all();
+        revealActive();
+    } else {
+        entry_.set_text(""); // triggers onSearchChanged()
+    }
+    entry_.grab_focus();
+}
+
+void SearchableTreeCombo::revealActive()
+{
+    if (active_) {
+        const auto path = active_->get_path();
+        if (!path.empty()) {
+            const auto fpath = filter_->convert_child_path_to_path(path);
+            if (!fpath.empty()) {
+                view_.expand_to_path(fpath);
+                view_.get_selection()->select(fpath);
+                view_.scroll_to_row(fpath, 0.5);
+            }
+        }
+    }
 }
 
 

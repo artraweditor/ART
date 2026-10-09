@@ -20,6 +20,7 @@
 #pragma once
 
 #include <gtkmm.h>
+#include <memory>
 
 #include "guiutils.h"
 #include "lensgeom.h"
@@ -119,9 +120,9 @@ private:
     Gtk::RadioButton *const corrLcpFileRB;
     MyFileChooserButton *const corrLcpFileChooser;
     Gtk::Label *const lensfunCamerasLbl;
-    MyComboBox *const lensfunCameras;
+    SearchableTreeCombo *const lensfunCameras;
     Gtk::Label *const lensfunLensesLbl;
-    MyComboBox *const lensfunLenses;
+    SearchableTreeCombo *const lensfunLenses;
     Gtk::Image *const warning;
     Gtk::CheckButton *const ckbUseDist;
     Gtk::CheckButton *const ckbUseVign;
