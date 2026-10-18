@@ -123,9 +123,6 @@ inline void LUT3D::apply_tetra(float &r, float &g, float &b) const
     constexpr int m_components = 3;
     const int m_dim = dim_;
     const float *m_optLut = lut_.data;
-#ifndef ART_SIMD
-    float out[3];
-#endif
 
     float idx[3];
     idx[0] = r * m_step;
