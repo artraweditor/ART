@@ -28,6 +28,10 @@ include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
 add_library(art_utils ${UTILSSOURCEFILES})
 add_dependencies(art_utils UpdateInfo)
 
+if(BUILD_SHARED_LIBS)
+    install(TARGETS art_utils DESTINATION ${LIBDIR})
+endif()
+
 target_link_libraries(art_utils
     ${EXTRA_LIB}
     ${GLIB2_LIBRARIES}
