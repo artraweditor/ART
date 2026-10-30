@@ -26,6 +26,7 @@
 
 #include "../engine/clutstore.h"
 #include "../engine/imgiomanager.h"
+#include "../engine/pipelineprofile.h"
 #include "../engine/profilestore.h"
 #include "../engine/settings.h"
 #include "../utils/config.h"
@@ -63,6 +64,24 @@
 #ifdef WITH_MIMALLOC
 #include <mimalloc.h>
 #endif
+
+namespace {
+
+// ART_PROFILE=1: wall-clock time of the phases around processImage() (start
+// is the process's static initialisation, i.e. before main())
+const std::chrono::steady_clock::time_point phase_t0 =
+    std::chrono::steady_clock::now();
+
+void phase(const char *name)
+{
+    if (art::engine::PipelineProfile::enabled()) {
+        std::chrono::duration<double, std::milli> d =
+            std::chrono::steady_clock::now() - phase_t0;
+        fprintf(stderr, "[phase] %-24s %8.1f ms\n", name, d.count());
+    }
+}
+
+} // namespace
 
 namespace art { namespace engine {
 extern const Settings *settings;
@@ -204,12 +223,14 @@ int main(int argc, char **argv)
     bool quickstart = p.first;
     int verbose = p.second;
 
+    phase("main");
     try {
         Options::load(quickstart, verbose);
     } catch (Options::Error &e) {
         std::cerr << std::endl << "Error:" << e.get_msg() << std::endl;
         return -2;
     }
+    phase("options loaded");
 
     if (options.is_defProfRawMissing()) {
         options.defProfRaw = Options::DEFPROFILE_RAW;
@@ -291,7 +312,9 @@ int main(int argc, char **argv)
 
     // as the GUI does on exit; among other things this stops the exiftool
     // process started for reading metadata, which would otherwise keep running
+    phase("processed");
     art::engine::cleanup();
+    phase("cleanup done");
 
     return ret;
 }
@@ -920,6 +943,7 @@ int processLineParams(int argc, char **argv)
             cpl.info(Glib::ustring::compose("Processing: %1", inputFile));
         }
 
+        phase("frame start");
         art::engine::InitialImage *ii = nullptr;
         art::engine::ProcessingJob *job = nullptr;
         int errorCode;
@@ -1090,8 +1114,10 @@ int processLineParams(int argc, char **argv)
         }
 
         // Process image
+        phase("job ready");
         art::engine::IImagefloat *resultImage =
             art::engine::processImage(job, errorCode, pl);
+        phase("processImage done");
 
         if (!resultImage) {
             errors++;
@@ -1118,6 +1144,7 @@ int processLineParams(int argc, char **argv)
             // errorCode = resultImage->saveToFile(outputFile);
         }
 
+        phase("saved");
         if (errorCode) {
             errors++;
             cpl.error(

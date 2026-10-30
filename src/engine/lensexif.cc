@@ -41,6 +41,7 @@
 
 #include "lensexif.h"
 #include "metadata.h"
+#include "pipelineprofile.h"
 #include "settings.h"
 #include <algorithm>
 #include <array>
@@ -664,6 +665,7 @@ ExifLensCorrection::ExifLensCorrection(const FramesMetaData *meta, int width,
     }
 
     try {
+        ART_PROFILE_SCOPE("lens:metadata");
         auto md = Exiv2Metadata(meta->getFileName());
         if (meta->isDNG()) {
             // check if this is a DNG

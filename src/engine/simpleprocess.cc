@@ -341,6 +341,7 @@ private:
         if (params.filmNegative.colorSpace !=
             FilmNegativeParams::ColorSpace::INPUT) {
             {
+                ART_PROFILE_SCOPE("input-profile");
                 imgsrc->convertColorSpace(img, params.icm, currWB);
             }
             converted = true;
@@ -353,6 +354,7 @@ private:
 
         if (!converted) {
             {
+                ART_PROFILE_SCOPE("input-profile");
                 imgsrc->convertColorSpace(img, params.icm, currWB);
             }
         }
