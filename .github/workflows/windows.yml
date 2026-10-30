@@ -89,17 +89,18 @@ jobs:
         
       - name: Install exiv2
         run: |
-          wget https://github.com/Exiv2/exiv2/releases/download/v0.27.7/exiv2-0.27.7-Source.tar.gz
-          tar xzf exiv2-0.27.7-Source.tar.gz
+          EXIV2_VERSION='0.28.8'
+          wget https://github.com/Exiv2/exiv2/archive/refs/tags/v${EXIV2_VERSION}.tar.gz
+          tar xzf v${EXIV2_VERSION}.tar.gz
           mkdir build-exiv2
           cd build-exiv2
           cmake \
             -GNinja \
             -DCMAKE_BUILD_TYPE=Release  \
             -DCMAKE_INSTALL_PREFIX=c:/msys2/msys64/usr/local \
-            -DEXIV2_ENABLE_WIN_UNICODE=1 \
             -DEXIV2_ENABLE_BMFF=1 \
-            ../exiv2-0.27.7-Source
+            -DEXIV2_ENABLE_INIH=0 \
+            ../exiv2-${EXIV2_VERSION}
           ninja install
           cd ..
 
