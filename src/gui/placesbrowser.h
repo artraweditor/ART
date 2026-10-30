@@ -22,6 +22,7 @@
 #include "../utils/multilangmgr.h"
 #include <giomm.h>
 #include <gtkmm.h>
+#include <map>
 
 namespace art { namespace gui {
 
@@ -69,6 +70,10 @@ private:
     void on_session_changed(const Glib::RefPtr<Gio::File> &file,
                             const Glib::RefPtr<Gio::File> &other_file,
                             Gio::FileMonitorEvent event_type);
+
+    void on_cell_data_icon(Gtk::CellRenderer *renderer,
+                           const Gtk::TreeModel::iterator &iter);
+    std::map<std::string, Glib::RefPtr<Gdk::Pixbuf>> selected_icons_;
 
     void setRow(Gtk::TreeModel::Row row, Glib::RefPtr<Gio::Icon> icon,
                 Glib::ustring label, Glib::ustring root, PlaceType type,

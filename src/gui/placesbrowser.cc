@@ -85,7 +85,8 @@ PlacesBrowser::PlacesBrowser()
     labelCR->property_ellipsize() = Pango::ELLIPSIZE_MIDDLE;
     iviewcol->pack_start(*iconCR, false);
     iviewcol->pack_start(*labelCR, true);
-    iviewcol->add_attribute(*iconCR, "gicon", 0);
+    iviewcol->set_cell_data_func(
+        *iconCR, sigc::mem_fun(*this, &PlacesBrowser::on_cell_data_icon));
     iviewcol->add_attribute(*labelCR, "text", placesColumns.label);
     treeView->append_column(*iviewcol);
 
@@ -127,6 +128,49 @@ PlacesBrowser::PlacesBrowser()
 
     show_all();
 }
+
+void PlacesBrowser::on_cell_data_icon(Gtk::CellRenderer *renderer,
+                                      const Gtk::TreeModel::iterator &iter)
+{
+    auto pr = dynamic_cast<Gtk::CellRendererPixbuf *>(renderer);
+    if (!pr) {
+        return;
+    }
+    Glib::RefPtr<Gio::Icon> icon = (*iter)[placesColumns.icon];
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+    if (icon && treeView->get_selection()->is_selected(iter)) {
+        // the theme color is unreadable on the selection background: draw the
+        // icon with the foreground color that the selected text uses
+        auto c = treeView->get_style_context()->get_color(
+            Gtk::STATE_FLAG_SELECTED);
+        char buf[8];
+        snprintf(buf, sizeof(buf), "#%02x%02x%02x",
+                 int(c.get_red() * 255 + 0.5), int(c.get_green() * 255 + 0.5),
+                 int(c.get_blue() * 255 + 0.5));
+        const std::string key = icon->to_string() + buf;
+        auto it = selected_icons_.find(key);
+        if (it == selected_icons_.end()) {
+            int w = 16, h = 16;
+            Gtk::IconSize::lookup(Gtk::ICON_SIZE_MENU, w, h);
+            Glib::RefPtr<Gdk::Pixbuf> pb;
+            auto info = Gtk::IconTheme::get_default()->lookup_icon(
+                icon, std::max(w, h), Gtk::ICON_LOOKUP_USE_BUILTIN);
+            if (info) {
+                bool symbolic = false;
+                // non-symbolic icons come back unchanged
+                pb = info.load_symbolic(c, c, c, c, symbolic);
+            }
+            it = selected_icons_.emplace(key, pb).first;
+        }
+        pixbuf = it->second;
+    }
+    if (pixbuf) {
+        pr->property_pixbuf() = pixbuf;
+    } else {
+        pr->property_gicon() = icon;
+    }
+}
+
 
 PlacesBrowser::~PlacesBrowser()
 {
