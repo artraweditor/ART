@@ -32,7 +32,7 @@
 #31 2026-04-26  Ohnishi, Yasuo, updates for 1.26.4
 #32 2026-06-10  Ohnishi, Yasuo, updates for 1.26.6
 #33 2026-10-07  Ohnishi, Yasuo, updates for 1.26.10
-#34 2026-10-29  Ohnishi, Yasuo, updates for 1.26.11
+#34 2026-10-30  Ohnishi, Yasuo, updates for 1.26.11
 ABOUT_TAB_BUILD;バージョン
 ABOUT_TAB_CREDITS;クレジット
 ABOUT_TAB_LICENSE;ライセンス
@@ -159,8 +159,8 @@ FILEBROWSER_AUTOFLATFIELD;オート･フラットフィールド
 FILEBROWSER_BROWSEPATHBUTTONHINT;サムネイルのリストを更新\nショートカット: <b>%shortcut(filecatalog.refresh)%</b>
 FILEBROWSER_BROWSEPATHHINT;参照するパスを入力します\n<b>%shortcut(filecatalog.focus_path)%</b> パスのテキストボックスにフォーカス\n<b>Enter</b> / <b>Ctrl-Enter</b>その場所をブラウズします\n<b>Esc</b> 変更をクリア\n<b>Shift-Esc</b>フォーカスを削除\nパスのショートカット:\n  <b>~</b> - ユーザーのホームディレクトリ\n  <b>!</b> - ユーザーの画像ディレクトリ
 FILEBROWSER_CACHE;キャッシュ
-FILEBROWSER_CACHECLEARFROMFULL;プロファイルを含めcache内をクリアにする
-FILEBROWSER_CACHECLEARFROMPARTIAL;プロファイルを除き cache内をクリアにする
+FILEBROWSER_CACHECLEARFROMFULL;プロファイルを含めキャッシュ内をクリアにする
+FILEBROWSER_CACHECLEARFROMPARTIAL;プロファイルを除き キャッシュ内をクリアにする
 FILEBROWSER_CLEARPROFILE;プロファイルのクリア
 FILEBROWSER_COLORLABEL_TOOLTIP;カラー･ラベル\n\nドロップダウン･メニューもしくは ショートカット:\n<b>%shortcut(filebrowser.set_label.0)%</b> カラーなし\n<b>%shortcut(filebrowser.set_label.1)%</b> レッド\n<b>%shortcut(filebrowser.set_label.2)%</b> イエロー\n<b>%shortcut(filebrowser.set_label.3)%</b> グリーン\n<b>%shortcut(filebrowser.set_label.4)%</b> ブルー\n<b>%shortcut(filebrowser.set_label.5)%</b> パープル
 FILEBROWSER_COPYPROFILE;プロファイルをコピー
@@ -1073,12 +1073,12 @@ PREFERENCES_AUTOSAVE;自動保存
 PREFERENCES_AUTOSAVE_INTERVAL;ARP 自動保存間隔 (分単位, 0 は自動保存無効)
 PREFERENCES_BATCH_PROCESSING;バッチ処理
 PREFERENCES_CACHECLEAR;クリア
-PREFERENCES_CACHECLEAR_ALL;cacheに入れられたファイルを全てクリア:
-PREFERENCES_CACHECLEAR_ALLBUTPROFILES;cacheに入れた処理プロファイル以外をクリア:
-PREFERENCES_CACHECLEAR_ONLYPROFILES;cacheに入れた処理プロファイルだけをクリア:
-PREFERENCES_CACHECLEAR_SAFETY;casheに入れたファイルだけをクリア. 元画像に付随した処理プロファイルはそのまま
-PREFERENCES_CACHEMAXENTRIES;cacheに入れるファイルの最大数
-PREFERENCES_CACHEOPTS;cache オプション
+PREFERENCES_CACHECLEAR_ALL;キャッシュに入れられたファイルを全てクリア:
+PREFERENCES_CACHECLEAR_ALLBUTPROFILES;キャッシュに入れた処理プロファイル以外をクリア:
+PREFERENCES_CACHECLEAR_ONLYPROFILES;キャッシュに入れた処理プロファイルだけをクリア:
+PREFERENCES_CACHECLEAR_SAFETY;キャシュに入れたファイルだけをクリア. 元画像に付随した処理プロファイルはそのまま
+PREFERENCES_CACHEMAXENTRIES;キャッシュに入れるファイルの最大数
+PREFERENCES_CACHEOPTS;キャッシュ オプション
 PREFERENCES_CACHETHUMBHEIGHT;サムネイル縦の最大値
 PREFERENCES_CLIPPINGIND;クリッピング領域の表示
 PREFERENCES_CLUTSCACHE;カラーLUT キャッシュ
@@ -1150,8 +1150,8 @@ PREFERENCES_MONITOR_GAMUT;モニターの色域
 PREFERENCES_OSCOLORMGMT_INFO;カラーマネジメントは、オペレーティングシステム/デスクトップ環境に組み込まれており、グローバルに有効になっています。\n環境機能を使用してモニタープロファイルを設定し、ここで最適な色域を選択します。
 PREFERENCES_IMPROCPARAMS;画像処理のデフォルト値
 PREFERENCES_INSPECT_LABEL;画像確認
-PREFERENCES_INSPECT_MAXBUFFERS_LABEL;cacheに入れる画像の最大数
-PREFERENCES_INSPECT_MAXBUFFERS_TOOLTIP;ファイルブラウザの操作中にcacheに入れられる画像の最大数. RAM容量が小さい場合（2G以下）の場合は 設定値を1或いは2にするべき
+PREFERENCES_INSPECT_MAXBUFFERS_LABEL;キャッシュに入れる画像の最大数
+PREFERENCES_INSPECT_MAXBUFFERS_TOOLTIP;ファイルブラウザの操作中にキャッシュに入れられる画像の最大数. RAM容量が小さい場合（2G以下）の場合は 設定値を1或いは2にするべき
 PREFERENCES_INTENT_ABSOLUTE;絶対的な色域を維持
 PREFERENCES_INTENT_PERCEPTUAL;知覚的
 PREFERENCES_INTENT_RELATIVE;相対的な色域を維持
@@ -1202,10 +1202,10 @@ PREFERENCES_PREVIEW_RESAMPLING_QUALITY;100% 未満のズームでのプレビュ
 PREFERENCES_PRINTER;ソフトプルーフィング
 PREFERENCES_PROFILEHANDLING;処理プロファイルの取扱い
 PREFERENCES_PROFILELOADPR;処理プロファイル読み込みの優先
-PREFERENCES_PROFILEPRCACHE;cacheの中のプロファイル
+PREFERENCES_PROFILEPRCACHE;キャッシュの中のプロファイル
 PREFERENCES_PROFILEPRFILE;入力ファイルに隣接するプロファイル
-PREFERENCES_PROFILESAVEBOTH;処理プロファイルはcacheと入力ファイルの両方に関連付けて保存する
-PREFERENCES_PROFILESAVECACHE;処理プロファイルのパラメータをcacheに保存
+PREFERENCES_PROFILESAVEBOTH;処理プロファイルはキャッシュと入力ファイルの両方に関連付けて保存する
+PREFERENCES_PROFILESAVECACHE;処理プロファイルのパラメータをキャッシュに保存
 PREFERENCES_PROFILESAVEINPUT;処理プロファイルのパラメータを入力ファイルと同じディレクトリに保存
 PREFERENCES_PROFILESAVELOCATION;処理プロファイルが保存されている場所
 PREFERENCES_PROFILE_NONE;なし
