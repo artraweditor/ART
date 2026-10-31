@@ -143,10 +143,13 @@ void PlacesBrowser::on_cell_data_icon(Gtk::CellRenderer *renderer,
         // icon with the foreground color that the selected text uses
         auto c = treeView->get_style_context()->get_color(
             Gtk::STATE_FLAG_SELECTED);
+        // the SVG icons are drawn with the background colour of the view
+        auto bg = treeView->get_style_context()->get_background_color(
+            Gtk::STATE_FLAG_NORMAL);
         char buf[8];
         snprintf(buf, sizeof(buf), "#%02x%02x%02x",
-                 int(c.get_red() * 255 + 0.5), int(c.get_green() * 255 + 0.5),
-                 int(c.get_blue() * 255 + 0.5));
+                 int(bg.get_red() * 255 + 0.5), int(bg.get_green() * 255 + 0.5),
+                 int(bg.get_blue() * 255 + 0.5));
         const std::string key = icon->to_string() + buf;
         auto it = selected_icons_.find(key);
         if (it == selected_icons_.end()) {
@@ -156,9 +159,38 @@ void PlacesBrowser::on_cell_data_icon(Gtk::CellRenderer *renderer,
             auto info = Gtk::IconTheme::get_default()->lookup_icon(
                 icon, std::max(w, h), Gtk::ICON_LOOKUP_USE_BUILTIN);
             if (info) {
-                bool symbolic = false;
-                // non-symbolic icons come back unchanged
-                pb = info.load_symbolic(c, c, c, c, symbolic);
+                const std::string fn = info.get_filename();
+                if (fn.size() > 4 && fn.compare(fn.size() - 4, 4, ".svg") == 0) {
+                    // our theme icons are stroked/filled with a fixed colour
+                    // rather than being GTK-style symbolic, so
+                    // load_symbolic() would leave them untouched: recolour
+                    // the SVG itself
+                    try {
+                        auto re = Glib::Regex::create("#[0-9a-fA-F]{6}\\b");
+                        Glib::ustring svg = re->replace(
+                            Glib::file_get_contents(fn), 0, buf,
+                            Glib::RegexMatchFlags());
+                        // the icons are drawn semi-transparent, which would
+                        // wash them out on the selection background
+                        svg = Glib::Regex::create(" opacity=\"[0-9.]+\"")
+                                  ->replace(svg, 0, "",
+                                            Glib::RegexMatchFlags());
+                        auto loader = Gdk::PixbufLoader::create();
+                        loader->set_size(std::max(w, h), std::max(w, h));
+                        loader->write(
+                            reinterpret_cast<const guint8 *>(svg.c_str()),
+                            svg.bytes());
+                        loader->close();
+                        pb = loader->get_pixbuf();
+                    } catch (Glib::Error &) {
+                        pb.reset();
+                    }
+                }
+                if (!pb) {
+                    bool symbolic = false;
+                    // non-symbolic icons come back unchanged
+                    pb = info.load_symbolic(c, c, c, c, symbolic);
+                }
             }
             it = selected_icons_.emplace(key, pb).first;
         }
