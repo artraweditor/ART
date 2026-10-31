@@ -136,4 +136,34 @@ bool isSubdir(const Glib::ustring &parent, const Glib::ustring &child)
 }
 
 
+std::string resolveSymlinks(const std::string &path)
+{
+    std::string cur = path;
+    // the limit guards against loops
+    for (int i = 0; i < 40; ++i) {
+        GError *err = nullptr;
+        gchar *link = g_file_read_link(cur.c_str(), &err);
+        if (!link) {
+            // not a symlink (or not there)
+            g_clear_error(&err);
+            return cur;
+        }
+        std::string target = link;
+        g_free(link);
+        if (!Glib::path_is_absolute(target)) {
+            target = Glib::build_filename(Glib::path_get_dirname(cur), target);
+        }
+        cur = target;
+    }
+    return path;
+}
+
+
+void writeFileFollowingSymlinks(const std::string &path,
+                                const std::string &contents)
+{
+    Glib::file_set_contents(resolveSymlinks(path), contents);
+}
+
+
 } } // namespace art::utils

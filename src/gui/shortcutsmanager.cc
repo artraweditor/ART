@@ -21,6 +21,7 @@
 #include "shortcutsmanager.h"
 #include "guiutils.h"
 #include "../utils/multilangmgr.h"
+#include "../utils/pathutils.h"
 #include "options.h"
 #include "rtwindow.h"
 #include "shortcutdefs.h"
@@ -168,7 +169,8 @@ bool ShortcutsManager::saveUserFile(const ShortcutTable &edited,
     if (Glib::file_test(path, Glib::FILE_TEST_IS_REGULAR) &&
         !Glib::file_test(backup, Glib::FILE_TEST_EXISTS)) {
         try {
-            Glib::file_set_contents(backup, Glib::file_get_contents(path));
+            art::utils::writeFileFollowingSymlinks(
+                backup, Glib::file_get_contents(path));
         } catch (Glib::Error &e) {
             err = "cannot back up " + path + ": " + e.what();
             return false;
@@ -176,7 +178,7 @@ bool ShortcutsManager::saveUserFile(const ShortcutTable &edited,
     }
     try {
         // atomic: a crash must not leave half a file
-        Glib::file_set_contents(path, text);
+        art::utils::writeFileFollowingSymlinks(path, text);
     } catch (Glib::Error &e) {
         err = "cannot write " + path + ": " + e.what();
         return false;

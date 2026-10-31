@@ -19,6 +19,7 @@
 
 #include "dynamicprofile.h"
 #include "metadata.h"
+#include "../utils/pathutils.h"
 
 #include <glibmm/regex.h>
 #include <stdlib.h>
@@ -352,11 +353,16 @@ bool DynamicProfileRules::storeRules()
         try {
             Glib::KeyFile old;
             old.load_from_file(fname);
-            old.save_to_file(fname + ".bak");
+            art::utils::writeFileFollowingSymlinks(fname + ".bak", old.to_data());
         } catch (std::exception &e) {
         }
     }
-    return kf.save_to_file(fname);
+    try {
+        art::utils::writeFileFollowingSymlinks(fname, kf.to_data());
+    } catch (Glib::Error &) {
+        return false;
+    }
+    return true;
 }
 
 const std::vector<DynamicProfileRule> &DynamicProfileRules::getRules()

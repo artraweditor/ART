@@ -31,5 +31,17 @@ Glib::ustring fname_to_utf8(const std::string &fname);
 Glib::ustring getExecutablePath(const char *argv0);
 bool isSubdir(const Glib::ustring &parent, const Glib::ustring &child);
 
+/** Follow the chain of symbolic links starting at `path` (also a dangling
+ * one), and return the path of the file that a write to `path` is meant to
+ * reach. Returns `path` itself if it is not a symlink. */
+std::string resolveSymlinks(const std::string &path);
+
+/** Atomically (temp file + rename) replace the contents of `path`, like
+ * Glib::file_set_contents(), but if `path` is a symlink the file it points to
+ * is replaced and the link is left in place.
+ * Throws Glib::FileError. */
+void writeFileFollowingSymlinks(const std::string &path,
+                                const std::string &contents);
+
 
 } } // namespace art::utils
