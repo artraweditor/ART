@@ -60,7 +60,7 @@ ImProcCoordinator::ImProcCoordinator()
       sharpMask(false), scale(10), highDetailPreprocessComputed(false),
       highDetailRawComputed(false), allocated(false),
 
-      vhist16(65536), histRed(256), histRedRaw(256), histGreen(256),
+      histRed(256), histRedRaw(256), histGreen(256),
       histGreenRaw(256), histBlue(256), histBlueRaw(256), histLuma(256),
       histToneCurve(256), histLCurve(256), histCCurve(256),
       // histLLCurve(256),
@@ -427,7 +427,6 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                            "input image\n", bad);
                 }
             }
-            ipf.firstAnalysis(orig_prev, params, vhist16);
         }
 
         orig_prev->assignColorSpace(params.icm.workingProfile);

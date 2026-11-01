@@ -1139,10 +1139,6 @@ IImage8 *Thumbnail::processImage(const procparams::ProcParams &params,
     ipf.setMonitorTransform(
         ICCStore::getInstance()->getThumbnailMonitorTransform());
 
-    LUTu hist16(65536);
-
-    ipf.firstAnalysis(baseImg, params, hist16);
-
     bool stop = ipf.process(ImProcFunctions::Stage::STAGE_0, baseImg);
 
     // perform transform

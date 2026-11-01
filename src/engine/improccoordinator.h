@@ -99,7 +99,6 @@ protected:
     // Precomputed values used by DetailedCrop
     // ----------------------------------------------
 
-    LUTu vhist16;
     LUTu histRed, histRedRaw;
     LUTu histGreen, histGreenRaw;
     LUTu histBlue, histBlueRaw;

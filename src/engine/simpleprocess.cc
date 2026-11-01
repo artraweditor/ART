@@ -376,12 +376,6 @@ private:
 
         sanitize("denoise");
 
-        LUTu hist16(65536);
-        {
-            ART_PROFILE_SCOPE("firstAnalysis");
-            ipf.firstAnalysis(img, params, hist16);
-        }
-
         stop = ipf.process(ImProcFunctions::Stage::STAGE_0, img);
 
         // perform transform (excepted resizing)
