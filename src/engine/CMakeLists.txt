@@ -94,6 +94,7 @@ set(RTENGINESOURCEFILES
     green_equil_RT.cc
     hilite_recon.cc
     hphd_demosaic_RT.cc
+    iccfloatpipeline.cc
     iccjpeg.cc
     iccstore.cc
     iimage.cc

@@ -26,6 +26,7 @@
 #include "dcp.h"
 #include "dfmanager.h"
 #include "ffmanager.h"
+#include "iccfloatpipeline.h"
 #include "iccstore.h"
 #include "improcfun.h"
 #include "jaggedarray.h"
@@ -3836,6 +3837,13 @@ static void lab2ProphotoRgbD50(float L, float A, float B, float &r, float &g,
 
 // Converts raw image including ICC input profile to working space - floating
 // point version
+namespace {
+
+// images with fewer pixels are converted by lcms2 alone, see ICCFloatPipeline
+constexpr int64_t ICC_FAST_MIN_PIXELS = 100000;
+
+} // namespace
+
 void RawImageSource::colorSpaceConversion_(
     Imagefloat *im, const ColorManagementParams &cmp, const ColorTemp &wb,
     double pre_mul[3], cmsHPROFILE camprofile, double camMatrix[3][3],
@@ -3982,6 +3990,7 @@ void RawImageSource::colorSpaceConversion_(
                          // minimize problems with clipping in LUT conversion.
         bool transform_via_pcs_lab = false;
         bool separate_pcs_lab_highlights = false;
+        std::unique_ptr<ICCFloatPipeline> fast_icc;
 
         // check if the working space is fully contained in prophoto
         if (!working_space_is_prophoto &&
@@ -4056,6 +4065,13 @@ void RawImageSource::colorSpaceConversion_(
                 INTENT_RELATIVE_COLORIMETRIC,
                 cmsFLAGS_NOOPTIMIZE |
                     cmsFLAGS_NOCACHE); // NOCACHE is important for thread safety
+            // evaluates the profile's float pipeline faster, if it can; it
+            // takes a few ms to set up, which only pays off for larger images
+            if (hTransform && int64_t(im->getWidth()) * im->getHeight() >=
+                                  ICC_FAST_MIN_PIXELS) {
+                fast_icc = ICCFloatPipeline::create(
+                    in, prophoto, INTENT_RELATIVE_COLORIMETRIC, hTransform);
+            }
             break;
         }
 
@@ -4182,8 +4198,12 @@ void RawImageSource::colorSpaceConversion_(
                 }
 
                 // Run icc transform
-                cmsDoTransform(hTransform, buffer.data, buffer.data,
-                               im->getWidth());
+                if (fast_icc) {
+                    fast_icc->apply(buffer.data, im->getWidth());
+                } else {
+                    cmsDoTransform(hTransform, buffer.data, buffer.data,
+                                   im->getWidth());
+                }
 
                 if (separate_pcs_lab_highlights) {
                     cmsDoTransform(hTransform, hl_buffer.data, hl_buffer.data,
