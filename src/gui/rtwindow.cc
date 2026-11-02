@@ -825,6 +825,20 @@ void RTWindow::remEditorPanel(EditorPanel *ep)
     }
 }
 
+void RTWindow::saveEditorProfile(const Glib::ustring &name)
+{
+    if (options.multiDisplayMode > 0) {
+        EditWindow::getInstance(this)->saveProfile(name);
+    } else {
+        auto iep = epanels.find(name);
+        if (iep != epanels.end()) {
+            iep->second->saveProfile();
+        } else if (isSingleTabMode() && epanel && epanel->getFileName() == name) {
+            epanel->saveProfile();
+        }
+    }
+}
+
 bool RTWindow::selectEditorPanel(const std::string &name)
 {
     if (options.multiDisplayMode > 0) {

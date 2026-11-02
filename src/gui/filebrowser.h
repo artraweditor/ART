@@ -55,6 +55,8 @@ public:
     clearFromCacheRequested(const std::vector<FileBrowserEntry *> &tbe,
                             bool leavenotrace) = 0;
     virtual bool isInTabMode() const = 0;
+    // flush to disk the params of the images that are open in an editor
+    virtual void saveProfilesRequested(const std::vector<Thumbnail *> &tbe) = 0;
 };
 
 /*

@@ -1360,6 +1360,11 @@ void FileBrowser::menuItemActivated(Gtk::MenuItem *m)
                 sel.push_back(mselected[i]->thumbnail);
             }
 
+            // the params of an image that is open in an editor might not
+            // be on disk yet
+            if (tbl) {
+                tbl->saveProfilesRequested(sel);
+            }
             cmd.execute(sel);
             return;
         }

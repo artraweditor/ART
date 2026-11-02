@@ -237,6 +237,7 @@ public:
     void clearFromCacheRequested(const std::vector<FileBrowserEntry *> &tbe,
                                  bool leavenotrace) override;
     bool isInTabMode() const override;
+    void saveProfilesRequested(const std::vector<Thumbnail *> &tbe) override;
 
     void emptyTrash();
     bool trashIsEmpty();

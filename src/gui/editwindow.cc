@@ -260,6 +260,14 @@ void EditWindow::remEditorPanel(EditorPanel *ep)
     // TODO: save options if wanted
 }
 
+void EditWindow::saveProfile(const Glib::ustring &name)
+{
+    auto iep = epanels.find(name);
+    if (iep != epanels.end()) {
+        iep->second->saveProfile();
+    }
+}
+
 bool EditWindow::selectEditorPanel(const std::string &name)
 {
     std::map<Glib::ustring, EditorPanel *>::iterator iep = epanels.find(name);

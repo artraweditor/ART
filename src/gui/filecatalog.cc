@@ -1545,6 +1545,16 @@ void FileCatalog::clearFromCacheRequested(
 
 bool FileCatalog::isInTabMode() const { return inTabMode; }
 
+void FileCatalog::saveProfilesRequested(const std::vector<Thumbnail *> &tbe)
+{
+    RTWindow *w = filepanel ? filepanel->getParent() : nullptr;
+    if (w) {
+        for (auto t : tbe) {
+            w->saveEditorProfile(t->getFileName());
+        }
+    }
+}
+
 void FileCatalog::categoryButtonToggled(Gtk::ToggleButton *b, bool isMouseClick)
 {
 
