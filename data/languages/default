@@ -1024,6 +1024,10 @@ PARTIALPASTE_VIBRANCE;Vibrance
 PARTIALPASTE_VIGNETTING;Vignetting correction
 PARTIALPASTE_WHITEBALANCE;White balance
 PREFERENCES_ADD;Add
+PREFERENCES_ADJUSTER_DELAY;Slider update delay
+PREFERENCES_ADJUSTER_DELAY_TOOLTIP;How long (in ms) to wait after a slider stops changing before updating the preview. Lower values make the preview follow the slider more closely, but cause more frequent updates. 0 updates on every change.
+PREFERENCES_ADJUSTER_MAX_DELAY;Delay for slow tools (ms)
+PREFERENCES_ADJUSTER_MIN_DELAY;Delay for most tools (ms)
 PREFERENCES_ADJUSTER_FORCE_LINEAR;Force linear scale in adjuster sliders
 PREFERENCES_APPEARANCE;Appearance
 PREFERENCES_APPEARANCE_COLORPICKERFONT;Color picker font
@@ -1167,6 +1171,8 @@ PREFERENCES_PREVDEMO;Preview Accuracy
 PREFERENCES_PREVDEMO_FAST;Fast
 PREFERENCES_PREVDEMO_LABEL;Demosaicing method used for the preview at <100% zoom:
 PREFERENCES_PREVDEMO_SIDECAR;As in ARP
+PREFERENCES_PREVIEW_ABORT_STALE;Interrupt preview updates when a newer edit arrives
+PREFERENCES_PREVIEW_ABORT_STALE_TOOLTIP;Improves responsiveness of the detail preview while dragging sliders, but the preview might not update until the slider stops moving if the processing is slow. Disable to restore the old behavior, where each update is always completed.
 PREFERENCES_PREVIEW_RESAMPLING_QUALITY;Resampling quality for the preview image at <100% zoom:
 PREFERENCES_PRINTER;Soft-Proofing
 PREFERENCES_PROFILEHANDLING;Processing Profile Handling

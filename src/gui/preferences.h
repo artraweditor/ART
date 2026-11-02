@@ -157,11 +157,14 @@ class Preferences: public Gtk::Dialog, public art::engine::ProfileStoreListener 
 
     Gtk::SpinButton *threadsSpinBtn;
     Gtk::SpinButton *clutCacheSizeSB;
+    Gtk::SpinButton *adjusterMinDelaySB;
+    Gtk::SpinButton *adjusterMaxDelaySB;
     Gtk::SpinButton *maxInspectorBuffersSB;
     Gtk::SpinButton *thumbUpdateThreadLimit;
     Gtk::CheckButton *thumbDelayUpdate;
     Gtk::CheckButton *thumbLazyCaching;
     Gtk::CheckButton *thumb_cache_processed_;
+    Gtk::CheckButton *previewAbortStale_;
     Gtk::CheckButton *ctl_scripts_fast_preview_;
     Gtk::SpinButton *qinspect_size_;
     Gtk::CheckButton *gpuEnabled_;

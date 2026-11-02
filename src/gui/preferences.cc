@@ -562,6 +562,11 @@ Gtk::Widget *Preferences::getPerformancePanel()
     denoiseZoomedOut->set_tooltip_text(
         M("PREFERENCES_DENOISE_ZOOM_OUT_TOOLTIP"));
     vb->pack_start(*denoiseZoomedOut);
+    previewAbortStale_ = Gtk::manage(
+        new Gtk::CheckButton(M("PREFERENCES_PREVIEW_ABORT_STALE")));
+    previewAbortStale_->set_tooltip_text(
+        M("PREFERENCES_PREVIEW_ABORT_STALE_TOOLTIP"));
+    vb->pack_start(*previewAbortStale_);
     ctl_scripts_fast_preview_ = Gtk::manage(
         new Gtk::CheckButton(M("PREFERENCES_CTL_SCRIPTS_FAST_PREVIEW")));
 #ifdef ART_USE_CTL
@@ -580,6 +585,30 @@ Gtk::Widget *Preferences::getPerformancePanel()
     htiffserialize->pack_start(*ctiffserialize);
     ftiffserialize->add(*htiffserialize);
     vbPerformance->pack_start(*ftiffserialize, Gtk::PACK_SHRINK, 4);
+
+    Gtk::Frame *fadjdelay =
+        Gtk::manage(new Gtk::Frame(M("PREFERENCES_ADJUSTER_DELAY")));
+    Gtk::VBox *vbadjdelay = Gtk::manage(new Gtk::VBox());
+    vbadjdelay->set_spacing(4);
+    auto add_delay_row = [&](const char *label, Gtk::SpinButton *&sb) {
+        Gtk::HBox *hb = Gtk::manage(new Gtk::HBox());
+        hb->set_spacing(4);
+        Gtk::Label *l = Gtk::manage(new Gtk::Label(
+            M(label) + ":", Gtk::ALIGN_START));
+        sb = Gtk::manage(new Gtk::SpinButton());
+        sb->set_digits(0);
+        sb->set_increments(10, 100);
+        sb->set_max_length(4);
+        sb->set_range(0, 2000);
+        hb->pack_start(*l, Gtk::PACK_SHRINK, 0);
+        hb->pack_end(*sb, Gtk::PACK_SHRINK, 0);
+        vbadjdelay->pack_start(*hb, Gtk::PACK_SHRINK, 0);
+    };
+    add_delay_row("PREFERENCES_ADJUSTER_MIN_DELAY", adjusterMinDelaySB);
+    add_delay_row("PREFERENCES_ADJUSTER_MAX_DELAY", adjusterMaxDelaySB);
+    vbadjdelay->set_tooltip_text(M("PREFERENCES_ADJUSTER_DELAY_TOOLTIP"));
+    fadjdelay->add(*vbadjdelay);
+    vbPerformance->pack_start(*fadjdelay, Gtk::PACK_SHRINK, 4);
 
     Gtk::Frame *fclut =
         Gtk::manage(new Gtk::Frame(M("PREFERENCES_CLUTSCACHE")));
@@ -2363,6 +2392,8 @@ void Preferences::storePreferences()
 
     moptions.rgbDenoiseThreadLimit = threadsSpinBtn->get_value_as_int();
     moptions.clutCacheSize = clutCacheSizeSB->get_value_as_int();
+    moptions.adjusterMinDelay = adjusterMinDelaySB->get_value_as_int();
+    moptions.adjusterMaxDelay = adjusterMaxDelaySB->get_value_as_int();
     moptions.maxInspectorBuffers = maxInspectorBuffersSB->get_value_as_int();
     moptions.quick_inspect_popup_size_percent = qinspect_size_->get_value_as_int();
     moptions.rtSettings.thread_pool_size =
@@ -2370,6 +2401,11 @@ void Preferences::storePreferences()
     moptions.thumb_delay_update = thumbDelayUpdate->get_active();
     moptions.thumb_lazy_caching = thumbLazyCaching->get_active();
     moptions.thumb_cache_processed = thumb_cache_processed_->get_active();
+    if (!previewAbortStale_->get_active()) {
+        moptions.rtSettings.preview_abort_starve_ms = 0;
+    } else if (moptions.rtSettings.preview_abort_starve_ms <= 0) {
+        moptions.rtSettings.preview_abort_starve_ms = 300;
+    }
     moptions.rtSettings.ctl_scripts_fast_preview =
         ctl_scripts_fast_preview_->get_active();
     moptions.rtSettings.gpu_enabled = gpuEnabled_->get_active();
@@ -2675,12 +2711,16 @@ void Preferences::fillPreferences()
 
     threadsSpinBtn->set_value(moptions.rgbDenoiseThreadLimit);
     clutCacheSizeSB->set_value(moptions.clutCacheSize);
+    adjusterMinDelaySB->set_value(moptions.adjusterMinDelay);
+    adjusterMaxDelaySB->set_value(moptions.adjusterMaxDelay);
     maxInspectorBuffersSB->set_value(moptions.maxInspectorBuffers);
     qinspect_size_->set_value(moptions.quick_inspect_popup_size_percent);
     thumbUpdateThreadLimit->set_value(moptions.rtSettings.thread_pool_size);
     thumbDelayUpdate->set_active(moptions.thumb_delay_update);
     thumbLazyCaching->set_active(moptions.thumb_lazy_caching);
     thumb_cache_processed_->set_active(moptions.thumb_cache_processed);
+    previewAbortStale_->set_active(
+        moptions.rtSettings.preview_abort_starve_ms > 0);
     ctl_scripts_fast_preview_->set_active(
         moptions.rtSettings.ctl_scripts_fast_preview);
 
