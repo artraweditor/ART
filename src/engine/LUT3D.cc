@@ -116,162 +116,75 @@ inline vfloat interp_corners(const float *lut, float w0, int c0, float w1,
 
 #endif // ART_SIMD
 
+namespace {
+
+// Order two axes by decreasing fractional part, carrying their strides.
+inline void order_axes(float &fa, int &sa, float &fb, int &sb)
+{
+    const bool swap = fa < fb;
+    const float f = swap ? fb : fa;
+    const int s = swap ? sb : sa;
+    fb = swap ? fa : fb;
+    sb = swap ? sa : sb;
+    fa = f;
+    sa = s;
+}
+
+} // namespace
+
 inline void LUT3D::apply_tetra(float &r, float &g, float &b) const
 {
     const float dimMinusOne = dim_minus_one_;
-    const float m_step = dimMinusOne;
     constexpr int m_components = 3;
     const int m_dim = dim_;
     const float *m_optLut = lut_.data;
 
-    float idx[3];
-    idx[0] = r * m_step;
-    idx[1] = g * m_step;
-    idx[2] = b * m_step;
-
     // NaNs become 0.
-    idx[0] = LIM(idx[0], 0.f, dimMinusOne);
-    idx[1] = LIM(idx[1], 0.f, dimMinusOne);
-    idx[2] = LIM(idx[2], 0.f, dimMinusOne);
+    const float idx[3] = {LIM(r * dimMinusOne, 0.f, dimMinusOne),
+                          LIM(g * dimMinusOne, 0.f, dimMinusOne),
+                          LIM(b * dimMinusOne, 0.f, dimMinusOne)};
 
-    int indexLow[3];
-    indexLow[0] = static_cast<int>(std::floor(idx[0]));
-    indexLow[1] = static_cast<int>(std::floor(idx[1]));
-    indexLow[2] = static_cast<int>(std::floor(idx[2]));
-
-    int indexHigh[3];
-    // When the idx is exactly equal to an index (e.g. 0,1,2...)
-    // then the computation of highIdx is wrong. However,
-    // the delta is then equal to zero (e.g. idx-lowIdx),
-    // so the highIdx has no impact.
-    indexHigh[0] = static_cast<int>(std::ceil(idx[0]));
-    indexHigh[1] = static_cast<int>(std::ceil(idx[1]));
-    indexHigh[2] = static_cast<int>(std::ceil(idx[2]));
+    // idx is not negative: truncating is flooring
+    const int indexLow[3] = {static_cast<int>(idx[0]), static_cast<int>(idx[1]),
+                             static_cast<int>(idx[2])};
 
     float fx = idx[0] - static_cast<float>(indexLow[0]);
     float fy = idx[1] - static_cast<float>(indexLow[1]);
     float fz = idx[2] - static_cast<float>(indexLow[2]);
 
-    // Compute index into LUT for surrounding corners
+    // Step to the next node along each axis, none if the coordinate is on a
+    // node (as ceil() gave). A positive fraction implies the next node exists.
+    int sx = fx > 0.f ? GetLut3DIndexBlueFast(1, 0, 0, m_dim, m_components) : 0;
+    int sy = fy > 0.f ? GetLut3DIndexBlueFast(0, 1, 0, m_dim, m_components) : 0;
+    int sz = fz > 0.f ? GetLut3DIndexBlueFast(0, 0, 1, m_dim, m_components) : 0;
+
     const int n000 = GetLut3DIndexBlueFast(indexLow[0], indexLow[1],
                                            indexLow[2], m_dim, m_components);
-    const int n100 = GetLut3DIndexBlueFast(indexHigh[0], indexLow[1],
-                                           indexLow[2], m_dim, m_components);
-    const int n010 = GetLut3DIndexBlueFast(indexLow[0], indexHigh[1],
-                                           indexLow[2], m_dim, m_components);
-    const int n001 = GetLut3DIndexBlueFast(indexLow[0], indexLow[1],
-                                           indexHigh[2], m_dim, m_components);
-    const int n110 = GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1],
-                                           indexLow[2], m_dim, m_components);
-    const int n101 = GetLut3DIndexBlueFast(indexHigh[0], indexLow[1],
-                                           indexHigh[2], m_dim, m_components);
-    const int n011 = GetLut3DIndexBlueFast(indexLow[0], indexHigh[1],
-                                           indexHigh[2], m_dim, m_components);
-    const int n111 = GetLut3DIndexBlueFast(indexHigh[0], indexHigh[1],
-                                           indexHigh[2], m_dim, m_components);
+    const int n111 = n000 + sx + sy + sz;
+
+    // The tetrahedron has the corners n000, n111 and the two on the path
+    // from one to the other that steps along the axes by decreasing fraction
+    // (this is what the six cases of the usual formulation spell out). Sort
+    // the three axes with a network of three compare-and-swaps.
+    order_axes(fx, sx, fy, sy);
+    order_axes(fy, sy, fz, sz);
+    order_axes(fx, sx, fy, sy);
+
+    const int n1 = n000 + sx;
+    const int n2 = n1 + sy;
 
 #ifdef ART_SIMD
-    vfloat outv;
-
-    if (fx > fy) {
-        if (fy > fz) {
-            outv = interp_corners(m_optLut, 1 - fx, n000, fx - fy, n100,
-                                  fy - fz, n110, fz, n111);
-        } else if (fx > fz) {
-            outv = interp_corners(m_optLut, 1 - fx, n000, fx - fz, n100,
-                                  fz - fy, n101, fy, n111);
-        } else {
-            outv = interp_corners(m_optLut, 1 - fz, n000, fz - fx, n001,
-                                  fx - fy, n101, fy, n111);
-        }
-    } else {
-        if (fz > fy) {
-            outv = interp_corners(m_optLut, 1 - fz, n000, fz - fy, n001,
-                                  fy - fx, n011, fx, n111);
-        } else if (fz > fx) {
-            outv = interp_corners(m_optLut, 1 - fy, n000, fy - fz, n010,
-                                  fz - fx, n011, fx, n111);
-        } else {
-            outv = interp_corners(m_optLut, 1 - fy, n000, fy - fx, n010,
-                                  fx - fz, n110, fz, n111);
-        }
-    }
+    vfloat outv = interp_corners(m_optLut, 1 - fx, n000, fx - fy, n1, fy - fz,
+                                 n2, fz, n111);
 
     float out[4] ALIGNED16;
     STVFU(out[0], outv);
 #else
     float out[3];
 
-    if (fx > fy) {
-        if (fy > fz) {
-            out[0] = (1 - fx) * m_optLut[n000] + (fx - fy) * m_optLut[n100] +
-                     (fy - fz) * m_optLut[n110] + (fz)*m_optLut[n111];
-
-            out[1] = (1 - fx) * m_optLut[n000 + 1] +
-                     (fx - fy) * m_optLut[n100 + 1] +
-                     (fy - fz) * m_optLut[n110 + 1] + (fz)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fx) * m_optLut[n000 + 2] +
-                     (fx - fy) * m_optLut[n100 + 2] +
-                     (fy - fz) * m_optLut[n110 + 2] + (fz)*m_optLut[n111 + 2];
-        } else if (fx > fz) {
-            out[0] = (1 - fx) * m_optLut[n000] + (fx - fz) * m_optLut[n100] +
-                     (fz - fy) * m_optLut[n101] + (fy)*m_optLut[n111];
-
-            out[1] = (1 - fx) * m_optLut[n000 + 1] +
-                     (fx - fz) * m_optLut[n100 + 1] +
-                     (fz - fy) * m_optLut[n101 + 1] + (fy)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fx) * m_optLut[n000 + 2] +
-                     (fx - fz) * m_optLut[n100 + 2] +
-                     (fz - fy) * m_optLut[n101 + 2] + (fy)*m_optLut[n111 + 2];
-        } else {
-            out[0] = (1 - fz) * m_optLut[n000] + (fz - fx) * m_optLut[n001] +
-                     (fx - fy) * m_optLut[n101] + (fy)*m_optLut[n111];
-
-            out[1] = (1 - fz) * m_optLut[n000 + 1] +
-                     (fz - fx) * m_optLut[n001 + 1] +
-                     (fx - fy) * m_optLut[n101 + 1] + (fy)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fz) * m_optLut[n000 + 2] +
-                     (fz - fx) * m_optLut[n001 + 2] +
-                     (fx - fy) * m_optLut[n101 + 2] + (fy)*m_optLut[n111 + 2];
-        }
-    } else {
-        if (fz > fy) {
-            out[0] = (1 - fz) * m_optLut[n000] + (fz - fy) * m_optLut[n001] +
-                     (fy - fx) * m_optLut[n011] + (fx)*m_optLut[n111];
-
-            out[1] = (1 - fz) * m_optLut[n000 + 1] +
-                     (fz - fy) * m_optLut[n001 + 1] +
-                     (fy - fx) * m_optLut[n011 + 1] + (fx)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fz) * m_optLut[n000 + 2] +
-                     (fz - fy) * m_optLut[n001 + 2] +
-                     (fy - fx) * m_optLut[n011 + 2] + (fx)*m_optLut[n111 + 2];
-        } else if (fz > fx) {
-            out[0] = (1 - fy) * m_optLut[n000] + (fy - fz) * m_optLut[n010] +
-                     (fz - fx) * m_optLut[n011] + (fx)*m_optLut[n111];
-
-            out[1] = (1 - fy) * m_optLut[n000 + 1] +
-                     (fy - fz) * m_optLut[n010 + 1] +
-                     (fz - fx) * m_optLut[n011 + 1] + (fx)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fy) * m_optLut[n000 + 2] +
-                     (fy - fz) * m_optLut[n010 + 2] +
-                     (fz - fx) * m_optLut[n011 + 2] + (fx)*m_optLut[n111 + 2];
-        } else {
-            out[0] = (1 - fy) * m_optLut[n000] + (fy - fx) * m_optLut[n010] +
-                     (fx - fz) * m_optLut[n110] + (fz)*m_optLut[n111];
-
-            out[1] = (1 - fy) * m_optLut[n000 + 1] +
-                     (fy - fx) * m_optLut[n010 + 1] +
-                     (fx - fz) * m_optLut[n110 + 1] + (fz)*m_optLut[n111 + 1];
-
-            out[2] = (1 - fy) * m_optLut[n000 + 2] +
-                     (fy - fx) * m_optLut[n010 + 2] +
-                     (fx - fz) * m_optLut[n110 + 2] + (fz)*m_optLut[n111 + 2];
-        }
+    for (int c = 0; c < 3; ++c) {
+        out[c] = (1 - fx) * m_optLut[n000 + c] + (fx - fy) * m_optLut[n1 + c] +
+                 (fy - fz) * m_optLut[n2 + c] + (fz)*m_optLut[n111 + c];
     }
 #endif // ART_SIMD
 
