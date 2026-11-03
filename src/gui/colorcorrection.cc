@@ -22,7 +22,9 @@
 #include "eventmapper.h"
 #include "mycurve.h"
 #include <cmath>
+#include <fstream>
 #include <iomanip>
+#include <set>
 #include <map>
 #include <unordered_map>
 
@@ -49,11 +51,59 @@ void get_builtin_luts()
             Glib::build_filename(options.user_config_dir, "ctlscripts"),
             Glib::build_filename(options.ART_base_dir, "ctlscripts")};
 
+        // scripts from directories without an ARTlist.txt, sorted by name
         std::map<art::engine::CLUTStore::CLUTName, Glib::ustring> order;
+        // scripts from directories with an ARTlist.txt, in the listed order
+        std::vector<std::pair<Glib::ustring, Glib::ustring>> listed;
+        std::set<Glib::ustring> seen;
 
         for (auto &dir : dirs) {
             try {
                 if (Glib::file_test(dir, Glib::FILE_TEST_IS_DIR)) {
+                    const std::string list_name = findARTListFile(dir);
+                    if (!list_name.empty()) {
+                        // optional ARTlist.txt: one file per line, '#' starts a
+                        // comment; it defines which files are shown and in
+                        // which order
+                        std::ifstream src(list_name);
+                        std::string line;
+                        while (std::getline(src, line)) {
+                            auto pos = line.find('#');
+                            if (pos != std::string::npos) {
+                                line.erase(pos);
+                            }
+                            const char *ws = " \t\r\n";
+                            auto b = line.find_first_not_of(ws);
+                            if (b == std::string::npos) {
+                                continue;
+                            }
+                            line = line.substr(b, line.find_last_not_of(ws) - b + 1);
+                            const std::string full_path =
+                                Glib::path_is_absolute(line)
+                                    ? line
+                                    : Glib::build_filename(dir, line);
+                            if (!Glib::file_test(full_path,
+                                                 Glib::FILE_TEST_IS_REGULAR)) {
+                                if (options.rtSettings.verbose) {
+                                    std::cout << "File listed in " << list_name
+                                              << " not found: " << full_path
+                                              << std::endl;
+                                }
+                                continue;
+                            }
+                            auto name =
+                                CLUTStore::getClutDisplayName(full_path);
+                            if (!name.ok() || !seen.insert(name.name).second) {
+                                continue;
+                            }
+                            listed.emplace_back(name.name, full_path);
+                            if (options.rtSettings.verbose > 1) {
+                                std::cout << "Found listed CTL script/LUT: "
+                                          << full_path << std::endl;
+                            }
+                        }
+                        continue;
+                    }
                     for (const auto &n : Glib::Dir(dir)) {
                         const std::string full_path =
                             Glib::build_filename(dir, n);
@@ -82,10 +132,16 @@ void get_builtin_luts()
         }
 
         int idx = 5;
-        for (auto &p : order) {
+        for (auto &p : listed) {
             builtin_lut_to_idx[p.second] = idx;
             builtin_luts[idx] =
                 std::make_pair(p.first, Glib::filename_from_utf8(p.second));
+            ++idx;
+        }
+        for (auto &p : order) {
+            builtin_lut_to_idx[p.second] = idx;
+            builtin_luts[idx] = std::make_pair(
+                p.first.name, Glib::filename_from_utf8(p.second));
             ++idx;
         }
         if (options.rtSettings.verbose) {

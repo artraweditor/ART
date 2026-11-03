@@ -19,8 +19,10 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fstream>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "filmsimulation.h"
 
@@ -308,6 +310,95 @@ int ClutComboBox::ClutModel::parseDir(const std::vector<Glib::ustring> &paths)
     };
 
     const auto startedAt = std::chrono::system_clock::now();
+    unsigned long fileCount = 0;
+    bool aborted = false;
+
+    // append a CLUT file under the given row (empty = top level), if it is
+    // of a supported kind
+    const auto addFile = [&](const Glib::ustring &entry,
+                             const Gtk::TreeModel::Row &row) {
+        auto extension = getExtension(entry).casefold();
+        if (extension.compare("tif") != 0 && extension.compare("png") != 0) {
+#ifdef ART_USE_OCIO
+            if (extension != "clf" && extension != "clfz" &&
+                extension != "json")
+#endif // ART_USE_OCIO
+#ifdef ART_USE_CTL
+                if (extension != "ctl")
+#endif // ART_USE_CTL
+                    return;
+        }
+
+        auto label = CLUTStore::getClutDisplayName(entry);
+        if (!label.ok()) {
+            return;
+        }
+
+        auto newRow =
+            row ? *m_model->append(row.children()) : *m_model->append();
+        newRow[m_columns.label] = label;
+        newRow[m_columns.clutFilename] = entry;
+
+        ++fileCount;
+
+        if (!notifySlowParseDir(startedAt)) {
+            aborted = true;
+        }
+    };
+
+    const auto sorted_dir_files =
+        [](const Glib::ustring &path) -> std::vector<Glib::ustring> {
+        std::set<Glib::ustring> sorted;
+        for (const auto &entry : Glib::Dir(path)) {
+            const auto entryPath = Glib::build_filename(path, entry);
+            if (Glib::file_test(entryPath, Glib::FILE_TEST_IS_REGULAR)) {
+                sorted.insert(entryPath);
+            }
+        }
+        return std::vector<Glib::ustring>(sorted.begin(), sorted.end());
+    };
+
+    // optional ARTlist.txt in a top-level dir: one entry per line (a file or a
+    // subdirectory, relative to the top-level dir), '#' starts a comment
+    const auto read_list =
+        [](const Glib::ustring &path) -> std::vector<std::string> {
+        std::vector<std::string> res;
+        const std::string list_name = findARTListFile(path);
+        if (list_name.empty()) {
+            return res;
+        }
+        std::ifstream src(list_name);
+        std::string line;
+        while (std::getline(src, line)) {
+            auto pos = line.find('#');
+            if (pos != std::string::npos) {
+                line.erase(pos);
+            }
+            const char *ws = " \t\r\n";
+            auto b = line.find_first_not_of(ws);
+            if (b == std::string::npos) {
+                continue;
+            }
+            line = line.substr(b, line.find_last_not_of(ws) - b + 1);
+            while (line.size() > 1 && line.back() == '/') {
+                line.pop_back();
+            }
+            res.push_back(line);
+        }
+        return res;
+    };
+
+    std::vector<Glib::ustring> plain_paths;
+    std::vector<Glib::ustring> listed_paths;
+    for (auto &path : paths) {
+        if (Glib::file_test(path, Glib::FILE_TEST_IS_DIR)) {
+            if (!findARTListFile(path).empty()) {
+                listed_paths.push_back(path);
+            } else {
+                plain_paths.push_back(path);
+            }
+        }
+    }
 
     // Build menu of limited directory structure using breadth-first search
     using Dirs = std::vector<std::pair<Glib::ustring, Gtk::TreeModel::Row>>;
@@ -317,11 +408,8 @@ int ClutComboBox::ClutModel::parseDir(const std::vector<Glib::ustring> &paths)
         Dirs currDirs;
         Dirs nextDirs;
 
-        // currDirs.emplace_back(path, Gtk::TreeModel::Row());
-        for (auto &path : paths) {
-            if (Glib::file_test(path, Glib::FILE_TEST_IS_DIR)) {
-                currDirs.emplace_back(path, Gtk::TreeModel::Row());
-            }
+        for (auto &path : plain_paths) {
+            currDirs.emplace_back(path, Gtk::TreeModel::Row());
         }
 
         while (!currDirs.empty()) {
@@ -354,58 +442,100 @@ int ClutComboBox::ClutModel::parseDir(const std::vector<Glib::ustring> &paths)
     }
 
     // Fill menu structure with CLUT files
-    std::set<Glib::ustring> entries;
-
-    unsigned long fileCount = 0;
-
     for (const auto &dir : dirs) {
-        const auto &path = dir.first;
-        const auto &row = dir.second;
-
-        entries.clear();
-
         try {
-            for (const auto &entry : Glib::Dir(path)) {
-                const auto entryPath = Glib::build_filename(path, entry);
-
-                if (!Glib::file_test(entryPath, Glib::FILE_TEST_IS_REGULAR)) {
-                    continue;
+            for (const auto &entry : sorted_dir_files(dir.first)) {
+                addFile(entry, dir.second);
+                if (aborted) {
+                    m_model->clear();
+                    return 0;
                 }
-
-                entries.insert(entryPath);
             }
         } catch (Glib::Exception &) {
         }
+    }
 
-        for (const auto &entry : entries) {
-            auto extension = getExtension(entry).casefold();
-            if (extension.compare("tif") != 0 &&
-                extension.compare("png") != 0) {
-#ifdef ART_USE_OCIO
-                if (extension != "clf" && extension != "clfz" &&
-                    extension != "json")
-#endif // ART_USE_OCIO
-#ifdef ART_USE_CTL
-                    if (extension != "ctl")
-#endif // ART_USE_CTL
+    // Top-level dirs with an ARTlist.txt: only the listed files and
+    // subdirectories are shown, in the listed order. A subdirectory is a
+    // group placed where it first appears in the list; ARTlist.txt files in
+    // subdirectories are ignored
+    for (const auto &top : listed_paths) {
+        std::map<std::string, Gtk::TreeModel::Row> groups;
+        std::set<Glib::ustring> seen;
+
+        const auto ensure_group =
+            [&](const std::string &rel) -> Gtk::TreeModel::Row {
+            Gtk::TreeModel::Row row;
+            std::string cur;
+            size_t start = 0;
+            while (start <= rel.size() && !rel.empty()) {
+                auto end = rel.find('/', start);
+                if (end == std::string::npos) {
+                    end = rel.size();
+                }
+                auto part = rel.substr(start, end - start);
+                start = end + 1;
+                if (part.empty() || part == ".") {
+                    continue;
+                }
+                cur = cur.empty() ? part : cur + "/" + part;
+                auto it = groups.find(cur);
+                if (it == groups.end()) {
+                    auto newRow = row ? *m_model->append(row.children())
+                                      : *m_model->append();
+                    newRow[m_columns.label] = part;
+                    it = groups.emplace(cur, newRow).first;
+                }
+                row = it->second;
+            }
+            return row;
+        };
+
+        for (const auto &line : read_list(top)) {
+            // entries outside the top-level dir go in at the top level
+            const bool outside =
+                Glib::path_is_absolute(line) || line == ".." ||
+                line.compare(0, 3, "../") == 0 ||
+                line.find("/../") != std::string::npos;
+            const std::string full =
+                outside && Glib::path_is_absolute(line)
+                    ? line
+                    : Glib::build_filename(top, line);
+
+            try {
+                if (Glib::file_test(full, Glib::FILE_TEST_IS_DIR)) {
+                    if (outside) {
                         continue;
-            }
-
-            auto label = CLUTStore::getClutDisplayName(entry);
-            if (!label.ok()) {
-                continue;
-            }
-
-            auto newRow =
-                row ? *m_model->append(row.children()) : *m_model->append();
-            newRow[m_columns.label] = label;
-            newRow[m_columns.clutFilename] = entry;
-
-            ++fileCount;
-
-            if (!notifySlowParseDir(startedAt)) {
-                m_model->clear();
-                return 0;
+                    }
+                    auto row = ensure_group(line);
+                    for (const auto &entry : sorted_dir_files(full)) {
+                        if (seen.insert(entry).second) {
+                            addFile(entry, row);
+                            if (aborted) {
+                                m_model->clear();
+                                return 0;
+                            }
+                        }
+                    }
+                } else if (Glib::file_test(full, Glib::FILE_TEST_IS_REGULAR) &&
+                           seen.insert(full).second) {
+                    Gtk::TreeModel::Row row;
+                    if (!outside) {
+                        auto pos = line.rfind('/');
+                        if (pos != std::string::npos) {
+                            row = ensure_group(line.substr(0, pos));
+                        }
+                    }
+                    addFile(full, row);
+                    if (aborted) {
+                        m_model->clear();
+                        return 0;
+                    }
+                } else if (options.rtSettings.verbose) {
+                    std::cout << "Entry in " << top << "/ARTlist.txt not found: "
+                              << line << std::endl;
+                }
+            } catch (Glib::Exception &) {
             }
         }
     }

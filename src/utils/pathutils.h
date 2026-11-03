@@ -29,6 +29,10 @@ Glib::ustring removeExtension(const Glib::ustring &filename);
 Glib::ustring getExtension(const Glib::ustring &filename);
 Glib::ustring fname_to_utf8(const std::string &fname);
 Glib::ustring getExecutablePath(const char *argv0);
+/** Path of the optional "ARTlist.txt" file (matched case-insensitively) in the
+ * directory `dir`, or an empty string if there is none. Used to specify which
+ * LUTs/scripts to show, and in which order. */
+std::string findARTListFile(const Glib::ustring &dir);
 bool isSubdir(const Glib::ustring &parent, const Glib::ustring &child);
 
 /** Follow the chain of symbolic links starting at `path` (also a dangling

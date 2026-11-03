@@ -56,6 +56,23 @@ Glib::ustring removeExtension(const Glib::ustring &filename)
     }
 }
 
+std::string findARTListFile(const Glib::ustring &dir)
+{
+    try {
+        for (const auto &n : Glib::Dir(dir)) {
+            if (Glib::ustring(n).lowercase() == "artlist.txt") {
+                auto res = Glib::build_filename(dir, n);
+                if (Glib::file_test(res, Glib::FILE_TEST_IS_REGULAR)) {
+                    return res;
+                }
+            }
+        }
+    } catch (Glib::Exception &) {
+    }
+    return "";
+}
+
+
 Glib::ustring getExtension(const Glib::ustring &filename)
 {
 
