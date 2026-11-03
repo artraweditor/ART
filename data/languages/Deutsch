@@ -2089,3 +2089,30 @@ FILEBROWSER_POPUPQINSPECT;Schnellansicht
 PREFERENCES_QINSPECT_POPUP_SIZE;Größe des Schnellansicht-Popups (in % der Fenstergröße)
 PROGRESSBAR_READY_TIME;Bereit - %1
 QUEUE_LASTEXPORT_TIME;Letzter Export: %1
+PREFERENCES_TAB_SHORTCUTS;Shortcuts
+PREFERENCES_SHORTCUTS_ACTION;Aktion
+PREFERENCES_SHORTCUTS_ADD;Hinzufügen...
+PREFERENCES_SHORTCUTS_ASSIGNANYWAY;Dennoch zuweisen
+PREFERENCES_SHORTCUTS_BACKTOCTRL;Zurück zu Ctrl
+PREFERENCES_SHORTCUTS_CHANGE;Ändern...
+PREFERENCES_SHORTCUTS_CHOOSE;Andere Taste wählen...
+PREFERENCES_SHORTCUTS_CONFLICT;<b>%1</b> wird bereits von <b>%2</b> verwendet.\n\nAlte Zuweisung löschen und neue verwenden?
+PREFERENCES_SHORTCUTS_ESC;(Esc zum Abbrechen)
+PREFERENCES_SHORTCUTS_KEEP;Beibehalten
+PREFERENCES_SHORTCUTS_KEEPBOTH;Beide beibehalten
+PREFERENCES_SHORTCUTS_KEYS;Shortcut
+PREFERENCES_SHORTCUTS_MOUSEMOD;Modifikationstaste für Mausaktionen (Strg + Klick...)
+PREFERENCES_SHORTCUTS_MOUSEMOD_TIP;Die Taste, die zusammen mit der Maus verwendet wird um Regler zurückzusetzen, für Schnell-Export, Auswahl erweitern, Zeichenwerkzeuge... Wie in früheren Versionen von ART ist dies Strg. Bei macOS wird Cmd empfohlen (Strg + Klick ergibt bei macOS Rechtsklick).
+PREFERENCES_SHORTCUTS_OVERLAP;<b>%1</b> wird ebenfalls von <b>%2</b> verwendet.\n\nBeide können zur selben Zeit aktiv sein, sodass nur einer ausgeführt wird. Beide beibehalten, oder vom bisherigen entfernen?
+PREFERENCES_SHORTCUTS_PRESS;Neuen Shortcut eingeben
+PREFERENCES_SHORTCUTS_PRIMARY;Shortcut-Taste
+PREFERENCES_SHORTCUTS_PRIMARY_TIP;Die Taste, mit der die Shortcuts gebildet werden und die von allen Standard-Shortcuts verwendet wird (Strg + S, Strg + Z...). Klassischerweise verwendet ART Strg. Bei macOS kann Cmd, oder alternativ die Windows-Taste verwendet werden. Mausaktionen haben separate Einstellungen.
+PREFERENCES_SHORTCUTS_REASSIGN;Neu zuweisen
+PREFERENCES_SHORTCUTS_RESETALL;Alle zurücksetzen
+PREFERENCES_SHORTCUTS_SAVEERROR;Die Shortcuts konnten nicht gespeichert werden:\n%1
+PREFERENCES_SHORTCUTS_SEARCH;Suche Aktion und Tasten
+PREFERENCES_SHORTCUTS_RESTART;Änderungen der Shortcuts werden nach dem nächsten Programmstart aktiv. Angepasste Shortcuts werden fettgedruckt dargestellt.
+PREFERENCES_SHORTCUTS_SYSCLASH;<b>%1</b> (%2) wird bereits vom Betriebssystem verwendet und kann von ART möglicherweise nicht erkannt werden. Wie möchten Sie damit verfahren?
+PREFERENCES_SHORTCUTS_SYSTEM;<b>%1</b> wird bereits vom Betriebssystem verwendet und kann von ART möglicherweise nicht erkannt werden (kontrollieren Sie die entsprechenden Einstellungen des Betriebsystems). Dennoch zuweisen?
+PREFERENCES_SHORTCUTS_SYSTEMNOTE;Beachten Sie bitte, dass <b>%1</b> bereits vom Betriebssystem verwendet wird und von ART möglicherweise nicht erkannt werden kann.
+TP_LABMASKS_DELTAE_SIZE_TOOLTIP;Größe des Auswahlbereichs in Pixeln
