@@ -248,7 +248,9 @@ bool get_CTL_guides(const Glib::ustring &filename, std::vector<CTLGuide> &out,
  *         Equalizer" tool (regularization 4). It is a linear luminance,
  *         normalised like the tone equalizer does: 0.18 is middle grey.
  *  - "C": a chroma-like quantity: the smoothed value of the "cz" output of
- *         Color::rgb2jzczhz (i.e. the chroma in the JzAzBz colour space)
+ *         Color::rgb2jzczhz (i.e. the chroma in the JzAzBz colour space),
+ *         multiplied by 15, so that it is 0 for neutral colours and close to
+ *         1 for strongly saturated ones
  *  - "H": a hue-like quantity: the smoothed value of the "hz" output of
  *         Color::rgb2jzczhz (the hue angle in the JzAzBz colour space, in
  *         radians, in the range (-pi, pi]). Note that it is an angle, so the
@@ -1332,6 +1334,10 @@ constexpr float CH_EPSILON = 1e-3f;
 // cz is multiplied by this before filtering, so that it is roughly in [0, 1]
 // (like in the tone curve), and the same epsilon fits
 constexpr float CH_SCALE = 50.f;
+// the "C" guide is cz multiplied by this, so that strongly saturated colours
+// are near 1 (neutral greys are 0, skin tones are around 0.1-0.2), which makes
+// it easier to use in scripts
+constexpr float CH_OUT_SCALE = 15.f;
 
 void compute_Y_guide(Imagefloat *img, TMatrix ws, double scale, bool multithread,
                      array2D<float> &guide)
@@ -1448,7 +1454,7 @@ void compute_CH_guides(Imagefloat *img, TMatrix ws, double scale,
 #endif
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
-                C[y][x] = std::max(tmp[y][x], 0.f) / CH_SCALE;
+                C[y][x] = std::max(tmp[y][x], 0.f) * (CH_OUT_SCALE / CH_SCALE);
             }
         }
     }
