@@ -23,7 +23,7 @@
 #22 2026-04-26  Ohnishi, Yasuo, updates for 1.26.4
 #23 2026-06-10  Ohnishi, Yasuo, updates for 1.26.6
 #24 2026-10-07  Ohnishi, Yasuo, updates for 1.26.10
-#24 2026-10-29  Ohnishi, Yasuo, updates for 1.26.11
+#24 2026-11-04  Ohnishi, Yasuo, updates for 1.26.11
 ABOUT_TAB_BUILD;버전
 ABOUT_TAB_CREDITS;크레디트
 ABOUT_TAB_LICENSE;저작권
@@ -1046,6 +1046,10 @@ PARTIALPASTE_VIBRANCE;바이브런스
 PARTIALPASTE_VIGNETTING;주변광량 보정
 PARTIALPASTE_WHITEBALANCE;화이트 밸런스
 PREFERENCES_ADD;추가
+PREFERENCES_ADJUSTER_DELAY;슬라이더 업데이트 지연
+PREFERENCES_ADJUSTER_DELAY_TOOLTIP;슬라이더 조작이 끝난 후 미리보기를 업데이트하기까지의 대기 시간(밀리초 단위)입니다. 값을 작게 설정하면 미리보기가 슬라이더의 움직임을 더 충실하게 따라가지만, 업데이트 빈도는 높아집니다. 0으로 설정하면 값이 변경될 때마다 업데이트됩니다.
+PREFERENCES_ADJUSTER_MAX_DELAY;속도가 느린 도구에 대한 지연 시간(ms)
+PREFERENCES_ADJUSTER_MIN_DELAY;대부분의 도구에 대한 지연 시간(ms)
 PREFERENCES_ADJUSTER_FORCE_LINEAR;조정 슬라이더에의 선형척도 강제적용
 PREFERENCES_APPEARANCE;외모
 PREFERENCES_APPEARANCE_COLORPICKERFONT;Color Picker의 글꼴
@@ -1189,6 +1193,8 @@ PREFERENCES_PREVDEMO;미리보기의 정확도
 PREFERENCES_PREVDEMO_FAST;고속 (Fast)
 PREFERENCES_PREVDEMO_LABEL;미리보기 줌 레벨이 100％이하의 경우 사용하는 디모자이킹 알고리즘：
 PREFERENCES_PREVDEMO_SIDECAR;ARP 기술 대로
+PREFERENCES_PREVIEW_ABORT_STALE;다른 편집 작업을 시작하면 미리보기 업데이트를 중단합니다.
+PREFERENCES_PREVIEW_ABORT_STALE_TOOLTIP;슬라이더를 조작할 때 상세 미리보기의 응답성이 향상되지만, 처리 시간이 길어질 경우 슬라이더 조작이 멈출 때까지 미리보기가 업데이트되지 않을 수 있습니다. 이 기능을 비활성화하면 업데이트가 중단 없이 항상 수행되는 기존 방식으로 돌아갑니다.
 PREFERENCES_PREVIEW_RESAMPLING_QUALITY;100% 미만의 줌으로 미리보기 이미지 재샘플링 품질:
 PREFERENCES_PRINTER;출력 사진 미리 보기
 PREFERENCES_PROFILEHANDLING;처리 프로파일의 취급

@@ -42,7 +42,7 @@
 #40 23-01-2024 update naar ART v1.21.1 door pm
 #41 23-05-2024 update naar ART v1.23 door pm
 #42 28-07-2024 update naar ART v1.24 door pm
-#43 08-09-2025 update naar ART v1.25.8 door pm
+#43 08-09-2025 update naar ART v1.25.8 door pmPREFERENCES_ADD
 #44 12-11-2025 update naar ART v1.25.9 door pm
 #45 19-12-2025 update naar ART v1.25.12 door pm
 #46 16-02-2026 update naar ART v1.26.2 door pm
@@ -51,6 +51,7 @@
 #49 11-08-2026 tekstbestand volledig herzien, pm
 #50 29-09-2026 update naar ART v1.26.10, pm
 #51 06-10-2026 update naar ART v1.26.10.1, pm
+#52 03-11-2026 update naar ART v1.26.10.2, pm
 
 ABOUT_TAB_BUILD;Versie
 ABOUT_TAB_CREDITS;Credits
@@ -1040,6 +1041,10 @@ PARTIALPASTE_VIBRANCE;Levendigheid
 PARTIALPASTE_VIGNETTING;Vignetteringscorrectie
 PARTIALPASTE_WHITEBALANCE;Witbalans
 PREFERENCES_ADD;Toevoegen
+PREFERENCES_ADJUSTER_DELAY;Vertraging schuif-update
+PREFERENCES_ADJUSTER_DELAY_TOOLTIP;Hoe lang te wachten (in ms) nadat de schuif stopt om het voorbeeld te verversen. Lagere waarden zorgen ervoor dat het voorbeeld de schuif nauwer volgt ten koste van frequentere updates. 0 ververst het voorbeeld na elke verandering van de schuif. 
+PREFERENCES_ADJUSTER_MAX_DELAY;Vertraging voor langzame gereedschappen (ms)
+PREFERENCES_ADJUSTER_MIN_DELAY;Vertraging voor de meeste gereedschappen (ms)
 PREFERENCES_ADJUSTER_FORCE_LINEAR;Forceer lineaire schaal voor schuiven
 PREFERENCES_APPEARANCE_COLORPICKERFONT;Lettertype kleurenkiezer
 PREFERENCES_APPEARANCE_CROPMASKCOLOR;Kleur bijsnijdmasker
@@ -1180,6 +1185,8 @@ PREFERENCES_PREVDEMO;Accuratesse voorbeeld
 PREFERENCES_PREVDEMO_FAST;Snel
 PREFERENCES_PREVDEMO_LABEL;Gebruikte demozaïekmethode voor het voorbeeld bij <100% zoom:
 PREFERENCES_PREVDEMO_SIDECAR;Gelijk aan arp
+PREFERENCES_PREVIEW_ABORT_STALE;Onderbreekt verversing van het voorbeeld wanneer een nieuwere bewerking arriveert. 
+PREFERENCES_PREVIEW_ABORT_STALE_TOOLTIP;Verbetert de responsiviteit van het detail-voorbeeldvenster tijdens het veranderen van schuiven, maar het voorbeeld wordt mogelijk niet ververst tot de schuif stopt met bewegen als de verwerking langzaam is. Uitvinken om het oude gedrag te herstellen, waar elke verversing altijd voltooid wordt. 
 PREFERENCES_PREVIEW_RESAMPLING_QUALITY;Resampling-kwaliteit van het voorbeeld bij <100% zoom:
 PREFERENCES_PRINTER;Afdruksimulatie
 PREFERENCES_PROFILEHANDLING;Verwerking profielen
