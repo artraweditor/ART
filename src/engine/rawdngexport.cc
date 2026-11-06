@@ -420,8 +420,13 @@ int processRawToDNG(InitialImage *ii, const ProcParams &params,
         try {
             auto &exif = meta.exifData();
             for (auto it = exif.begin(); it != exif.end();) {
-                if (it->tag() == 51008 || it->tag() == 51009 ||
-                    it->tag() == 51022) {
+                // drop the DNG-specific tags of the source (WhiteLevel,
+                // BlackLevel, ActiveArea, ColorMatrix, AsShotNeutral,
+                // illuminants, opcodes, ...): write_dng has already written
+                // the correct ones for the preprocessed data, and saveToImage
+                // would overwrite them. Keep only the lens info.
+                if (it->groupName() == "Image" && it->tag() >= 50706 &&
+                    it->tag() <= 52000 && it->tag() != 50736) {
                     it = exif.erase(it);
                 } else {
                     ++it;
