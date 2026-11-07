@@ -21,8 +21,10 @@
 #include "extprog.h"
 
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <thread>
 
 #ifdef WIN32
@@ -247,15 +249,51 @@ void UserCommandStore::init(const Glib::ustring &dirname)
         std::vector<std::string> dirlist(dir.begin(), dir.end());
         std::sort(dirlist.begin(), dirlist.end());
 
+        // optional ARTlist.txt: one file per line ('#' starts a comment); if
+        // present, it defines which files are loaded and in which order
+        const std::string list_name = findARTListFile(dirname);
+        const bool listed = !list_name.empty();
+        if (listed) {
+            dirlist.clear();
+            std::ifstream src(list_name);
+            std::string line;
+            std::set<std::string> seen;
+            while (std::getline(src, line)) {
+                auto pos = line.find('#');
+                if (pos != std::string::npos) {
+                    line.erase(pos);
+                }
+                const char *ws = " \t\r\n";
+                auto b = line.find_first_not_of(ws);
+                if (b == std::string::npos) {
+                    continue;
+                }
+                line = line.substr(b, line.find_last_not_of(ws) - b + 1);
+                if (seen.insert(line).second) {
+                    dirlist.push_back(line);
+                }
+            }
+        }
+
         for (auto &filename : dirlist) {
-            auto ext = art::engine::getFileExtension(filename).lowercase();
-            if (ext != "txt") {
-                continue;
+            if (!listed) {
+                auto ext = art::engine::getFileExtension(filename).lowercase();
+                if (ext != "txt" ||
+                    Glib::ustring(filename).lowercase() == "artlist.txt") {
+                    continue;
+                }
             }
 
-            const Glib::ustring pth = Glib::build_filename(dirname, filename);
+            const Glib::ustring pth =
+                Glib::path_is_absolute(filename)
+                    ? Glib::ustring(filename)
+                    : Glib::ustring(Glib::build_filename(dirname, filename));
 
             if (!Glib::file_test(pth, Glib::FILE_TEST_IS_REGULAR)) {
+                if (listed && options.rtSettings.verbose) {
+                    std::cout << "File listed in " << list_name
+                              << " not found: " << S(pth) << std::endl;
+                }
                 continue;
             }
 
