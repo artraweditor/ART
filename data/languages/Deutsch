@@ -14,6 +14,8 @@
 #11 11.11.2025 Update für neue Version (apostel338)
 #12 20.12.2025 Update für neue Version (apostel338)
 #13 17.02.2026 Update für neue Version (apostel338)
+#14 03.11.2026 Update für neue Version (apostel338)
+#15 07.11.2026 Update für neue Version (apostel338)
 ABOUT_TAB_BUILD;Version
 ABOUT_TAB_CREDITS;Danksagungen
 ABOUT_TAB_LICENSE;Lizenz
@@ -2116,3 +2118,9 @@ PREFERENCES_SHORTCUTS_SYSCLASH;<b>%1</b> (%2) wird bereits vom Betriebssystem ve
 PREFERENCES_SHORTCUTS_SYSTEM;<b>%1</b> wird bereits vom Betriebssystem verwendet und kann von ART möglicherweise nicht erkannt werden (kontrollieren Sie die entsprechenden Einstellungen des Betriebsystems). Dennoch zuweisen?
 PREFERENCES_SHORTCUTS_SYSTEMNOTE;Beachten Sie bitte, dass <b>%1</b> bereits vom Betriebssystem verwendet wird und von ART möglicherweise nicht erkannt werden kann.
 TP_LABMASKS_DELTAE_SIZE_TOOLTIP;Größe des Auswahlbereichs in Pixeln
+PREFERENCES_ADJUSTER_DELAY;Aktualisierungsverzögerung
+PREFERENCES_ADJUSTER_DELAY_TOOLTIP;Legt fest, wie lange gewartet wird (in ms), bis die Vorschau aktualisiert wird, nachdem eine Einstellung über einen Regler vorgenommen, und dieser gestoppt wurde. Bei niedrigeren Werten folgt die Vorschau den Reglern näher, was jedoch zu häufigeren Aktualisierungen führt. "0" aktualisiert bei jeder Veränderung.
+PREFERENCES_ADJUSTER_MAX_DELAY;Verzögerung für langsame Module (ms)
+PREFERENCES_ADJUSTER_MIN_DELAY;Verzögerung für die meisten Module (ms)
+PREFERENCES_PREVIEW_ABORT_STALE;Aktualisierung der Vorschau unterbrechen, wenn eine neue Einstellung vorgenommen wird.
+PREFERENCES_PREVIEW_ABORT_STALE_TOOLTIP;Verbesert das Ansprechverhalten der Detail-Vorschau, während Einstellungen per Regler vorgenommen werden. Die Vorschau wird bei langsamen Prozessen möglicherweise erst aktualisiert, wenn der Regler nicht mehr bewegt wird. Deaktivieren, um das bisherigen Verhalten wiederherzustellen, in dem jede Aktualisierung immer vollständig ausgeführt wird.
