@@ -1462,7 +1462,6 @@ XIAOMI 17 ULTRA REAR TELEPHOTO CAMERA
 XIAOMI 17 ULTRA REAR ULTRAWIDE CAMERA
 XIAOMI 17 ULTRA REAR WIDE CAMERA
 
-
 Updated on Mon Jul 13 10:56:57 2026 (with Adobe DNG converter 18.4.1.2647):
 CANON EOS R6 V
 DJI FC9284
@@ -1470,6 +1469,42 @@ DJI FC9287
 HASSELBLAD L3D-100C
 PANASONIC DC-L10
 SONY ILCE-7RM6
+
+Updated on Sat Nov  7 17:57:44 2026 (with Adobe DNG converter 18.7.0.2743):
+CANON EOS R8 MARK II
+GOOGLE PIXEL 11 FRONT CAMERA
+GOOGLE PIXEL 11 PRO FOLD FRONT CAMERA
+GOOGLE PIXEL 11 PRO FOLD TELEPHOTO CAMERA
+GOOGLE PIXEL 11 PRO FOLD ULTRAWIDE CAMERA
+GOOGLE PIXEL 11 PRO FOLD WIDE CAMERA
+GOOGLE PIXEL 11 PRO FRONT CAMERA
+GOOGLE PIXEL 11 PRO TELEPHOTO CAMERA
+GOOGLE PIXEL 11 PRO ULTRAWIDE CAMERA
+GOOGLE PIXEL 11 PRO WIDE CAMERA
+GOOGLE PIXEL 11 PRO XL FRONT CAMERA
+GOOGLE PIXEL 11 PRO XL TELEPHOTO CAMERA
+GOOGLE PIXEL 11 PRO XL ULTRAWIDE CAMERA
+GOOGLE PIXEL 11 PRO XL WIDE CAMERA
+GOOGLE PIXEL 11 TELEPHOTO CAMERA
+GOOGLE PIXEL 11 ULTRAWIDE CAMERA
+GOOGLE PIXEL 11 WIDE CAMERA
+GOPRO MISSION 1
+GOPRO MISSION 1 PRO
+IPHONE19,2 BACK CAMERA
+IPHONE19,2 BACK TELEPHOTO CAMERA
+IPHONE19,2 BACK ULTRA WIDE CAMERA
+IPHONE19,2 FRONT ULTRA WIDE CAMERA
+IPHONE19,3 BACK CAMERA
+IPHONE19,3 BACK TELEPHOTO CAMERA
+IPHONE19,3 BACK ULTRA WIDE CAMERA
+IPHONE19,3 FRONT ULTRA WIDE CAMERA
+IPHONE19,7 BACK CAMERA
+IPHONE19,7 BACK TELEPHOTO CAMERA
+IPHONE19,7 BACK ULTRA WIDE CAMERA
+IPHONE19,7 FRONT ULTRA WIDE CAMERA
+LEICA SL3-P
+OM DIGITAL SOLUTIONS PEN
+SONY DSC-RX10M5
 */
 {"camera_constants": [
     {
@@ -1766,6 +1801,10 @@ SONY ILCE-7RM6
     },
     {
         "make_model" : "CANON EOS R8",
+        "dcraw_matrix" : [9539, -2795, -1224, -4175, 11998, 2458, -465, 1755, 6048]
+    },
+    {
+        "make_model" : "CANON EOS R8 MARK II",
         "dcraw_matrix" : [9539, -2795, -1224, -4175, 11998, 2458, -465, 1755, 6048]
     },
     {
@@ -2509,6 +2548,70 @@ SONY ILCE-7RM6
         "dcraw_matrix" : [11862, -5171, -979, -2529, 11618, 995, 109, 1850, 4873]
     },
     {
+        "make_model" : "GOOGLE PIXEL 11 FRONT CAMERA",
+        "dcraw_matrix" : [9308, -3244, -951, -3560, 12250, 1434, -373, 2407, 5296]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO FOLD FRONT CAMERA",
+        "dcraw_matrix" : [11364, -4982, -1218, -3924, 12736, 1271, -170, 1557, 5709]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO FOLD TELEPHOTO CAMERA",
+        "dcraw_matrix" : [10867, -4274, -1073, -3221, 11948, 1403, -172, 2314, 5011]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO FOLD ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [6415, -818, -600, -4026, 12947, 1134, -1096, 3624, 4263]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO FOLD WIDE CAMERA",
+        "dcraw_matrix" : [11292, -4971, -1011, -2801, 11797, 1096, 73, 1593, 5223]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO FRONT CAMERA",
+        "dcraw_matrix" : [11129, -4522, -926, -3711, 11955, 1969, -478, 2036, 5169]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO TELEPHOTO CAMERA",
+        "dcraw_matrix" : [10575, -4084, -935, -2596, 11645, 1040, -391, 2521, 4678]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [11237, -4893, -918, -3721, 12119, 1781, -254, 1651, 4950]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO WIDE CAMERA",
+        "dcraw_matrix" : [10795, -4819, -755, -3057, 12169, 944, -285, 2057, 4811]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO XL FRONT CAMERA",
+        "dcraw_matrix" : [11129, -4522, -926, -3711, 11955, 1969, -478, 2036, 5169]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO XL TELEPHOTO CAMERA",
+        "dcraw_matrix" : [10575, -4084, -935, -2596, 11645, 1040, -391, 2521, 4678]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO XL ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [11237, -4893, -918, -3721, 12119, 1781, -254, 1651, 4950]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 PRO XL WIDE CAMERA",
+        "dcraw_matrix" : [11205, -5187, -774, -2275, 11250, 1144, 95, 1626, 4915]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 TELEPHOTO CAMERA",
+        "dcraw_matrix" : [10928, -4291, -1030, -3245, 12029, 1333, -147, 2228, 4987]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 ULTRAWIDE CAMERA",
+        "dcraw_matrix" : [11530, -5071, -1134, -3273, 11566, 1927, -61, 1398, 5222]
+    },
+    {
+        "make_model" : "GOOGLE PIXEL 11 WIDE CAMERA",
+        "dcraw_matrix" : [11292, -4971, -1011, -2801, 11797, 1096, 73, 1593, 5223]
+    },
+    {
         "make_model" : "GOOGLE PIXEL 3 FRONT STANDARD CAMERA",
         "dcraw_matrix" : [12309, -5069, -1356, -3741, 12292, 1596, -476, 1939, 5324]
     },
@@ -2815,6 +2918,14 @@ SONY ILCE-7RM6
     {
         "make_model" : "GOPRO HERO7 BLACK",
         "dcraw_matrix" : [11033, -4339, -1176, -2180, 10845, 1524, -467, 1613, 4469]
+    },
+    {
+        "make_model" : "GOPRO MISSION 1",
+        "dcraw_matrix" : [9973, -4315, -1067, -5117, 13274, 2011, -624, 1266, 5555]
+    },
+    {
+        "make_model" : "GOPRO MISSION 1 PRO",
+        "dcraw_matrix" : [9973, -4315, -1067, -5117, 13274, 2011, -624, 1266, 5555]
     },
     {
         "make_model" : "GR",
@@ -3517,6 +3628,54 @@ SONY ILCE-7RM6
         "dcraw_matrix" : [8421, -2562, -877, -4309, 12738, 1717, -903, 2172, 4701]
     },
     {
+        "make_model" : "IPHONE19,2 BACK CAMERA",
+        "dcraw_matrix" : [9964, -4368, -925, -3132, 11573, 1753, -161, 1066, 4823]
+    },
+    {
+        "make_model" : "IPHONE19,2 BACK TELEPHOTO CAMERA",
+        "dcraw_matrix" : [9858, -3434, -1078, -3498, 11753, 1964, -170, 1465, 4531]
+    },
+    {
+        "make_model" : "IPHONE19,2 BACK ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [10789, -3923, -1131, -3458, 11822, 1833, -193, 1660, 4776]
+    },
+    {
+        "make_model" : "IPHONE19,2 FRONT ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [11387, -4790, -1293, -4838, 13471, 1447, -497, 1216, 5082]
+    },
+    {
+        "make_model" : "IPHONE19,3 BACK CAMERA",
+        "dcraw_matrix" : [9964, -4368, -925, -3132, 11573, 1753, -161, 1066, 4823]
+    },
+    {
+        "make_model" : "IPHONE19,3 BACK TELEPHOTO CAMERA",
+        "dcraw_matrix" : [9858, -3434, -1078, -3498, 11753, 1964, -170, 1465, 4531]
+    },
+    {
+        "make_model" : "IPHONE19,3 BACK ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [10789, -3923, -1131, -3458, 11822, 1833, -193, 1660, 4776]
+    },
+    {
+        "make_model" : "IPHONE19,3 FRONT ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [11387, -4790, -1293, -4838, 13471, 1447, -497, 1216, 5082]
+    },
+    {
+        "make_model" : "IPHONE19,7 BACK CAMERA",
+        "dcraw_matrix" : [9964, -4368, -925, -3132, 11573, 1753, -161, 1066, 4823]
+    },
+    {
+        "make_model" : "IPHONE19,7 BACK TELEPHOTO CAMERA",
+        "dcraw_matrix" : [9858, -3434, -1078, -3498, 11753, 1964, -170, 1465, 4531]
+    },
+    {
+        "make_model" : "IPHONE19,7 BACK ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [10789, -3923, -1131, -3458, 11822, 1833, -193, 1660, 4776]
+    },
+    {
+        "make_model" : "IPHONE19,7 FRONT ULTRA WIDE CAMERA",
+        "dcraw_matrix" : [11387, -4790, -1293, -4838, 13471, 1447, -497, 1216, 5082]
+    },
+    {
         "make_model" : ["IPHONE8,1 BACK CAMERA", "APPLE IPHONE8,1 BACK CAMERA"],
         "dcraw_matrix" : [9631, -3743, -905, -3330, 11838, 1664, -281, 1395, 5153]
     },
@@ -3815,6 +3974,10 @@ SONY ILCE-7RM6
     {
         "make_model" : "LEICA SL3",
         "dcraw_matrix" : [9860, -3893, -823, -3878, 11761, 2398, -346, 1164, 5470]
+    },
+    {
+        "make_model" : "LEICA SL3-P",
+        "dcraw_matrix" : [10612, -4510, -1060, -3783, 11924, 2088, -179, 1133, 5341]
     },
     {
         "make_model" : "LEICA SL3-S",
@@ -4702,6 +4865,10 @@ SONY ILCE-7RM6
     },
     {
         "make_model" : "OM DIGITAL SOLUTIONS OM-5 MARK II",
+        "dcraw_matrix" : [12008, -5230, -1123, -2265, 10496, 2046, 69, 734, 4938]
+    },
+    {
+        "make_model" : "OM DIGITAL SOLUTIONS PEN",
         "dcraw_matrix" : [12008, -5230, -1123, -2265, 10496, 2046, 69, 734, 4938]
     },
     {
@@ -6274,6 +6441,10 @@ SONY ILCE-7RM6
     },
     {
         "make_model" : "SONY DSC-RX10M4",
+        "dcraw_matrix" : [7699, -2566, -629, -2967, 11270, 1928, -378, 1286, 4807]
+    },
+    {
+        "make_model" : "SONY DSC-RX10M5",
         "dcraw_matrix" : [7699, -2566, -629, -2967, 11270, 1928, -378, 1286, 4807]
     },
     {
