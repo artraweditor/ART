@@ -432,6 +432,11 @@ def make_liquid_glass_icon(opts):
                        check=True, capture_output=True)
         shutil.copy2(os.path.join(outdir, 'Assets.car'),
                      os.path.join(opts.outdir, 'Contents/Resources/Assets.car'))
+        # actool also renders a flattened ART.icns from the same icon; use it
+        # in place of the one made from the plain PNGs so that anything that
+        # falls back to the .icns shows the same design
+        shutil.copy2(os.path.join(outdir, 'ART.icns'),
+                     os.path.join(opts.outdir, 'Contents/Resources/ART.icns'))
     except (OSError, subprocess.CalledProcessError) as e:
         sys.stderr.write(f'WARNING: cannot compile ART.icon ({e}), '
                          'falling back to ART.icns\n')

@@ -328,15 +328,6 @@ private:
             add_window(*rtWindow);
             rtWindow->setApplication(true);
 #ifdef __APPLE__
-            // macOS 26 draws a bundle's static icon inside a rounded-square
-            // plate when it isn't a Liquid Glass icon; an icon set at runtime
-            // is drawn as-is, so use the full-bleed logo for the Dock tile
-            if (osxApp) {
-                auto pb = RTImage::createPixbufFromFile("ART-logo-1024.png");
-                if (pb) {
-                    gtkosx_application_set_dock_icon_pixbuf(osxApp, pb->gobj());
-                }
-            }
             add_action("quit", sigc::slot<void>([this]() {
                            GThreadLock lck;
                            rtWindow->quit();

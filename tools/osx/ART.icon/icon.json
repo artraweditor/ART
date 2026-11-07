@@ -1,24 +1,33 @@
 {
-  "fill" : "none",
-  "groups" : [
+  "fill": {
+    "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+  },
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "ART-logo.png",
-          "name" : "ART-logo"
+          "image-name": "ART-logo-full.png",
+          "name": "ART-logo",
+          "position": {
+            "scale": 1.1,
+            "translation-in-points": [
+              7.2,
+              14.9
+            ]
+          }
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "supported-platforms": {
+    "squares": "shared"
   }
 }
