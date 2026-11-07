@@ -129,12 +129,15 @@
 // NIKON Z F
 // RICOH GR IV
 // SONY ILCE-7CR
-
 // updated on Mon Jul 13 10:59:24 2026:
 // CANON EOS 90D
 // PANASONIC DC-L10
 // SONY ILCE-1M2
 // SONY ILCE-9M2
+//
+// updated on Sat Nov  7 17:33:53 2026:
+// OM SYSTEM PEN
+// SONY ZV-E1
 
 [
   {
@@ -6760,6 +6763,49 @@
       { "name" : "4500k", "multipliers" : [ 2.203125, 1, 1.68359375 ] },
       { "name" : "6000k", "multipliers" : [ 2.60546875, 1, 1.3984375 ] },
       { "name" : "8500k", "multipliers" : [ 3.03125, 1, 1.18359375 ] }
+    ]
+  },
+  {
+    "make_model" : "OM SYSTEM PEN",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 1.84375, 1, 2.0546875 ] },
+      { "name" : "shade", "multipliers" : [ 2.1953125, 1, 1.6171875 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.0, 1, 1.875 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.109375, 1, 3.75 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 1.7890625, 1, 2.984375 ] },
+      { "name" : "underwater", "multipliers" : [ 1.890625, 1, 2.046875 ] },
+      { "name" : "flash", "multipliers" : [ 2.1015625, 1, 1.75 ] },
+      { "name" : "3000k", "multipliers" : [ 1.109375, 1, 3.75 ] },
+      { "name" : "3300k", "multipliers" : [ 1.3359375, 1, 2.921875 ] },
+      { "name" : "3600k", "multipliers" : [ 1.421875, 1, 2.671875 ] },
+      { "name" : "3900k", "multipliers" : [ 1.5078125, 1, 2.4765625 ] },
+      { "name" : "4000k", "multipliers" : [ 1.7890625, 1, 2.984375 ] },
+      { "name" : "4300k", "multipliers" : [ 1.609375, 1, 2.4296875 ] },
+      { "name" : "4500k", "multipliers" : [ 1.9453125, 1, 2.453125 ] },
+      { "name" : "4800k", "multipliers" : [ 1.734375, 1, 2.21875 ] },
+      { "name" : "5300k", "multipliers" : [ 1.84375, 1, 2.0546875 ] },
+      { "name" : "6000k", "multipliers" : [ 2.0, 1, 1.875 ] },
+      { "name" : "6600k", "multipliers" : [ 2.140625, 1, 1.9609375 ] },
+      { "name" : "7500k", "multipliers" : [ 2.1953125, 1, 1.6171875 ] }
+    ]
+  },
+  {
+    "make_model" : "SONY ZV-E1",
+    "presets" : [
+      { "name" : "daylight", "multipliers" : [ 2.4619140625, 1, 1.49609375 ] },
+      { "name" : "shade", "multipliers" : [ 2.8740234375, 1, 1.2216796875 ] },
+      { "name" : "cloudy", "multipliers" : [ 2.65234375, 1, 1.376953125 ] },
+      { "name" : "tungsten", "multipliers" : [ 1.5390625, 1, 2.6181640625 ] },
+      { "name" : "warm white fluorescent", "multipliers" : [ 1.7724609375, 1, 2.564453125 ] },
+      { "name" : "cool white fluorescent", "multipliers" : [ 2.26953125, 1, 2.041015625 ] },
+      { "name" : "day white fluorescent", "multipliers" : [ 2.40625, 1, 1.5146484375 ] },
+      { "name" : "daylight fluorescent", "multipliers" : [ 2.6533203125, 1, 1.4140625 ] },
+      { "name" : "flash", "multipliers" : [ 2.7041015625, 1, 1.3212890625 ] },
+      { "name" : "2500k", "multipliers" : [ 1.4130859375, 1, 2.966796875 ] },
+      { "name" : "3200k", "multipliers" : [ 1.7744140625, 1, 2.2197265625 ] },
+      { "name" : "4500k", "multipliers" : [ 2.248046875, 1, 1.650390625 ] },
+      { "name" : "6000k", "multipliers" : [ 2.578125, 1, 1.3818359375 ] },
+      { "name" : "8500k", "multipliers" : [ 2.845703125, 1, 1.169921875 ] }
     ]
   }
 ]
