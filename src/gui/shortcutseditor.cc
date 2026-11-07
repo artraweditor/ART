@@ -78,6 +78,15 @@ ShortcutsEditor::ShortcutsEditor():
     pack_start(search_, Gtk::PACK_SHRINK);
 
     model_ = Gtk::TreeStore::create(columns_);
+    // groups and actions are sorted alphabetically on their labels
+    model_->set_sort_func(
+        columns_.name,
+        [this](const Gtk::TreeIter &a, const Gtk::TreeIter &b) {
+            const Glib::ustring la = (*a)[columns_.name];
+            const Glib::ustring lb = (*b)[columns_.name];
+            return la.casefold_collate_key().compare(lb.casefold_collate_key());
+        });
+    model_->set_sort_column(columns_.name, Gtk::SORT_ASCENDING);
     filter_ = Gtk::TreeModelFilter::create(model_);
     filter_->set_visible_func(
         sigc::mem_fun(*this, &ShortcutsEditor::rowVisible));
@@ -197,8 +206,8 @@ ShortcutsEditor::ShortcutsEditor():
 
 
 // The row of a node of the hierarchy ("editor", "editor.zoom_fit"), created
-// together with its parents; the groups appear in the order in which the
-// actions are defined, which is the order of shortcuts.json.
+// together with its parents; the model sorts them alphabetically on their
+// labels.
 Gtk::TreeIter ShortcutsEditor::node(const std::string &path)
 {
     auto it = nodes_.find(path);
