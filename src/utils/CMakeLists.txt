@@ -42,7 +42,7 @@ target_link_libraries(art_utils
     )
 
 # Create config.h which defines where data are stored
-if(APPLE_NEW_BUNDLE)
+if(APPLE)
     foreach(_v DATADIR DOCDIR CREDITSDIR LICENCEDIR LENSFUNDBDIR)
         if(${_v})
             set(${_v} "../../${${_v}}")

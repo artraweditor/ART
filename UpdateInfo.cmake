@@ -153,7 +153,3 @@ endif(WIN32)
 configure_file("${PROJECT_SOURCE_DIR}/src/utils/version.h.in" "${CMAKE_BINARY_DIR}/src/utils/version.h")
 # build AboutThisBuild.txt from template
 configure_file("${PROJECT_SOURCE_DIR}/AboutThisBuild.txt.in" "${CMAKE_BINARY_DIR}/AboutThisBuild.txt")
-
-if(APPLE)
-    configure_file("${PROJECT_SOURCE_DIR}/tools/osx/Info.plist.in" "${CMAKE_BINARY_DIR}/Info.plist")    
-endif()

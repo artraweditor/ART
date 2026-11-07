@@ -338,6 +338,8 @@ def make_info_plist(opts):
         <string>{version}, Copyright © 2004-2010 Gábor Horváth, 2010-2019 RawTherapee Development Team, 2019-2024 Alberto Griggio</string>
         <key>CFBundleIconFile</key>
         <string>ART.icns</string>
+        <key>CFBundleIconName</key>
+        <string>ART</string>
         <key>CFBundleIdentifier</key>
         <string>us.pixls.art.ART</string>
         <key>CFBundleInfoDictionaryVersion</key>
@@ -405,6 +407,35 @@ def make_icns(opts):
     shutil.copy2(os.path.join(opts.tempdir, 'ART.icns'),
                  os.path.join(opts.outdir, 'Contents/Resources/ART.icns'))
     
+
+def make_liquid_glass_icon(opts):
+    """Compile tools/osx/ART.icon (Icon Composer format) into Assets.car.
+
+    Together with CFBundleIconName this makes macOS 26 draw the icon in
+    Finder/Launchpad/etc. without the legacy-icon plate. Needs Xcode 26's
+    actool; if it isn't available, the plain ART.icns is used instead."""
+    icon = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'ART.icon')
+    outdir = os.path.join(opts.tempdir, 'actool')
+    os.mkdir(outdir)
+    try:
+        subprocess.run(['xcrun', 'actool', icon, '--compile', outdir,
+                        '--output-format', 'human-readable-text',
+                        '--output-partial-info-plist',
+                        os.path.join(outdir, 'partial.plist'),
+                        '--app-icon', 'ART', '--include-all-app-icons',
+                        '--enable-on-demand-resources', 'NO',
+                        '--development-region', 'en',
+                        '--target-device', 'mac',
+                        '--minimum-deployment-target', '26.0',
+                        '--platform', 'macosx'],
+                       check=True, capture_output=True)
+        shutil.copy2(os.path.join(outdir, 'Assets.car'),
+                     os.path.join(opts.outdir, 'Contents/Resources/Assets.car'))
+    except (OSError, subprocess.CalledProcessError) as e:
+        sys.stderr.write(f'WARNING: cannot compile ART.icon ({e}), '
+                         'falling back to ART.icns\n')
+
 
 def make_dmg(opts):
     if opts.verbose:
@@ -527,6 +558,7 @@ def main():
                     shutil.copy2(elem, dest)
         make_info_plist(opts)
         make_icns(opts)
+        make_liquid_glass_icon(opts)
 
         build_launcher(opts, 'ART')
         build_launcher(opts, 'ART-dialogs', dialogs=True)

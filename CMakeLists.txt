@@ -157,26 +157,6 @@ option(ENABLE_LCMS_FAST_FLOAT "Enable the fast-float plugin of LCMS2 (if availab
 option(ENABLE_VULKAN "Enable the Vulkan compute backend for GPU acceleration" OFF)
 option(ART_VULKAN_EMBED_SHADERS "Embed compiled SPIR-V modules in the binary instead of installing them as data files" ON)
 
-option(MACOS_LEGACY_BUNDLE "Use legacy method for building a macOS bundle using the tools/osx/macos_bundle.sh script" OFF)
-
-option(OSX_DEV_BUILD "DEPRECATED - Generate macOS development builds" OFF)
-
-option(OSX_NIGHTLY "DEPRECATED - Generate a generically-named zip (only when MACOS_LEGACY_BUNDLE is OFF)" OFF)
-
-option(OSX_UNIVERSAL "DEPRECATED - Generate a universal app (only when MACOS_LEGACY_BUNDLE is OFF)" OFF)
-
-if(MACOS_LEGACY_BUNDLE)
-    set(OSX_DEV_BUILD 1 FORCE)
-else()
-    set(OSX_DEV_BUILD 0 FORCE)
-endif()
-
-if(APPLE AND OSX_DEV_BUILD)
-    set(APPLE_NEW_BUNDLE 1)
-else()
-    set(APPLE_NEW_BUNDLE 0)
-endif()
-
 # Set installation directories:
 if(WIN32 OR APPLE)
     if(BUILD_BUNDLE)
@@ -190,19 +170,15 @@ endif()
 
 if(NOT DEFINED BUNDLE_BASE_INSTALL_DIR)
     set(BUNDLE_BASE_INSTALL_DIR "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
-    if(APPLE_NEW_BUNDLE)
+    if(APPLE)
         set(BUNDLE_BASE_INSTALL_DIR "${BUNDLE_BASE_INSTALL_DIR}/ART.app")
-    elseif(APPLE)
-        set(BUNDLE_BASE_INSTALL_DIR "${PROJECT_SOURCE_DIR}/build")
     endif()
 endif()
 
 if(BUILD_BUNDLE)
     set(CMAKE_INSTALL_PREFIX "${BUNDLE_BASE_INSTALL_DIR}")
-    if(APPLE_NEW_BUNDLE)
+    if(APPLE)
         set(BINDIR "Contents/MacOS")
-    elseif(APPLE)
-        set(BINDIR "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/MacOS")
     else()
         set(BINDIR .)
     endif()
@@ -214,10 +190,8 @@ endif()
 
 if(NOT DEFINED DATADIR)
     if(BUILD_BUNDLE)
-        if(APPLE_NEW_BUNDLE)
+        if(APPLE)
             set(DATADIR "Contents/Resources")
-        elseif(APPLE)
-            set(DATADIR "/Applications/ART.app/Contents/Resources/share")
         else()
             set(DATADIR .)
         endif()
@@ -228,10 +202,8 @@ endif()
 
 if(NOT DEFINED LIBDIR)
     if(BUILD_BUNDLE)
-        if(APPLE_NEW_BUNDLE)
+        if(APPLE)
             set(LIBDIR "Contents/Frameworks")
-        elseif(APPLE)
-            set(LIBDIR "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/Frameworks")
         else()
             set(LIBDIR .)
         endif()
@@ -251,10 +223,8 @@ endif()
 
 if(NOT DEFINED DOCDIR)
     if(BUILD_BUNDLE)
-        if(APPLE_NEW_BUNDLE)
+        if(APPLE)
             set(DOCDIR "${DATADIR}/doc")
-        elseif(APPLE)
-            set(DOCDIR "/Applications/ART.app/Contents/Resources")
         else()
             set(DOCDIR "${DATADIR}/share/doc")
         endif()
@@ -265,11 +235,7 @@ endif()
 
 if(NOT DEFINED CREDITSDIR)
     if(BUILD_BUNDLE)
-        if(APPLE AND NOT APPLE_NEW_BUNDLE)
-            set(CREDITSDIR "/Applications/ART.app/Contents/Resources")
-        else()
-            set(CREDITSDIR "${DATADIR}")
-        endif()
+        set(CREDITSDIR "${DATADIR}")
     else()
         set(CREDITSDIR "${CMAKE_INSTALL_PREFIX}/share/doc/ART")
     endif()
@@ -325,23 +291,11 @@ if(NOT DEFINED APPDATADIR)
     endif()
 endif()
 
-if(APPLE AND NOT APPLE_NEW_BUNDLE)
-    set(LENSFUNDBDIR "${LENSFUNDBDIR}")
-elseif(DEFINED LENSFUNDBDIR AND NOT IS_ABSOLUTE "${LENSFUNDBDIR}")
+if(DEFINED LENSFUNDBDIR AND NOT IS_ABSOLUTE "${LENSFUNDBDIR}")
     set(LENSFUNDBDIR "${DATADIR}/${LENSFUNDBDIR}")
 endif()
 
 if(APPLE)
-    if("${CODESIGNID}")
-        set(CODESIGNID
-            "${CODESIGNID}"
-            CACHE STRING "Codesigning Identity")
-    endif()
-    if("${NOTARY}")
-        set(NOTARY
-            "${NOTARY}"
-            CACHE STRING "Notarization Identity")
-    endif()
     if("${LOCAL_PREFIX}")
         set(LOCAL_PREFIX
             "${LOCAL_PREFIX}"
@@ -350,23 +304,6 @@ if(APPLE)
         set(LOCAL_PREFIX
             /usr/local
             CACHE STRING "macos/gtk parent directory ie /usr/local (default) or /opt/local (macports) or /opt/homebrew (for arm64)")
-    endif()
-    if("${FANCY_DMG}")
-        set(FANCY_DMG
-            ON
-            CACHE BOOL
-                  "Use the andreyvit/create-dmg script to make a fancy .dmg")
-    endif()
-endif()
-
-# On macOS: merge the app via a specific url to generate a universal bundle with both x86_64 and arm64
-if(OSX_UNIVERSAL)
-    if(NOT OSX_UNIVERSAL_URL)
-        if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
-            set(OSX_UNIVERSAL_URL "ART_macOS_x86_64_latest.zip" CACHE STRING "URL of x86_64 app for lipo")
-        else()
-            set(OSX_UNIVERSAL_URL "ART_macOS_arm64_latest.zip" CACHE STRING "URL of arm64 app for lipo")
-        endif()
     endif()
 endif()
 

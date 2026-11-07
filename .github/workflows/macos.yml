@@ -190,6 +190,19 @@ jobs:
           wget https://sourceforge.net/projects/exiftool/files/${pkgname}/download -O ${pkgname}
           sudo installer -pkg ${pkgname} -target /
 
+      - name: Select Xcode 26 for the app icon
+        # bundle_ART.py compiles tools/osx/ART.icon into Assets.car with
+        # actool, which needs Xcode 26; it falls back to the plain ART.icns
+        # (with a warning) if actool can't do that
+        run: |
+          xc=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$xc" ]; then
+              sudo xcode-select -s "$xc"
+          else
+              echo "::warning::Xcode 26 not found, the bundle will use the legacy icon"
+          fi
+          xcrun actool --version | head -5
+
       - name: Create bundle
         env:
           GITHUB_AUTH: ${{ secrets.GITHUB_TOKEN }}

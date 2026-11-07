@@ -1,0 +1,24 @@
+{
+  "fill" : "none",
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "ART-logo.png",
+          "name" : "ART-logo"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

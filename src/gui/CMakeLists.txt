@@ -392,13 +392,7 @@ target_compile_definitions(art-shortcuts-test PRIVATE
 add_test(NAME shortcuts COMMAND art-shortcuts-test)
 
 # Install executables
-if(APPLE AND NOT APPLE_NEW_BUNDLE)
-    install(TARGETS art DESTINATION "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/MacOS")
-    install(TARGETS art-cli DESTINATION "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/MacOS")
-    install(TARGETS art-dialogs DESTINATION "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}/MacOS")
-else()
-    install(TARGETS art DESTINATION ${BINDIR})
-    install(TARGETS art-cli DESTINATION ${BINDIR})
-    install(TARGETS art-dialogs DESTINATION ${BINDIR})
-endif()
+install(TARGETS art DESTINATION ${BINDIR})
+install(TARGETS art-cli DESTINATION ${BINDIR})
+install(TARGETS art-dialogs DESTINATION ${BINDIR})
 
