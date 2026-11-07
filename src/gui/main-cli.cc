@@ -488,6 +488,12 @@ int processLineParams(int argc, char **argv)
                         return bad("dng-bits", "16, 32");
                     }
                     dngOpts.bits = std::stoi(v);
+                } else if (a.compare(0, 13, "--dng-levels=") == 0) {
+                    const auto v = val("dng-levels");
+                    if (v != "normalized" && v != "original") {
+                        return bad("dng-levels", "normalized, original");
+                    }
+                    dngOpts.original_levels = (v == "original");
                 } else if (a == "--dng-lens-opcodes") {
                     dngOpts.lens_opcodes = true;
                 } else if (a.compare(0, 11, "--dng-clip=") == 0) {

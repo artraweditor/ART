@@ -686,6 +686,10 @@ struct RawDNGOptions {
     bool neutral = false;   // don't bake the white balance into the data
     int bits = 16;          // 16 (uint) or 32 (float)
     bool clip_max = false;  // CFA: WhiteLevel = max (not min) of the clip levels
+    bool original_levels = false; // keep the black and white levels of the
+                                  // raw file (black level stored in the DNG,
+                                  // data not rescaled to 0..65535). Implies
+                                  // neutral
     bool lens_opcodes = false; // convert the embedded lens corrections to
                                // DNG opcodes (distortion, vignetting)
 };

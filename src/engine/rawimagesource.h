@@ -59,6 +59,7 @@ protected:
     float c_white[4];
     float cblacksom[4];
     float ref_pre_mul[4];
+    bool keep_negatives_ = false; // scaleColors(): don't clip below black
     bool uniform_scale_ = false; // scaleColors(): no WB, equal clip levels
     double refwb_red;
     double refwb_green;
@@ -145,6 +146,9 @@ public:
         double gain[3] = {1, 1, 1};     // WB gains applied by scaleColors()
         double wb[3] = {1, 1, 1};       // the WB gains in use, even if not applied
         double cam_xyz[3][3] = {{0}};   // XYZ(D65) -> pre_mul-balanced camera
+        float black[4] = {0, 0, 0, 0};  // black levels (R G1 B G2) of the file
+        float white[4] = {65535.f, 65535.f, 65535.f, 65535.f}; // white levels
+        float scale[4] = {1, 1, 1, 1};  // data = (raw - black) * scale
         bool uniform = false;           // no WB baked into data
         int rotate = 0;
     };
@@ -153,6 +157,10 @@ public:
     /** Must be called before preprocess(): scale all channels alike, so no
      * white balance is baked into the data. */
     void setUniformScale(bool yes) { uniform_scale_ = yes; }
+    /** Keep the samples below the black level as negative values instead of
+     * clipping them to 0 (they are restored by the original levels of a raw
+     * DNG). Must be set before preprocess() */
+    void setKeepNegatives(bool yes) { keep_negatives_ = yes; }
 
     int load(const Glib::ustring &fname) override { return load(fname, false); }
     int load(const Glib::ustring &fname, bool firstFrameOnly);

@@ -24,6 +24,7 @@
 //
 ////////////////////////////////////////////////////////////////
 
+#include <limits>
 #include "StopWatch.h"
 #include "gauss.h"
 #include "median.h"
@@ -1948,6 +1949,10 @@ float *RawImageSource::CA_correct_RT(bool autoCA, size_t autoIterations,
                 }
 
                 // copy temporary image matrix back to image matrix
+                // (the samples below the black level are clipped to 0, unless
+                // they have to be kept)
+                const float lowest =
+                    keep_negatives_ ? -std::numeric_limits<float>::max() : 0.f;
 #ifdef _OPENMP
 #pragma omp for
 #endif
@@ -1956,13 +1961,14 @@ float *RawImageSource::CA_correct_RT(bool autoCA, size_t autoIterations,
                     int col = cb + (fc(cfa, row, 0) & 1);
                     int indx = (row * width + col) >> 1;
 #ifdef ART_SIMD
+                    const vfloat lowestv = F2V(lowest);
                     for (; col < width - 7 - cb; col += 8, indx += 4) {
-                        const vfloat val = vmaxf(LVFU(RawDataTmp[indx]), ZEROV);
+                        const vfloat val = vmaxf(LVFU(RawDataTmp[indx]), lowestv);
                         STC2VFU(rawData[row][col], val);
                     }
 #endif
                     for (; col < width - cb; col += 2, indx++) {
-                        rawData[row][col] = std::max(0.f, RawDataTmp[indx]);
+                        rawData[row][col] = std::max(lowest, RawDataTmp[indx]);
                     }
                 }
             }
