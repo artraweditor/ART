@@ -824,7 +824,8 @@ bool ImProcFunctions::colorCorrection(Imagefloat *rgb)
 #ifdef ART_USE_CTL
     if (guides_mask) {
         compute_ctl_guides(rgb, guides_mask, params->icm.workingProfile, scale,
-                           multiThread, guides);
+                           multiThread, guides,
+                           !params->colorcorrection.disable_spatial_guides);
     }
 #endif
 

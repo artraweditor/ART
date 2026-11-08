@@ -205,10 +205,12 @@ private:
 /// mask kinds_mask (see ctl_guide_bit) for img, which can be either in RGB
 /// (working profile) or in YUV mode, and store them in out. The guides are
 /// computed from the input image as a whole, see the comment in ctl.cc.
-/// scale is the scale of the pipeline (1 for full size)
+/// scale is the scale of the pipeline (1 for full size). If spatial is false,
+/// no spatial filtering is applied: the guides are the per-pixel values
 void compute_ctl_guides(Imagefloat *img, unsigned kinds_mask,
                         const Glib::ustring &working_profile, double scale,
-                        bool multithread, CTLGuideSet &out);
+                        bool multithread, CTLGuideSet &out,
+                        bool spatial = true);
 
 }} // namespace art::engine
 

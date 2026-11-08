@@ -1340,7 +1340,7 @@ constexpr float CH_SCALE = 50.f;
 constexpr float CH_OUT_SCALE = 15.f;
 
 void compute_Y_guide(Imagefloat *img, TMatrix ws, double scale, bool multithread,
-                     array2D<float> &guide)
+                     array2D<float> &guide, bool spatial)
 {
     // the luminance is the Y channel of the YUV mode (in 0..65535)
     const int W = img->getWidth();
@@ -1372,8 +1372,10 @@ void compute_Y_guide(Imagefloat *img, TMatrix ws, double scale, bool multithread
 
     // the same guide as the tone equalizer at regularization 4. This is the
     // only place to change if a different algorithm is wanted
-    constexpr int regularization = 4;
-    toneEqGuide(guide, regularization, scale, multithread);
+    if (spatial) {
+        constexpr int regularization = 4;
+        toneEqGuide(guide, regularization, scale, multithread);
+    }
 }
 
 /**
@@ -1387,7 +1389,7 @@ void compute_Y_guide(Imagefloat *img, TMatrix ws, double scale, bool multithread
  */
 void compute_CH_guides(Imagefloat *img, TMatrix ws, double scale,
                        bool multithread, bool want_c, bool want_h,
-                       array2D<float> &C, array2D<float> &Hz)
+                       array2D<float> &C, array2D<float> &Hz, bool spatial)
 {
     const int W = img->getWidth();
     const int H = img->getHeight();
@@ -1432,8 +1434,17 @@ void compute_CH_guides(Imagefloat *img, TMatrix ws, double scale,
 
     if (want_h) {
         array2D<float> bs(W, H, ARRAY2D_ALIGNED);
-        guidedFilter(cz, az, tmp, radius, CH_EPSILON, multithread);
-        guidedFilter(cz, bz, bs, radius, CH_EPSILON, multithread);
+        if (spatial) {
+            guidedFilter(cz, az, tmp, radius, CH_EPSILON, multithread);
+            guidedFilter(cz, bz, bs, radius, CH_EPSILON, multithread);
+        } else {
+            for (int y = 0; y < H; ++y) {
+                for (int x = 0; x < W; ++x) {
+                    tmp[y][x] = az[y][x];
+                    bs[y][x] = bz[y][x];
+                }
+            }
+        }
         Hz(W, H, ARRAY2D_ALIGNED);
 #ifdef _OPENMP
 #pragma omp parallel for if (multithread)
@@ -1447,7 +1458,15 @@ void compute_CH_guides(Imagefloat *img, TMatrix ws, double scale,
         }
     }
     if (want_c) {
-        guidedFilter(cz, cz, tmp, radius, CH_EPSILON, multithread);
+        if (spatial) {
+            guidedFilter(cz, cz, tmp, radius, CH_EPSILON, multithread);
+        } else {
+            for (int y = 0; y < H; ++y) {
+                for (int x = 0; x < W; ++x) {
+                    tmp[y][x] = cz[y][x];
+                }
+            }
+        }
         C(W, H, ARRAY2D_ALIGNED);
 #ifdef _OPENMP
 #pragma omp parallel for if (multithread)
@@ -1464,7 +1483,7 @@ void compute_CH_guides(Imagefloat *img, TMatrix ws, double scale,
 
 void compute_ctl_guides(Imagefloat *img, unsigned kinds_mask,
                         const Glib::ustring &working_profile, double scale,
-                        bool multithread, CTLGuideSet &out)
+                        bool multithread, CTLGuideSet &out, bool spatial)
 {
     TMatrix ws = ICCStore::getInstance()->workingSpaceMatrix(working_profile);
     for (int i = 0; i < CTL_MAX_GUIDES; ++i) {
@@ -1472,7 +1491,8 @@ void compute_ctl_guides(Imagefloat *img, unsigned kinds_mask,
     }
 
     if (kinds_mask & ctl_guide_bit(CTLGuide::Y)) {
-        compute_Y_guide(img, ws, scale, multithread, out.plane[int(CTLGuide::Y)]);
+        compute_Y_guide(img, ws, scale, multithread, out.plane[int(CTLGuide::Y)],
+                         spatial);
         out.present[int(CTLGuide::Y)] = true;
     }
     const bool want_c = kinds_mask & ctl_guide_bit(CTLGuide::C);
@@ -1480,7 +1500,7 @@ void compute_ctl_guides(Imagefloat *img, unsigned kinds_mask,
     if (want_c || want_h) {
         compute_CH_guides(img, ws, scale, multithread, want_c, want_h,
                           out.plane[int(CTLGuide::C)],
-                          out.plane[int(CTLGuide::H)]);
+                          out.plane[int(CTLGuide::H)], spatial);
         out.present[int(CTLGuide::C)] = want_c;
         out.present[int(CTLGuide::H)] = want_h;
     }

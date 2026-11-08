@@ -1325,6 +1325,9 @@ struct ColorCorrectionParams: public MaskableParams {
     std::vector<Mask> masks;
     int showMask;
     int selectedRegion;
+    // if true, the guides given to CTL scripts are not spatially filtered.
+    // Only settable via the sidecar file, not in the GUI
+    bool disable_spatial_guides;
 
     ColorCorrectionParams();
     bool operator==(const ColorCorrectionParams &other) const;
