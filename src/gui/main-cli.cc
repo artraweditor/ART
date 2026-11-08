@@ -446,6 +446,7 @@ int processLineParams(int argc, char **argv)
     std::string outputType = "";
     bool rawPreprocess = false;
     art::engine::RawDNGOptions dngOpts;
+    dngOpts.neutral = true; // --dng-wb=neutral is the default
     unsigned errors = 0;
 
     for (int iArg = 1; iArg < argc; iArg++) {
