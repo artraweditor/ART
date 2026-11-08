@@ -289,7 +289,11 @@ void PerspCorrection::read(const ProcParams *pp)
 
 void PerspCorrection::write(ProcParams *pp)
 {
-    pp->perspective.enabled = getEnabled();
+    // While the control lines are being edited the preview must show the
+    // uncorrected image (see linesEditButtonPressed). Any panelChanged() from
+    // any tool re-runs write() on all panels, so don't let it switch the
+    // correction back on (#562).
+    pp->perspective.enabled = getEnabled() && !lines_button_edit->get_active();
     pp->perspective.horizontal = horiz->getValue();
     pp->perspective.vertical = vert->getValue();
     pp->perspective.angle = angle->getValue();
