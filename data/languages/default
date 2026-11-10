@@ -68,6 +68,8 @@ ERROR_MSG_INVALID_PSF;Invalid PSF file: %1
 ERROR_MSG_INVALID_LUT_PARAMS;Invalid LUT parameters for: %1
 ERROR_MSG_INVALID_WB;Invalid white balance coefficients
 ERROR_MSG_INPUT_PROFILE;Cannot load the input profile %1, using the camera colour matrix instead
+ERROR_MSG_INPUT_PROFILE_TRANSFORM;Cannot use the input profile %1 (no colour transform can be created from it), using the camera colour matrix instead
+ERROR_MSG_CAMERA_PROFILE_TRANSFORM;Cannot create the colour transform of the camera profile, the image is left unconverted
 EXIFFILTER_APERTURE;Aperture
 EXIFFILTER_CAMERA;Camera
 EXIFFILTER_DATE;Date
