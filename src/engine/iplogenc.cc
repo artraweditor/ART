@@ -19,6 +19,7 @@
  */
 
 #ifdef _OPENMP
+#include <iostream>
 #include <omp.h>
 #endif
 

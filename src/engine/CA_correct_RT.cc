@@ -24,6 +24,7 @@
 //
 ////////////////////////////////////////////////////////////////
 
+#include <iostream>
 #include <limits>
 #include "StopWatch.h"
 #include "gauss.h"

@@ -20,6 +20,7 @@
 //
 ////////////////////////////////////////////////////////////////
 
+#include <iostream>
 #include "../utils/multilangmgr.h"
 #include "StopWatch.h"
 #include "color.h"

@@ -10,6 +10,7 @@
 #endif
 #endif
 
+#include <iostream>
 /*RT*/#include <glib.h>
 /*RT*/#include <glib/gstdio.h>
 /*RT*/#undef MAX

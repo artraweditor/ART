@@ -18,6 +18,7 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "../engine/color.h"
 #include "../engine/guidedfilter.h"
 #include "../engine/imagefloat.h"

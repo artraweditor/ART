@@ -17,6 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <iostream>
 #include "rtthumbnail.h"
 #include "../gui/options.h"
 #include "../utils/ppversion.h"

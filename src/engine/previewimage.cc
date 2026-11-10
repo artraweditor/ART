@@ -18,6 +18,7 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "previewimage.h"
 #include "iccstore.h"
 #include "iimage.h"
