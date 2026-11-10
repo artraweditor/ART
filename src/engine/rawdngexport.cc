@@ -36,6 +36,18 @@
 #include <tiff.h>
 #include <tiffio.h>
 
+// older libtiff (e.g. 4.3 on Ubuntu 22.04) does not define the DNG opcode list
+// tags
+#ifndef TIFFTAG_OPCODELIST1
+#define TIFFTAG_OPCODELIST1 51008
+#endif
+#ifndef TIFFTAG_OPCODELIST2
+#define TIFFTAG_OPCODELIST2 51009
+#endif
+#ifndef TIFFTAG_OPCODELIST3
+#define TIFFTAG_OPCODELIST3 51022
+#endif
+
 namespace art { namespace engine {
 
 using namespace procparams;
