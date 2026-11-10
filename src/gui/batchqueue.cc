@@ -187,7 +187,9 @@ int BatchQueue::getThumbnailHeight()
 
 void BatchQueue::rightClicked(ThumbBrowserEntryBase *entry)
 {
-    pmenu.popup(3, this->eventTime);
+    if (static_cast<BatchQueueEntry *>(entry)->hasButtonSet()) {
+        pmenu.popup(3, this->eventTime);
+    }
 }
 
 void BatchQueue::doubleClicked(ThumbBrowserEntryBase *entry)
