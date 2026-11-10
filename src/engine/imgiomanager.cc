@@ -30,7 +30,9 @@
 #include "subprocess.h"
 #include "utils.h"
 #include <glib/gstdio.h>
+#include <fstream>
 #include <iostream>
+#include <set>
 #include <unistd.h>
 
 namespace art { namespace engine {
@@ -118,13 +120,46 @@ void ImageIOManager::do_init(const Glib::ustring &dirname)
         std::vector<std::string> dirlist(dir.begin(), dir.end());
         std::sort(dirlist.begin(), dirlist.end());
 
+        // optional ARTlist.txt: one file per line ('#' starts a comment); if
+        // present, it defines which handlers are loaded and in which order
+        // (later handlers for the same extension override earlier ones)
+        const std::string list_name = art::utils::findARTListFile(dirname);
+        const bool listed = !list_name.empty();
+        if (listed) {
+            dirlist.clear();
+            std::ifstream src(list_name);
+            std::string line;
+            std::set<std::string> seen;
+            while (std::getline(src, line)) {
+                auto pos = line.find('#');
+                if (pos != std::string::npos) {
+                    line.erase(pos);
+                }
+                const char *ws = " \t\r\n";
+                auto b = line.find_first_not_of(ws);
+                if (b == std::string::npos) {
+                    continue;
+                }
+                line = line.substr(b, line.find_last_not_of(ws) - b + 1);
+                if (seen.insert(line).second) {
+                    dirlist.push_back(line);
+                }
+            }
+        }
+
         for (auto &filename : dirlist) {
-            auto ext = getFileExtension(filename).lowercase();
-            if (filename[0] == '.' || ext != "txt") {
-                continue;
+            if (!listed) {
+                auto ext = getFileExtension(filename).lowercase();
+                if (filename[0] == '.' || ext != "txt" ||
+                    Glib::ustring(filename).lowercase() == "artlist.txt") {
+                    continue;
+                }
             }
 
-            const Glib::ustring pth = Glib::build_filename(dirname, filename);
+            const Glib::ustring pth =
+                Glib::path_is_absolute(filename)
+                    ? Glib::ustring(filename)
+                    : Glib::ustring(Glib::build_filename(dirname, filename));
 
             if (!Glib::file_test(pth, Glib::FILE_TEST_IS_REGULAR)) {
                 continue;
