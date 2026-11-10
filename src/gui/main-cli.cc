@@ -25,6 +25,7 @@
 #endif
 
 #include "../engine/clutstore.h"
+#include "../engine/imagesource.h"
 #include "../engine/imgiomanager.h"
 #include "../engine/pipelineprofile.h"
 #include "../engine/profilestore.h"
@@ -422,6 +423,13 @@ private:
     MyMutex mutex_;
     int num_steps_;
     int percent_;
+};
+
+// Receives image-source diagnostics without reporting numeric progress.
+class ConsoleErrorListener: public ConsoleProgressListener {
+public:
+    ConsoleErrorListener(): ConsoleProgressListener(1) {}
+    void setProgress(double p) override {}
 };
 
 int processLineParams(int argc, char **argv)
@@ -922,6 +930,7 @@ int processLineParams(int argc, char **argv)
 
     ConsoleProgressListener cpl(inputFiles.size() + 1);
     art::engine::ProgressListener *pl = progress ? &cpl : nullptr;
+    ConsoleErrorListener cel;
 
     if (progress) {
         const auto monitor = [&]() -> void {
@@ -1020,6 +1029,9 @@ int processLineParams(int argc, char **argv)
                                              inputFile));
             continue;
         }
+
+        // load() drops its listener when done, set it again for the processing
+        ii->getImageSource()->setProgressListener(&cel);
 
         if (useDefault) {
             if (isRaw) {

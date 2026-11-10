@@ -4378,7 +4378,7 @@ bool RawImageSource::findInputProfile(
 
         if (!in && !*dcpProf && !lut_prof && plistener) {
             plistener->error(
-                Glib::ustring::compose(art::utils::M("ERROR_MSG_FILE_READ"), normalName));
+                Glib::ustring::compose(art::utils::M("ERROR_MSG_INPUT_PROFILE"), normalName));
         }
     }
 
