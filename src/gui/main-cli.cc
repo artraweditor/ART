@@ -25,6 +25,7 @@
 #endif
 
 #include "../engine/clutstore.h"
+#include "../engine/imagesource.h"
 #include "../engine/imgiomanager.h"
 #include "../engine/pipelineprofile.h"
 #include "../engine/profilestore.h"
@@ -418,10 +419,25 @@ public:
         }
     }
 
-private:
+protected:
     MyMutex mutex_;
+
+private:
     int num_steps_;
     int percent_;
+};
+
+// Receives image-source diagnostics without reporting numeric progress.
+// The processing goes on after them, so they are printed as warnings.
+class ConsoleWarningListener: public ConsoleProgressListener {
+public:
+    ConsoleWarningListener(): ConsoleProgressListener(1) {}
+    void setProgress(double p) override {}
+    void error(const Glib::ustring &msg) override
+    {
+        MyMutex::MyLock l(mutex_);
+        std::cerr << "Warning: " << msg << std::endl;
+    }
 };
 
 int processLineParams(int argc, char **argv)
@@ -922,6 +938,7 @@ int processLineParams(int argc, char **argv)
 
     ConsoleProgressListener cpl(inputFiles.size() + 1);
     art::engine::ProgressListener *pl = progress ? &cpl : nullptr;
+    ConsoleWarningListener cwl;
 
     if (progress) {
         const auto monitor = [&]() -> void {
@@ -1020,6 +1037,9 @@ int processLineParams(int argc, char **argv)
                                              inputFile));
             continue;
         }
+
+        // load() drops its listener when done, set it again for the processing
+        ii->getImageSource()->setProgressListener(&cwl);
 
         if (useDefault) {
             if (isRaw) {

@@ -4076,12 +4076,25 @@ void RawImageSource::colorSpaceConversion_(
         if (hTransform == nullptr) {
             // Fallback: create transform from camera profile. Should not happen
             // normally.
+            if (plistener) {
+                plistener->error(Glib::ustring::compose(
+                    art::utils::M("ERROR_MSG_INPUT_PROFILE_TRANSFORM"),
+                    cmp.inputProfile));
+            }
             lcmsMutex->lock();
             hTransform =
                 cmsCreateTransform(camprofile, TYPE_RGB_FLT, prophoto,
                                    TYPE_RGB_FLT, INTENT_RELATIVE_COLORIMETRIC,
                                    cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE);
             lcmsMutex->unlock();
+
+            if (hTransform == nullptr) {
+                if (plistener) {
+                    plistener->error(art::utils::M(
+                        "ERROR_MSG_CAMERA_PROFILE_TRANSFORM"));
+                }
+                return;
+            }
         }
 
         TMatrix toxyz = {}, torgb = {};
@@ -4378,7 +4391,7 @@ bool RawImageSource::findInputProfile(
 
         if (!in && !*dcpProf && !lut_prof && plistener) {
             plistener->error(
-                Glib::ustring::compose(art::utils::M("ERROR_MSG_FILE_READ"), normalName));
+                Glib::ustring::compose(art::utils::M("ERROR_MSG_INPUT_PROFILE"), normalName));
         }
     }
 
