@@ -22,7 +22,10 @@
 #include "curveeditor.h"
 #include "curveeditorgroup.h"
 #include "guiutils.h"
+#include "../engine/color.h"
+#include "../engine/rt_math.h"
 #include "../utils/multilangmgr.h"
+#include <cmath>
 #include <map>
 
 namespace art { namespace gui {
@@ -30,6 +33,20 @@ using namespace utils;
 
 
 namespace {
+
+// the GUI shows the hue in degrees, in [0, 360); scripts use radians in
+// [-PI, PI]
+double hue_to_gui(double h)
+{
+    double d = h * 180.0 / engine::RT_PI;
+    return d < 0 ? d + 360.0 : d;
+}
+
+double hue_from_gui(double d)
+{
+    double h = d * engine::RT_PI / 180.0;
+    return h > engine::RT_PI ? h - 2.0 * engine::RT_PI : h;
+}
 
 class CLUTParamsCurveEditorGroup: public CurveEditorGroup {
 public:
@@ -314,6 +331,19 @@ void CLUTParamsPanel::setParams(const art::engine::CLUTParamDescriptorList &para
             }
             tooltip_ok = false;
         } break;
+        case art::engine::CLUTParamType::PT_HUESAT: {
+            const double dh =
+                d.value_default.size() == 2 ? hue_to_gui(d.value_default[0]) : 0;
+            const double ds = d.value_default.size() == 2 ? d.value_default[1] : 0;
+            ThresholdAdjuster *ta = Gtk::manage(new ThresholdAdjuster(
+                lbl(d.gui_name), 0., 1., ds, M("TP_BWMIX_SATURATION"), 2, 0.,
+                360., dh, M("TP_BWMIX_HUE"), 1, nullptr, false));
+            ta->setAdjusterListener(this);
+            ta->setBgColorProvider(this, int(widgets_.size()) + 1);
+            ta->setUpdatePolicy(RTUP_DYNAMIC);
+            box->pack_start(*ta, Gtk::PACK_SHRINK, 0);
+            w = ta;
+        } break;
         case art::engine::CLUTParamType::PT_INT:
         case art::engine::CLUTParamType::PT_FLOAT:
         default: {
@@ -356,6 +386,11 @@ art::engine::CLUTParamValueMap CLUTParamsPanel::getValue() const
         case art::engine::CLUTParamType::PT_FLATCURVE_PERIODIC:
             v = static_cast<CurveEditor *>(w)->getCurve();
             break;
+        case art::engine::CLUTParamType::PT_HUESAT: {
+            double s = 0, h = 0;
+            static_cast<ThresholdAdjuster *>(w)->getValue(s, h);
+            v = {hue_from_gui(h), s};
+        } break;
         case art::engine::CLUTParamType::PT_INT:
         case art::engine::CLUTParamType::PT_FLOAT:
         default:
@@ -367,6 +402,55 @@ art::engine::CLUTParamValueMap CLUTParamsPanel::getValue() const
     }
 
     return values;
+}
+
+void CLUTParamsPanel::colorForValue(double valX, double valY,
+                                    enum ColorCaller::ElemType elemType,
+                                    int callerId, ColorCaller *caller)
+{
+    if (callerId < 1 || size_t(callerId) > widgets_.size() ||
+        params_[callerId - 1].type != art::engine::CLUTParamType::PT_HUESAT) {
+        return;
+    }
+
+    // purely a visual indicator, in the style of the hue shift bar of the
+    // color correction tool (saturated HSV colours). The hue of the parameter
+    // is the JzAzBz one, so its position on the strip is mapped to an
+    // approximately matching HSV hue with this table, that gives the HSV hue
+    // (in degrees, unwrapped) of the sRGB colour of the JzAzBz hue 20*i
+    // degrees
+    static const float hsv_hue[] = {
+        341.1f, 353.5f, 365.8f, 378.0f, 393.6f, 421.2f, 455.6f,
+        486.2f, 505.8f, 518.6f, 535.4f, 553.3f, 567.8f, 584.5f,
+        608.2f, 633.4f, 662.5f, 685.8f, 701.1f};
+    const auto to_hsv_hue = [&](double h01) -> float {
+        double pos = (h01 - std::floor(h01)) * 18.0; // 360 / 20
+        int i = std::min(int(pos), 17);
+        float f = float(pos - i);
+        float d = hsv_hue[i] + f * (hsv_hue[i + 1] - hsv_hue[i]);
+        d /= 360.f;
+        return d - std::floor(d);
+    };
+
+    float R = 0.f, G = 0.f, B = 0.f;
+    if (valY <= 0.5) { // the hue range
+        art::engine::Color::hsv2rgb01(to_hsv_hue(valX), 1.f, 0.78f, R, G, B);
+    } else { // the saturation, at the current hue
+        double s, h;
+        static_cast<ThresholdAdjuster *>(widgets_[callerId - 1])
+            ->getValue(s, h);
+        // the full-saturation end is brighter than the hue strip, to be more
+        // colorful
+        art::engine::Color::hsv2rgb01(to_hsv_hue(h / 360.0), 1.f, 0.95f, R, G,
+                                      B);
+        const double gray = 0.46;
+        R = gray * (1.0 - valX) + R * valX;
+        G = gray * (1.0 - valX) + G * valX;
+        B = gray * (1.0 - valX) + B * valX;
+    }
+    caller->ccRed = double(R);
+    caller->ccGreen = double(G);
+    caller->ccBlue = double(B);
 }
 
 void CLUTParamsPanel::setValue(const art::engine::CLUTParamValueMap &val)
@@ -404,6 +488,17 @@ void CLUTParamsPanel::setValue(const art::engine::CLUTParamValueMap &val)
             CurveEditor *ce = static_cast<CurveEditor *>(w);
             ce->setCurve(vv);
             ce->openIfNonlinear();
+        } break;
+        case art::engine::CLUTParamType::PT_HUESAT: {
+            if (vv.size() != 2) {
+                vv = d.value_default;
+            }
+            auto ta = static_cast<ThresholdAdjuster *>(w);
+            if (vv.size() == 2) {
+                ta->setDefault(d.value_default[1],
+                               hue_to_gui(d.value_default[0]));
+                ta->setValue(vv[1], hue_to_gui(vv[0]));
+            }
         } break;
         case art::engine::CLUTParamType::PT_INT:
         case art::engine::CLUTParamType::PT_FLOAT:

@@ -21,8 +21,10 @@
 
 #include "../engine/clutparams.h"
 #include "adjuster.h"
+#include "colorprovider.h"
 #include "curvelistener.h"
 #include "edit.h"
+#include "thresholdadjuster.h"
 #include "toolpanel.h"
 #include <gtkmm.h>
 
@@ -31,7 +33,9 @@ namespace art { namespace gui {
 
 class CLUTParamsPanel: public Gtk::VBox,
                        public AdjusterListener,
-                       public CurveListener {
+                       public CurveListener,
+                       public ColorProvider,
+                       public ThresholdAdjusterListener {
 public:
     CLUTParamsPanel();
     ~CLUTParamsPanel() override;
@@ -52,6 +56,28 @@ public:
     void adjusterAutoToggled(Adjuster *a, bool v) override {}
     void curveChanged() override { emit_signal(); }
     void curveChanged(CurveEditor *ce) override { emit_signal(); }
+
+    // hue/saturation parameters (float[2] in CTL scripts)
+    void adjusterChanged(ThresholdAdjuster *a, double newBottom,
+                         double newTop) override
+    {
+        emit_signal();
+    }
+    void adjusterChanged(ThresholdAdjuster *a, double newBottomLeft,
+                         double newTopLeft, double newBottomRight,
+                         double newTopRight) override {}
+    void adjusterChanged(ThresholdAdjuster *a, int newBottom,
+                         int newTop) override
+    {
+        emit_signal();
+    }
+    void adjusterChanged(ThresholdAdjuster *a, int newBottomLeft, int newTopLeft,
+                         int newBottomRight, int newTopRight) override {}
+    void adjusterChanged2(ThresholdAdjuster *a, int newBottomL, int newTopL,
+                          int newBottomR, int newTopR) override {}
+    void colorForValue(double valX, double valY,
+                       enum ColorCaller::ElemType elemType, int callerId,
+                       ColorCaller *caller) override;
 
     Gtk::SizeRequestMode get_request_mode_vfunc() const override;
 

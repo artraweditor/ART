@@ -209,7 +209,8 @@ bool get_CTL_guides(const Glib::ustring &filename, std::vector<CTLGuide> &out,
 /**
  * ART-compatible CTL scripts can contain parameters as additional uniform
  * input parameters to ART_main. The supported parameter types are "bool",
- * "int", "float" and arrays of floats. Each such parameter must come with an
+ * "int", "float" and arrays of floats (arrays of size 2 are hue/saturation
+ * parameters, other sizes are curves). Each such parameter must come with an
  * associated ART parameter definition in the CTL script. ART parameter
  * definitions are special comment lines of the following form:
  *
@@ -350,7 +351,9 @@ bool get_CTL_params(const Glib::ustring &filename,
                     .cast<Ctl::ArrayType>()
                     ->elementType()
                     .cast<Ctl::FloatType>()) {
-                tp = CLUTParamType::PT_CURVE;
+                tp = a->type().cast<Ctl::ArrayType>()->size() == 2
+                         ? CLUTParamType::PT_HUESAT
+                         : CLUTParamType::PT_CURVE;
                 break;
             } else {
                 // fall back to error
@@ -370,9 +373,16 @@ bool get_CTL_params(const Glib::ustring &filename,
         desc.value_min = 0;
         desc.value_max = 1;
         desc.value_default = {0};
+        if (tp == CLUTParamType::PT_HUESAT) {
+            desc.value_default = {0, 0};
+        }
 
         if (a->hasDefaultValue()) {
             switch (tp) {
+            case CLUTParamType::PT_HUESAT: {
+                const float *d = reinterpret_cast<const float *>(a->data());
+                desc.value_default = {d[0], d[1]};
+            } break;
             case CLUTParamType::PT_BOOL:
                 desc.value_default[0] = *reinterpret_cast<bool *>(a->data());
                 break;
@@ -1051,6 +1061,13 @@ bool CTLApplication::set_params(const CLUTParamValueMap &values, int max_dim)
                             *(reinterpret_cast<float *>(d) + j) =
                                 curve->getVal(x);
                         }
+                    } break;
+                    case CLUTParamType::PT_HUESAT: {
+                        const std::vector<double> &hs =
+                            vv.size() == 2 ? vv : desc.value_default;
+                        float *fd = reinterpret_cast<float *>(d);
+                        fd[0] = std::min(std::max(hs[0], -RT_PI), RT_PI);
+                        fd[1] = std::min(std::max(hs[1], 0.0), 1.0);
                     } break;
                     case CLUTParamType::PT_INT:
                     case CLUTParamType::PT_CHOICE:

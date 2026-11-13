@@ -19,6 +19,7 @@
  */
 #include "clutparams.h"
 #include "../utils/curvetypes.h"
+#include "rt_math.h"
 
 #include <array>
 #include <unordered_map>
@@ -47,6 +48,22 @@ static const std::unordered_map<std::string, double> curvetypes = {
     {"NURBS", double(art::utils::DCT_NURBS)},
     {"Parametric", double(art::utils::DCT_Parametric)},
     {"ControlPoints", double(art::utils::FCT_MinMaxCPoints)}};
+
+bool get_huesat(cJSON *n, std::vector<double> &out)
+{
+    if (!cJSON_IsArray(n) || cJSON_GetArraySize(n) != 2) {
+        return false;
+    }
+    auto h = cJSON_GetArrayItem(n, 0);
+    auto s = cJSON_GetArrayItem(n, 1);
+    if (!cJSON_IsNumber(h) || !cJSON_IsNumber(s) ||
+        h->valuedouble < -RT_PI || h->valuedouble > RT_PI ||
+        s->valuedouble < 0 || s->valuedouble > 1) {
+        return false;
+    }
+    out = {h->valuedouble, s->valuedouble};
+    return true;
+}
 
 } // namespace
 
@@ -92,6 +109,12 @@ static const std::unordered_map<std::string, double> curvetypes = {
  *   for other parameter types, the last two optional elements are the GUI
  *   group name and tooltip string.
  *
+ * - arrays of exactly 2 floats are hue/saturation parameters (the hue is in
+ *   radians, in [-PI, PI], and the saturation in [0, 1]). The array size of
+ *   the parameter definition must be at least 2 and at most 5. The optional
+ *   3rd element is the default value, as an array [hue, saturation], and the
+ *   optional last two elements are the GUI group name and tooltip string.
+ *
  * If default values are not given, zero is used.
  */
 bool CLUTParamDescriptor::fill_from_json(cJSON *root)
@@ -118,6 +141,9 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
     gui_name = cJSON_GetStringValue(n);
     gui_group = "";
     gui_step = 1;
+    // a default taken from the script's ART_main (see ctl.cc) is kept for
+    // hue/saturation parameters if the definition does not override it
+    const auto prev_default = value_default;
     value_default = {0};
 
     const auto set_group_tooltip = [&](int i, int sz) -> bool {
@@ -365,6 +391,18 @@ bool CLUTParamDescriptor::fill_from_json(cJSON *root)
             return true;
         }
         break;
+    case CLUTParamType::PT_HUESAT:
+        value_default = prev_default.size() == 2 ? prev_default
+                                                  : std::vector<double>{0, 0};
+        if (sz == 2) {
+            return true;
+        } else if (sz <= 5) {
+            if (!get_huesat(cJSON_GetArrayItem(root, 2), value_default)) {
+                return false;
+            }
+            return (sz == 3) || set_group_tooltip(3, sz);
+        }
+        break;
     default:
         return false;
     }
@@ -487,6 +525,11 @@ bool CLUTParamDescriptorList::add_preset_from_json(cJSON *root)
                     value.push_back(d);
                 }
             } else {
+                return false;
+            }
+            break;
+        case CLUTParamType::PT_HUESAT:
+            if (!get_huesat(c, value)) {
                 return false;
             }
             break;

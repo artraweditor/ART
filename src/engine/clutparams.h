@@ -35,7 +35,9 @@ enum class CLUTParamType {
     PT_CHOICE,
     PT_CURVE,
     PT_FLATCURVE,
-    PT_FLATCURVE_PERIODIC
+    PT_FLATCURVE_PERIODIC,
+    // float[2]: hue (radians, in [-PI, PI]) and saturation (in [0, 1])
+    PT_HUESAT
 };
 
 struct CLUTParamDescriptor {
