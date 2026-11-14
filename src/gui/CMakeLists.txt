@@ -168,6 +168,7 @@ set(NONCLISOURCEFILES
     systemshortcuts.cc
     shortcutdefs.cc
     session.cc
+    remotecmd.cc
     thumbimgcache.cc
     clutparamspanel.cc
     gdkcolormgmt.cc

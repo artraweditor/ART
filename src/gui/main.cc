@@ -31,6 +31,7 @@
 #include "../utils/pathutils.h"
 #include "printhelp.h"
 #include "rtimage.h"
+#include "remotecmd.h"
 #include "rtwindow.h"
 #include "session.h"
 #include "shortcutsmanager.h"
@@ -79,6 +80,12 @@ bool simpleEditor = false;
 bool gimpPlugin = false;
 bool remote = false;
 bool is_session = false;
+// --cmd mode: the command (verb and arguments) to send to the running instance
+bool cmd_mode = false;
+// the -S* session options are translated to commands, but (unlike --cmd) they
+// still start the GUI when no instance is running
+bool cmd_start_ok = false;
+std::vector<Glib::ustring> cmd_args;
 
 namespace {
 
@@ -122,6 +129,7 @@ void process_help_params(int argc, char **argv)
 int processLineParams(int argc, char **argv)
 {
     Glib::setenv("ART_IS_SESSION", "0");
+    Glib::setenv("ART_IS_CMD", "0");
     int ret = 1;
     for (int iArg = 1; iArg < argc; iArg++) {
         Glib::ustring currParam(argv[iArg]);
@@ -152,7 +160,19 @@ int processLineParams(int argc, char **argv)
                 break;
 
             case '-':
-                if (currParam.substr(5) == "--gtk" ||
+                if (currParam == "--cmd") {
+                    // everything after --cmd is the command and its arguments
+                    cmd_mode = true;
+                    for (++iArg; iArg < argc; ++iArg) {
+                        cmd_args.emplace_back(fname_to_utf8(argv[iArg]));
+                    }
+                    if (cmd_args.size() == 1 && cmd_args[0] == "help") {
+                        ART_print_help(argv[0], true);
+                        ret = 0;
+                    }
+                    break;
+                }
+                if (currParam.substr(0, 5) == "--gtk" ||
                     currParam == "--g-fatal-warnings") {
                     break;
                 }
@@ -167,35 +187,42 @@ int processLineParams(int argc, char **argv)
 
             case 'S':
                 if (remote) {
-                    Glib::setenv("ART_IS_SESSION", "1");
-                    if (currParam == "-S") {
-                        if (iArg + 1 < argc && argv[iArg + 1][0] != '-') {
-                            ++iArg;
-                            art::gui::session::load(
-                                Glib::ustring(fname_to_utf8(argv[iArg])));
-                        } else {
-                            art::gui::session::load(art::gui::session::filename() +
-                                               ".last");
-                        }
-                        break;
-                    } else if (currParam == "-Sc") {
-                        art::gui::session::clear();
-                        break;
-                    } else if (currParam == "-Sa" || currParam == "-Sr" || currParam == "-So") {
-                        std::vector<Glib::ustring> fnames;
+                    // translated into the equivalent --cmd session command
+                    const auto collect = [&](bool &any) {
                         ++iArg;
                         while (iArg < argc && argv[iArg][0] != '-') {
-                            fnames.emplace_back(fname_to_utf8(argv[iArg]));
+                            cmd_args.emplace_back(fname_to_utf8(argv[iArg]));
+                            any = true;
                             ++iArg;
                         }
-                        if (currParam != "-Sr") {
-                            art::gui::session::add(fnames);
-                            if (currParam == "-So" && !fnames.empty()) {
-                                argv1 = Glib::ustring(fname_to_utf8(fnames[0]));
-                            }
-                        } else {
-                            art::gui::session::remove(fnames);
+                        --iArg;
+                    };
+                    bool any = false;
+                    if (currParam == "-S") {
+                        cmd_args = {"session", "load"};
+                        if (iArg + 1 < argc && argv[iArg + 1][0] != '-') {
+                            collect(any);
                         }
+                    } else if (currParam == "-Sc") {
+                        cmd_args = {"session", "clear"};
+                    } else if (currParam == "-Sa") {
+                        cmd_args = {"session", "add"};
+                        collect(any);
+                    } else if (currParam == "-Sr") {
+                        cmd_args = {"session", "remove"};
+                        collect(any);
+                    } else if (currParam == "-So") {
+                        cmd_args = {"session", "open"};
+                        collect(any);
+                    }
+                    if (!cmd_args.empty()) {
+                        // old behaviour: switch to the session view, start
+                        // the GUI if needed
+                        if (cmd_args[1] != "open") {
+                            cmd_args.insert(cmd_args.begin() + 1, "--show");
+                        }
+                        cmd_mode = true;
+                        cmd_start_ok = true;
                         break;
                     }
                 }
@@ -349,6 +376,31 @@ private:
     int on_command_line(
         const Glib::RefPtr<Gio::ApplicationCommandLine> &command_line) override
     {
+        if (atoi(command_line->getenv("ART_IS_CMD").c_str())) {
+            int argc = 0;
+            auto argv = command_line->get_arguments(argc);
+            // argv[0] is the base dir, argv[1] is "--cmd"
+            std::vector<Glib::ustring> args;
+            for (int i = 2; i < argc; ++i) {
+                args.emplace_back(argv[i]);
+            }
+            g_strfreev(argv);
+            const bool raise = !rtWindow;
+            if (raise &&
+                !atoi(command_line->getenv("ART_CMD_START").c_str())) {
+                command_line->printerr("ART: error: no running instance\n");
+                return 1;
+            }
+            if (!create_window()) {
+                return 1;
+            }
+            if (raise) {
+                rtWindow->present();
+            }
+            remotecmd::run(rtWindow, command_line, args);
+            return 0;
+        }
+
         auto s = command_line->getenv("ART_IS_SESSION");
         is_session = (!s.empty() && atoi(s.c_str()));
 
@@ -682,9 +734,42 @@ int main(int argc, char **argv)
     gdk_threads_init();
     gtk_init(&argc, &argv); // use the "--g-fatal-warnings" command line flag to
                             // make warnings fatal
-    initGUIColorManagement();
+    if (!cmd_mode || cmd_start_ok) {
+        // a pure remote-command client does not need it
+        initGUIColorManagement();
+    }
 
-    if (fatalError.empty() && remote) {
+    if (fatalError.empty() && remote && cmd_mode) {
+        // remote command: {base_dir, "--cmd", verb, args...}
+        std::vector<std::string> store;
+        store.push_back(options.ART_base_dir);
+        store.push_back("--cmd");
+        for (auto &a : cmd_args) {
+            store.push_back(a);
+        }
+        std::vector<char *> app_argv;
+        for (auto &a : store) {
+            app_argv.push_back(const_cast<char *>(a.c_str()));
+        }
+        app_argv.push_back(nullptr);
+        Glib::setenv("ART_IS_CMD", "1");
+        Glib::setenv("ART_CMD_START", cmd_start_ok ? "1" : "0");
+
+        RTApplication app;
+        if (!cmd_start_ok) {
+            // never start a GUI just to run a command
+            bool is_remote = false;
+            try {
+                is_remote = app.register_application() && app.is_remote();
+            } catch (Glib::Error &) {
+            }
+            if (!is_remote) {
+                std::cerr << "ART: error: no running instance" << std::endl;
+                return 1;
+            }
+        }
+        ret = app.run(int(app_argv.size()) - 1, app_argv.data());
+    } else if (fatalError.empty() && remote) {
 #if 1 // ndef __APPLE__
         char *app_argv[2] = {const_cast<char *>(options.ART_base_dir.c_str())};
         int app_argc = 1;

@@ -26,6 +26,41 @@
 namespace art { namespace gui {
 
 
+inline void ART_print_cmd_help(std::ostream &out)
+{
+    out << "  --cmd <command> [args]  Send a command to the running instance "
+           "(it fails if none is running). Commands:\n"
+        << "    open-dir DIR                 Open DIR in the file browser\n"
+        << "    get-dir                      Print the current directory\n"
+        << "    rank N FILE...               Set the star rating (0-5)\n"
+        << "    label N FILE...              Set the colour label (0-5)\n"
+        << "    session add|remove FILE...   Add/remove files to/from the session\n"
+        << "    session clear|show           Clear the session / show it\n"
+        << "    session load [FILE]          Load the session from FILE\n"
+        << "    session save FILE            Save the session to FILE\n"
+        << "    session open FILE...         Add the files to the session and "
+           "open the first one\n"
+        << "    open FILE                    Open FILE in the editor\n"
+        << "    apply [--append] PROFILE     Apply a (partial) profile to the "
+           "current editor image\n"
+        << "    get-params                   Print the current parameters (.arp text) of the visible editor image\n"
+        << "    get-info                     Print size, camera and exposure information of the visible editor image\n"
+        << "    get-history                  List the edit history of the current editor image (index, * = selected, text, value)\n"
+        << "    undo [N] | redo [N]          Step back/forward in the history\n"
+        << "    history-goto INDEX           Select a history entry\n"
+        << "    get-snapshots                List the snapshots (* = active)\n"
+        << "    snapshot-activate NAME       Activate a snapshot\n"
+        << "    snapshot-add [NAME]          Save the current state as a new snapshot\n"
+        << "    snapshot-overwrite NAME      Replace a snapshot with the current state\n"
+        << "    snapshot-remove NAME         Delete a snapshot\n"
+        << "    get-files                    Print the files open in the "
+           "editor, the visible one first\n"
+        << "    preview OUT [--scale F] [--crop X,Y,W,H]\n"
+        << "                                 Render the current editor image "
+           "(crop in full-image coordinates) to a PNG/JPEG file\n";
+}
+
+
 inline void ART_print_help(std::ostream &out, const char *progname, bool gui)
 {
     auto pn = Glib::path_get_basename(progname);
@@ -59,10 +94,10 @@ inline void ART_print_help(std::ostream &out, const char *progname, bool gui)
         out << "  -S <file> Start with session from file\n"
             << "  -Sc Clear the session\n"
             << "  -Sa <file1> [... <fileN>] Add the files to the session\n"
-            << "  -Sr <file1> [... <fileN>] Remove the files from the "
-               "session\n"
+            << "  -Sr <file1> [... <fileN>] Remove the files from the session\n"
             << "  -So <file1> [... <fileN>] Add the files to the session "
                "and open the first one in the editor\n";
+        ART_print_cmd_help(out);
         out << "  -h -? Display this help message\n";
     } else {
         Glib::ustring pparamsExt = paramFileExtension.substr(1);

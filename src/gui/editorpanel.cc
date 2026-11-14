@@ -21,13 +21,16 @@
 #include "editorpanel.h"
 #include "maskspanel.h"
 
+#include <cmath>
 #include <iostream>
+#include <mutex>
 
 #include "../engine/iccstore.h"
 #include "../engine/imagesource.h"
 #include "../engine/imgiomanager.h"
 #include "../engine/improccoordinator.h"
 #include "../engine/processingjob.h"
+#include "../engine/threadpool.h"
 #include "fastexport.h"
 #include "guiutils.h"
 #include "shortcutsmanager.h"
@@ -1134,6 +1137,238 @@ void EditorPanel::on_realize()
     // vboxright->set_size_request (options.toolPanelWidth, -1);
     tpc->updateToolState();
 }
+
+bool EditorPanel::applyProfile(const PartialProfile &pp,
+                               const Glib::ustring &descr)
+{
+    if (!isReadyForRemote()) {
+        return false;
+    }
+    tpc->profileChange(&pp, art::engine::EvProfileChanged, descr);
+    return true;
+}
+
+
+bool EditorPanel::getCurrentParams(ProcParams &pp)
+{
+    if (!ipc) {
+        return false;
+    }
+    ipc->getParams(&pp);
+    return true;
+}
+
+bool EditorPanel::getInfoText(Glib::ustring &out)
+{
+    if (!ipc || !openThm) {
+        return false;
+    }
+    auto md = ipc->getInitialImage()->getMetaData();
+    int sw = 0, sh = 0;
+    ipc->getInitialImage()->getImageSource()->getFullSize(sw, sh);
+    out = Glib::ustring::compose("file: %1\n", fname);
+    out += Glib::ustring::compose("is_raw: %1\n",
+                                  openThm->getType() == FT_Raw ? "true" : "false");
+    out += Glib::ustring::compose("source_width: %1\nsource_height: %2\n", sw, sh);
+    out += Glib::ustring::compose("full_width: %1\nfull_height: %2\n",
+                                  ipc->getFullWidth(), ipc->getFullHeight());
+    if (md) {
+        out += Glib::ustring::compose("make: %1\nmodel: %2\nlens: %3\n",
+                                      md->getMake(), md->getModel(),
+                                      md->getLens());
+        out += Glib::ustring::compose(
+            "iso: %1\nf_number: %2\nfocal_length_mm: %3\nshutter_s: %4\n"
+            "exposure_compensation: %5\norientation: %6\n",
+            md->getISOSpeed(), md->getFNumber(), md->getFocalLen(),
+            md->getShutterSpeed(), md->getExpComp(), md->getOrientation());
+    }
+    return true;
+}
+
+bool EditorPanel::getParamsText(Glib::ustring &out)
+{
+    if (!ipc) {
+        return false;
+    }
+    ProcParams pp;
+    ipc->getParams(&pp);
+    art::engine::procparams::KeyFile kf;
+    if (pp.save(nullptr, kf, nullptr, "") != 0) {
+        return false;
+    }
+    out = kf.to_data();
+    return true;
+}
+
+
+namespace {
+
+class RemotePreview: public art::engine::DetailedCropListener {
+public:
+    RemotePreview(int cx, int cy, int cw, int ch, int skip):
+        cx_(cx), cy_(cy), cw_(cw), ch_(ch), skip_(skip), ready_(false),
+        w_(0), h_(0)
+    {
+    }
+
+    void getWindow(int &cx, int &cy, int &cw, int &ch, int &skip) override
+    {
+        cx = cx_;
+        cy = cy_;
+        cw = cw_;
+        ch = ch_;
+        skip = skip_;
+    }
+
+    void setDetailedCrop(art::engine::IImage8 *img,
+                         art::engine::IImage8 *imgtrue,
+                         const ColorManagementParams &cmp,
+                         const CropParams &cp, int cx, int cy, int cw, int ch,
+                         int skip) override
+    {
+        // called from a worker thread: copy the (non-shared) data
+        if (cx != cx_ || cy != cy_ || cw != cw_ || ch != ch_ ||
+            skip != skip_ || !imgtrue) {
+            return;
+        }
+        std::lock_guard<std::mutex> lck(mtx_);
+        w_ = imgtrue->getWidth();
+        h_ = imgtrue->getHeight();
+        data_.assign(imgtrue->getData(), imgtrue->getData() + 3 * w_ * h_);
+        ready_ = true;
+    }
+
+    bool take(std::vector<guint8> &data, int &w, int &h)
+    {
+        std::lock_guard<std::mutex> lck(mtx_);
+        if (!ready_) {
+            return false;
+        }
+        data.swap(data_);
+        w = w_;
+        h = h_;
+        return true;
+    }
+
+private:
+    int cx_, cy_, cw_, ch_, skip_;
+    std::mutex mtx_;
+    bool ready_;
+    int w_, h_;
+    std::vector<guint8> data_;
+};
+
+struct RemotePreviewJob {
+    std::shared_ptr<art::engine::StagedImageProcessor> ipc;
+    art::engine::DetailedCrop *crop;
+    std::unique_ptr<RemotePreview> listener;
+    Glib::ustring outfile;
+    double scale;
+    int skip;
+    int cw, ch;
+    int ticks;
+    std::function<void(bool, const Glib::ustring &)> done;
+
+    ~RemotePreviewJob()
+    {
+        crop->setListener(nullptr);
+        crop->destroy();
+    }
+};
+
+} // namespace
+
+
+void EditorPanel::renderPreview(
+    const Glib::ustring &outfile, double scale, int cx, int cy, int cw,
+    int ch, std::function<void(bool, const Glib::ustring &)> done)
+{
+    if (!isReadyForRemote()) {
+        done(false, "no image ready in the editor");
+        return;
+    }
+    const int fw = ipc->getFullWidth();
+    const int fh = ipc->getFullHeight();
+    if (cw <= 0 || ch <= 0) {
+        cx = cy = 0;
+        cw = fw;
+        ch = fh;
+    }
+    if (cx < 0 || cy < 0 || cx + cw > fw || cy + ch > fh) {
+        done(false, Glib::ustring::compose(
+                        "crop out of bounds (full image is %1x%2)", fw, fh));
+        return;
+    }
+    if (!(scale > 0)) {
+        done(false, "invalid scale");
+        return;
+    }
+
+    // the engine can only downscale by an integer factor: use the largest one
+    // not exceeding 1/scale, and resample the result to the exact size
+    const int skip = scale >= 1.0 ? 1 : std::max(1, int(std::floor(1.0 / scale)));
+
+    auto job = new RemotePreviewJob();
+    job->ipc = ipc; // keep the processor alive
+    job->crop = ipc->createCrop(nullptr, true);
+    job->listener.reset(new RemotePreview(cx, cy, cw, ch, skip));
+    job->outfile = outfile;
+    job->scale = scale;
+    job->skip = skip;
+    job->cw = cw;
+    job->ch = ch;
+    job->ticks = 0;
+    job->done = std::move(done);
+
+    job->crop->setListener(job->listener.get());
+    if (job->crop->tryUpdate()) {
+        auto crop = job->crop;
+        auto i = ipc;
+        art::engine::ThreadPool::add_task(
+            art::engine::ThreadPool::Priority::HIGH,
+            [i, crop]() { crop->fullUpdate(); });
+    }
+
+    // poll for the result in the GUI thread
+    const auto poll = [](gpointer data) -> gboolean {
+        auto job = static_cast<RemotePreviewJob *>(data);
+        std::vector<guint8> buf;
+        int w = 0, h = 0;
+        if (!job->listener->take(buf, w, h)) {
+            if (++job->ticks < 1200) { // 60 s
+                return TRUE;
+            }
+            job->done(false, "timeout while rendering the preview");
+            delete job;
+            return FALSE;
+        }
+        bool ok = false;
+        Glib::ustring msg;
+        try {
+            auto pb = Gdk::Pixbuf::create_from_data(
+                buf.data(), Gdk::COLORSPACE_RGB, false, 8, w, h, 3 * w);
+            // the engine output covers cw/skip pixels; bring it to the
+            // requested scale
+            const int ow = std::max(1, int(std::lround(job->cw * job->scale)));
+            const int oh = std::max(1, int(std::lround(job->ch * job->scale)));
+            if (ow != w || oh != h) {
+                pb = pb->scale_simple(ow, oh, Gdk::INTERP_HYPER);
+            }
+            Glib::ustring ext = job->outfile.substr(job->outfile.rfind('.') == Glib::ustring::npos ? job->outfile.size() : job->outfile.rfind('.') + 1).lowercase();
+            const Glib::ustring type = (ext == "jpg" || ext == "jpeg") ? "jpeg" : "png";
+            pb->save(job->outfile, type);
+            ok = true;
+            msg = Glib::ustring::compose("%1 (%2x%3)", job->outfile, ow, oh);
+        } catch (Glib::Error &e) {
+            msg = e.what();
+        }
+        job->done(ok, msg);
+        delete job;
+        return FALSE;
+    };
+    gdk_threads_add_timeout(50, poll, job);
+}
+
 
 bool EditorPanel::can_open_now() const
 {

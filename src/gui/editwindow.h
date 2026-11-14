@@ -59,6 +59,8 @@ public:
     void addEditorPanel(EditorPanel *ep, const std::string &name);
     void remEditorPanel(EditorPanel *ep);
     bool selectEditorPanel(const std::string &name);
+    // open editor panels, the visible one first
+    std::vector<EditorPanel *> getEditorPanels();
     // write the current params of the editor of `name` (if any) to disk
     void saveProfile(const Glib::ustring &name);
     bool closeOpenEditors();

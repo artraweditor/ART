@@ -35,6 +35,7 @@
 #include "thumbnaillistener.h"
 #include "toolpanelcoord.h"
 #include <gtkmm.h>
+#include <functional>
 #include <memory>
 
 namespace art { namespace gui {
@@ -180,6 +181,25 @@ public:
                                       bool auto_monitor_profile);
 
     bool saveImmediately(const Glib::ustring &filename, const SaveFormat &sf);
+
+    // remote-command support (see remotecmd.cc)
+    // true if an image is loaded and the pipeline is idle
+    bool isReadyForRemote() const { return ipc && !getIsProcessing(); }
+    // apply a profile to the open image (as the profile panel does)
+    bool applyProfile(const art::engine::procparams::PartialProfile &pp,
+                      const Glib::ustring &descr);
+    History *getHistory() { return history; }
+    bool getCurrentParams(art::engine::procparams::ProcParams &pp);
+    // the current processing parameters, as the text of an .arp file
+    bool getParamsText(Glib::ustring &out);
+    // `key: value` lines: file, sizes, camera and exposure metadata
+    bool getInfoText(Glib::ustring &out);
+    // render the window (cx, cy, cw, ch) of the full image (in full-image
+    // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
+    // (format by extension). done() is called later, in the GUI thread
+    void renderPreview(const Glib::ustring &outfile, double scale, int cx,
+                       int cy, int cw, int ch,
+                       std::function<void(bool, const Glib::ustring &)> done);
 
     Gtk::Paned *catalogPane;
 

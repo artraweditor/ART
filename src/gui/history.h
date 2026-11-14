@@ -150,6 +150,28 @@ public:
 
     void activateNextSnapshot();
     void activatePrevSnapshot();
+
+    // programmatic access (remote commands)
+    struct Entry {
+        Glib::ustring text;
+        Glib::ustring value;
+    };
+    std::vector<Entry> getHistoryEntries();
+    // index of the selected history row, -1 if none (e.g. a snapshot is active)
+    int getHistoryIndex();
+    bool selectHistoryIndex(int index);
+    std::vector<Glib::ustring> getSnapshotNames();
+    // index of the active snapshot, -1 if none
+    int getSnapshotIndex();
+    bool activateSnapshot(const Glib::ustring &name);
+    // these three return false and set `err` on failure
+    bool addSnapshot(const Glib::ustring &name,
+                     const art::engine::procparams::ProcParams &params,
+                     Glib::ustring &err);
+    bool removeSnapshot(const Glib::ustring &name, Glib::ustring &err);
+    bool overwriteSnapshot(const Glib::ustring &name,
+                           const art::engine::procparams::ProcParams &params,
+                           Glib::ustring &err);
 };
 
 

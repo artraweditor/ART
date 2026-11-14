@@ -155,6 +155,13 @@ private:
     std::unordered_map<const Thumbnail *, unsigned> open_in_editor_;
 
 public:
+    // remote-command support: set rank/colour label of the entries of the given
+    // files; the files that are not among the entries are returned in `rest`
+    void setRankForFiles(const std::vector<Glib::ustring> &files, int rank,
+                         std::vector<Glib::ustring> &rest);
+    void setColorLabelForFiles(const std::vector<Glib::ustring> &files,
+                               int label, std::vector<Glib::ustring> &rest);
+
     FileBrowser();
     ~FileBrowser() override;
 

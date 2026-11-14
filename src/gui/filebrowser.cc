@@ -2017,6 +2017,58 @@ void FileBrowser::colorlabelRequested(std::vector<FileBrowserEntry *> tbe,
     applyFilter(filter);
 }
 
+namespace {
+
+std::vector<FileBrowserEntry *> find_entries(
+    const std::vector<ThumbBrowserEntryBase *> &fd,
+    const std::vector<Glib::ustring> &files, std::vector<Glib::ustring> &rest)
+{
+    std::vector<FileBrowserEntry *> ret;
+    for (auto &f : files) {
+        bool found = false;
+        for (auto e : fd) {
+            if (e->filename == f) {
+                ret.push_back(static_cast<FileBrowserEntry *>(e));
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            rest.push_back(f);
+        }
+    }
+    return ret;
+}
+
+} // namespace
+
+void FileBrowser::setRankForFiles(const std::vector<Glib::ustring> &files,
+                                  int rank, std::vector<Glib::ustring> &rest)
+{
+    std::vector<FileBrowserEntry *> tbe;
+    {
+        MYREADERLOCK(l, entryRW);
+        tbe = find_entries(fd, files, rest);
+    }
+    if (!tbe.empty()) {
+        rankingRequested(tbe, rank);
+    }
+}
+
+void FileBrowser::setColorLabelForFiles(
+    const std::vector<Glib::ustring> &files, int label,
+    std::vector<Glib::ustring> &rest)
+{
+    std::vector<FileBrowserEntry *> tbe;
+    {
+        MYREADERLOCK(l, entryRW);
+        tbe = find_entries(fd, files, rest);
+    }
+    if (!tbe.empty()) {
+        colorlabelRequested(tbe, label);
+    }
+}
+
 void FileBrowser::requestRanking(int rank)
 {
     std::vector<FileBrowserEntry *> mselected;

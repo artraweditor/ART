@@ -69,6 +69,8 @@ public:
     bool selectEditorPanel(const std::string &name);
     // write the current params of the editor of `name` (if any) to disk
     void saveEditorProfile(const Glib::ustring &name);
+    // open editor panels, the visible one (if any) first
+    std::vector<EditorPanel *> getEditorPanels();
 
     void addBatchQueueJob(BatchQueueEntry *bqe, bool head = false);
     void addBatchQueueJobs(const std::vector<BatchQueueEntry *> &entries);

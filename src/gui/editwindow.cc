@@ -290,6 +290,22 @@ void EditWindow::toFront()
     present();
 }
 
+std::vector<EditorPanel *> EditWindow::getEditorPanels()
+{
+    std::vector<EditorPanel *> ret;
+    const int n = mainNB->get_n_pages();
+    const int cur = mainNB->get_current_page();
+    if (cur >= 0 && cur < n) {
+        ret.push_back(static_cast<EditorPanel *>(mainNB->get_nth_page(cur)));
+    }
+    for (int i = 0; i < n; ++i) {
+        if (i != cur) {
+            ret.push_back(static_cast<EditorPanel *>(mainNB->get_nth_page(i)));
+        }
+    }
+    return ret;
+}
+
 bool EditWindow::keyPressed(GdkEventKey *event)
 {
     if (ShortcutsManager::getInstance()->dispatch(

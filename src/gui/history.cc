@@ -18,6 +18,7 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "history.h"
+#include <cstring>
 #include "eventmapper.h"
 #include "guiutils.h"
 #include "../utils/multilangmgr.h"
@@ -570,6 +571,151 @@ History::getSnapshots()
                                      row[bookmarkColumns.params]));
     }
     return ret;
+}
+
+namespace {
+
+Glib::ustring unescape_markup(Glib::ustring s)
+{
+    const char *ent[][2] = {{"&lt;", "<"},  {"&gt;", ">"}, {"&quot;", "\""},
+                            {"&apos;", "'"}, {"&amp;", "&"}};
+    for (auto &e : ent) {
+        size_t pos = 0;
+        while ((pos = s.find(e[0], pos)) != Glib::ustring::npos) {
+            s.replace(pos, strlen(e[0]), e[1]);
+            pos += strlen(e[1]);
+        }
+    }
+    return s;
+}
+
+} // namespace
+
+std::vector<History::Entry> History::getHistoryEntries()
+{
+    std::vector<Entry> ret;
+    for (const auto &row : historyModel->children()) {
+        Entry e;
+        e.text = unescape_markup(row[historyColumns.text]);
+        e.value = unescape_markup(row[historyColumns.value]);
+        ret.push_back(e);
+    }
+    return ret;
+}
+
+int History::getHistoryIndex()
+{
+    auto iter = hTreeView->get_selection()->get_selected();
+    if (!iter) {
+        return -1;
+    }
+    return historyModel->get_path(iter)[0];
+}
+
+bool History::selectHistoryIndex(int index)
+{
+    if (index < 0 || index >= int(historyModel->children().size())) {
+        return false;
+    }
+    hTreeView->get_selection()->select(historyModel->children()[index]);
+    return true;
+}
+
+std::vector<Glib::ustring> History::getSnapshotNames()
+{
+    std::vector<Glib::ustring> ret;
+    for (const auto &row : bookmarkModel->children()) {
+        ret.push_back(row[bookmarkColumns.text]);
+    }
+    return ret;
+}
+
+int History::getSnapshotIndex()
+{
+    auto iter = bTreeView->get_selection()->get_selected();
+    if (!iter) {
+        return -1;
+    }
+    return bookmarkModel->get_path(iter)[0];
+}
+
+bool History::activateSnapshot(const Glib::ustring &name)
+{
+    for (const auto &row : bookmarkModel->children()) {
+        if (row[bookmarkColumns.text] == name) {
+            shapshot_update_ = false;
+            bTreeView->get_selection()->select(row);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool History::addSnapshot(const Glib::ustring &name,
+                          const art::engine::procparams::ProcParams &params,
+                          Glib::ustring &err)
+{
+    if (name.empty()) {
+        err = "empty snapshot name";
+        return false;
+    }
+    for (auto &n : getSnapshotNames()) {
+        if (n == name) {
+            err = "a snapshot named \"" + name + "\" already exists";
+            return false;
+        }
+    }
+    // not selected: the active history row stays as it is
+    ConnectionBlocker block_sel(selchangebm);
+    auto row = *bookmarkModel->append();
+    row[bookmarkColumns.text] = name;
+    row[bookmarkColumns.params] = params;
+    if (snapshotListener) {
+        snapshotListener->snapshotsChanged(getSnapshots());
+    }
+    return true;
+}
+
+bool History::removeSnapshot(const Glib::ustring &name, Glib::ustring &err)
+{
+    for (auto it = bookmarkModel->children().begin();
+         it != bookmarkModel->children().end(); ++it) {
+        if ((*it)[bookmarkColumns.text] == name) {
+            const bool was_active = bTreeView->get_selection()->is_selected(it);
+            bookmarkModel->erase(it);
+            if (was_active) {
+                // as the delete button does: back to the last history entry
+                int size = historyModel->children().size();
+                if (size > 0) {
+                    hTreeView->get_selection()->select(
+                        historyModel->children()[size - 1]);
+                }
+            }
+            if (snapshotListener) {
+                snapshotListener->snapshotsChanged(getSnapshots());
+            }
+            return true;
+        }
+    }
+    err = "no snapshot named \"" + name + "\"";
+    return false;
+}
+
+bool History::overwriteSnapshot(
+    const Glib::ustring &name, const art::engine::procparams::ProcParams &params,
+    Glib::ustring &err)
+{
+    for (auto row : bookmarkModel->children()) {
+        if (row[bookmarkColumns.text] == name) {
+            row[bookmarkColumns.params] = params;
+            if (snapshotListener) {
+                snapshotListener->snapshotsChanged(getSnapshots());
+            }
+            return true;
+        }
+    }
+    err = "no snapshot named \"" + name + "\"";
+    return false;
 }
 
 void History::snapshotNameEdited(const Glib::ustring &sold,

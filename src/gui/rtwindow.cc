@@ -839,6 +839,31 @@ void RTWindow::saveEditorProfile(const Glib::ustring &name)
     }
 }
 
+std::vector<EditorPanel *> RTWindow::getEditorPanels()
+{
+    std::vector<EditorPanel *> ret;
+    if (options.multiDisplayMode > 0) {
+        return EditWindow::getInstance(this, false)->getEditorPanels();
+    }
+    if (isSingleTabMode()) {
+        if (epanel && !epanel->getFileName().empty()) {
+            ret.push_back(epanel);
+        }
+        return ret;
+    }
+    const int n = mainNB->get_n_pages();
+    const int cur = mainNB->get_current_page();
+    if (cur >= 0 && cur < n && isEditorPanel(guint(cur))) {
+        ret.push_back(static_cast<EditorPanel *>(mainNB->get_nth_page(cur)));
+    }
+    for (int i = 0; i < n; ++i) {
+        if (i != cur && isEditorPanel(guint(i))) {
+            ret.push_back(static_cast<EditorPanel *>(mainNB->get_nth_page(i)));
+        }
+    }
+    return ret;
+}
+
 bool RTWindow::selectEditorPanel(const std::string &name)
 {
     if (options.multiDisplayMode > 0) {
