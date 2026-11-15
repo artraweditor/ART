@@ -398,7 +398,7 @@ private:
                 rtWindow->present();
             }
             remotecmd::run(rtWindow, command_line, args);
-            return 0;
+            return command_line->get_exit_status();
         }
 
         auto s = command_line->getenv("ART_IS_SESSION");
