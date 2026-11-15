@@ -26,8 +26,11 @@
 #include "../utils/multilangmgr.h"
 #include "../utils/pathutils.h"
 #include "eventmapper.h"
+#include "exporter.h"
+#include "fastexport.h"
 #include "options.h"
 #include <algorithm>
+#include <glib/gstdio.h>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -431,6 +434,63 @@ void EditSession::renderPreview(
         return;
     }
     done(true, Glib::ustring::compose("%1 (%2x%3)", outfile, ow, oh));
+}
+
+
+void EditSession::exportImage(
+    const art::engine::remote::ExportRequest &req,
+    std::function<void(bool, const Glib::ustring &)> done)
+{
+    if (!ipc_) {
+        done(false, "no image is open in the editor");
+        return;
+    }
+    if (req.outfile == fname_) {
+        done(false, "cannot overwrite the input file: " + req.outfile);
+        return;
+    }
+    if (!req.overwrite && Glib::file_test(req.outfile, Glib::FILE_TEST_EXISTS)) {
+        done(false, req.outfile + " already exists (use --overwrite)");
+        return;
+    }
+
+    // fail before the (long) rendering if the file cannot be written
+    const Glib::ustring dir = Glib::path_get_dirname(req.outfile);
+    if (!Glib::file_test(dir, Glib::FILE_TEST_IS_DIR)) {
+        done(false, "no such directory: " + dir);
+        return;
+    }
+
+    ExportOptions opts;
+    opts.format = req.format;
+    opts.jpegQuality = req.quality;
+    opts.jpegSubSamp = req.subsampling;
+    opts.bits = req.bits;
+    opts.isFloat = req.isFloat;
+    opts.tiffUncompressed = req.uncompressed;
+    opts.fast = req.fast;
+    normalizeExportOptions(opts);
+
+    pp::ProcParams params;
+    ipc_->getParams(&params);
+    applyExportProfile(params, opts);
+
+    auto job = create_processing_job(fname_, is_raw_, params, opts.fast);
+    if (!job) {
+        done(false, "impossible to create the processing job");
+        return;
+    }
+    int w = 0, h = 0;
+    const int rc = runExportJob(job, opts, req.outfile, nullptr, w, h);
+    if (rc == 1) {
+        done(false, "failure in processing " + fname_);
+    } else if (rc != 0) {
+        // do not leave a truncated file behind
+        g_unlink(req.outfile.c_str());
+        done(false, "failure in saving to " + req.outfile);
+    } else {
+        done(true, Glib::ustring::compose("%1 (%2x%3)", req.outfile, w, h));
+    }
 }
 
 

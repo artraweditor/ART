@@ -10,7 +10,7 @@ Two backends offer the same commands on the active image:
   gui     (default) the running ART GUI, through `ART --cmd` (D-Bus)
   server  a headless `ART-cli --server`, through `ART-cli --cmd` (a Unix
           socket); no GUI and no D-Bus. The file browser, rating, colour label
-          and session tools are not available, and `art_save` is.
+          and session tools are not available, and `art_save` and `art_export` are.
 
 Environment:
   ART_MCP_BACKEND  gui (default) or server
@@ -63,6 +63,7 @@ undoable from ART's History panel. They are saved to the .arp sidecar when the
 image is closed or the editor tab is left.
 art_get_spot_wb measures the white balance of a rectangle that should be neutral
 (a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
+art_export writes the final full-size file (art_preview is only an approximation).
 """
 
 INSTRUCTIONS_SERVER = """\
@@ -675,6 +676,25 @@ def t_save(a):
     return [text("Saved the edits and snapshots to %s." % run_cmd("save").strip())]
 
 
+def t_export(a):
+    path = a["path"]
+    if not os.path.isabs(path):
+        raise ArtError("path must be absolute: %s" % path)
+    args = ["export", path]
+    for key, opt in (("format", "--format"), ("quality", "--quality"),
+                     ("subsampling", "--subsampling"), ("bits", "--bits"),
+                     ("compression", "--compression")):
+        if a.get(key) is not None:
+            args += [opt, a[key]]
+    for key in ("float", "overwrite"):
+        if a.get(key):
+            args.append("--" + key)
+    # a full-size export is slow: wait at least ten minutes
+    timeout = max(600.0, float(os.environ.get("ART_MCP_TIMEOUT", "120")))
+    msg = run_cmd(*args, timeout=timeout).strip()
+    return [text("Exported %s" % msg)]
+
+
 def t_rating(a):
     require_gui("art_set_rating")
     run_cmd("rank", a["rating"], *a["files"])
@@ -828,6 +848,20 @@ TOOLS = [
           ["x", "y", "w", "h"]), t_spot_wb),
     ("art_save", "Write the edits and snapshots of the active image to its .arp sidecar "
      "(server backend only: ART-cli never saves by itself).", _obj({}), t_save),
+    ("art_export", "Write the visible image with its current edits at full size to an image "
+     "file, exactly as ART's batch export would (unlike art_preview, which is a quick "
+     "approximation). Server backend only. Slow: seconds to minutes. path is absolute; the "
+     "format is that of its extension unless format is given (jpg, tif, png, ...). Options: "
+     "quality (jpg, 0-100, default 92), subsampling (jpg, 1-3), bits (png 8|16; tif 8|16|32), "
+     "float (tif, 16-bit floating point), compression (tif: none|zip). An existing file is "
+     "not replaced unless overwrite is true.",
+     _obj({"path": {"type": "string"}, "format": {"type": "string"},
+           "quality": {"type": "integer", "minimum": 0, "maximum": 100},
+           "subsampling": {"type": "integer", "minimum": 1, "maximum": 3},
+           "bits": {"type": "integer", "enum": [8, 16, 32]},
+           "float": {"type": "boolean"},
+           "compression": {"type": "string", "enum": ["none", "zip"]},
+           "overwrite": {"type": "boolean", "default": False}}, ["path"]), t_export),
     ("art_get_history", "The edit history of the visible image, oldest first, with the "
      "current entry marked. Each entry is one change (e.g. an Exposure adjustment).",
      _obj({}), t_get_history),
@@ -865,7 +899,7 @@ TOOL_MAP = {n: (d, s, f) for n, d, s, f in TOOLS}
 # tools of one backend only
 GUI_ONLY = {"art_open_directory", "art_get_directory", "art_set_rating",
             "art_set_color_label", "art_session"}
-SERVER_ONLY = {"art_save"}
+SERVER_ONLY = {"art_save", "art_export"}
 
 
 def tools_for_backend():

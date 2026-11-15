@@ -6,6 +6,7 @@ set(CLISOURCEFILES
     options.cc
     paramsedited.cc
     fastexport.cc
+    exporter.cc
     exiffiltersettings.cc
     makeicc.cc
     eventmapper.cc

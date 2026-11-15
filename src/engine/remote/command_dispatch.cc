@@ -17,6 +17,7 @@
  */
 
 #include "command_dispatch.h"
+#include "../imgiomanager.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -229,6 +230,172 @@ void cmd_preview(Context &c, Args &a)
                                 reply->fail(msg);
                             }
                         });
+    });
+}
+
+
+// the formats that `export` can write: the three built in ones and the extra
+// ones of the image I/O manager
+std::vector<std::string> export_formats()
+{
+    std::vector<std::string> ret = {"jpg", "tif", "png"};
+    for (auto &p : ImageIOManager::getInstance()->getSaveFormats()) {
+        if (std::find(ret.begin(), ret.end(), p.first) == ret.end()) {
+            ret.push_back(p.first);
+        }
+    }
+    return ret;
+}
+
+
+void cmd_export(Context &c, Args &a)
+{
+    const char *usage =
+        "usage: export OUTFILE [--format F] [--quality N] [--subsampling N] "
+        "[--bits N] [--float] [--compression none|zip] [--overwrite] [--fast]"
+        " | export --list-formats";
+    const auto formats = export_formats();
+
+    if (take_flag(a, "--list-formats")) {
+        if (!a.empty()) {
+            throw std::runtime_error(usage);
+        }
+        for (auto &f : formats) {
+            c.reply->print(f);
+        }
+        c.reply->ok();
+        return;
+    }
+
+    ExportRequest req;
+    Glib::ustring fv, qv, sv, bv, cv;
+    const bool has_format = take_option(a, "--format", fv);
+    const bool has_quality = take_option(a, "--quality", qv);
+    const bool has_subs = take_option(a, "--subsampling", sv);
+    const bool has_bits = take_option(a, "--bits", bv);
+    const bool has_comp = take_option(a, "--compression", cv);
+    const bool has_float = take_flag(a, "--float");
+    req.overwrite = take_flag(a, "--overwrite");
+    req.fast = take_flag(a, "--fast");
+    for (auto &x : a) {
+        if (x.compare(0, 2, "--") == 0) {
+            throw std::runtime_error("unknown option: " + x);
+        }
+    }
+    if (a.size() != 1) {
+        throw std::runtime_error(usage);
+    }
+    req.outfile = abspath(a[0], c.cwd);
+
+    // the format: explicit, or from the extension
+    std::string fmt;
+    if (has_format) {
+        fmt = fv.lowercase();
+    } else {
+        const auto dot = a[0].rfind('.');
+        if (dot == Glib::ustring::npos || dot + 1 >= a[0].size()) {
+            throw std::runtime_error(
+                "cannot tell the format of " + a[0] + ": use --format");
+        }
+        fmt = a[0].substr(dot + 1).lowercase();
+    }
+    if (fmt == "jpeg") {
+        fmt = "jpg";
+    } else if (fmt == "tiff") {
+        fmt = "tif";
+    }
+    if (std::find(formats.begin(), formats.end(), fmt) == formats.end()) {
+        std::string l;
+        for (auto &f : formats) {
+            l += (l.empty() ? "" : ", ") + f;
+        }
+        throw std::runtime_error("unknown format \"" + fmt +
+                                 "\" (available: " + l + ")");
+    }
+    req.format = fmt;
+
+    auto reject = [&](bool given, const char *opt, const char *only) {
+        if (given) {
+            throw std::runtime_error(std::string(opt) + " is only valid for " +
+                                     only);
+        }
+    };
+    auto num = [](const Glib::ustring &v, const char *opt, int lo, int hi) {
+        int n;
+        if (!parse_int(v, n) || n < lo || n > hi) {
+            throw std::runtime_error(Glib::ustring::compose(
+                "invalid %1 (expected %2-%3): %4", opt, lo, hi, v));
+        }
+        return n;
+    };
+
+    if (fmt == "jpg") {
+        reject(has_bits, "--bits", "tif and png");
+        reject(has_float, "--float", "tif");
+        reject(has_comp, "--compression", "tif");
+        req.bits = 8;
+        if (has_quality) {
+            req.quality = num(qv, "--quality", 0, 100);
+        }
+        if (has_subs) {
+            req.subsampling = num(sv, "--subsampling", 1, 3);
+        }
+    } else if (fmt == "png") {
+        reject(has_quality, "--quality", "jpg");
+        reject(has_subs, "--subsampling", "jpg");
+        reject(has_float, "--float", "tif");
+        reject(has_comp, "--compression", "tif");
+        req.bits = 8;
+        if (has_bits) {
+            req.bits = num(bv, "--bits", 8, 16);
+            if (req.bits != 8 && req.bits != 16) {
+                throw std::runtime_error("--bits must be 8 or 16 for png");
+            }
+        }
+    } else if (fmt == "tif") {
+        reject(has_quality, "--quality", "jpg");
+        reject(has_subs, "--subsampling", "jpg");
+        req.bits = 16;
+        if (has_bits) {
+            req.bits = num(bv, "--bits", 8, 32);
+            if (req.bits != 8 && req.bits != 16 && req.bits != 32) {
+                throw std::runtime_error("--bits must be 8, 16 or 32 for tif");
+            }
+        }
+        // 32 bits are always floating point, as for ART-cli -b32
+        req.isFloat = has_float || req.bits == 32;
+        if (req.isFloat && req.bits == 8) {
+            throw std::runtime_error("--float needs --bits 16 or 32");
+        }
+        if (has_comp) {
+            if (cv != "none" && cv != "zip") {
+                throw std::runtime_error(
+                    "invalid --compression (expected none or zip): " + cv);
+            }
+            req.uncompressed = (cv == "none");
+        }
+    } else {
+        // extra formats: no options
+        reject(has_quality, "--quality", "jpg");
+        reject(has_subs, "--subsampling", "jpg");
+        reject(has_bits, "--bits", "tif and png");
+        reject(has_float, "--float", "tif");
+        reject(has_comp, "--compression", "tif");
+        req.bits = 32;
+    }
+
+    if (!c.host.current()) {
+        no_image();
+    }
+    auto reply = c.reply;
+    c.host.whenReady(reply, [=](CommandTarget &t) {
+        t.exportImage(req, [reply](bool ok, const Glib::ustring &msg) {
+            if (ok) {
+                reply->ok(msg);
+            } else {
+                reply->fail(msg);
+            }
+        });
     });
 }
 
@@ -502,6 +669,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("snapshot-overwrite", cmd_snapshot_overwrite);
     d.add("preview", cmd_preview);
     d.add("get-spot-wb", cmd_get_spot_wb);
+    d.add("export", cmd_export);
 }
 
 }}} // namespace art::engine::remote

@@ -170,6 +170,31 @@ int main(void)
     CHECK(run(e1, out, sizeof(out), "preview", prev, "--scale", "0.1", 0, 0) == ART_OK);
     printf("preview: %s", out);
     CHECK(access(prev, R_OK) == 0);
+
+    /* export: the real output, full size */
+    {
+        char xj[512], xt[512];
+        struct stat st;
+        snprintf(xj, sizeof(xj), "%s/out.jpg", dir);
+        snprintf(xt, sizeof(xt), "%s/out.dat", dir);
+        CHECK(run(e1, out, sizeof(out), "export", "--list-formats", 0, 0, 0, 0) == ART_OK);
+        CHECK(strstr(out, "jpg\ntif\npng\n") == out);
+        CHECK(run(e1, out, sizeof(out), "export", xj, "--quality", "50", 0, 0) == ART_OK);
+        printf("export: %s", out);
+        CHECK(strstr(out, "out.jpg (") != NULL);
+        CHECK(stat(xj, &st) == 0 && st.st_size > 10000);
+        /* an existing file is not replaced without --overwrite */
+        rc = run(e1, out, sizeof(out), "export", xj, 0, 0, 0, 0);
+        CHECK(rc == ART_ERR_COMMAND && strstr(out, "already exists") != NULL);
+        rc = run(e1, out, sizeof(out), "export", xt, 0, 0, 0, 0);
+        CHECK(rc == ART_ERR_COMMAND && strstr(out, "unknown format \"dat\"") != NULL);
+        rc = run(e1, out, sizeof(out), "export", xj, "--bits", "16", "--overwrite", 0);
+        CHECK(rc == ART_ERR_COMMAND && strstr(out, "--bits is only valid") != NULL);
+        rc = run(e1, out, sizeof(out), "export", "/nonexistent-dir/x.jpg", 0, 0, 0, 0);
+        CHECK(rc == ART_ERR_COMMAND && strstr(out, "no such directory") != NULL);
+        rc = run(e1, out, sizeof(out), "export", img, "--format", "jpg", "--overwrite", 0);
+        CHECK(rc == ART_ERR_COMMAND && strstr(out, "cannot overwrite the input") != NULL);
+    }
     CHECK(run(e1, out, sizeof(out), "save", 0, 0, 0, 0, 0) == ART_OK);
     CHECK(strstr(out, ".arp") != NULL);
 

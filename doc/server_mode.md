@@ -58,14 +58,47 @@ Paths are resolved against the *client's* working directory. Output files
 | `snapshot-add [NAME]`, `snapshot-activate NAME`, `snapshot-overwrite NAME`, `snapshot-remove NAME` | manage snapshots |
 | `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension); prints `path (WxH)` |
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
+| `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (server only; see below) |
 | `ping`, `quit` | liveness check; stop the server |
 
 The GUI-only commands (`open-dir`, `get-dir`, `rank`, `label`, `session`) are
 not available: the server has no file browser.
 
-Everything above except `open`, `save`, `ping`, `quit` and the server's
-single-image `get-files` is the same code in the GUI (`ART --cmd`) and in the
-server: `get-spot-wb` and the others behave identically in both.
+Everything above except `open`, `save`, `export`, `ping`, `quit` and the
+server's single-image `get-files` is the same code in the GUI (`ART --cmd`) and
+in the server: `get-spot-wb` and the others behave identically in both.
+
+### `export OUTFILE [options]`
+
+Renders the active image with its current parameters (unsaved edits included)
+through the full output pipeline, exactly as `ART-cli -c -o OUTFILE` would, and
+writes it to `OUTFILE`. On success it prints `path (WxH)`. Available in the
+server only (and so in libART); the GUI's `--cmd` reports that export is not
+available (use `ART-cli` or the batch queue there).
+
+| option | meaning |
+|---|---|
+| `--format F` | `jpg`, `tif`, `png` or one of the extra formats (`export --list-formats`); by default the extension of `OUTFILE` (`jpeg` and `tiff` are accepted) |
+| `--quality N` | jpg only: 0-100, default 92 |
+| `--subsampling N` | jpg only: 1 (best compression) to 3 (best quality, the default) |
+| `--bits N` | png: 8 (default) or 16; tif: 8, 16 (default) or 32. 32 bits are floating point |
+| `--float` | tif: 16-bit floating point (with `--bits 16`) |
+| `--compression none\|zip` | tif only; default `none` |
+| `--overwrite` | replace an existing `OUTFILE`; without it an existing file is an error |
+| `--fast` | the fast export pipeline (`ART-cli -f`) |
+
+`OUTFILE` is written exactly as named (the extension is not changed to match
+the format) and must be in an existing directory; it cannot be the input file.
+An option that does not apply to the format is an error. `export --list-formats`
+prints the formats this installation can write, one per line (the extra ones
+need their encoders, as for `ART-cli -T`).
+
+The result is the same as the one of `ART-cli` for the same parameters (the
+image is rendered from the file, not from the editing pipeline, so the raw is
+read again). A full-size export takes seconds to minutes, cannot be
+interrupted, and keeps the server busy: other clients wait. Set the client's
+timeout accordingly (`ART_options_set_timeout` in libART, `ART_MCP_TIMEOUT` for
+the MCP server). The edit history and snapshots are not affected.
 
 ### `get-spot-wb X Y W H`
 
@@ -102,7 +135,7 @@ case of a square of side 2r+1 centred on a point.
 * **`preview` is not an export.** It renders through the preview/detail
   pipeline, so it can differ from a batch export of the same profile
   (measured: a mean difference of about 4 levels out of 255 on one test raw).
-  Use plain `ART-cli -c ...` when the exact output matters.
+  Use `export` when the exact output matters.
 * The server does not run the Crop tool's trimming after `apply`; a profile
   whose crop exceeds the image is applied as it is.
 * Set `ART_GPU=1` (or `0`) in the server's environment to choose the backend

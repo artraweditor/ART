@@ -49,6 +49,15 @@ def main(mode):
         prev = os.path.join(work, "p.png")
         assert "(312x468)" in art.run("preview", prev, "--scale", 0.1, check=True).out
         assert os.path.getsize(prev) > 1000
+        out = os.path.join(work, "out.jpg")
+        r = art.run("export", out, "--quality", 50, check=True)
+        assert r.out.strip().endswith("out.jpg (3124x4684)"), r.out
+        assert os.path.getsize(out) > 10000
+        r = art.run("export", out)                      # exists: not replaced
+        assert not r.ok and "already exists" in r.err, r
+        r = art.run("export", out, "--bits", 16, "--overwrite")
+        assert not r.ok and "--bits is only valid" in r.err, r
+        assert art.run("export", "--list-formats", check=True).out.startswith("jpg\ntif\npng\n")
     print("python binding (%s): ok" % mode)
 
     # library-level failures are exceptions

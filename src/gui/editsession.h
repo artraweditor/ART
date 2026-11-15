@@ -82,6 +82,12 @@ public:
         int ch, std::function<void(bool, const Glib::ustring &)> done) override;
 
     bool getFullSize(int &w, int &h) override;
+    // synchronous: done() is called before this returns. The image is
+    // rendered from the file (not from the editing pipeline), as ART-cli
+    // does, with the current parameters, including unsaved edits
+    void exportImage(
+        const art::engine::remote::ExportRequest &req,
+        std::function<void(bool, const Glib::ustring &)> done) override;
     bool getSpotWB(int x, int y, int w, int h,
                    art::engine::remote::SpotWB &out) override;
     std::vector<art::engine::remote::HistoryEntryInfo>

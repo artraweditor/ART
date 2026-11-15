@@ -46,6 +46,20 @@ struct SpotWB {
     double blue = 0;
 };
 
+// A validated `export` command: the output format and its options, with the
+// defaults of the format filled in
+struct ExportRequest {
+    Glib::ustring outfile;   // absolute
+    std::string format;      // "jpg", "tif", "png" or an extra format
+    int quality = 92;        // jpg
+    int subsampling = 3;     // jpg: 1 = best compression, 3 = best quality
+    int bits = 8;            // per channel
+    bool isFloat = false;    // tif
+    bool uncompressed = true; // tif
+    bool fast = false;       // the fast export pipeline
+    bool overwrite = false;  // replace an existing file
+};
+
 // The active image, as seen by the commands that operate on it. Implemented by
 // the GUI (an adaptor over EditorPanel/History) and by the ART-cli server.
 class CommandTarget {
@@ -70,6 +84,17 @@ public:
     // size of the full (processed) image, the reference of the coordinates of
     // getSpotWB() and renderPreview()
     virtual bool getFullSize(int &w, int &h) = 0;
+
+    // Render the image with the current parameters at full size, as ART-cli
+    // would, and write it as the request says. done() receives the outcome
+    // and the message to report; it may be called later. Not available by
+    // default.
+    virtual void exportImage(const ExportRequest &req,
+                             std::function<void(bool, const Glib::ustring &)> done)
+    {
+        (void)req;
+        done(false, "export is not available in this mode");
+    }
     // The white balance that makes the rectangle (x, y, w, h), in full-image
     // coordinates, neutral. The current parameters are not changed.
     virtual bool getSpotWB(int x, int y, int w, int h, SpotWB &out) = 0;

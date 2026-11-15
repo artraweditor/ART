@@ -72,6 +72,10 @@ With this backend:
   (the server has no file browser); `art_open_image` opens the active image;
 * `art_save` is offered: nothing is written to the `.arp` sidecar until it is
   called (the GUI saves when an image is closed);
+* `art_export` is offered: it writes the final full-size file (format and options
+  as the `export` command of `doc/server_mode.md`), unlike `art_preview`, which
+  is a quick approximation. It takes seconds to minutes, so it waits up to ten
+  minutes (or `ART_MCP_TIMEOUT` if larger);
 * `art_get_spot_wb` (both backends) measures the white balance of a rectangle.
 
 `art_status` shows which backend is in use and whether it is reachable.
@@ -132,7 +136,7 @@ reference material was found.
 `art_get_history`,
 `art_undo`, `art_redo`, `art_history_goto`, `art_get_snapshots`, `art_snapshot`,
 `art_set_rating`,
-`art_set_color_label`, `art_session`; and `art_save` with the headless backend.
+`art_set_color_label`, `art_session`; and `art_save`, `art_export` with the headless backend.
 
 Edits (`art_apply_edit`) are written as a partial `.arp` file and applied with
 `ART --cmd apply`; names are validated against `known_keys.json` first, so a

@@ -59,7 +59,13 @@ inline void ART_print_cmd_help(std::ostream &out)
         << "                                 the rectangle (full-image coordinates) of the visible editor image neutral\n"
         << "    preview OUT [--scale F] [--crop X,Y,W,H]\n"
         << "                                 Render the current editor image "
-           "(crop in full-image coordinates) to a PNG/JPEG file\n";
+           "(crop in full-image coordinates) to a PNG/JPEG file\n"
+        << "    export OUTFILE [--format F] [--quality N] [--subsampling 1-3] [--bits N]\n"
+        << "           [--float] [--compression none|zip] [--overwrite] [--fast]\n"
+        << "                                 Write the current image at full size, as ART-cli would "
+           "(server mode only);\n"
+        << "                                 the format is that of OUTFILE unless --format is given\n"
+        << "    export --list-formats        Print the output formats (server mode only)\n";
 }
 
 

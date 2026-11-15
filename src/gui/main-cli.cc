@@ -32,6 +32,7 @@
 #include "../engine/settings.h"
 #include "../utils/config.h"
 #include "extprog.h"
+#include "exporter.h"
 #include "fastexport.h"
 #include "makeicc.h"
 #include "options.h"
@@ -1051,11 +1052,15 @@ int processLineParams(int argc, char **argv)
             continue;
         }
 
-        auto p =
-            art::engine::ImageIOManager::getInstance()->getSaveProfile(outputType);
-        if (p) {
-            p->applyTo(currentParams);
-        }
+        ExportOptions xopts;
+        xopts.format = outputType;
+        xopts.jpegQuality = compression;
+        xopts.jpegSubSamp = subsampling;
+        xopts.bits = bits;
+        xopts.isFloat = isFloat;
+        xopts.tiffUncompressed = (compression == 0);
+        xopts.fast = fast_export;
+        applyExportProfile(currentParams, xopts);
 
         if (rawPreprocess) {
             if (!isRaw) {
@@ -1088,35 +1093,17 @@ int processLineParams(int argc, char **argv)
             continue;
         }
 
-        // Process image
+        // Process the image and save it to disk
         phase("job ready");
-        art::engine::IImagefloat *resultImage =
-            art::engine::processImage(job, errorCode, pl);
-        phase("processImage done");
+        int ow = 0, oh = 0;
+        errorCode = runExportJob(job, xopts, outputFile, pl, ow, oh);
+        phase("processImage and save done");
 
-        if (!resultImage) {
+        if (errorCode == 1) {
             errors++;
             cpl.error(
                 Glib::ustring::compose("failure in processing: %1", inputFile));
-            art::engine::ProcessingJob::destroy(job);
             continue;
-        }
-
-        // save image to disk
-        if (outputType == "jpg") {
-            errorCode =
-                resultImage->saveAsJPEG(outputFile, compression, subsampling);
-        } else if (outputType == "tif") {
-            errorCode = resultImage->saveAsTIFF(outputFile, bits, isFloat,
-                                                compression == 0);
-        } else if (outputType == "png") {
-            errorCode = resultImage->saveAsPNG(outputFile, bits);
-        } else {
-            errorCode = art::engine::ImageIOManager::getInstance()->save(
-                            resultImage, outputType, outputFile, nullptr)
-                            ? 0
-                            : 1;
-            // errorCode = resultImage->saveToFile(outputFile);
         }
 
         phase("saved");
@@ -1136,7 +1123,6 @@ int processLineParams(int argc, char **argv)
         }
 
         ii->decreaseRef();
-        resultImage->free();
     }
 
     if (progress) {

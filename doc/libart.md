@@ -1,7 +1,7 @@
 # libART: the server mode as a C library
 
 libART runs the commands of ART's [server mode](server_mode.md) (the ones of
-`ART-cli --cmd`: `open`, `apply`, `get-info`, `get-spot-wb`, `preview`, the
+`ART-cli --cmd`: `open`, `apply`, `get-info`, `get-spot-wb`, `preview`, `export`, the
 history and snapshot commands, ...) from C, and, through a small C ABI, from
 Python (a binding is provided) and from any language with a foreign function
 interface.
@@ -208,6 +208,24 @@ The remote backend alone has no such requirement.
 The Python binding is a thin wrapper (`src/libart/bindings/python/`), meant to
 be copied or adapted. It looks for the library in a constructor argument,
 `$ART_LIBRARY`, next to the module and in the usual places.
+
+### Getting the final image: `export`
+
+`preview` is a quick, downscaled approximation. To write the real output of the
+edited image (the file `ART-cli` would produce) use `export`; it works with both
+backends, and the file is written by the process that runs the engine (the
+server, for the remote backend):
+
+```c
+const char *ex[] = {"export", "/tmp/out.jpg", "--quality", "95", "--overwrite", NULL};
+rc = ART_exec_cmd(e, ex);        // prints "/tmp/out.jpg (WxH)" on success
+```
+
+Other formats and options (`--format`, `--bits`, `--float`, `--compression`,
+...) are described in [server_mode.md](server_mode.md#export-outfile-options);
+`export --list-formats` lists what the installation can write. An export takes
+seconds to minutes and cannot be interrupted; with the remote backend set a
+sufficient `ART_options_set_timeout()` (the default is none).
 
 ### Python (`bindings/python/artlib.py`, ctypes, standard library only)
 
