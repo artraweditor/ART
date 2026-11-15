@@ -18,12 +18,10 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "history.h"
-#include <cstring>
 #include "eventmapper.h"
 #include "guiutils.h"
 #include "../utils/multilangmgr.h"
 #include "rtimage.h"
-#include <set>
 
 #include <iostream>
 
@@ -35,7 +33,7 @@ using namespace art::engine;
 using namespace art::engine::procparams;
 
 History::History(bool bookmarkSupport)
-    : historyVPaned(nullptr), blistener(nullptr), tpc(nullptr), bmnum(1),
+    : historyVPaned(nullptr), blistener(nullptr), tpc(nullptr),
       snapshotListener(nullptr), shapshot_update_(false)
 {
 
@@ -183,8 +181,82 @@ void History::initHistory()
 {
 
     ConnectionBlocker selBlocker(selchangehist);
+    model_.clear();
     historyModel->clear();
     bookmarkModel->clear();
+}
+
+// The state (the entries, the snapshots, which of them is selected) is in
+// model_; the two list stores are views of it, kept in step by the sync*View()
+// functions. The selection of the views is the user's way of changing the
+// state, so the selection handlers below pass it on to the model.
+
+void History::syncHistoryView()
+{
+    const auto &entries = model_.entries();
+    const size_t n = entries.size();
+
+    size_t i = 0;
+    for (auto row : historyModel->children()) {
+        if (i >= n) {
+            break;
+        }
+        const Glib::ustring text(entries[i].text), value(entries[i].value);
+        if (Glib::ustring(row[historyColumns.text]) != text) {
+            row[historyColumns.text] = text;
+        }
+        if (Glib::ustring(row[historyColumns.value]) != value) {
+            row[historyColumns.value] = value;
+        }
+        ++i;
+    }
+    while (historyModel->children().size() > n) {
+        Gtk::TreeModel::Path path;
+        path.push_back(historyModel->children().size() - 1);
+        historyModel->erase(historyModel->get_iter(path));
+    }
+    while (historyModel->children().size() < n) {
+        auto row = *historyModel->append();
+        const auto &e = entries[historyModel->children().size() - 1];
+        row[historyColumns.text] = Glib::ustring(e.text);
+        row[historyColumns.value] = Glib::ustring(e.value);
+    }
+
+    Glib::RefPtr<Gtk::TreeSelection> selection = hTreeView->get_selection();
+    const int sel = model_.selectedEntry();
+    if (sel >= 0) {
+        selection->select(historyModel->children()[sel]);
+    } else {
+        selection->unselect_all();
+    }
+}
+
+void History::syncBookmarkView()
+{
+    const auto &snaps = model_.snapshots();
+    const size_t n = snaps.size();
+
+    size_t i = 0;
+    for (auto row : bookmarkModel->children()) {
+        if (i >= n) {
+            break;
+        }
+        const Glib::ustring name(snaps[i].name);
+        if (Glib::ustring(row[bookmarkColumns.text]) != name) {
+            row[bookmarkColumns.text] = name;
+        }
+        ++i;
+    }
+    while (bookmarkModel->children().size() > n) {
+        Gtk::TreeModel::Path path;
+        path.push_back(bookmarkModel->children().size() - 1);
+        bookmarkModel->erase(bookmarkModel->get_iter(path));
+    }
+    while (bookmarkModel->children().size() < n) {
+        auto row = *bookmarkModel->append();
+        row[bookmarkColumns.text] =
+            Glib::ustring(snaps[bookmarkModel->children().size() - 1].name);
+    }
 }
 
 void History::historySelectionChanged()
@@ -194,31 +266,23 @@ void History::historySelectionChanged()
     Gtk::TreeModel::iterator iter = selection->get_selected();
 
     if (iter) {
-        Gtk::TreeModel::Row row = *iter;
-
-        if (row) {
-            bTreeView->get_selection()->unselect_all();
+        const int idx = historyModel->get_path(iter)[0];
+        if (idx < 0 || idx >= model_.size()) {
+            return;
         }
+        // this deselects the active snapshot
+        model_.selectEntry(idx);
+        bTreeView->get_selection()->unselect_all();
 
-        if (row && tpc) {
-            const auto &pparams = row[historyColumns.params];
-            // ParamsEdited pe(true);
-            // PartialProfile pp(&pparams, &pe);
-            // ParamsEdited paramsEdited = row[historyColumns.paramsEdited];
-            FullPartialProfile pp(pparams);
-            tpc->profileChange(&pp, EvHistoryBrowsed, row[historyColumns.text],
-                               nullptr); //&paramsEdited);
+        const auto &entry = model_.entry(idx);
+        if (tpc) {
+            FullPartialProfile pp(entry.params);
+            tpc->profileChange(&pp, EvHistoryBrowsed, Glib::ustring(entry.text),
+                               nullptr);
         }
 
         if (blistener && !blistenerLock) {
-            // Gtk::TreeModel::Path path = historyModel->get_path (iter);
-            // path.prev ();
-            // iter = historyModel->get_iter (path);
-
-            if (blistener && iter) {
-                blistener->historyBeforeAfterChanged(
-                    iter->get_value(historyColumns.params));
-            }
+            blistener->historyBeforeAfterChanged(entry.params);
         }
     }
 }
@@ -230,24 +294,24 @@ void History::bookmarkSelectionChanged()
     Gtk::TreeModel::iterator iter = selection->get_selected();
 
     if (iter) {
-        Gtk::TreeModel::Row row = *iter;
+        const int idx = bookmarkModel->get_path(iter)[0];
+        if (idx < 0 || idx >= model_.snapshotCount()) {
+            return;
+        }
 
         if (shapshot_update_) {
             shapshot_update_ = false;
-            if (confirmBookmarkUpdate() && row) {
-                selection = hTreeView->get_selection();
-                iter = selection->get_selected();
-                if (!iter && historyModel->children().size() > 0) {
-                    iter = historyModel->children().begin();
-                    for (size_t i = 1; i < historyModel->children().size();
-                         ++i) {
-                        ++iter;
-                    }
+            if (confirmBookmarkUpdate()) {
+                // the snapshot takes the parameters of the selected history
+                // entry, or of the last one if none is selected
+                int h = model_.selectedEntry();
+                if (h < 0) {
+                    h = model_.size() - 1;
                 }
-                if (iter) {
-                    Gtk::TreeModel::Row hrow = *iter;
-                    ProcParams params = hrow[historyColumns.params];
-                    row[bookmarkColumns.params] = params;
+                if (h >= 0) {
+                    std::string err;
+                    model_.overwriteSnapshot(model_.snapshot(idx).name,
+                                             model_.entry(h).params, err);
 
                     if (snapshotListener) {
                         snapshotListener->snapshotsChanged(getSnapshots());
@@ -255,20 +319,14 @@ void History::bookmarkSelectionChanged()
                 }
             }
         } else {
-            if (row) {
-                hTreeView->get_selection()->unselect_all();
-            }
+            hTreeView->get_selection()->unselect_all();
 
-            if (row && tpc) {
-                const auto &pparams = row[bookmarkColumns.params];
-                // ParamsEdited pe(true);
-                // PartialProfile pp(&pparams, &pe);
-                // ParamsEdited paramsEdited =
-                // row[bookmarkColumns.paramsEdited];
-                FullPartialProfile pp(pparams);
-                tpc->profileChange(&pp, EvBookmarkSelected,
-                                   row[bookmarkColumns.text],
-                                   nullptr); //&paramsEdited);
+            // this deselects the history entry
+            const Glib::ustring name(model_.snapshot(idx).name);
+            model_.activateSnapshot(name.raw());
+            if (tpc) {
+                FullPartialProfile pp(model_.snapshot(idx).params);
+                tpc->profileChange(&pp, EvBookmarkSelected, name, nullptr);
             }
         }
     }
@@ -294,74 +352,24 @@ void History::procParamsChanged(const ProcParams *params, const ProcEvent &ev,
     selchangehist.block(true);
     selchangebm.block(true);
 
-    if (ev == EvPhotoLoaded) {
-        initHistory();
+    // the model drops the entries after the selection, and either updates the
+    // last entry (same event) or adds a new one; EvPhotoLoaded starts afresh
+    if (model_.procParamsChanged(*params, ev, text.raw(), descr.raw())) {
+        syncHistoryView();
+        if (ev == EvPhotoLoaded) {
+            syncBookmarkView();
+        }
+
+        if (ev != EvBookmarkSelected) {
+            bTreeView->get_selection()->unselect_all();
+        }
+
+        if (blistener && !blistenerLock) {
+            blistener->historyBeforeAfterChanged(*model_.lastParams());
+        }
     }
 
     Glib::RefPtr<Gtk::TreeSelection> selection = hTreeView->get_selection();
-    Gtk::TreeModel::iterator iter = selection->get_selected();
-
-    // remove all rows after the selection
-    if (iter) {
-        ++iter;
-
-        while (iter) {
-            iter = historyModel->erase(iter);
-        }
-    }
-
-    // lookup the last remaining item in the list
-    int size = historyModel->children().size();
-    Gtk::TreeModel::Row row;
-
-    if (size > 0) {
-        row = historyModel->children()[size - 1];
-    }
-
-    // if there is no last item or its chev!=ev, create a new one
-    if (size == 0 || !row || row[historyColumns.chev] != ev ||
-        ev == EvProfileChanged) {
-        Gtk::TreeModel::Row newrow = *(historyModel->append());
-        newrow[historyColumns.text] = text; // escapeHtmlChars(text);
-        newrow[historyColumns.value] =
-            descr; // g_markup_escape_text(descr.c_str(), -1);
-        newrow[historyColumns.chev] = ev;
-        newrow[historyColumns.params] = *params;
-        // newrow[historyColumns.paramsEdited] = paramsEdited ? *paramsEdited :
-        // defParamsEdited;
-
-        if (ev != EvBookmarkSelected) {
-            selection->select(newrow);
-        }
-
-        if (blistener && /*row &&*/ !blistenerLock) {
-            //     blistener->historyBeforeAfterChanged
-            //     (row[historyColumns.params]);
-            // } else if (blistener && size == 0 && !blistenerLock) {
-            blistener->historyBeforeAfterChanged(newrow[historyColumns.params]);
-        }
-    }
-    // else just update it
-    else {
-        row[historyColumns.text] = text;
-        row[historyColumns.value] = g_markup_escape_text(descr.c_str(), -1);
-        row[historyColumns.chev] = ev;
-        row[historyColumns.params] = *params;
-        // row[historyColumns.paramsEdited] = paramsEdited ? *paramsEdited :
-        // defParamsEdited;
-
-        if (ev != EvBookmarkSelected) {
-            selection->select(row);
-        }
-        if (blistener && /*row &&*/ !blistenerLock) {
-            blistener->historyBeforeAfterChanged(row[historyColumns.params]);
-        }
-    }
-
-    if (ev != EvBookmarkSelected) {
-        bTreeView->get_selection()->unselect_all();
-    }
-
     if (!selection->get_selected_rows().empty()) {
         std::vector<Gtk::TreeModel::Path> selp = selection->get_selected_rows();
         hTreeView->scroll_to_row(*selp.begin());
@@ -373,44 +381,35 @@ void History::procParamsChanged(const ProcParams *params, const ProcEvent &ev,
 
 void History::clearParamChanges() { initHistory(); }
 
+// show the snapshot just added to the model, selecting it and starting to
+// edit its name
+void History::showNewBookmark()
+{
+    syncBookmarkView();
+    Gtk::TreeModel::Path path;
+    path.push_back(bookmarkModel->children().size() - 1);
+    bTreeView->set_cursor(path, *bTreeView->get_column(0), true);
+}
+
 void History::addBookmarkWithText(Glib::ustring text)
 {
-    // lookup the selected item in the history
-    Glib::RefPtr<Gtk::TreeSelection> selection = hTreeView->get_selection();
-    Gtk::TreeModel::iterator iter = selection->get_selected();
-    Gtk::TreeModel::Row row = *iter;
-
-    if (!row) {
+    // the snapshot has the parameters of the selected history entry
+    const int h = model_.selectedEntry();
+    if (h < 0) {
         return;
     }
 
-    // append new row to bookmarks
-    auto newit = bookmarkModel->append();
-    Gtk::TreeModel::Row newrow = *newit; //(bookmarkModel->append());
-    newrow[bookmarkColumns.text] = text;
-    ProcParams params = row[historyColumns.params];
-    newrow[bookmarkColumns.params] = params;
-    // ParamsEdited paramsEdited = row[historyColumns.paramsEdited];
-    // newrow[bookmarkColumns.paramsEdited] = paramsEdited;
-
-    bTreeView->set_cursor(Gtk::TreeModel::Path(newit),
-                          *bTreeView->get_column(0), true);
+    std::string err;
+    if (model_.addSnapshot(text.raw(), model_.entry(h).params, err)) {
+        showNewBookmark();
+    }
 }
 
 void History::addBookmarkPressed()
 {
-
-    if (hTreeView->get_selection()->get_selected()) {
-        Glib::ustring name;
-        std::set<Glib::ustring> names;
-        for (auto p : getSnapshots()) {
-            names.insert(p.first);
-        }
-        do {
-            name =
-                Glib::ustring::compose("%1 %2", M("HISTORY_SNAPSHOT"), bmnum++);
-        } while (names.find(name) != names.end());
-        addBookmarkWithText(name);
+    std::string name;
+    if (model_.addSnapshotFromSelection(M("HISTORY_SNAPSHOT").raw(), name)) {
+        showNewBookmark();
 
         if (snapshotListener) {
             snapshotListener->snapshotsChanged(getSnapshots());
@@ -430,11 +429,15 @@ void History::delBookmarkPressed()
     }
 
     // remove selected bookmark
+    std::string err;
+    model_.removeSnapshot(
+        model_.snapshot(bookmarkModel->get_path(iter)[0]).name, err);
     bookmarkModel->erase(iter);
     // select last item in history
-    int size = historyModel->children().size();
-    Gtk::TreeModel::Row row = historyModel->children()[size - 1];
-    hTreeView->get_selection()->select(row);
+    const int size = model_.size();
+    if (size > 0) {
+        hTreeView->get_selection()->select(historyModel->children()[size - 1]);
+    }
 
     if (snapshotListener) {
         snapshotListener->snapshotsChanged(getSnapshots());
@@ -487,16 +490,11 @@ void History::resized (Gtk::Allocation& req)
 
 bool History::getBeforeAfterParams(art::engine::procparams::ProcParams &params)
 {
-
-    int size = historyModel->children().size();
-
-    if (size == 0 || !blistener) {
+    if (model_.size() == 0 || !blistener) {
         return false;
     }
 
-    Gtk::TreeModel::Row row;
-    row = historyModel->children()[size - 1]; // size == 1 ? 0 : size - 2];
-    params = row[historyColumns.params];
+    params = *model_.lastParams(); // the last entry
     return true;
 }
 
@@ -553,68 +551,42 @@ void History::setSnapshots(
     const std::vector<
         std::pair<Glib::ustring, art::engine::procparams::ProcParams>> &snapshots)
 {
-    bookmarkModel->clear();
+    std::vector<Model::Snapshot> v;
     for (auto &p : snapshots) {
-        auto it = bookmarkModel->append();
-        auto &row = *it;
-        row[bookmarkColumns.text] = p.first;
-        row[bookmarkColumns.params] = p.second;
+        v.push_back(Model::Snapshot{p.first.raw(), p.second});
     }
+    model_.setSnapshots(std::move(v)); // none is active
+    bookmarkModel->clear();
+    syncBookmarkView();
 }
 
 std::vector<std::pair<Glib::ustring, art::engine::procparams::ProcParams>>
 History::getSnapshots()
 {
     std::vector<std::pair<Glib::ustring, art::engine::procparams::ProcParams>> ret;
-    for (const auto &row : bookmarkModel->children()) {
-        ret.push_back(std::make_pair(row[bookmarkColumns.text],
-                                     row[bookmarkColumns.params]));
+    for (const auto &s : model_.snapshots()) {
+        ret.push_back(std::make_pair(Glib::ustring(s.name), s.params));
     }
     return ret;
 }
-
-namespace {
-
-Glib::ustring unescape_markup(Glib::ustring s)
-{
-    const char *ent[][2] = {{"&lt;", "<"},  {"&gt;", ">"}, {"&quot;", "\""},
-                            {"&apos;", "'"}, {"&amp;", "&"}};
-    for (auto &e : ent) {
-        size_t pos = 0;
-        while ((pos = s.find(e[0], pos)) != Glib::ustring::npos) {
-            s.replace(pos, strlen(e[0]), e[1]);
-            pos += strlen(e[1]);
-        }
-    }
-    return s;
-}
-
-} // namespace
 
 std::vector<History::Entry> History::getHistoryEntries()
 {
     std::vector<Entry> ret;
-    for (const auto &row : historyModel->children()) {
-        Entry e;
-        e.text = unescape_markup(row[historyColumns.text]);
-        e.value = unescape_markup(row[historyColumns.value]);
-        ret.push_back(e);
+    for (const auto &e : model_.entries()) {
+        Entry r;
+        r.text = e.text;
+        r.value = e.value;
+        ret.push_back(r);
     }
     return ret;
 }
 
-int History::getHistoryIndex()
-{
-    auto iter = hTreeView->get_selection()->get_selected();
-    if (!iter) {
-        return -1;
-    }
-    return historyModel->get_path(iter)[0];
-}
+int History::getHistoryIndex() { return model_.selectedEntry(); }
 
 bool History::selectHistoryIndex(int index)
 {
-    if (index < 0 || index >= int(historyModel->children().size())) {
+    if (index < 0 || index >= model_.size()) {
         return false;
     }
     hTreeView->get_selection()->select(historyModel->children()[index]);
@@ -624,52 +596,37 @@ bool History::selectHistoryIndex(int index)
 std::vector<Glib::ustring> History::getSnapshotNames()
 {
     std::vector<Glib::ustring> ret;
-    for (const auto &row : bookmarkModel->children()) {
-        ret.push_back(row[bookmarkColumns.text]);
+    for (const auto &n : model_.snapshotNames()) {
+        ret.push_back(n);
     }
     return ret;
 }
 
-int History::getSnapshotIndex()
-{
-    auto iter = bTreeView->get_selection()->get_selected();
-    if (!iter) {
-        return -1;
-    }
-    return bookmarkModel->get_path(iter)[0];
-}
+int History::getSnapshotIndex() { return model_.activeSnapshot(); }
 
 bool History::activateSnapshot(const Glib::ustring &name)
 {
-    for (const auto &row : bookmarkModel->children()) {
-        if (row[bookmarkColumns.text] == name) {
-            shapshot_update_ = false;
-            bTreeView->get_selection()->select(row);
-            return true;
-        }
+    const int i = model_.findSnapshot(name.raw());
+    if (i < 0) {
+        return false;
     }
-    return false;
+    shapshot_update_ = false;
+    bTreeView->get_selection()->select(bookmarkModel->children()[i]);
+    return true;
 }
 
 bool History::addSnapshot(const Glib::ustring &name,
                           const art::engine::procparams::ProcParams &params,
                           Glib::ustring &err)
 {
-    if (name.empty()) {
-        err = "empty snapshot name";
+    std::string e;
+    if (!model_.addSnapshot(name.raw(), params, e)) {
+        err = e;
         return false;
-    }
-    for (auto &n : getSnapshotNames()) {
-        if (n == name) {
-            err = "a snapshot named \"" + name + "\" already exists";
-            return false;
-        }
     }
     // not selected: the active history row stays as it is
     ConnectionBlocker block_sel(selchangebm);
-    auto row = *bookmarkModel->append();
-    row[bookmarkColumns.text] = name;
-    row[bookmarkColumns.params] = params;
+    syncBookmarkView();
     if (snapshotListener) {
         snapshotListener->snapshotsChanged(getSnapshots());
     }
@@ -678,49 +635,58 @@ bool History::addSnapshot(const Glib::ustring &name,
 
 bool History::removeSnapshot(const Glib::ustring &name, Glib::ustring &err)
 {
-    for (auto it = bookmarkModel->children().begin();
-         it != bookmarkModel->children().end(); ++it) {
-        if ((*it)[bookmarkColumns.text] == name) {
-            const bool was_active = bTreeView->get_selection()->is_selected(it);
-            bookmarkModel->erase(it);
-            if (was_active) {
-                // as the delete button does: back to the last history entry
-                int size = historyModel->children().size();
-                if (size > 0) {
-                    hTreeView->get_selection()->select(
-                        historyModel->children()[size - 1]);
-                }
-            }
-            if (snapshotListener) {
-                snapshotListener->snapshotsChanged(getSnapshots());
-            }
-            return true;
+    const int i = model_.findSnapshot(name.raw());
+    if (i < 0) {
+        err = "no snapshot named \"" + name + "\"";
+        return false;
+    }
+    auto it = bookmarkModel->children()[i];
+    const bool was_active = bTreeView->get_selection()->is_selected(it);
+    std::string e;
+    model_.removeSnapshot(name.raw(), e);
+    bookmarkModel->erase(it);
+    if (was_active) {
+        // as the delete button does: back to the last history entry
+        const int size = model_.size();
+        if (size > 0) {
+            hTreeView->get_selection()->select(historyModel->children()[size - 1]);
         }
     }
-    err = "no snapshot named \"" + name + "\"";
-    return false;
+    if (snapshotListener) {
+        snapshotListener->snapshotsChanged(getSnapshots());
+    }
+    return true;
 }
 
 bool History::overwriteSnapshot(
     const Glib::ustring &name, const art::engine::procparams::ProcParams &params,
     Glib::ustring &err)
 {
-    for (auto row : bookmarkModel->children()) {
-        if (row[bookmarkColumns.text] == name) {
-            row[bookmarkColumns.params] = params;
-            if (snapshotListener) {
-                snapshotListener->snapshotsChanged(getSnapshots());
-            }
-            return true;
-        }
+    std::string e;
+    if (!model_.overwriteSnapshot(name.raw(), params, e)) {
+        err = e;
+        return false;
     }
-    err = "no snapshot named \"" + name + "\"";
-    return false;
+    if (snapshotListener) {
+        snapshotListener->snapshotsChanged(getSnapshots());
+    }
+    return true;
 }
 
-void History::snapshotNameEdited(const Glib::ustring &sold,
-                                 const Glib::ustring &snew)
+// the name column is editable: the store has the new text already
+void History::snapshotNameEdited(const Glib::ustring &path,
+                                 const Glib::ustring &new_text)
 {
+    const int i = atoi(path.c_str());
+    if (i >= 0 && i < model_.snapshotCount()) {
+        const std::string old = model_.snapshot(i).name;
+        std::string err;
+        if (!model_.renameSnapshot(old, new_text.raw(), err)) {
+            // not a usable name (empty, or that of another snapshot)
+            auto row = *bookmarkModel->get_iter(path);
+            row[bookmarkColumns.text] = Glib::ustring(old);
+        }
+    }
     if (snapshotListener) {
         snapshotListener->snapshotsChanged(getSnapshots());
     }
@@ -734,6 +700,7 @@ bool History::onPressEvent(GdkEventButton *event)
     if (shapshot_update_) {
         ConnectionBlocker block_sel(selchangebm);
         bTreeView->get_selection()->unselect_all();
+        model_.deselectSnapshot();
     }
 
     return false;
@@ -787,11 +754,9 @@ void History::setBeforeAfterLock(bool yes)
 {
     blistenerLock = yes;
     if (blistener && !blistenerLock) {
-        Glib::RefPtr<Gtk::TreeSelection> selection = hTreeView->get_selection();
-        Gtk::TreeModel::iterator iter = selection->get_selected();
-        if (iter) {
-            blistener->historyBeforeAfterChanged(
-                iter->get_value(historyColumns.params));
+        const int h = model_.selectedEntry();
+        if (h >= 0) {
+            blistener->historyBeforeAfterChanged(model_.entry(h).params);
         }
     }
 }

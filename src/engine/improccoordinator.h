@@ -242,6 +242,7 @@ public:
     bool getAutoWB(ColorTemp &out, double equal) override;
     void getCamWB(ColorTemp &out) override;
     void getSpotWB(int x, int y, int rectSize, ColorTemp &out) override;
+    void getSpotWBRect(int x, int y, int w, int h, ColorTemp &out) override;
     void getAutoCrop(double ratio, int &x, int &y, int &w, int &h) override;
     bool getHighQualComputed() override;
     void setHighQualComputed() override;

@@ -1,7 +1,8 @@
 # ART MCP server
 
 Lets an LLM (Claude Desktop, Claude Code, any MCP client) edit photos in a
-**running** ART instance, through the `ART --cmd ...` remote-command mode.
+**running** ART instance, through the `ART --cmd ...` remote-command mode (or, without a GUI, through
+`ART-cli --server`, see below).
 
 * `art_mcp_server.py` – the server (Python 3, standard library only; MCP over stdio)
 * `reference/` – the tool/parameter documentation the LLM reads through the
@@ -51,6 +52,29 @@ unset it is auto-detected: the running instance first, then common install
 locations (`~/Applications`, `/Applications`, `/opt/ART`, `%ProgramFiles%\ART`,
 ...), the build tree and `PATH`. The remote commands run in the GUI process, so
 the GUI executable (not `ART-cli`) is what is needed.
+
+## Headless backend (no GUI)
+
+The same tools can drive a headless `ART-cli --server` instead of the GUI: no
+desktop session, no D-Bus. Start the server (see `doc/server_mode.md`) and set
+`ART_MCP_BACKEND=server` in the MCP server's environment:
+
+    ART-cli --server &
+    claude mcp add art -e ART_MCP_BACKEND=server -e ART_CLI_BIN=/path/to/ART-cli \
+        -- python3 /path/to/ART/tools/mcp/art_mcp_server.py
+
+The server talks to `ART-cli --cmd` through a Unix socket (`ART_SERVER_SOCKET`
+or the default one; both processes must use the same). `ART_CLI_BIN` is found
+like `ART_BIN` (next to it, the install locations, the build tree, `PATH`).
+With this backend:
+
+* the file browser, rating, colour label and session tools are not offered
+  (the server has no file browser); `art_open_image` opens the active image;
+* `art_save` is offered: nothing is written to the `.arp` sidecar until it is
+  called (the GUI saves when an image is closed);
+* `art_get_spot_wb` (both backends) measures the white balance of a rectangle.
+
+`art_status` shows which backend is in use and whether it is reachable.
 
 ## Troubleshooting
 
@@ -104,10 +128,11 @@ reference material was found.
 
 `art_status`, `art_reference`, `art_open_directory`, `art_get_directory`,
 `art_open_image`, `art_list_open_images`, `art_get_info`, `art_get_edit`,
-`art_apply_edit`, `art_apply_profile_file`, `art_preview`, `art_get_history`,
+`art_apply_edit`, `art_apply_profile_file`, `art_preview`, `art_get_spot_wb`,
+`art_get_history`,
 `art_undo`, `art_redo`, `art_history_goto`, `art_get_snapshots`, `art_snapshot`,
 `art_set_rating`,
-`art_set_color_label`, `art_session`.
+`art_set_color_label`, `art_session`; and `art_save` with the headless backend.
 
 Edits (`art_apply_edit`) are written as a partial `.arp` file and applied with
 `ART --cmd apply`; names are validated against `known_keys.json` first, so a

@@ -1149,6 +1149,28 @@ bool EditorPanel::applyProfile(const PartialProfile &pp,
 }
 
 
+bool EditorPanel::getFullSize(int &w, int &h)
+{
+    if (!ipc) {
+        return false;
+    }
+    w = ipc->getFullWidth();
+    h = ipc->getFullHeight();
+    return true;
+}
+
+
+bool EditorPanel::getSpotWB(int x, int y, int w, int h,
+                            art::engine::ColorTemp &out)
+{
+    if (!ipc) {
+        return false;
+    }
+    ipc->getSpotWBRect(x, y, w, h, out);
+    return true;
+}
+
+
 bool EditorPanel::getCurrentParams(ProcParams &pp)
 {
     if (!ipc) {

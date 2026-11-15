@@ -19,6 +19,10 @@ ART - An advanced, cross-platform program for developing raw photos.
   ART-cli -c <dir>|<files>   Convert files in batch using default parameters.
   ART-cli <other options> -c <dir>|<files>  Convert files in batch using your own settings.
   ART-cli [-o <output>|-O <output>] [-q] [-a] [-s|-S] [-p <one.arp> [-p <two.arp> ...] ] [-d] [ -j[1-100] [-js<1-3>] | [-b<8|16>] [-t[z] | [-n]] ] [-Y] -c <input>
+
+  ART-cli server mode
+  ART-cli [--socket <path>] --server [-V]   Run a long-lived server holding one open image.
+  ART-cli [--socket <path>] --cmd <command> [args]   Send a command to the server.
 .SH OPTIONS
   -c <files>       Specify one or more input files.
                    -c must be the last option.
@@ -64,6 +68,33 @@ Your arp files can be incomplete, ART will build the final values as follows:
   4- If the "-s" or "-S" options are set, the values are finally overridden by those
      found in the sidecar files.
   The processing profiles are processed in the order specified on the command line.
+.SH SERVER MODE
+\fBART-cli --server\fP keeps one image open and executes commands sent by other \fBART-cli --cmd\fP processes. It is a headless counterpart of the remote commands of the GUI (\fBART --cmd\fP), limited to the commands that act on the active image. See doc/server_mode.md for details.
+.PP
+The server and its clients talk through a Unix domain socket (not available on Windows yet), which is, in order of preference: the path given with \fB--socket\fP, \fB$ART_SERVER_SOCKET\fP, or \fBserver.sock\fP in a private directory (\fB$XDG_RUNTIME_DIR/ART\fP, or \fB$TMPDIR/ART-$USER\fP). Only the user who started the server can connect to it. \fB--cmd\fP exits with the status of the command, printing its output on stdout and errors on stderr (\fBART: error: ...\fP).
+.PP
+Commands (\fBART-cli --cmd help\fP lists them):
+  open <file>                  Open a file and make it the active image.
+  save                         Write the parameters and snapshots to the sidecar.
+  get-files                    Print the active image.
+  apply [--append] <profile>   Apply a (partial) profile to the active image.
+  get-params                   Print the current parameters (arp text).
+  get-info                     Print size, camera and exposure information.
+  get-history                  List the edit history.
+  undo [N] | redo [N]          Step back/forward in the history.
+  history-goto <index>         Select a history entry.
+  get-snapshots                List the snapshots.
+  snapshot-add [name]          Save the current state as a snapshot.
+  snapshot-activate <name>     Activate a snapshot.
+  snapshot-overwrite <name>    Replace a snapshot with the current state.
+  snapshot-remove <name>       Delete a snapshot.
+  preview <out> [--scale F] [--crop X,Y,W,H]   Render the image to a PNG/JPEG file.
+  get-spot-wb X Y W H          Print the white balance (temperature, tint, channel
+                               multipliers) that makes a rectangle neutral.
+  ping                         Check that the server answers.
+  quit                         Stop the server.
+.PP
+\fBget-spot-wb\fP and the other commands acting on the active image are also available in the GUI through \fBART --cmd\fP, together with the file browser, rating, colour label and session commands.
 .SH AUTHOR
 \fBART\fP is a derivative of RawTherapee, developed by Alberto Griggio.
 .br

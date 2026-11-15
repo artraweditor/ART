@@ -6,8 +6,19 @@ already be running; the commands fail otherwise) and needs no third-party
 packages: the MCP stdio transport (newline-delimited JSON-RPC 2.0) is
 implemented here directly.
 
+Two backends offer the same commands on the active image:
+  gui     (default) the running ART GUI, through `ART --cmd` (D-Bus)
+  server  a headless `ART-cli --server`, through `ART-cli --cmd` (a Unix
+          socket); no GUI and no D-Bus. The file browser, rating, colour label
+          and session tools are not available, and `art_save` is.
+
 Environment:
+  ART_MCP_BACKEND  gui (default) or server
   ART_BIN   path of the ART GUI executable (default: auto-detected)
+  ART_CLI_BIN  path of the ART-cli executable (server backend; default:
+            next to ART_BIN, the usual install locations, the build tree, PATH)
+  ART_SERVER_SOCKET  socket of the server, if not the default one (server
+            backend; ART-cli reads it itself)
   ART_MCP_TIMEOUT  seconds to wait for a command (default 120)
 
 Run `python3 gen_keys.py` after the profile format changes to refresh
@@ -50,6 +61,32 @@ Make small, justified changes, one concern at a time, and check the preview.
 Edits are applied to the image currently visible in the editor and are
 undoable from ART's History panel. They are saved to the .arp sidecar when the
 image is closed or the editor tab is left.
+art_get_spot_wb measures the white balance of a rectangle that should be neutral
+(a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
+"""
+
+INSTRUCTIONS_SERVER = """\
+You control the raw photo editor ART through a headless ART-cli server: it keeps
+one image open (the active image) and every tool acts on it.
+
+Typical workflow for "edit this photo like <description>":
+ 1. art_status, then art_open_image.
+ 2. art_get_info (image size, camera, ISO, raw or not) and art_get_edit (current
+    parameters) -- never guess the current state.
+ 3. art_reference (no arguments = index; or group="Exposure", ...) to read what
+    the relevant tools do and which keys/ranges they accept BEFORE writing values.
+ 4. art_apply_edit with {"Group": {"Key": value}} (only the keys you want to
+    change; everything else is left untouched).
+ 5. art_preview to LOOK at the result (it returns an image); iterate from 4.
+Every change is a History entry: art_get_history lists them, art_undo / art_redo /
+art_history_goto move through them. Before trying something risky or when the user
+likes a state, save it with art_snapshot (operation "add"); art_get_snapshots lists
+them and art_snapshot "activate" returns to one.
+Make small, justified changes, one concern at a time, and check the preview.
+Nothing is written to disk until art_save, which writes the edits and the
+snapshots to the image's .arp sidecar; opening another image drops unsaved edits.
+art_get_spot_wb measures the white balance of a rectangle that should be neutral
+(a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
 """
 
 
@@ -135,6 +172,57 @@ def find_art():
     raise ArtError("cannot find the ART executable; set ART_BIN")
 
 
+def backend():
+    b = os.environ.get("ART_MCP_BACKEND", "gui").strip().lower() or "gui"
+    if b not in ("gui", "server"):
+        raise ArtError("ART_MCP_BACKEND must be 'gui' or 'server', not %r" % b)
+    return b
+
+
+def _cli_candidates():
+    repo = os.path.abspath(os.path.join(HERE, "..", ".."))
+    exe = "ART-cli.exe" if IS_WIN else "ART-cli"
+    if IS_WIN:
+        for var in ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"):
+            base = os.environ.get(var)
+            if base:
+                yield os.path.join(base, "ART", exe)
+                yield os.path.join(base, "Programs", "ART", exe)
+        return
+    yield os.path.expanduser("~/Applications/ART.app/Contents/MacOS/" + exe)
+    yield "/Applications/ART.app/Contents/MacOS/" + exe
+    for d in ("/opt/ART", "/usr/local/ART", os.path.expanduser("~/ART"),
+              os.path.expanduser("~/.local/ART")):
+        yield os.path.join(d, exe)
+    yield os.path.join(repo, "build", "gpu", "Release", "ART.app", "Contents", "MacOS", exe)
+
+
+def find_cli():
+    """ART_CLI_BIN, else the ART-cli next to ART_BIN, else an installed copy,
+    else the build tree, else PATH."""
+    exe = "ART-cli.exe" if IS_WIN else "ART-cli"
+    cand = os.environ.get("ART_CLI_BIN")
+    if cand:
+        return cand
+    art = os.environ.get("ART_BIN")
+    if art:
+        p = os.path.join(os.path.dirname(art), exe)
+        if os.access(p, os.X_OK):
+            return p
+    for p in _cli_candidates():
+        if os.access(p, os.X_OK):
+            return p
+    w = shutil.which("ART-cli")
+    if w:
+        return w
+    raise ArtError("cannot find the ART-cli executable; set ART_CLI_BIN")
+
+
+def require_gui(what):
+    if backend() != "gui":
+        raise ArtError("%s needs the ART GUI (ART_MCP_BACKEND=gui)" % what)
+
+
 def _is_bundle_launcher(path):
     """The macOS bundle launcher exports its own DBUS_SESSION_BUS_ADDRESS."""
     return IS_MAC and os.path.exists(os.path.join(os.path.dirname(path), ".ART.bin"))
@@ -196,11 +284,15 @@ def run_cmd(*args, timeout=None):
     env = dict(os.environ)
     env["ART_CMD_MARK"] = "1"
     if IS_MAC and not env.get("TMPDIR") and user_tmpdir():
+        # also where the server looks for its default socket
         env["TMPDIR"] = user_tmpdir()
-    art = find_art()
-    addr = bus_address(art)
-    if addr:
-        env["DBUS_SESSION_BUS_ADDRESS"] = addr
+    if backend() == "server":
+        art = find_cli()  # no D-Bus: ART-cli talks to the server's socket
+    else:
+        art = find_art()
+        addr = bus_address(art)
+        if addr:
+            env["DBUS_SESSION_BUS_ADDRESS"] = addr
     try:
         p = subprocess.run([art, "--cmd"] + [str(a) for a in args],
                            capture_output=True, timeout=timeout,
@@ -421,7 +513,29 @@ def _parse_kv(text):
     return d
 
 
+def t_status_server(a):
+    out = []
+    try:
+        cli = find_cli()
+    except ArtError as e:
+        return [text("ART-cli not found: %s" % e)]
+    out.append("Backend: ART-cli server (executable %s, socket %s)" % (
+        cli, os.environ.get("ART_SERVER_SOCKET") or "default"))
+    try:
+        run_cmd("ping", timeout=20)
+        files = run_cmd("get-files", timeout=20).strip()
+        out.append("The server is running. " + (
+            "Active image: %s" % files if files else "No image is open."))
+    except ArtError as e:
+        out.append("The server is NOT reachable: %s" % e)
+        out.append("Start it with `ART-cli --server` (in the same environment, so that "
+                   "it uses the same socket).")
+    return [text("\n".join(out))]
+
+
 def t_status(a):
+    if backend() == "server":
+        return t_status_server(a)
     art = find_art()
     out = ["ART executable: %s (D-Bus: %s)" % (
         art, bus_address(art) or os.environ.get("DBUS_SESSION_BUS_ADDRESS") or
@@ -444,11 +558,13 @@ def t_status(a):
 
 
 def t_open_directory(a):
+    require_gui("art_open_directory")
     run_cmd("open-dir", a["path"])
     return [text("Opened %s in the file browser." % a["path"])]
 
 
 def t_get_directory(a):
+    require_gui("art_get_directory")
     return [text(run_cmd("get-dir").strip() or "(none)")]
 
 
@@ -539,18 +655,41 @@ def t_preview(a):
              "mimeType": "image/png" if ext == "png" else "image/jpeg"}]
 
 
+def t_spot_wb(a):
+    r = _parse_kv(run_cmd("get-spot-wb", a["x"], a["y"], a["w"], a["h"]))
+    try:
+        temp, tint = r["temperature"], r["tint"]
+        mul = [r["red_multiplier"], r["green_multiplier"], r["blue_multiplier"]]
+    except KeyError:
+        raise ArtError("unexpected reply of get-spot-wb")
+    return [text("White balance that makes the rectangle (x=%d, y=%d, w=%d, h=%d) neutral:\n"
+                 "  Temperature: %s\n  Tint (Green): %s\n"
+                 "  channel multipliers (red, green, blue; green = 1): %s\n"
+                 "To use it: art_apply_edit {\"White Balance\": {\"Setting\": \"CustomTemp\", "
+                 "\"Temperature\": %d, \"Green\": %s}}"
+                 % (a["x"], a["y"], a["w"], a["h"], temp, tint, ", ".join(mul),
+                    int(round(float(temp))), tint))]
+
+
+def t_save(a):
+    return [text("Saved the edits and snapshots to %s." % run_cmd("save").strip())]
+
+
 def t_rating(a):
+    require_gui("art_set_rating")
     run_cmd("rank", a["rating"], *a["files"])
     return [text("Set the rating of %d file(s) to %d." % (len(a["files"]), a["rating"]))]
 
 
 def t_label(a):
+    require_gui("art_set_color_label")
     run_cmd("label", a["label"], *a["files"])
     names = ["none", "red", "yellow", "green", "blue", "purple"]
     return [text("Set the colour label of %d file(s) to %s." % (len(a["files"]), names[a["label"]]))]
 
 
 def t_session(a):
+    require_gui("art_session")
     op = a["operation"]
     files = a.get("files") or []
     r = run_cmd("session", op, *files)
@@ -679,6 +818,16 @@ TOOLS = [
                          "h": {"type": "integer", "minimum": 1}}, ["x", "y", "w", "h"]),
            "format": {"type": "string", "enum": ["jpeg", "png"], "default": "jpeg"}}),
      t_preview),
+    ("art_get_spot_wb", "Measure the white balance of a rectangle of the visible image that "
+     "should be neutral (grey card, white wall; x, y, w, h in full-image pixels, see "
+     "art_get_info; at most 1000000 pixels). Returns the temperature and tint that make it "
+     "neutral and the equivalent channel multipliers. It does not change the image: apply the "
+     "result with art_apply_edit if wanted.",
+     _obj({"x": {"type": "integer", "minimum": 0}, "y": {"type": "integer", "minimum": 0},
+           "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1}},
+          ["x", "y", "w", "h"]), t_spot_wb),
+    ("art_save", "Write the edits and snapshots of the active image to its .arp sidecar "
+     "(server backend only: ART-cli never saves by itself).", _obj({}), t_save),
     ("art_get_history", "The edit history of the visible image, oldest first, with the "
      "current entry marked. Each entry is one change (e.g. an Exposure adjustment).",
      _obj({}), t_get_history),
@@ -713,6 +862,19 @@ TOOLS = [
      t_session),
 ]
 TOOL_MAP = {n: (d, s, f) for n, d, s, f in TOOLS}
+# tools of one backend only
+GUI_ONLY = {"art_open_directory", "art_get_directory", "art_set_rating",
+            "art_set_color_label", "art_session"}
+SERVER_ONLY = {"art_save"}
+
+
+def tools_for_backend():
+    try:
+        b = backend()
+    except ArtError:
+        b = "gui"
+    hidden = GUI_ONLY if b == "server" else SERVER_ONLY
+    return [t for t in TOOLS if t[0] not in hidden]
 
 
 # --------------------------------------------------------------------------
@@ -730,15 +892,17 @@ def handle(msg):
         return {"protocolVersion": want if want in PROTOCOLS else PROTOCOLS[0],
                 "capabilities": {"tools": {}, "resources": {}},
                 "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
-                "instructions": INSTRUCTIONS}
+                "instructions": (INSTRUCTIONS_SERVER
+                                 if os.environ.get("ART_MCP_BACKEND", "gui").strip().lower()
+                                 == "server" else INSTRUCTIONS)}
     if method == "ping":
         return {}
     if method == "tools/list":
         return {"tools": [{"name": n, "description": d, "inputSchema": s}
-                          for n, d, s, _ in TOOLS]}
+                          for n, d, s, _ in tools_for_backend()]}
     if method == "tools/call":
         name = params.get("name")
-        if name not in TOOL_MAP:
+        if name not in TOOL_MAP or name not in [t[0] for t in tools_for_backend()]:
             raise RpcError(-32602, "unknown tool " + str(name))
         args = params.get("arguments") or {}
         schema, fn = TOOL_MAP[name][1], TOOL_MAP[name][2]

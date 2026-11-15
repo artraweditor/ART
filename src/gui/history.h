@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include "../engine/remote/history_model.h"
 #include "../engine/rtengine.h"
 #include "paramsedited.h"
 #include "pparamschangelistener.h"
@@ -42,29 +43,19 @@ public:
     public:
         Gtk::TreeModelColumn<Glib::ustring> text;
         Gtk::TreeModelColumn<Glib::ustring> value;
-        Gtk::TreeModelColumn<art::engine::procparams::ProcParams> params;
-        Gtk::TreeModelColumn<art::engine::ProcEvent> chev;
-        // Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
         HistoryColumns()
         {
             add(text);
             add(value);
-            add(chev);
-            add(params);
-            // add(paramsEdited);
         }
     };
     HistoryColumns historyColumns;
     class BookmarkColumns: public Gtk::TreeModel::ColumnRecord {
     public:
         Gtk::TreeModelColumn<Glib::ustring> text;
-        Gtk::TreeModelColumn<art::engine::procparams::ProcParams> params;
-        // Gtk::TreeModelColumn<ParamsEdited>     paramsEdited;
         BookmarkColumns()
         {
             add(text);
-            add(params);
-            // add(paramsEdited);
         }
     };
     BookmarkColumns bookmarkColumns;
@@ -87,7 +78,15 @@ protected:
     HistoryBeforeAfterListener *blistener;
     ProfileChangeListener *tpc;
     // ParamsEdited defParamsEdited;
-    int bmnum;
+
+    // the state of the history and of the snapshots; the two list stores are
+    // views of it (see history.cc)
+    using Model =
+        art::engine::remote::BasicHistoryModel<art::engine::procparams::ProcParams>;
+    Model model_;
+    void syncHistoryView();
+    void syncBookmarkView();
+    void showNewBookmark();
 
     PParamsSnapshotListener *snapshotListener;
     bool shapshot_update_;
@@ -131,15 +130,15 @@ public:
     void addBookmarkWithText(Glib::ustring text);
     void addBookmarkPressed();
     void delBookmarkPressed();
-    void snapshotNameEdited(const Glib::ustring &sold,
-                            const Glib::ustring &snew);
+    void snapshotNameEdited(const Glib::ustring &path,
+                            const Glib::ustring &new_text);
 
     // void resized (Gtk::Allocation& req);
 
     void undo();
     void redo();
 
-    void resetSnapShotNumber() { bmnum = 1; }
+    void resetSnapShotNumber() { model_.resetSnapshotCounter(); }
 
     void setPParamsSnapshotListener(PParamsSnapshotListener *l);
     void

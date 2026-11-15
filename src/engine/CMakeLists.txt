@@ -175,6 +175,10 @@ set(RTENGINESOURCEFILES
     canon_cr3_decoder.cc
     rawimage_gainmap.cc
     subprocess.cc
+    remote/remote_reply.cc
+    remote/command_dispatch.cc
+    remote/unix_socket.cc
+    remote/wire.cc
     bayer_bilinear_demosaic.cc
     gainmap.cc
     base64.cc

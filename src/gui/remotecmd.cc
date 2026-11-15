@@ -16,8 +16,10 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "remotecmd.h"
 #include "../engine/procparams.h"
+#include "../engine/remote/command_dispatch.h"
 #include "cachemanager.h"
 #include "editorpanel.h"
 #include "filebrowser.h"
@@ -39,124 +41,42 @@ namespace art { namespace gui { namespace remotecmd {
 
 namespace {
 
-using Args = std::vector<Glib::ustring>;
+namespace remote = art::engine::remote;
+
+using Args = remote::Args;
+using ReplyPtr = remote::ReplyPtr;
 using ClPtr = Glib::RefPtr<Gio::ApplicationCommandLine>;
+using remote::abspath;
+using remote::parse_int;
+using remote::take_flag;
 
-// Completion of a command: `ok` and a message (printed to stdout on success,
-// stderr on failure). The command line object is released afterwards.
-class Reply {
+// the output of a command goes to the client of the GApplication command
+// line, which is released (ending the client process) when the command is
+// complete
+class ClSink: public remote::ReplySink {
 public:
-    explicit Reply(const ClPtr &cl): cl_(cl)
-    {
-        // programmatic clients (the MCP server) set ART_CMD_MARK=1: every
-        // output line is then prefixed with \x01, so that it can be told
-        // apart from unrelated messages printed by the client process
-        mark_ = atoi(cl->getenv("ART_CMD_MARK").c_str()) != 0;
-    }
+    explicit ClSink(const ClPtr &cl): cl_(cl) {}
 
-    void ok(const Glib::ustring &msg = "")
+    void out(const std::string &s) override { if (cl_) cl_->print(s); }
+    void err(const std::string &s) override { if (cl_) cl_->printerr(s); }
+    void finish(int status) override
     {
-        if (!msg.empty()) {
-            print(msg);
+        if (cl_) {
+            cl_->set_exit_status(status);
+            cl_.reset();
         }
-        cl_->set_exit_status(0);
-        cl_.reset();
-    }
-
-    void fail(const Glib::ustring &msg)
-    {
-        cl_->printerr("ART: error: " + msg + "\n");
-        cl_->set_exit_status(1);
-        cl_.reset();
-    }
-
-    void print(const Glib::ustring &msg)
-    {
-        if (!mark_) {
-            cl_->print(msg + "\n");
-            return;
-        }
-        Glib::ustring out;
-        size_t start = 0;
-        while (start <= msg.size()) {
-            auto end = msg.find('\n', start);
-            if (end == Glib::ustring::npos) {
-                end = msg.size();
-            }
-            out += "\x01" + msg.substr(start, end - start) + "\n";
-            start = end + 1;
-        }
-        cl_->print(out);
     }
 
 private:
     ClPtr cl_;
-    bool mark_;
 };
 
-using ReplyPtr = std::shared_ptr<Reply>;
-
-Glib::ustring abspath(const Glib::ustring &f, const std::string &cwd)
-{
-    char *p = g_canonicalize_filename(f.c_str(), cwd.empty() ? nullptr : cwd.c_str());
-    Glib::ustring ret(p);
-    g_free(p);
-    return ret;
-}
-
-// removes the option `name` from args; true if present
-bool take_flag(Args &args, const Glib::ustring &name)
-{
-    for (auto it = args.begin(); it != args.end(); ++it) {
-        if (*it == name) {
-            args.erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-// removes the option `name <value>` from args; false if not present, throws
-// if the value is missing
-bool take_option(Args &args, const Glib::ustring &name, Glib::ustring &value)
-{
-    for (auto it = args.begin(); it != args.end(); ++it) {
-        if (*it == name) {
-            auto n = std::next(it);
-            if (n == args.end()) {
-                throw std::runtime_error("missing value for " + name);
-            }
-            value = *n;
-            args.erase(it, n + 1);
-            return true;
-        }
-    }
-    return false;
-}
-
+// what the GUI-only verbs work with
 struct Ctx {
     RTWindow *win;
     ReplyPtr reply;
     std::string cwd;
 };
-
-bool parse_int(const Glib::ustring &s, int &out)
-{
-    char *end = nullptr;
-    long v = strtol(s.c_str(), &end, 10);
-    if (s.empty() || *end) {
-        return false;
-    }
-    out = int(v);
-    return true;
-}
-
-bool parse_double(const Glib::ustring &s, double &out)
-{
-    char *end = nullptr;
-    out = g_ascii_strtod(s.c_str(), &end);
-    return !s.empty() && !*end;
-}
 
 // run `check` periodically in the GUI thread until it returns true (done) or
 // the timeout (in seconds) expires, in which case `on_timeout` is called
@@ -189,38 +109,134 @@ void poll_until(std::function<bool()> check, std::function<void()> on_timeout,
         p);
 }
 
-EditorPanel *current_editor(Ctx &c)
-{
-    auto v = c.win->getEditorPanels();
-    return v.empty() ? nullptr : v[0];
-}
+// the active image: the visible editor tab
+class EditorTarget: public remote::CommandTarget {
+public:
+    explicit EditorTarget(EditorPanel *ep): ep_(ep) {}
 
-// run fn(editor) as soon as the visible editor has finished loading/processing
-// (waits up to 60 s); exceptions thrown by fn are reported to the client
-void when_ready(Ctx &c, std::function<void(EditorPanel *)> fn)
-{
-    auto reply = c.reply;
-    auto win = c.win;
-    const auto attempt = [reply, win, fn]() -> bool {
-        auto v = win->getEditorPanels();
-        if (v.empty() || !v[0]->isReadyForRemote()) {
+    bool getParamsText(Glib::ustring &out) override { return ep_->getParamsText(out); }
+    bool getInfoText(Glib::ustring &out) override { return ep_->getInfoText(out); }
+    bool getCurrentParams(art::engine::procparams::ProcParams &pp) override
+    {
+        return ep_->getCurrentParams(pp);
+    }
+    bool applyProfile(const art::engine::procparams::PartialProfile &pp,
+                      const Glib::ustring &descr) override
+    {
+        return ep_->applyProfile(pp, descr);
+    }
+    void renderPreview(const Glib::ustring &outfile, double scale, int cx,
+                       int cy, int cw, int ch,
+                       std::function<void(bool, const Glib::ustring &)> done) override
+    {
+        ep_->renderPreview(outfile, scale, cx, cy, cw, ch, std::move(done));
+    }
+
+    bool getFullSize(int &w, int &h) override { return ep_->getFullSize(w, h); }
+    bool getSpotWB(int x, int y, int w, int h, remote::SpotWB &out) override
+    {
+        art::engine::ColorTemp ct;
+        if (!ep_->getSpotWB(x, y, w, h, ct)) {
             return false;
         }
-        try {
-            fn(v[0]);
-        } catch (std::exception &e) {
-            reply->fail(e.what());
-        } catch (Glib::Error &e) {
-            reply->fail(e.what());
-        }
+        out.temperature = ct.getTemp();
+        out.tint = ct.getGreen();
+        ct.getMultipliers(out.red, out.green, out.blue);
         return true;
-    };
-    if (!attempt()) {
-        poll_until(attempt,
-                   [reply]() { reply->fail("timeout waiting for the editor"); },
-                   60);
     }
-}
+
+    std::vector<remote::HistoryEntryInfo> getHistoryEntries() override
+    {
+        std::vector<remote::HistoryEntryInfo> ret;
+        for (auto &e : ep_->getHistory()->getHistoryEntries()) {
+            ret.push_back({e.text, e.value});
+        }
+        return ret;
+    }
+    int getHistoryIndex() override { return ep_->getHistory()->getHistoryIndex(); }
+    bool selectHistoryIndex(int index) override
+    {
+        return ep_->getHistory()->selectHistoryIndex(index);
+    }
+    std::vector<Glib::ustring> getSnapshotNames() override
+    {
+        return ep_->getHistory()->getSnapshotNames();
+    }
+    int getSnapshotIndex() override { return ep_->getHistory()->getSnapshotIndex(); }
+    bool activateSnapshot(const Glib::ustring &name) override
+    {
+        return ep_->getHistory()->activateSnapshot(name);
+    }
+    bool addSnapshot(const Glib::ustring &name,
+                     const art::engine::procparams::ProcParams &params,
+                     Glib::ustring &err) override
+    {
+        return ep_->getHistory()->addSnapshot(name, params, err);
+    }
+    bool removeSnapshot(const Glib::ustring &name, Glib::ustring &err) override
+    {
+        return ep_->getHistory()->removeSnapshot(name, err);
+    }
+    bool overwriteSnapshot(const Glib::ustring &name,
+                           const art::engine::procparams::ProcParams &params,
+                           Glib::ustring &err) override
+    {
+        return ep_->getHistory()->overwriteSnapshot(name, params, err);
+    }
+
+private:
+    EditorPanel *ep_;
+};
+
+
+class GuiHost: public remote::CommandHost {
+public:
+    explicit GuiHost(RTWindow *w): win(w) {}
+
+    remote::CommandTarget *current() override
+    {
+        auto v = win->getEditorPanels();
+        if (v.empty()) {
+            return nullptr;
+        }
+        target_.reset(new EditorTarget(v[0]));
+        return target_.get();
+    }
+
+    // run fn(editor) as soon as the visible editor has finished
+    // loading/processing (waits up to 60 s); exceptions thrown by fn are
+    // reported to the client
+    void whenReady(const ReplyPtr &reply,
+                   std::function<void(remote::CommandTarget &)> fn) override
+    {
+        auto win = this->win;
+        const auto attempt = [reply, win, fn]() -> bool {
+            auto v = win->getEditorPanels();
+            if (v.empty() || !v[0]->isReadyForRemote()) {
+                return false;
+            }
+            try {
+                EditorTarget t(v[0]);
+                fn(t);
+            } catch (std::exception &e) {
+                reply->fail(e.what());
+            } catch (Glib::Error &e) {
+                reply->fail(e.what());
+            }
+            return true;
+        };
+        if (!attempt()) {
+            poll_until(attempt,
+                       [reply]() { reply->fail("timeout waiting for the editor"); },
+                       60);
+        }
+    }
+
+    RTWindow *win;
+
+private:
+    std::unique_ptr<EditorTarget> target_;
+};
 
 void show_main(Ctx &c)
 {
@@ -247,36 +263,6 @@ void cmd_open_dir(Ctx &c, Args &a)
 void cmd_get_dir(Ctx &c, Args &a)
 {
     c.reply->ok(c.win->fpanel->fileCatalog->lastSelectedDir());
-}
-
-void cmd_get_params(Ctx &c, Args &a)
-{
-    if (!current_editor(c)) {
-        throw std::runtime_error("no image is open in the editor");
-    }
-    auto reply = c.reply;
-    when_ready(c, [reply](EditorPanel *ep) {
-        Glib::ustring txt;
-        if (!ep->getParamsText(txt)) {
-            throw std::runtime_error("cannot read the parameters");
-        }
-        reply->ok(txt);
-    });
-}
-
-void cmd_get_info(Ctx &c, Args &a)
-{
-    if (!current_editor(c)) {
-        throw std::runtime_error("no image is open in the editor");
-    }
-    auto reply = c.reply;
-    when_ready(c, [reply](EditorPanel *ep) {
-        Glib::ustring txt;
-        if (!ep->getInfoText(txt)) {
-            throw std::runtime_error("cannot read the image information");
-        }
-        reply->ok(txt);
-    });
 }
 
 void cmd_get_files(Ctx &c, Args &a)
@@ -427,322 +413,41 @@ void cmd_open(Ctx &c, Args &a)
         [reply]() { reply->fail("timeout while opening the file"); }, 60);
 }
 
-void cmd_apply(Ctx &c, Args &a)
+// GUI-only verbs get the window; the shared ones are registered below
+remote::VerbFn gui_verb(void (*fn)(Ctx &, Args &))
 {
-    const bool append = take_flag(a, "--append");
-    if (a.size() != 1) {
-        throw std::runtime_error("usage: apply [--append] PROFILE");
-    }
-    auto prof = abspath(a[0], c.cwd);
-    if (!Glib::file_test(prof, Glib::FILE_TEST_IS_REGULAR)) {
-        throw std::runtime_error("no such profile: " + prof);
-    }
-    if (!current_editor(c)) {
-        throw std::runtime_error("no image is open in the editor");
-    }
-    art::engine::procparams::FilePartialProfile pp(nullptr, prof, append);
-    {
-        art::engine::procparams::ProcParams tmp;
-        if (!pp.applyTo(tmp)) {
-            throw std::runtime_error("cannot load the profile: " + prof);
-        }
-    }
-    auto label = Glib::path_get_basename(prof);
-    if (append) {
-        label += "+";
-    }
-    auto reply = c.reply;
-    when_ready(c, [pp, label, reply](EditorPanel *ep) {
-        if (!ep->applyProfile(pp, label)) {
-            throw std::runtime_error("cannot apply the profile");
-        }
-        reply->ok();
-    });
+    return [fn](remote::Context &c, Args &a) {
+        Ctx gc{static_cast<GuiHost &>(c.host).win, c.reply, c.cwd};
+        fn(gc, a);
+    };
 }
 
-void cmd_preview(Ctx &c, Args &a)
+const remote::Dispatcher &dispatcher()
 {
-    Glib::ustring sv, cv;
-    double scale = 1.0;
-    int cx = 0, cy = 0, cw = 0, ch = 0;
-    if (take_option(a, "--scale", sv) && (!parse_double(sv, scale) || scale <= 0)) {
-        throw std::runtime_error("invalid --scale: " + sv);
-    }
-    if (take_option(a, "--crop", cv)) {
-        std::vector<Glib::ustring> parts = Glib::Regex::split_simple(",", cv);
-        if (parts.size() != 4 || !parse_int(parts[0], cx) ||
-            !parse_int(parts[1], cy) || !parse_int(parts[2], cw) ||
-            !parse_int(parts[3], ch) || cw <= 0 || ch <= 0) {
-            throw std::runtime_error("invalid --crop (expected X,Y,W,H): " + cv);
-        }
-    }
-    if (a.size() != 1) {
-        throw std::runtime_error("usage: preview OUTFILE [--scale F] [--crop X,Y,W,H]");
-    }
-    auto out = abspath(a[0], c.cwd);
-    if (!current_editor(c)) {
-        throw std::runtime_error("no image is open in the editor");
-    }
-    auto reply = c.reply;
-    when_ready(c, [=](EditorPanel *ep) {
-        ep->renderPreview(out, scale, cx, cy, cw, ch,
-                          [reply](bool ok, const Glib::ustring &msg) {
-                              if (ok) {
-                                  reply->ok(msg);
-                              } else {
-                                  reply->fail(msg);
-                              }
-                          });
-    });
+    static const remote::Dispatcher d = []() {
+        remote::Dispatcher d;
+        d.add("open-dir", gui_verb(cmd_open_dir));
+        d.add("get-dir", gui_verb(cmd_get_dir));
+        d.add("rank", gui_verb([](Ctx &c, Args &a) { rate(c, a, true); }));
+        d.add("label", gui_verb([](Ctx &c, Args &a) { rate(c, a, false); }));
+        d.add("session", gui_verb(cmd_session));
+        d.add("open", gui_verb(cmd_open));
+        d.add("get-files", gui_verb(cmd_get_files));
+        remote::registerActiveImageVerbs(d);
+        return d;
+    }();
+    return d;
 }
-
-
-// ---- history and snapshots -------------------------------------------------
-
-// run fn(history, editor) on the visible editor once it is ready
-void with_history(Ctx &c, std::function<void(History *, EditorPanel *)> fn)
-{
-    if (!current_editor(c)) {
-        throw std::runtime_error("no image is open in the editor");
-    }
-    when_ready(c, [fn](EditorPanel *ep) { fn(ep->getHistory(), ep); });
-}
-
-bool parse_count(Args &a, int &n)
-{
-    n = 1;
-    if (a.size() > 1 || (a.size() == 1 && (!parse_int(a[0], n) || n < 1))) {
-        return false;
-    }
-    return true;
-}
-
-Glib::ustring history_state(History *h)
-{
-    auto v = h->getHistoryEntries();
-    int i = h->getHistoryIndex();
-    if (i < 0) {
-        auto s = h->getSnapshotIndex();
-        auto names = h->getSnapshotNames();
-        return Glib::ustring::compose(
-            "history: %1 entries, none selected; active snapshot: %2",
-            v.size(), s >= 0 ? names[s] : Glib::ustring("(none)"));
-    }
-    return Glib::ustring::compose("history: entry %1 of %2 (%3) selected", i,
-                                  v.size() - 1, v[i].text);
-}
-
-void cmd_get_history(Ctx &c, Args &a)
-{
-    auto reply = c.reply;
-    with_history(c, [reply](History *h, EditorPanel *) {
-        auto v = h->getHistoryEntries();
-        int sel = h->getHistoryIndex();
-        for (size_t i = 0; i < v.size(); ++i) {
-            reply->print(Glib::ustring::compose(
-                "%1\t%2\t%3\t%4", i, int(i) == sel ? "*" : "-", v[i].text,
-                v[i].value));
-        }
-        reply->ok();
-    });
-}
-
-void undo_redo(Ctx &c, Args &a, int dir)
-{
-    int n;
-    if (!parse_count(a, n)) {
-        throw std::runtime_error(dir < 0 ? "usage: undo [N]" : "usage: redo [N]");
-    }
-    auto reply = c.reply;
-    with_history(c, [reply, n, dir](History *h, EditorPanel *) {
-        int size = h->getHistoryEntries().size();
-        int idx = h->getHistoryIndex();
-        if (idx < 0) {
-            if (dir > 0) {
-                throw std::runtime_error(
-                    "no history entry is selected (a snapshot is active): use "
-                    "history-goto");
-            }
-            idx = size - 1; // as the Undo button: from the latest entry
-        }
-        int target = idx + dir * n;
-        if (target < 0 || target >= size) {
-            throw std::runtime_error(dir < 0 ? "nothing to undo"
-                                             : "nothing to redo");
-        }
-        h->selectHistoryIndex(target);
-        reply->ok(history_state(h));
-    });
-}
-
-void cmd_undo(Ctx &c, Args &a) { undo_redo(c, a, -1); }
-void cmd_redo(Ctx &c, Args &a) { undo_redo(c, a, +1); }
-
-void cmd_history_goto(Ctx &c, Args &a)
-{
-    int n;
-    if (a.size() != 1 || !parse_int(a[0], n)) {
-        throw std::runtime_error("usage: history-goto INDEX");
-    }
-    auto reply = c.reply;
-    with_history(c, [reply, n](History *h, EditorPanel *) {
-        if (!h->selectHistoryIndex(n)) {
-            throw std::runtime_error(Glib::ustring::compose(
-                "no such history entry (valid: 0..%1)",
-                int(h->getHistoryEntries().size()) - 1));
-        }
-        reply->ok(history_state(h));
-    });
-}
-
-void cmd_get_snapshots(Ctx &c, Args &a)
-{
-    auto reply = c.reply;
-    with_history(c, [reply](History *h, EditorPanel *) {
-        auto names = h->getSnapshotNames();
-        int sel = h->getSnapshotIndex();
-        for (size_t i = 0; i < names.size(); ++i) {
-            reply->print(Glib::ustring::compose("%1\t%2", int(i) == sel ? "*" : "-",
-                                                names[i]));
-        }
-        reply->ok();
-    });
-}
-
-void cmd_snapshot_activate(Ctx &c, Args &a)
-{
-    if (a.size() != 1) {
-        throw std::runtime_error("usage: snapshot-activate NAME");
-    }
-    auto name = a[0];
-    auto reply = c.reply;
-    with_history(c, [reply, name](History *h, EditorPanel *) {
-        if (!h->activateSnapshot(name)) {
-            throw std::runtime_error("no snapshot named \"" + name + "\"");
-        }
-        reply->ok();
-    });
-}
-
-void cmd_snapshot_add(Ctx &c, Args &a)
-{
-    if (a.size() > 1) {
-        throw std::runtime_error("usage: snapshot-add [NAME]");
-    }
-    Glib::ustring name = a.empty() ? Glib::ustring() : a[0];
-    auto reply = c.reply;
-    with_history(c, [reply, name](History *h, EditorPanel *ep) {
-        auto nm = name;
-        if (nm.empty()) {
-            auto names = h->getSnapshotNames();
-            for (int i = 1;; ++i) {
-                nm = Glib::ustring::compose("Snapshot %1", i);
-                if (std::find(names.begin(), names.end(), nm) == names.end()) {
-                    break;
-                }
-            }
-        }
-        art::engine::procparams::ProcParams pp;
-        if (!ep->getCurrentParams(pp)) {
-            throw std::runtime_error("cannot read the current parameters");
-        }
-        Glib::ustring err;
-        if (!h->addSnapshot(nm, pp, err)) {
-            throw std::runtime_error(err);
-        }
-        reply->ok(nm);
-    });
-}
-
-void cmd_snapshot_remove(Ctx &c, Args &a)
-{
-    if (a.size() != 1) {
-        throw std::runtime_error("usage: snapshot-remove NAME");
-    }
-    auto name = a[0];
-    auto reply = c.reply;
-    with_history(c, [reply, name](History *h, EditorPanel *) {
-        Glib::ustring err;
-        if (!h->removeSnapshot(name, err)) {
-            throw std::runtime_error(err);
-        }
-        reply->ok();
-    });
-}
-
-void cmd_snapshot_overwrite(Ctx &c, Args &a)
-{
-    if (a.size() != 1) {
-        throw std::runtime_error("usage: snapshot-overwrite NAME");
-    }
-    auto name = a[0];
-    auto reply = c.reply;
-    with_history(c, [reply, name](History *h, EditorPanel *ep) {
-        art::engine::procparams::ProcParams pp;
-        if (!ep->getCurrentParams(pp)) {
-            throw std::runtime_error("cannot read the current parameters");
-        }
-        Glib::ustring err;
-        if (!h->overwriteSnapshot(name, pp, err)) {
-            throw std::runtime_error(err);
-        }
-        reply->ok();
-    });
-}
-
-struct Verb {
-    const char *name;
-    void (*fn)(Ctx &, Args &);
-};
-
-const Verb verbs[] = {
-    {"open-dir", cmd_open_dir},
-    {"get-dir", cmd_get_dir},
-    {"rank", [](Ctx &c, Args &a) { rate(c, a, true); }},
-    {"label", [](Ctx &c, Args &a) { rate(c, a, false); }},
-    {"session", cmd_session},
-    {"open", cmd_open},
-    {"apply", cmd_apply},
-    {"get-files", cmd_get_files},
-    {"get-params", cmd_get_params},
-    {"get-info", cmd_get_info},
-    {"get-history", cmd_get_history},
-    {"undo", cmd_undo},
-    {"redo", cmd_redo},
-    {"history-goto", cmd_history_goto},
-    {"get-snapshots", cmd_get_snapshots},
-    {"snapshot-activate", cmd_snapshot_activate},
-    {"snapshot-add", cmd_snapshot_add},
-    {"snapshot-remove", cmd_snapshot_remove},
-    {"snapshot-overwrite", cmd_snapshot_overwrite},
-    {"preview", cmd_preview},
-};
 
 } // namespace
 
 
 void run(RTWindow *win, const ClPtr &cl, const Args &args)
 {
-    auto reply = std::make_shared<Reply>(cl);
-    if (args.empty()) {
-        reply->fail("missing command (try: ART --cmd help)");
-        return;
-    }
-    Ctx c{win, reply, cl->get_cwd()};
-    Args a(args.begin() + 1, args.end());
-    for (auto &v : verbs) {
-        if (args[0] == v.name) {
-            try {
-                v.fn(c, a);
-            } catch (std::exception &e) {
-                reply->fail(e.what());
-            } catch (Glib::Error &e) {
-                reply->fail(e.what());
-            }
-            return;
-        }
-    }
-    reply->fail("unknown command: " + args[0]);
+    const bool mark = atoi(cl->getenv("ART_CMD_MARK").c_str()) != 0;
+    auto reply = std::make_shared<remote::Reply>(std::make_shared<ClSink>(cl), mark);
+    GuiHost host(win);
+    dispatcher().run(host, reply, cl->get_cwd(), args);
 }
 
 

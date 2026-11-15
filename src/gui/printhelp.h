@@ -55,6 +55,8 @@ inline void ART_print_cmd_help(std::ostream &out)
         << "    snapshot-remove NAME         Delete a snapshot\n"
         << "    get-files                    Print the files open in the "
            "editor, the visible one first\n"
+        << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers) that makes\n"
+        << "                                 the rectangle (full-image coordinates) of the visible editor image neutral\n"
         << "    preview OUT [--scale F] [--crop X,Y,W,H]\n"
         << "                                 Render the current editor image "
            "(crop in full-image coordinates) to a PNG/JPEG file\n";
@@ -117,6 +119,14 @@ inline void ART_print_help(std::ostream &out, const char *progname, bool gui)
         out << "  " << pn
             << " --check-lut <lut-filename>   Check the validity of the given "
                "LUT file."
+            << std::endl;
+        out << "  " << pn
+            << " [--socket <path>] --server   Run a long-lived server that "
+               "executes commands on an open image."
+            << std::endl;
+        out << "  " << pn
+            << " [--socket <path>] --cmd <command> [args]   Send a command to "
+               "the server (see '--cmd help')."
             << std::endl;
         out << std::endl;
         out << "Options:" << std::endl;

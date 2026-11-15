@@ -565,6 +565,9 @@ public:
     virtual bool getAutoWB(ColorTemp &out, double equal) = 0;
     virtual void getCamWB(ColorTemp &out) = 0;
     virtual void getSpotWB(int x, int y, int rectSize, ColorTemp &out) = 0;
+    /** Like getSpotWB, for the rectangle of size w x h whose top left corner
+     * is (x, y); all in full-image coordinates (see getFullWidth()). */
+    virtual void getSpotWBRect(int x, int y, int w, int h, ColorTemp &out) = 0;
 
     virtual void getAutoCrop(double ratio, int &x, int &y, int &w, int &h) = 0;
 

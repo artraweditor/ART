@@ -8,6 +8,9 @@ set(CLISOURCEFILES
     fastexport.cc
     exiffiltersettings.cc
     makeicc.cc
+    eventmapper.cc
+    editsession.cc
+    servermode.cc
     )
 
 set(NONCLISOURCEFILES
@@ -391,6 +394,22 @@ target_compile_definitions(art-shortcuts-test PRIVATE
     ART_LANGUAGES_DIR="${PROJECT_SOURCE_DIR}/data/languages"
     ART_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
 add_test(NAME shortcuts COMMAND art-shortcuts-test)
+
+# Unit tests of the headless history/snapshot model (header-only, no engine, no
+# GTK); run with `ctest -R history-model`
+add_executable(art-history-model-test EXCLUDE_FROM_ALL
+    ../engine/remote/test_history_model.cc)
+add_test(NAME history-model COMMAND art-history-model-test)
+
+# Unit tests of the Unix socket transport and the wire protocol of the server
+# mode (no engine, no GTK); run with `ctest -R ipc`
+add_executable(art-ipc-test EXCLUDE_FROM_ALL
+    ../engine/remote/test_ipc.cc
+    ../engine/remote/unix_socket.cc
+    ../engine/remote/wire.cc)
+find_package(Threads REQUIRED)
+target_link_libraries(art-ipc-test PRIVATE Threads::Threads)
+add_test(NAME ipc COMMAND art-ipc-test)
 
 # Install executables
 install(TARGETS art DESTINATION ${BINDIR})

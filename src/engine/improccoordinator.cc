@@ -1245,14 +1245,22 @@ void ImProcCoordinator::getCamWB(ColorTemp &out)
 
 void ImProcCoordinator::getSpotWB(int x, int y, int rect, ColorTemp &out)
 {
+    getSpotWBRect(x - rect, y - rect, 2 * rect + 1, 2 * rect + 1, out);
+}
+
+
+void ImProcCoordinator::getSpotWBRect(int x, int y, int w, int h,
+                                      ColorTemp &out)
+{
     ColorTemp ret;
 
     {
         art::utils::MyMutex::MyLock lock(mProcessing);
         std::vector<Coord2D> points, red, green, blue;
+        points.reserve(size_t(std::max(w, 0)) * size_t(std::max(h, 0)));
 
-        for (int i = y - rect; i <= y + rect; i++)
-            for (int j = x - rect; j <= x + rect; j++) {
+        for (int i = y; i < y + h; i++)
+            for (int j = x; j < x + w; j++) {
                 points.push_back(Coord2D(j, i));
             }
 

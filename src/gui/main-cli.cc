@@ -38,6 +38,7 @@
 #include "../utils/pathutils.h"
 #include "printhelp.h"
 #include "rtimage.h"
+#include "servermode.h"
 #include "soundman.h"
 #include "../utils/version.h"
 #include <cstdlib>
@@ -185,6 +186,21 @@ int main(int argc, char **argv)
         return check_lut(argc, argv);
     }
 
+    // the server mode: `--cmd` is a thin client that needs no initialisation
+    // at all, `--server` starts the engine below
+    servermode::Options server_opts;
+    {
+        std::string err;
+        if (servermode::parseArgs(argc, argv, server_opts, err)) {
+            if (server_opts.mode == servermode::Options::CLIENT) {
+                return servermode::runClient(server_opts);
+            }
+        } else if (!err.empty()) {
+            std::cerr << "ART-cli: error: " << err << std::endl;
+            return 1;
+        }
+    }
+
     Gio::init();
 
 #ifdef BUILD_BUNDLE
@@ -304,7 +320,9 @@ int main(int argc, char **argv)
 
     int ret = 0;
 
-    if (argc > 1) {
+    if (server_opts.mode == servermode::Options::SERVER) {
+        ret = servermode::runServer(server_opts, verbose);
+    } else if (argc > 1) {
         ret = processLineParams(argc, argv);
     } else {
         printVersion();

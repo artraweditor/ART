@@ -189,6 +189,11 @@ public:
     bool applyProfile(const art::engine::procparams::PartialProfile &pp,
                       const Glib::ustring &descr);
     History *getHistory() { return history; }
+    // size of the full (processed) image
+    bool getFullSize(int &w, int &h);
+    // the white balance of the rectangle (x, y, w, h) in full-image
+    // coordinates; the parameters are not changed
+    bool getSpotWB(int x, int y, int w, int h, art::engine::ColorTemp &out);
     bool getCurrentParams(art::engine::procparams::ProcParams &pp);
     // the current processing parameters, as the text of an .arp file
     bool getParamsText(Glib::ustring &out);
