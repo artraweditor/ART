@@ -20,7 +20,7 @@
 #include "../engine/remote/command_dispatch.h"
 #include "../engine/remote/ipc_transport.h"
 #include "../engine/remote/wire.h"
-#include "editsession.h"
+#include "servercore.h"
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
@@ -82,82 +82,7 @@ private:
 };
 
 
-class ServerHost: public remote::CommandHost {
-public:
-    explicit ServerHost(EditSession &s): session(s) {}
-
-    remote::CommandTarget *current() override
-    {
-        return session.isOpen() ? &session : nullptr;
-    }
-
-    // commands run one at a time on the server's thread, so waiting here
-    // blocks the other clients until the image is ready: they queue up
-    void whenReady(const remote::ReplyPtr &reply,
-                   std::function<void(remote::CommandTarget &)> fn) override
-    {
-        if (!session.waitReady(60000)) {
-            reply->fail("timeout waiting for the editor");
-            return;
-        }
-        try {
-            fn(session);
-        } catch (std::exception &e) {
-            reply->fail(e.what());
-        } catch (Glib::Error &e) {
-            reply->fail(e.what());
-        }
-    }
-
-    EditSession &session;
-};
-
-
-void build_verbs(remote::Dispatcher &d, EditSession &session, bool &quit)
-{
-    using remote::Args;
-    using remote::Context;
-
-    remote::registerActiveImageVerbs(d);
-
-    d.add("open", [&session](Context &c, Args &a) {
-        if (a.size() != 1) {
-            throw std::runtime_error("usage: open FILE");
-        }
-        auto f = remote::abspath(a[0], c.cwd);
-        if (!Glib::file_test(f, Glib::FILE_TEST_IS_REGULAR)) {
-            throw std::runtime_error("no such file: " + f);
-        }
-        session.open(f);
-        if (!session.waitReady(60000)) {
-            c.reply->fail("timeout while opening the file");
-            return;
-        }
-        c.reply->ok();
-    });
-    d.add("get-files", [&session](Context &c, Args &a) {
-        if (session.isOpen()) {
-            c.reply->print(session.fileName());
-        }
-        c.reply->ok();
-    });
-    d.add("save", [&session](Context &c, Args &a) {
-        Glib::ustring err;
-        if (!session.save(err)) {
-            throw std::runtime_error(err);
-        }
-        c.reply->ok(session.sidecarFile());
-    });
-    d.add("ping", [](Context &c, Args &a) { c.reply->ok("pong"); });
-    d.add("quit", [&quit](Context &c, Args &a) {
-        quit = true;
-        c.reply->ok();
-    });
-}
-
-
-void serve(remote::ipc::Connection &conn, const remote::Dispatcher &dispatcher,
-           ServerHost &host, int verbose)
+void serve(remote::ipc::Connection &conn, ServerCore &core, int verbose)
 {
     remote::wire::Request req;
     std::string err;
@@ -169,8 +94,6 @@ void serve(remote::ipc::Connection &conn, const remote::Dispatcher &dispatcher,
         remote::Reply(sink, false).fail(err);
         return;
     }
-    auto reply = std::make_shared<remote::Reply>(sink, req.mark);
-    remote::Args args(req.args.begin(), req.args.end());
     if (verbose) {
         std::cerr << "ART-cli server: command:";
         for (auto &a : req.args) {
@@ -178,17 +101,7 @@ void serve(remote::ipc::Connection &conn, const remote::Dispatcher &dispatcher,
         }
         std::cerr << std::endl;
     }
-    try {
-        dispatcher.run(host, reply, req.cwd, args);
-    } catch (std::exception &e) {
-        reply->fail(e.what());
-    } catch (...) {
-        reply->fail("unexpected error");
-    }
-    if (!sink->finished()) {
-        // every command must complete before it returns
-        reply->fail("internal error: the command did not complete");
-    }
+    core.execute(req.args, req.cwd, req.mark, sink);
 }
 
 } // namespace
@@ -341,11 +254,9 @@ int runServer(const Options &opts, int verbose)
     sigaction(SIGTERM, &sa, nullptr);
     signal(SIGPIPE, SIG_IGN);
 
-    EditSession session;
-    ServerHost host(session);
+    ServerCore core(HELP_HINT);
     bool quit = false;
-    remote::Dispatcher dispatcher(HELP_HINT);
-    build_verbs(dispatcher, session, quit);
+    core.setQuitHandler([&quit]() { quit = true; });
 
     // scripts wait for this line before sending commands
     std::cout << "ART-cli server listening on " << path << std::endl;
@@ -353,13 +264,13 @@ int runServer(const Options &opts, int verbose)
     while (!quit && !g_stop) {
         auto conn = listener->accept(500);
         if (conn) {
-            serve(*conn, dispatcher, host, verbose);
+            serve(*conn, core, verbose);
         }
     }
     if (verbose) {
         std::cerr << "ART-cli server: exiting" << std::endl;
     }
-    session.close();
+    core.session().close();
     return 0;
 }
 

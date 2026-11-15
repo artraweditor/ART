@@ -60,6 +60,22 @@ def get_imageio_releases():
     return RelInfo(rel)
 
 
+# where `ninja install` puts libART (the shared library, its header, the
+# pkg-config file and the documentation), relative to the bundle
+LIBART_DIR = 'libART'
+
+
+def check_libart(opts):
+    """Warn if the installation tree has no libART (ART configured with
+    -DART_BUILD_LIBART=OFF or -DART_INSTALL_LIBART=OFF)."""
+    missing = [f for f in ('lib/libART.so', 'include/ART.h',
+                           'lib/pkgconfig/ART.pc', 'doc/libart.md')
+               if not os.path.exists(os.path.join(opts.outdir, LIBART_DIR, f))]
+    if missing:
+        sys.stderr.write('WARNING: libART is incomplete in the bundle, '
+                         'missing in %s: %s\n' % (LIBART_DIR, ', '.join(missing)))
+
+
 def getdlls(opts):
     blacklist = {
 	'linux-vdso.so.1',
@@ -84,16 +100,23 @@ def getdlls(opts):
         }
     res = []
     d = os.getcwd()
-    p = subprocess.Popen(['ldd', os.path.join(d, 'ART')],
-                         stdout=subprocess.PIPE)
-    out, _ = p.communicate()
-    for line in out.decode('utf-8').splitlines():
-        if ' => ' in line:
-            bits = line.split()
-            lib = bits[2]
-            bn = os.path.basename(lib)
-            if bn not in blacklist:
-                res.append(lib)
+    targets = [os.path.join(d, 'ART')]
+    # libART needs the same libraries; its rpath ($ORIGIN/../../lib) finds
+    # them in the bundle's lib/
+    libart = os.path.join(d, LIBART_DIR, 'lib/libART.so')
+    if os.path.exists(libart):
+        targets.append(libart)
+    for target in targets:
+        p = subprocess.Popen(['ldd', target], stdout=subprocess.PIPE)
+        out, _ = p.communicate()
+        for line in out.decode('utf-8').splitlines():
+            if ' => ' in line:
+                bits = line.split()
+                lib = bits[2]
+                bn = os.path.basename(lib)
+                if bn not in blacklist and lib not in res and \
+                   bn != 'libART.so':
+                    res.append(lib)
     return res
 
 
@@ -200,6 +223,7 @@ def main():
     if opts.verbose:
         print('copying %s to %s' % (os.getcwd(), opts.outdir))
     shutil.copytree(d, opts.outdir)
+    check_libart(opts)
     if not os.path.exists(os.path.join(opts.outdir, 'lib')):
         os.mkdir(os.path.join(opts.outdir, 'lib'))
     for lib in getdlls(opts):

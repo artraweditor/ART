@@ -9,7 +9,9 @@ set(CLISOURCEFILES
     exiffiltersettings.cc
     makeicc.cc
     eventmapper.cc
+    bootstrap.cc
     editsession.cc
+    servercore.cc
     servermode.cc
     )
 

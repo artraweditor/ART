@@ -6,6 +6,7 @@ with all the required dependencies (windows version)
 """
 
 import os, sys
+import glob
 import shutil
 import subprocess
 import argparse
@@ -66,6 +67,28 @@ def get_imageio_releases():
     return RelInfo(rel)
 
 
+# where `ninja install` puts libART (the DLL and its import library, the
+# header, the pkg-config file and the documentation), relative to the bundle
+LIBART_DIR = 'libART'
+
+
+def libart_dlls():
+    return glob.glob(os.path.join(os.getcwd(), LIBART_DIR, 'lib', '*ART*.dll'))
+
+
+def check_libart(opts):
+    """Warn if the installation tree has no libART (ART configured with
+    -DART_BUILD_LIBART=OFF or -DART_INSTALL_LIBART=OFF)."""
+    missing = [f for f in ('include/ART.h', 'lib/pkgconfig/ART.pc',
+                           'doc/libart.md')
+               if not os.path.exists(os.path.join(opts.outdir, LIBART_DIR, f))]
+    if not glob.glob(os.path.join(opts.outdir, LIBART_DIR, 'lib', '*ART*.dll')):
+        missing.append('lib/*ART*.dll')
+    if missing:
+        sys.stderr.write('WARNING: libART is incomplete in the bundle, '
+                         'missing in %s: %s\n' % (LIBART_DIR, ', '.join(missing)))
+
+
 def get_dll_imports(path):
     p = subprocess.Popen(['objdump', '-p', path], stdout=subprocess.PIPE)
     out, _ = p.communicate()
@@ -109,7 +132,7 @@ def getdlls(opts):
     seen = set()
     res = []
     to_visit = [os.path.join(d, 'ART.exe'), os.path.join(d, 'ART-cli.exe'),
-                os.path.join(d, 'ART-dialogs.exe')]
+                os.path.join(d, 'ART-dialogs.exe')] + libart_dlls()
     while to_visit:
         cur = to_visit.pop()
         for name in get_dll_imports(cur):
@@ -218,6 +241,7 @@ def main():
     if opts.verbose:
         print('copying %s to %s' % (os.getcwd(), opts.outdir))
     shutil.copytree(d, opts.outdir)
+    check_libart(opts)
     msys_env = None
     for lib in getdlls(opts):
         if opts.verbose:

@@ -65,6 +65,22 @@ def get_imageio_releases():
     return RelInfo(rel)
 
 
+# where `ninja install` puts libART (the shared library, its header, the
+# pkg-config file and the documentation), relative to the bundle
+LIBART_DIR = 'Contents/Resources/libART'
+
+
+def check_libart(opts):
+    """Warn if the installation tree has no libART (ART configured with
+    -DART_BUILD_LIBART=OFF or -DART_INSTALL_LIBART=OFF)."""
+    missing = [f for f in ('lib/libART.dylib', 'include/ART.h',
+                           'lib/pkgconfig/ART.pc', 'doc/libart.md')
+               if not os.path.exists(os.path.join(opts.outdir, LIBART_DIR, f))]
+    if missing:
+        sys.stderr.write('WARNING: libART is incomplete in the bundle, '
+                         'missing in %s: %s\n' % (LIBART_DIR, ', '.join(missing)))
+
+
 def lc_rpaths(binary):
     """The LC_RPATH entries of a Mach-O file, in order."""
     r = subprocess.run(['otool', '-l', binary], capture_output=True,
@@ -87,6 +103,11 @@ def getdlls(opts):
     d = os.path.join(os.getcwd(), 'Contents/MacOS')
     to_process = [os.path.join(d, 'ART'),
                   os.path.join(getprefix(opts), 'bin/dbus-daemon')]
+    # libART (installed by `ninja install` in Contents/Resources/libART) needs
+    # the same libraries
+    libart = os.path.join(os.getcwd(), LIBART_DIR, 'lib/libART.dylib')
+    if os.path.exists(libart):
+        to_process.append(libart)
     # like dyld, look for @rpath/ libraries in the rpaths of the library that
     # needs them as well as in those of the main program, after the ones given
     # with -r (a library such as libwebp finds its sibling libsharpyuv only
@@ -127,6 +148,11 @@ def getdlls(opts):
                         break
             if not any(lib.startswith(p) for p in blacklist):
                 key = os.path.basename(lib)
+                if key == os.path.basename(name):
+                    # the first line of otool -L for a dylib is its own
+                    # install name (matters for libART, which is not itself
+                    # in the list of the libraries to copy)
+                    continue
                 if key not in res:
                     if opts.verbose:
                         print(f'   {lib}')
@@ -524,6 +550,7 @@ def main():
     if opts.verbose:
         print('copying %s to %s' % (os.getcwd(), opts.outdir))
     shutil.copytree(d, opts.outdir)
+    check_libart(opts)
     if not os.path.exists(os.path.join(opts.outdir, 'Contents/Frameworks')):
         os.mkdir(os.path.join(opts.outdir, 'Contents/Frameworks'))
     for lib in getdlls(opts):

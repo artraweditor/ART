@@ -49,6 +49,8 @@ public:
     void ok(const Glib::ustring &msg = "");
     void fail(const Glib::ustring &msg);
     void print(const Glib::ustring &msg);
+    // ok() or fail() has been called
+    bool done() const { return done_; }
 
 private:
     std::shared_ptr<ReplySink> sink_;

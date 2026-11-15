@@ -102,6 +102,7 @@ Source: "{#MyBuildBasePath}\fonts\DroidSansMonoSlashed.ttf"; DestDir: "{fonts}";
 Source: "{#MyBuildBasePath}\imageio\*"; DestDir: "{app}\imageio\"; Flags: skipifsourcedoesntexist ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyBuildBasePath}\luts\*"; DestDir: "{app}\luts\"; Flags: skipifsourcedoesntexist ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyBuildBasePath}\ctlscripts\*"; DestDir: "{app}\ctlscripts\"; Flags: skipifsourcedoesntexist ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyBuildBasePath}\libART\*"; DestDir: "{app}\libART\"; Flags: skipifsourcedoesntexist ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

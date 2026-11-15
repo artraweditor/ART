@@ -1,0 +1,11 @@
+# pkg-config file of libART (see doc/libart.md)
+prefix=@ART_PC_PREFIX@
+libdir=@ART_PC_LIBDIR@
+includedir=${prefix}/include
+
+Name: ART
+Description: C library to run the commands of the server mode of ART
+URL: https://artraweditor.github.io/
+Version: @ART_LIBART_VERSION@
+Libs: -L${libdir} -lART @ART_PC_RPATH@
+Cflags: -I${includedir}
