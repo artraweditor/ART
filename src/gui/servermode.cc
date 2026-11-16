@@ -39,8 +39,12 @@ const char *const HELP_HINT = "try: ART-cli --cmd help";
 
 // ---- client ----------------------------------------------------------------
 
+// a failure of the client itself (no server, broken connection): reported as
+// the server reports a failed command, a JSON document on stdout and the
+// message on stderr
 int fail_client(const std::string &msg)
 {
+    std::cout << remote::failureDocument(msg) << std::flush;
     std::cerr << "ART: error: " << msg << std::endl;
     return 1;
 }
@@ -91,7 +95,7 @@ void serve(remote::ipc::Connection &conn, ServerCore &core, int verbose)
         if (verbose) {
             std::cerr << "ART-cli server: bad request: " << err << std::endl;
         }
-        remote::Reply(sink, false).fail(err);
+        remote::Reply(sink).fail(err);
         return;
     }
     if (verbose) {
@@ -101,7 +105,7 @@ void serve(remote::ipc::Connection &conn, ServerCore &core, int verbose)
         }
         std::cerr << std::endl;
     }
-    core.execute(req.args, req.cwd, req.mark, sink);
+    core.execute(req.args, req.cwd, sink);
 }
 
 } // namespace
@@ -152,13 +156,20 @@ void printHelp(std::ostream &out)
         << "      directory under $XDG_RUNTIME_DIR or $TMPDIR). Nothing is written to\n"
         << "      the image's sidecar until 'save'.\n"
         << "  ART-cli [--socket PATH] --cmd <command> [args]\n"
-        << "      Send a command to the server (it fails if none is running):\n"
+        << "      Send a command to the server (it fails if none is running). It prints\n"
+        << "      one line of JSON on stdout: {\"ok\":true,\"result\":...} or\n"
+        << "      {\"ok\":false,\"error\":...}. Commands:\n"
         << "    open FILE                    Open FILE and make it the active image\n"
         << "    save                         Write the parameters and snapshots to the sidecar\n"
         << "    get-files                    Print the active image\n"
         << "    apply [--append] PROFILE     Apply a (partial) profile to the active image\n"
+        << "    apply :neutral | :default    Apply the neutral profile, or the default profile of the\n"
+        << "                                 preferences (possibly a dynamic one), replacing all the parameters\n"
         << "    get-params                   Print the current parameters (.arp text)\n"
         << "    get-info                     Print size, camera and exposure information\n"
+        << "    get-metadata [--makernotes | --no-makernotes] [--edits | --no-edits]\n"
+        << "                                 Print the metadata (Exif tags with their types; maker notes as\n"
+        << "                                 strings) as a JSON object, with or without the edits of the profile\n"
         << "    get-history                  List the edit history (index, * = selected, text, value)\n"
         << "    undo [N] | redo [N]          Step back/forward in the history\n"
         << "    history-goto INDEX           Select a history entry\n"
@@ -170,6 +181,11 @@ void printHelp(std::ostream &out)
         << "    preview OUT [--scale F] [--crop X,Y,W,H]\n"
         << "                                 Render the image (crop in full-image\n"
         << "                                 coordinates) to a PNG/JPEG file\n"
+        << "    export OUTFILE [--format F] [--quality N] [--subsampling 1-3] [--bits N]\n"
+        << "           [--float] [--compression none|zip] [--overwrite] [--fast]\n"
+        << "                                 Write the image at full size, as ART-cli would; the format is\n"
+        << "                                 that of OUTFILE unless --format is given\n"
+        << "    export --list-formats        Print the output formats\n"
         << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers)\n"
         << "                                 that makes the rectangle (full-image coordinates) neutral\n"
         << "    ping                         Check that the server answers\n"
@@ -202,11 +218,6 @@ int runClient(const Options &opts)
     if (getcwd(buf, sizeof(buf))) {
         req.cwd = buf;
     }
-    // programmatic clients (the MCP server) set ART_CMD_MARK=1: every output
-    // line is then prefixed with \x01, so that it can be told apart from
-    // unrelated messages
-    const char *mark = getenv("ART_CMD_MARK");
-    req.mark = mark && atoi(mark) != 0;
     req.args = opts.cmd;
     if (!remote::wire::writeRequest(*conn, req)) {
         return fail_client("cannot send the command to the server");

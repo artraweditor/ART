@@ -23,6 +23,7 @@
 #include "../engine/rtengine.h"
 #include "exiffiltersettings.h"
 #include <exception>
+#include <memory>
 #include <gtkmm.h>
 #include <set>
 
@@ -510,6 +511,13 @@ public:
     Glib::ustring getUserProfilePath();
     Glib::ustring getGlobalProfilePath();
     Glib::ustring findProfilePath(Glib::ustring &profName);
+
+    // The default processing profile for an image, as the preferences say
+    // (the one for raw or for non-raw images; possibly the dynamic profile,
+    // which depends on the metadata `md`, or the internal neutral one). Never
+    // null. Same as what the profile panel starts from.
+    std::unique_ptr<art::engine::procparams::PartialProfile>
+    loadDefaultProfile(bool is_raw, const art::engine::FramesMetaData *md) const;
     bool is_parse_extention(Glib::ustring fname);
     bool has_retained_extention(const Glib::ustring &fname);
     bool is_new_version();

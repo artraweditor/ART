@@ -20,21 +20,40 @@
 
 namespace art { namespace engine { namespace remote {
 
-Reply::Reply(std::shared_ptr<ReplySink> sink, bool mark):
-    sink_(std::move(sink)), mark_(mark), done_(false)
+std::string failureDocument(const Glib::ustring &msg)
+{
+    json::Value v = json::Value::object();
+    v.set("ok", false).set("error", msg);
+    return v.dump() + "\n";
+}
+
+
+Reply::Reply(std::shared_ptr<ReplySink> sink):
+    sink_(std::move(sink)), done_(false)
 {
 }
 
 
-void Reply::ok(const Glib::ustring &msg)
+void Reply::ok()
 {
     if (done_) {
         return;
     }
-    if (!msg.empty()) {
-        print(msg);
+    done_ = true;
+    sink_->out("{\"ok\":true}\n");
+    sink_->finish(0);
+}
+
+
+void Reply::ok(const json::Value &result)
+{
+    if (done_) {
+        return;
     }
     done_ = true;
+    json::Value v = json::Value::object();
+    v.set("ok", true).set("result", result);
+    sink_->out(v.dump() + "\n");
     sink_->finish(0);
 }
 
@@ -45,29 +64,9 @@ void Reply::fail(const Glib::ustring &msg)
         return;
     }
     done_ = true;
+    sink_->out(failureDocument(msg));
     sink_->err("ART: error: " + msg.raw() + "\n");
     sink_->finish(1);
-}
-
-
-void Reply::print(const Glib::ustring &msg)
-{
-    if (!mark_) {
-        sink_->out(msg.raw() + "\n");
-        return;
-    }
-    const std::string &m = msg.raw();
-    std::string out;
-    size_t start = 0;
-    while (start <= m.size()) {
-        auto end = m.find('\n', start);
-        if (end == std::string::npos) {
-            end = m.size();
-        }
-        out += "\x01" + m.substr(start, end - start) + "\n";
-        start = end + 1;
-    }
-    sink_->out(out);
 }
 
 }}} // namespace art::engine::remote

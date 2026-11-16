@@ -39,7 +39,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REF_DIR = os.path.join(HERE, "reference")
 SERVER_NAME = "art-mcp"
 SERVER_VERSION = "0.1.0"
-MARK = "\x01"
 
 INSTRUCTIONS = """\
 You control the raw photo editor ART (a running instance) through these tools.
@@ -280,10 +279,11 @@ def user_tmpdir():
 
 
 def run_cmd(*args, timeout=None):
-    """Run `ART --cmd args...`; return the (marked) output text."""
+    """Run `ART --cmd args...`. Every command prints one JSON document on
+    stdout, {"ok": true, "result": ...} or {"ok": false, "error": "..."}:
+    return its "result" (None if there is none), or raise ArtError."""
     timeout = timeout or float(os.environ.get("ART_MCP_TIMEOUT", "120"))
     env = dict(os.environ)
-    env["ART_CMD_MARK"] = "1"
     if IS_MAC and not env.get("TMPDIR") and user_tmpdir():
         # also where the server looks for its default socket
         env["TMPDIR"] = user_tmpdir()
@@ -302,18 +302,19 @@ def run_cmd(*args, timeout=None):
         raise ArtError("timeout waiting for ART")
     except OSError as e:
         raise ArtError("cannot run %s: %s" % (art, e))
-    # bytes -> UTF-8, tolerating CRLF (Windows) and stray bytes in unrelated logging
-    p.stdout = p.stdout.decode("utf-8", "replace")
-    p.stderr = p.stderr.decode("utf-8", "replace")
-    out = "\n".join(l[1:] for l in p.stdout.splitlines() if l.startswith(MARK))
-    if p.returncode != 0:
-        err = [l for l in p.stderr.splitlines() if l.startswith("ART: error:")]
-        if not err:
-            err = [l for l in (p.stdout + p.stderr).splitlines()
-                   if "ART: error" in l]
-        raise ArtError((err[-1] if err else "ART command failed (exit %d)" % p.returncode)
-                       .replace("ART: error: ", ""))
-    return out
+    stdout = p.stdout.decode("utf-8", "replace")
+    try:
+        reply = json.loads(stdout)
+    except ValueError:
+        # not a reply of the command mode: the exit status and stderr tell more
+        err = [l for l in p.stderr.decode("utf-8", "replace").splitlines()
+               if l.startswith("ART: error:")]
+        raise ArtError((err[-1].replace("ART: error: ", "") if err else
+                        "ART command failed (exit %d)" % p.returncode))
+    if not isinstance(reply, dict) or reply.get("ok") is not True:
+        raise ArtError(reply.get("error") or "ART command failed"
+                       if isinstance(reply, dict) else "unexpected reply of ART")
+    return reply.get("result")
 
 
 # --------------------------------------------------------------------------
@@ -505,13 +506,20 @@ def reference(group=None, topic=None):
 # tools
 # --------------------------------------------------------------------------
 
-def _parse_kv(text):
-    d = {}
-    for l in text.splitlines():
-        if ": " in l:
-            k, v = l.split(": ", 1)
-            d[k.strip()] = v.strip()
-    return d
+def _kv_text(d):
+    """`key: value` lines of a JSON object."""
+    def one(v):
+        return str(v).lower() if isinstance(v, bool) else str(v)
+    return "\n".join("%s: %s" % (k, one(v)) for k, v in d.items())
+
+
+def _history_state(r):
+    """One line about the history after undo/redo/history-goto."""
+    if r["selected"] < 0:
+        return "history: %d entries, none selected; active snapshot: %s" % (
+            r["count"], r["snapshot"] or "(none)")
+    return "history: entry %d of %d (%s) selected" % (
+        r["selected"], r["count"] - 1, r["text"])
 
 
 def t_status_server(a):
@@ -524,9 +532,9 @@ def t_status_server(a):
         cli, os.environ.get("ART_SERVER_SOCKET") or "default"))
     try:
         run_cmd("ping", timeout=20)
-        files = run_cmd("get-files", timeout=20).strip()
+        files = run_cmd("get-files", timeout=20)
         out.append("The server is running. " + (
-            "Active image: %s" % files if files else "No image is open."))
+            "Active image: %s" % files[0] if files else "No image is open."))
     except ArtError as e:
         out.append("The server is NOT reachable: %s" % e)
         out.append("Start it with `ART-cli --server` (in the same environment, so that "
@@ -543,10 +551,10 @@ def t_status(a):
         "set by the app launcher" if _is_bundle_launcher(art) else
         "handled by GLib" if IS_WIN else "none found")]
     try:
-        d = run_cmd("get-dir", timeout=20)
-        out.append("ART is running. Directory in the file browser: %s" % (d.strip() or "(none)"))
-        files = run_cmd("get-files", timeout=20).strip()
-        out.append("Open in the editor (visible first):\n  " + files.replace("\n", "\n  ")
+        d = run_cmd("get-dir", timeout=20)["directory"]
+        out.append("ART is running. Directory in the file browser: %s" % (d or "(none)"))
+        files = run_cmd("get-files", timeout=20)
+        out.append("Open in the editor (visible first):\n  " + "\n  ".join(files)
                    if files else "Nothing is open in the editor.")
     except ArtError as e:
         out.append("ART is NOT reachable: %s" % e)
@@ -566,7 +574,7 @@ def t_open_directory(a):
 
 def t_get_directory(a):
     require_gui("art_get_directory")
-    return [text(run_cmd("get-dir").strip() or "(none)")]
+    return [text(run_cmd("get-dir")["directory"] or "(none)")]
 
 
 def t_open_image(a):
@@ -575,16 +583,16 @@ def t_open_image(a):
 
 
 def t_list_open(a):
-    r = run_cmd("get-files").strip()
-    return [text(r or "No image is open in the editor.")]
+    r = run_cmd("get-files")
+    return [text("\n".join(r) or "No image is open in the editor.")]
 
 
 def t_info(a):
-    return [text(run_cmd("get-info"))]
+    return [text(_kv_text(run_cmd("get-info")))]
 
 
 def t_get_edit(a):
-    arp = run_cmd("get-params")
+    arp = run_cmd("get-params")["params"]
     groups = a.get("groups")
     if groups:
         want = {_norm(g) for g in groups}
@@ -626,10 +634,10 @@ def t_preview(a):
     crop = a.get("crop")
     scale = a.get("scale")
     if scale is None:
-        info = _parse_kv(run_cmd("get-info"))
+        info = run_cmd("get-info")
         try:
             w, h = float(info["full_width"]), float(info["full_height"])
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             w = h = 4000.0
         if crop:
             w, h = float(crop["w"]), float(crop["h"])
@@ -649,19 +657,20 @@ def t_preview(a):
             os.unlink(path)
         except OSError:
             pass
-    dims = re.search(r"\((\d+x\d+)\)", msg)
-    return [text("Preview %s%s, scale %.4g." % (dims.group(1) if dims else "",
+    dims = "%dx%d" % (msg["width"], msg["height"]) if msg else ""
+    return [text("Preview %s%s, scale %.4g." % (dims,
                                                  " of the crop" if crop else "", scale)),
             {"type": "image", "data": base64.b64encode(data).decode(),
              "mimeType": "image/png" if ext == "png" else "image/jpeg"}]
 
 
 def t_spot_wb(a):
-    r = _parse_kv(run_cmd("get-spot-wb", a["x"], a["y"], a["w"], a["h"]))
+    r = run_cmd("get-spot-wb", a["x"], a["y"], a["w"], a["h"])
     try:
-        temp, tint = r["temperature"], r["tint"]
-        mul = [r["red_multiplier"], r["green_multiplier"], r["blue_multiplier"]]
-    except KeyError:
+        temp, tint = "%.6g" % r["temperature"], "%.6g" % r["tint"]
+        mul = ["%.6g" % r[k] for k in ("red_multiplier", "green_multiplier",
+                                        "blue_multiplier")]
+    except (KeyError, TypeError):
         raise ArtError("unexpected reply of get-spot-wb")
     return [text("White balance that makes the rectangle (x=%d, y=%d, w=%d, h=%d) neutral:\n"
                  "  Temperature: %s\n  Tint (Green): %s\n"
@@ -673,7 +682,7 @@ def t_spot_wb(a):
 
 
 def t_save(a):
-    return [text("Saved the edits and snapshots to %s." % run_cmd("save").strip())]
+    return [text("Saved the edits and snapshots to %s." % run_cmd("save")["file"])]
 
 
 def t_export(a):
@@ -691,8 +700,8 @@ def t_export(a):
             args.append("--" + key)
     # a full-size export is slow: wait at least ten minutes
     timeout = max(600.0, float(os.environ.get("ART_MCP_TIMEOUT", "120")))
-    msg = run_cmd(*args, timeout=timeout).strip()
-    return [text("Exported %s" % msg)]
+    r = run_cmd(*args, timeout=timeout)
+    return [text("Exported %s (%dx%d)" % (r["file"], r["width"], r["height"]))]
 
 
 def t_rating(a):
@@ -712,20 +721,16 @@ def t_session(a):
     require_gui("art_session")
     op = a["operation"]
     files = a.get("files") or []
-    r = run_cmd("session", op, *files)
-    return [text(r.strip() or "Session %s done." % op)]
+    run_cmd("session", op, *files)
+    return [text("Session %s done." % op)]
 
 
 
 def t_get_history(a):
     rows = []
-    for line in run_cmd("get-history").splitlines():
-        parts = line.split("\t")
-        if len(parts) >= 3:
-            idx, sel, txt = parts[0], parts[1], parts[2]
-            val = parts[3] if len(parts) > 3 else ""
-            rows.append("%s %s: %s%s" % ("->" if sel == "*" else "  ", idx, txt,
-                                         " (%s)" % val if val else ""))
+    for e in run_cmd("get-history")["entries"]:
+        rows.append("%s %d: %s%s" % ("->" if e["selected"] else "  ", e["index"], e["text"],
+                                     " (%s)" % e["value"] if e["value"] else ""))
     if not rows:
         return [text("The history is empty.")]
     return [text("History, oldest first ('->' = current state; no arrow = a snapshot is "
@@ -733,23 +738,20 @@ def t_get_history(a):
 
 
 def t_undo(a):
-    return [text(run_cmd("undo", int(a.get("steps", 1))).strip())]
+    return [text(_history_state(run_cmd("undo", int(a.get("steps", 1)))))]
 
 
 def t_redo(a):
-    return [text(run_cmd("redo", int(a.get("steps", 1))).strip())]
+    return [text(_history_state(run_cmd("redo", int(a.get("steps", 1)))))]
 
 
 def t_history_goto(a):
-    return [text(run_cmd("history-goto", a["index"]).strip())]
+    return [text(_history_state(run_cmd("history-goto", a["index"])))]
 
 
 def t_get_snapshots(a):
-    names = []
-    for line in run_cmd("get-snapshots").splitlines():
-        if "\t" in line:
-            sel, name = line.split("\t", 1)
-            names.append("%s %s" % ("->" if sel == "*" else "  ", name))
+    names = ["%s %s" % ("->" if sn["active"] else "  ", sn["name"])
+             for sn in run_cmd("get-snapshots")]
     return [text("Snapshots ('->' = active):\n" + "\n".join(names) if names
                  else "There are no snapshots.")]
 
@@ -757,7 +759,7 @@ def t_get_snapshots(a):
 def t_snapshot(a):
     op, name = a["operation"], a.get("name")
     if op == "add":
-        r = run_cmd(*(["snapshot-add"] + ([name] if name else []))).strip()
+        r = run_cmd(*(["snapshot-add"] + ([name] if name else [])))["name"]
         return [text("Saved the current state as snapshot \"%s\"." % r)]
     if not name:
         raise ArtError("`name` is required for %s" % op)

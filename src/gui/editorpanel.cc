@@ -30,6 +30,7 @@
 #include "../engine/imgiomanager.h"
 #include "../engine/improccoordinator.h"
 #include "../engine/processingjob.h"
+#include "../engine/remote/metadata_json.h"
 #include "../engine/threadpool.h"
 #include "fastexport.h"
 #include "guiutils.h"
@@ -1180,6 +1181,56 @@ bool EditorPanel::getCurrentParams(ProcParams &pp)
     return true;
 }
 
+std::unique_ptr<art::engine::procparams::PartialProfile>
+EditorPanel::getDefaultProfile()
+{
+    if (!ipc || !openThm) {
+        return nullptr;
+    }
+    return options.loadDefaultProfile(openThm->getType() == FT_Raw,
+                                      ipc->getInitialImage()->getMetaData());
+}
+
+
+bool EditorPanel::getMetadata(int makernotes, bool edits,
+                              art::engine::remote::json::Value &out,
+                              Glib::ustring &err)
+{
+    if (!ipc || !openThm) {
+        err = "no image ready in the editor";
+        return false;
+    }
+    art::engine::procparams::ProcParams params;
+    ipc->getParams(&params);
+    try {
+        out = art::engine::remote::metadataToJson(
+            fname, ipc->getInitialImage()->getMetaData(), params, edits,
+            makernotes < 0 ? options.show_exiftool_makernotes : makernotes > 0);
+    } catch (std::exception &e) {
+        err = e.what();
+        return false;
+    }
+    return true;
+}
+
+
+bool EditorPanel::queueExport(const Glib::ustring &outfile,
+                              const SaveFormat &sf, bool fast_export,
+                              Glib::ustring &err)
+{
+    if (!ipc || !openThm) {
+        err = "no image ready in the editor";
+        return false;
+    }
+    BatchQueueEntry *bqe = createBatchQueueEntry(fast_export, false, nullptr);
+    bqe->outFileName = outfile;
+    bqe->saveFormat = sf;
+    bqe->forceFormatOpts = true;
+    parent->addBatchQueueJob(bqe, false);
+    return true;
+}
+
+
 bool EditorPanel::getInfoText(Glib::ustring &out)
 {
     if (!ipc || !openThm) {
@@ -1289,7 +1340,7 @@ struct RemotePreviewJob {
     int skip;
     int cw, ch;
     int ticks;
-    std::function<void(bool, const Glib::ustring &)> done;
+    std::function<void(bool, const Glib::ustring &, int, int)> done;
 
     ~RemotePreviewJob()
     {
@@ -1303,10 +1354,10 @@ struct RemotePreviewJob {
 
 void EditorPanel::renderPreview(
     const Glib::ustring &outfile, double scale, int cx, int cy, int cw,
-    int ch, std::function<void(bool, const Glib::ustring &)> done)
+    int ch, std::function<void(bool, const Glib::ustring &, int, int)> done)
 {
     if (!isReadyForRemote()) {
-        done(false, "no image ready in the editor");
+        done(false, "no image ready in the editor", 0, 0);
         return;
     }
     const int fw = ipc->getFullWidth();
@@ -1318,11 +1369,11 @@ void EditorPanel::renderPreview(
     }
     if (cx < 0 || cy < 0 || cx + cw > fw || cy + ch > fh) {
         done(false, Glib::ustring::compose(
-                        "crop out of bounds (full image is %1x%2)", fw, fh));
+                        "crop out of bounds (full image is %1x%2)", fw, fh), 0, 0);
         return;
     }
     if (!(scale > 0)) {
-        done(false, "invalid scale");
+        done(false, "invalid scale", 0, 0);
         return;
     }
 
@@ -1360,19 +1411,20 @@ void EditorPanel::renderPreview(
             if (++job->ticks < 1200) { // 60 s
                 return TRUE;
             }
-            job->done(false, "timeout while rendering the preview");
+            job->done(false, "timeout while rendering the preview", 0, 0);
             delete job;
             return FALSE;
         }
         bool ok = false;
         Glib::ustring msg;
+        int ow = 0, oh = 0;
         try {
             auto pb = Gdk::Pixbuf::create_from_data(
                 buf.data(), Gdk::COLORSPACE_RGB, false, 8, w, h, 3 * w);
             // the engine output covers cw/skip pixels; bring it to the
             // requested scale
-            const int ow = std::max(1, int(std::lround(job->cw * job->scale)));
-            const int oh = std::max(1, int(std::lround(job->ch * job->scale)));
+            ow = std::max(1, int(std::lround(job->cw * job->scale)));
+            oh = std::max(1, int(std::lround(job->ch * job->scale)));
             if (ow != w || oh != h) {
                 pb = pb->scale_simple(ow, oh, Gdk::INTERP_HYPER);
             }
@@ -1380,11 +1432,11 @@ void EditorPanel::renderPreview(
             const Glib::ustring type = (ext == "jpg" || ext == "jpeg") ? "jpeg" : "png";
             pb->save(job->outfile, type);
             ok = true;
-            msg = Glib::ustring::compose("%1 (%2x%3)", job->outfile, ow, oh);
+            msg = job->outfile;
         } catch (Glib::Error &e) {
             msg = e.what();
         }
-        job->done(ok, msg);
+        job->done(ok, msg, ow, oh);
         delete job;
         return FALSE;
     };

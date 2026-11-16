@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "json.h"
 #include <glibmm/ustring.h>
 #include <memory>
 #include <string>
@@ -36,25 +37,32 @@ public:
     virtual void finish(int status) = 0;
 };
 
-// Completion of a command: `ok` and a message (printed to stdout on success),
-// or `fail` (an "ART: error:" line on stderr, exit status 1). Only the first
+// The reply document of a failed command (what Reply::fail() sends to stdout),
+// for the clients to use when the command could not even be sent
+std::string failureDocument(const Glib::ustring &msg);
+
+// Completion of a command. Every command ends with exactly one call of ok()
+// or fail(), which writes one JSON document, on a single line, to stdout:
+//
+//   {"ok":true}                      success, no data
+//   {"ok":true,"result":<value>}     success
+//   {"ok":false,"error":"message"}   failure
+//
+// A failure also writes an "ART: error: message" line to stderr, and sets exit
+// status 1. Nothing else is ever written to stdout. Only the first
 // ok()/fail() takes effect.
 class Reply {
 public:
-    // `mark`: prefix every output line with \x01, so that a programmatic
-    // client (the MCP server, ART_CMD_MARK=1) can tell real output from
-    // unrelated messages printed by the client process
-    Reply(std::shared_ptr<ReplySink> sink, bool mark);
+    explicit Reply(std::shared_ptr<ReplySink> sink);
 
-    void ok(const Glib::ustring &msg = "");
+    void ok();
+    void ok(const json::Value &result);
     void fail(const Glib::ustring &msg);
-    void print(const Glib::ustring &msg);
     // ok() or fail() has been called
     bool done() const { return done_; }
 
 private:
     std::shared_ptr<ReplySink> sink_;
-    bool mark_;
     bool done_;
 };
 

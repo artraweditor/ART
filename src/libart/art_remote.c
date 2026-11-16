@@ -4,8 +4,8 @@
  *  libART: the remote backend, a client of `ART-cli --server`. The protocol
  *  is described in doc/server_mode.md; one request per connection:
  *
- *    request:  "ART1 <len>\n" + <len> bytes: cwd, mark ("0"/"1") and the
- *              command line, each terminated by a NUL byte
+ *    request:  "ART1 <len>\n" + <len> bytes: cwd, a reserved flag ("0") and
+ *              the command line, each terminated by a NUL byte
  *    response: frames "O <len>\n<bytes>" (stdout) and "E <len>\n<bytes>"
  *              (stderr), ended by "X <status>\n"
  */
@@ -286,7 +286,7 @@ static int remote_exec(void *state, const ART_config *cfg, const char *cwd,
     off = (size_t)headlen;
     memcpy(req + off, cwd, strlen(cwd) + 1);
     off += strlen(cwd) + 1;
-    req[off++] = '0'; /* no \x01 marking: the streams are separate */
+    req[off++] = '0'; /* reserved */
     req[off++] = '\0';
     for (i = 0; i < argc; ++i) {
         size_t l = strlen(argv[i]) + 1;

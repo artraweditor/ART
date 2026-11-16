@@ -150,23 +150,31 @@ int main(void)
     CHECK(run(e1, out, sizeof(out), "get-files", 0, 0, 0, 0, 0) == ART_OK);
     CHECK(strstr(out, base) != NULL);
     CHECK(run(e1, out, sizeof(out), "get-info", 0, 0, 0, 0, 0) == ART_OK);
-    CHECK(strstr(out, "is_raw: true") != NULL);
+    CHECK(strstr(out, "\"is_raw\":true") != NULL);
     printf("get-info:\n%s", out);
 
     CHECK(run(e1, out, sizeof(out), "get-history", 0, 0, 0, 0, 0) == ART_OK);
     CHECK(strstr(out, "Photo loaded") != NULL);
     CHECK(run(e1, out, sizeof(out), "apply", arp, 0, 0, 0, 0) == ART_OK);
     CHECK(run(e1, out, sizeof(out), "get-history", 0, 0, 0, 0, 0) == ART_OK);
-    CHECK(strstr(out, "1\t*\t") != NULL);
+    CHECK(strstr(out, "\"index\":1,\"selected\":true") != NULL);
     CHECK(run(e1, out, sizeof(out), "undo", 0, 0, 0, 0, 0) == ART_OK);
-    CHECK(strstr(out, "entry 0 of 1") != NULL);
+    CHECK(strstr(out, "{\"ok\":true,\"result\":{\"selected\":0,\"count\":2,") == out);
     CHECK(run(e1, out, sizeof(out), "redo", 0, 0, 0, 0, 0) == ART_OK);
     CHECK(run(e1, out, sizeof(out), "snapshot-add", "S", 0, 0, 0, 0) == ART_OK);
     CHECK(run(e1, out, sizeof(out), "get-snapshots", 0, 0, 0, 0, 0) == ART_OK);
-    CHECK(strcmp(out, "-\tS\n") == 0);
+    CHECK(strcmp(out, "{\"ok\":true,\"result\":[{\"name\":\"S\",\"active\":false}]}\n") == 0);
     CHECK(run(e1, out, sizeof(out), "get-spot-wb", "1500", "2000", "20", "20", 0) == ART_OK);
     printf("get-spot-wb:\n%s", out);
-    CHECK(strstr(out, "temperature: ") == out);
+    CHECK(strstr(out, "{\"ok\":true,\"result\":{\"temperature\":") == out);
+    /* metadata: exiv2 values keep their types */
+    CHECK(run(e1, out, sizeof(out), "get-metadata", "--no-makernotes", 0, 0, 0, 0) == ART_OK);
+    CHECK(strstr(out, "\"Exif.Image.Make\":\"SONY\"") != NULL);
+    CHECK(strstr(out, "\"Exif.Photo.ISOSpeedRatings\":100,") != NULL);
+    CHECK(strstr(out, "\"Exif.Photo.FNumber\":2.8,") != NULL);
+    CHECK(strstr(out, "ExifTool.MakerNotes") == NULL);
+    rc = run(e1, out, sizeof(out), "get-metadata", "--bogus", 0, 0, 0, 0);
+    CHECK(rc == ART_ERR_COMMAND && strstr(out, "usage: get-metadata") != NULL);
     CHECK(run(e1, out, sizeof(out), "preview", prev, "--scale", "0.1", 0, 0) == ART_OK);
     printf("preview: %s", out);
     CHECK(access(prev, R_OK) == 0);
@@ -178,10 +186,10 @@ int main(void)
         snprintf(xj, sizeof(xj), "%s/out.jpg", dir);
         snprintf(xt, sizeof(xt), "%s/out.dat", dir);
         CHECK(run(e1, out, sizeof(out), "export", "--list-formats", 0, 0, 0, 0) == ART_OK);
-        CHECK(strstr(out, "jpg\ntif\npng\n") == out);
+        CHECK(strstr(out, "{\"ok\":true,\"result\":[\"jpg\",\"tif\",\"png\"") == out);
         CHECK(run(e1, out, sizeof(out), "export", xj, "--quality", "50", 0, 0) == ART_OK);
         printf("export: %s", out);
-        CHECK(strstr(out, "out.jpg (") != NULL);
+        CHECK(strstr(out, "out.jpg\",\"width\":") != NULL);
         CHECK(stat(xj, &st) == 0 && st.st_size > 10000);
         /* an existing file is not replaced without --overwrite */
         rc = run(e1, out, sizeof(out), "export", xj, 0, 0, 0, 0);
@@ -203,11 +211,11 @@ int main(void)
     CHECK(e2 != NULL);
     if (e2) {
         CHECK(run(e2, out, sizeof(out), "get-files", 0, 0, 0, 0, 0) == ART_OK);
-        CHECK(strcmp(out, "") == 0);
+        CHECK(strcmp(out, "{\"ok\":true,\"result\":[]}\n") == 0);
         CHECK(run(e2, out, sizeof(out), "get-info", 0, 0, 0, 0, 0) == ART_ERR_COMMAND);
         CHECK(run(e2, out, sizeof(out), "open", img, 0, 0, 0, 0) == ART_OK);
         CHECK(run(e2, out, sizeof(out), "get-snapshots", 0, 0, 0, 0, 0) == ART_OK);
-        CHECK(strcmp(out, "-\tS\n") == 0); /* read from the sidecar saved by e1 */
+        CHECK(strcmp(out, "{\"ok\":true,\"result\":[{\"name\":\"S\",\"active\":false}]}\n") == 0); /* read from the sidecar saved by e1 */
         ART_engine_destroy(e2);
     }
     CHECK(run(e1, out, sizeof(out), "get-files", 0, 0, 0, 0, 0) == ART_OK);
@@ -222,7 +230,7 @@ int main(void)
         CHECK(run(e1, out, sizeof(out), "open", img, 0, 0, 0, 0) == ART_OK);
         CHECK(run(e1, out, sizeof(out), "get-spot-wb", "1500", "2000", "20", "20", 0) == ART_OK);
         printf("after re-creation:\n%s", out);
-        CHECK(strstr(out, "temperature: ") == out);
+        CHECK(strstr(out, "{\"ok\":true,\"result\":{\"temperature\":") == out);
         ART_engine_destroy(e1);
     }
 

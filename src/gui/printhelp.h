@@ -29,7 +29,8 @@ namespace art { namespace gui {
 inline void ART_print_cmd_help(std::ostream &out)
 {
     out << "  --cmd <command> [args]  Send a command to the running instance "
-           "(it fails if none is running). Commands:\n"
+           "(it fails if none is running). Commands print one line of JSON on\n"
+           "                          stdout: {\"ok\":true,\"result\":...} or {\"ok\":false,\"error\":...}\n"
         << "    open-dir DIR                 Open DIR in the file browser\n"
         << "    get-dir                      Print the current directory\n"
         << "    rank N FILE...               Set the star rating (0-5)\n"
@@ -43,8 +44,13 @@ inline void ART_print_cmd_help(std::ostream &out)
         << "    open FILE                    Open FILE in the editor\n"
         << "    apply [--append] PROFILE     Apply a (partial) profile to the "
            "current editor image\n"
+        << "    apply :neutral | :default    Apply the neutral profile, or the default profile of the\n"
+        << "                                 preferences (possibly a dynamic one), replacing all the parameters\n"
         << "    get-params                   Print the current parameters (.arp text) of the visible editor image\n"
         << "    get-info                     Print size, camera and exposure information of the visible editor image\n"
+        << "    get-metadata [--makernotes | --no-makernotes] [--edits | --no-edits]\n"
+        << "                                 Print the metadata of the visible editor image (as the metadata panel\n"
+        << "                                 shows it, with or without the edits of the profile) as a JSON object\n"
         << "    get-history                  List the edit history of the current editor image (index, * = selected, text, value)\n"
         << "    undo [N] | redo [N]          Step back/forward in the history\n"
         << "    history-goto INDEX           Select a history entry\n"
@@ -62,10 +68,11 @@ inline void ART_print_cmd_help(std::ostream &out)
            "(crop in full-image coordinates) to a PNG/JPEG file\n"
         << "    export OUTFILE [--format F] [--quality N] [--subsampling 1-3] [--bits N]\n"
         << "           [--float] [--compression none|zip] [--overwrite] [--fast]\n"
-        << "                                 Write the current image at full size, as ART-cli would "
-           "(server mode only);\n"
-        << "                                 the format is that of OUTFILE unless --format is given\n"
-        << "    export --list-formats        Print the output formats (server mode only)\n";
+        << "                                 Add the current image to the batch queue with these settings (it is\n"
+        << "                                 not written at once; the queue names the file and decides what to\n"
+        << "                                 do with an existing one, so --overwrite is an error); the format is\n"
+        << "                                 that of OUTFILE unless --format is given\n"
+        << "    export --list-formats        Print the output formats\n";
 }
 
 

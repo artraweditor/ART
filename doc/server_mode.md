@@ -32,49 +32,112 @@ $ ART-cli --cmd quit
 | `ART-cli --cmd help` | list the commands (answered locally, no server needed) |
 
 `--cmd` does not load any configuration or engine, so it starts immediately.
-Its standard output and standard error are those of the command and its exit
-status is 0 on success, 1 on failure (`ART: error: <message>` on stderr), e.g.
-`ART: error: no running server (...)` when nobody is listening.
-With `ART_CMD_MARK=1` in the environment, every output line is prefixed with
-`\x01`, so that a program can tell the reply from unrelated messages
-(this is what the MCP server does).
+Its exit status is 0 on success and 1 on failure.
 
 Paths are resolved against the *client's* working directory. Output files
-(`preview`) are written by the *server* process.
+(`preview`, `export`) are written by the *server* process.
+
+## Replies
+
+**Standard output carries one thing: the reply of the command, as a single
+line of JSON.** Nothing else is ever written to it (`ART-cli --cmd` and
+`ART --cmd` load no configuration and print no diagnostics there), so a
+script can parse all of it:
+
+```
+{"ok":true}                        success, nothing to return
+{"ok":true,"result":<value>}       success
+{"ok":false,"error":"message"}     failure
+```
+
+A failed command (and a failure of the client itself, such as
+`no running server (...)` when nobody is listening) also prints
+`ART: error: <message>` on standard error and exits with status 1; standard
+error is free for such human-oriented messages. The only exception is
+`--cmd help`, which prints the help text on standard output.
+
+```
+$ ART-cli --cmd get-spot-wb 1500 2000 20 20
+{"ok":true,"result":{"temperature":3735.6147766113281,"tint":1.0210771229425262,"red_multiplier":1.6711792696011167,"green_multiplier":1,"blue_multiplier":0.524420945538329}}
+$ ART-cli --cmd get-info | jq .result.full_width
+3124
+```
+
+The `result` of each command is listed below. Strings are UTF-8, numbers are
+JSON numbers (`null` stands for a missing value).
 
 ## Commands
 
 | command | effect |
 |---|---|
 | `open FILE` | load FILE and make it the active image, replacing the previous one (unsaved edits are dropped); replies when it is loaded. Starting parameters: the `FILE.arp` sidecar if there is one (with its snapshots), otherwise the default profile of the options |
-| `save` | write the current parameters and the snapshots to the sidecar; prints its path |
-| `get-files` | print the active image (nothing if none) |
+| `save` | write the current parameters and the snapshots to the sidecar; result `{"file": <sidecar path>}` |
+| `get-files` | the active image: an array of paths (empty if none) |
 | `apply [--append] PROFILE` | apply a (partial) profile; a new history entry |
-| `get-params` | the current parameters, as `.arp` text |
-| `get-info` | `key: value` lines: size, camera, exposure |
-| `get-history` | `index<TAB>*\|-<TAB>text<TAB>value`, `*` = selected |
-| `undo [N]`, `redo [N]`, `history-goto INDEX` | move in the history; reply with the new state |
-| `get-snapshots` | `*\|-<TAB>name`, `*` = active |
-| `snapshot-add [NAME]`, `snapshot-activate NAME`, `snapshot-overwrite NAME`, `snapshot-remove NAME` | manage snapshots |
-| `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension); prints `path (WxH)` |
+| `apply :neutral`, `apply :default` | apply the neutral profile, or the default profile of the preferences (see below) |
+| `get-params` | the current parameters: `{"params": <.arp text>}` |
+| `get-metadata [--makernotes\|--no-makernotes] [--edits\|--no-edits]` | the metadata as a JSON object (see below) |
+| `get-info` | an object: `file`, `is_raw` (boolean), `source_width`, `source_height`, `full_width`, `full_height`, `make`, `model`, `lens`, `iso`, `f_number`, `focal_length_mm`, `shutter_s`, `exposure_compensation`, `orientation` |
+| `get-history` | `{"selected": <index, -1 if none>, "entries": [{"index", "selected", "text", "value"}, ...]}` |
+| `undo [N]`, `redo [N]`, `history-goto INDEX` | move in the history; result: the new state `{"selected", "count", "text", "snapshot"}` (`text` and `snapshot` are `null` when there is none) |
+| `get-snapshots` | an array of `{"name", "active"}` |
+| `snapshot-add [NAME]` | result `{"name": <the name given or generated>}` |
+| `snapshot-activate NAME`, `snapshot-overwrite NAME`, `snapshot-remove NAME` | manage snapshots |
+| `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension); result `{"file", "width", "height"}` |
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
-| `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (server only; see below) |
-| `ping`, `quit` | liveness check; stop the server |
+| `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (in the GUI: queue it; see below) |
+| `ping`, `quit` | liveness check (result `"pong"`); stop the server |
 
-The GUI-only commands (`open-dir`, `get-dir`, `rank`, `label`, `session`) are
-not available: the server has no file browser.
+The GUI-only commands (`open-dir`, `get-dir` (result `{"directory"}`), `rank`,
+`label`, `session`) are not available: the server has no file browser. In the
+GUI, `get-files` lists all the open images, the visible one first.
 
 Everything above except `open`, `save`, `export`, `ping`, `quit` and the
 server's single-image `get-files` is the same code in the GUI (`ART --cmd`) and
 in the server: `get-spot-wb` and the others behave identically in both.
 
+### `apply :neutral` and `apply :default`
+
+Two special names stand for profiles that are not files, as in the profile
+panel of the GUI. A file with such a name can still be applied as `./:neutral`.
+
+* `:neutral` is the internal neutral profile: every tool at its default value.
+* `:default` is the default profile for the image set in the preferences: the one
+  for raw images or the one for other images, depending on the image. It can
+  be a profile file, the neutral profile, or the *dynamic* profile, whose rules
+  are evaluated on the metadata of the image.
+
+Both are complete profiles: they **replace all the parameters** of the image
+(including the metadata edits and the general settings stored in them, such
+as the colour label), exactly as choosing them in the profile panel does, as one history
+entry named `Neutral` or `Default`. `--append` is an error with them.
+
 ### `export OUTFILE [options]`
 
 Renders the active image with its current parameters (unsaved edits included)
 through the full output pipeline, exactly as `ART-cli -c -o OUTFILE` would, and
-writes it to `OUTFILE`. On success it prints `path (WxH)`. Available in the
-server only (and so in libART); the GUI's `--cmd` reports that export is not
-available (use `ART-cli` or the batch queue there).
+writes it to `OUTFILE`. The result is `{"file", "width", "height", "format"}`.
+In the GUI (`ART --cmd export`) the image is instead **added to the batch
+queue** with these settings, as with the "add to queue" button of the Save as
+dialog, and the result is `{"file", "format", "queued": true}`. Limitations
+of `export` in the GUI, compared with the server:
+
+* **Nothing is written when the command returns.** It only queues the image, so
+  the reply has no `width` and `height`, and neither the completion nor a
+  failure of the export is reported to the command: a processing or saving
+  error is shown in the GUI, as for any queued image.
+* **The queue has to run.** The image is processed when the queue is started: by
+  its auto-start switch, or by the user.
+* **File name.** The queue gives `OUTFILE` the extension of the format (`file` is
+  the name with that extension) and creates its folder if needed. It treats an
+  existing file as its preferences say: by default it adds a numeric suffix
+  (`name-1.jpg`), with the "overwrite output file" preference it replaces it.
+  The command cannot choose, so `--overwrite` is an error. The reported name is
+  the one asked for, not necessarily the final one.
+* **The parameters are those of the moment of the command**: later edits do not
+  change the queued export. As for Save as, the queue's batch profile is not
+  applied, and no `.arp` file is saved next to the output.
+* It acts on the visible editor tab, like the other commands.
 
 | option | meaning |
 |---|---|
@@ -90,8 +153,8 @@ available (use `ART-cli` or the batch queue there).
 `OUTFILE` is written exactly as named (the extension is not changed to match
 the format) and must be in an existing directory; it cannot be the input file.
 An option that does not apply to the format is an error. `export --list-formats`
-prints the formats this installation can write, one per line (the extra ones
-need their encoders, as for `ART-cli -T`).
+returns the formats this installation can write, as an array of strings (the
+extra ones need their encoders, as for `ART-cli -T`).
 
 The result is the same as the one of `ART-cli` for the same parameters (the
 image is rendered from the file, not from the editing pipeline, so the raw is
@@ -100,19 +163,49 @@ interrupted, and keeps the server busy: other clients wait. Set the client's
 timeout accordingly (`ART_options_set_timeout` in libART, `ART_MCP_TIMEOUT` for
 the MCP server). The edit history and snapshots are not affected.
 
+### `get-metadata [--makernotes | --no-makernotes] [--edits | --no-edits]`
+
+Returns the metadata of the active image as one flat JSON object, like the
+metadata panel of the GUI shows it. The keys are tag names:
+
+* `Exif.<Group>.<Tag>`: the tags read by exiv2, with the basic tags filled in
+  and, unless `--no-edits` is given, the changes made by the current parameters
+  (the metadata edits of the `.arp`: the Exif edits, and the PPI of the Resize
+  tool when it is copied to the Exif data) applied. **Values keep their type**: integer
+  types are integers, rationals and floating point values are numbers (`null`
+  if a rational has a zero denominator; a rational such as `16/1` is
+  printed as `16`), text is a string, a tag with several values is an array,
+  and an "undefined" value is a string if it is printable text (`"0232"`) and
+  an array of bytes otherwise. Binary blobs (non-text values of 256 bytes or
+  more) are left out;
+* `ExifTool.MakerNotes.<Name>`: the maker notes read by ExifTool, **always
+  strings** (the way ExifTool prints them).
+
+The maker notes are included if the preferences ask for them (the panel's
+option), unless `--makernotes` or `--no-makernotes` says otherwise. Getting
+them runs ExifTool, which takes longer (and needs ExifTool to be installed);
+`--no-makernotes` is the quick form. The edits are included by default, as in
+the panel; with `--no-edits` the tags are those of the file as it is (plus the
+basic tags), which is what to use to read the original metadata. Keys are
+sorted.
+
+```
+{"ok":true,"result":{"Exif.Image.Make":"SONY","Exif.Photo.ISOSpeedRatings":100,
+ "Exif.Photo.FNumber":2.8,"Exif.Photo.ComponentsConfiguration":[1,2,3,0],
+ "ExifTool.MakerNotes.LensMount":"E-mount", ...}}
+```
+
 ### `get-spot-wb X Y W H`
 
 The rectangle (top left corner and size, in the coordinates of the processed
 image, i.e. the `full_width` x `full_height` of `get-info`; `X,Y,W,H` as one
 argument is also accepted) is meant to be neutral, such as a grey card. The
-reply:
+result is an object:
 
 ```
-temperature: 3735.61
-tint: 1.02108
-red_multiplier: 1.67118
-green_multiplier: 1
-blue_multiplier: 0.524421
+{"temperature":3735.6147766113281,"tint":1.0210771229425262,
+ "red_multiplier":1.6711792696011167,"green_multiplier":1,
+ "blue_multiplier":0.524420945538329}
 ```
 
 `temperature` and `tint` are the `Temperature` and `Green` keys of the
@@ -175,7 +268,7 @@ For writing another client. One request per connection.
 | | |
 |---|---|
 | `src/engine/remote/command_dispatch.*` | verb table and the verbs shared with the GUI, `CommandTarget`/`CommandHost` |
-| `src/engine/remote/remote_reply.*` | `Reply`/`ReplySink`: output, error prefix, `\x01` marking |
+| `src/engine/remote/remote_reply.*`, `json.h` | `Reply`/`ReplySink`: the JSON reply document and the error line; `json::Value`, a wrapper over cJSON |
 | `src/engine/remote/ipc_transport.h`, `unix_socket.cc`, `wire.*` | socket transport and framing |
 | `src/engine/remote/history_model.h` | history and snapshot rules (GUI-free) |
 | `src/gui/editsession.*` | the server's active image (processor, history, snapshots, sidecar) |

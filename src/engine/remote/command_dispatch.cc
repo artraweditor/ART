@@ -18,7 +18,9 @@
 
 #include "command_dispatch.h"
 #include "../imgiomanager.h"
+#include "../profilestore.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <glib.h>
@@ -145,8 +147,46 @@ void cmd_get_params(Context &c, Args &a)
         if (!t.getParamsText(txt)) {
             throw std::runtime_error("cannot read the parameters");
         }
-        reply->ok(txt);
+        json::Value r = json::Value::object();
+        r.set("params", txt);
+        reply->ok(r);
     });
+}
+
+
+// the info text of a target is `key: value` lines; the keys of numbers and
+// booleans are listed here, all the others are strings
+json::Value info_to_json(const Glib::ustring &txt)
+{
+    static const char *const numbers[] = {
+        "source_width", "source_height", "full_width", "full_height", "iso",
+        "f_number", "focal_length_mm", "shutter_s", "exposure_compensation"};
+    json::Value ret = json::Value::object();
+    for (const Glib::ustring line : Glib::Regex::split_simple("\n", txt)) {
+        const auto pos = line.find(": ");
+        if (pos == Glib::ustring::npos) {
+            continue;
+        }
+        const std::string key = line.substr(0, pos).raw();
+        const Glib::ustring val = line.substr(pos + 2);
+        bool is_num = false;
+        for (auto n : numbers) {
+            is_num = is_num || key == n;
+        }
+        double d;
+        if (key == "is_raw") {
+            ret.set(key, val == "true");
+        } else if (is_num && parse_double(val, d)) {
+            if (d == std::floor(d) && std::fabs(d) < 1e15) {
+                ret.set(key, static_cast<long long>(d));
+            } else {
+                ret.set(key, d);
+            }
+        } else {
+            ret.set(key, val);
+        }
+    }
+    return ret;
 }
 
 
@@ -158,17 +198,90 @@ void cmd_get_info(Context &c, Args &a)
         if (!t.getInfoText(txt)) {
             throw std::runtime_error("cannot read the image information");
         }
-        reply->ok(txt);
+        reply->ok(info_to_json(txt));
     });
 }
 
 
+void cmd_get_metadata(Context &c, Args &a)
+{
+    const char *usage =
+        "usage: get-metadata [--makernotes | --no-makernotes] [--edits | "
+        "--no-edits]";
+    int makernotes = -1;
+    const bool yes = take_flag(a, "--makernotes");
+    const bool no = take_flag(a, "--no-makernotes");
+    const bool ed_yes = take_flag(a, "--edits");
+    const bool ed_no = take_flag(a, "--no-edits");
+    if (!a.empty() || (yes && no) || (ed_yes && ed_no)) {
+        throw std::runtime_error(usage);
+    }
+    if (yes || no) {
+        makernotes = yes ? 1 : 0;
+    }
+    const bool edits = !ed_no; // as the metadata panel: included by default
+    auto reply = c.reply;
+    with_target(c, [reply, makernotes, edits](CommandTarget &t) {
+        json::Value r;
+        Glib::ustring err;
+        if (!t.getMetadata(makernotes, edits, r, err)) {
+            throw std::runtime_error(err.empty() ? "cannot read the metadata"
+                                                 : err.raw());
+        }
+        reply->ok(r);
+    });
+}
+
+
+// the special names of `apply`: they cannot be mistaken for a file name
+// (a file called like this can be given as "./:neutral")
+const char *const PROFILE_NEUTRAL = ":neutral";
+const char *const PROFILE_DEFAULT = ":default";
+
+
 void cmd_apply(Context &c, Args &a)
 {
+    const char *usage =
+        "usage: apply [--append] PROFILE | apply :neutral | apply :default";
     const bool append = take_flag(a, "--append");
     if (a.size() != 1) {
-        throw std::runtime_error("usage: apply [--append] PROFILE");
+        throw std::runtime_error(usage);
     }
+    auto reply = c.reply;
+
+    if (a[0] == PROFILE_NEUTRAL || a[0] == PROFILE_DEFAULT) {
+        // the neutral profile, or the default one of the preferences (which
+        // can be a dynamic profile, depending on the image): replaces all the
+        // parameters, as choosing it in the profile panel does
+        if (append) {
+            throw std::runtime_error("--append cannot be used with " + a[0]);
+        }
+        if (!c.host.current()) {
+            no_image();
+        }
+        const bool neutral = (a[0] == PROFILE_NEUTRAL);
+        c.host.whenReady(reply, [neutral, reply](CommandTarget &t) {
+            std::unique_ptr<pp::PartialProfile> prof;
+            if (neutral) {
+                auto store = ProfileStore::getInstance();
+                pp::ProcParams params;
+                store->getProfile(store->getInternalDefaultPSE())
+                    ->applyTo(params);
+                prof.reset(new pp::FullPartialProfile(params));
+            } else {
+                prof = t.getDefaultProfile();
+            }
+            if (!prof) {
+                throw std::runtime_error("cannot load the default profile");
+            }
+            if (!t.applyProfile(*prof, neutral ? "Neutral" : "Default")) {
+                throw std::runtime_error("cannot apply the profile");
+            }
+            reply->ok();
+        });
+        return;
+    }
+
     auto prof = abspath(a[0], c.cwd);
     if (!Glib::file_test(prof, Glib::FILE_TEST_IS_REGULAR)) {
         throw std::runtime_error("no such profile: " + prof);
@@ -187,13 +300,36 @@ void cmd_apply(Context &c, Args &a)
     if (append) {
         label += "+";
     }
-    auto reply = c.reply;
     c.host.whenReady(reply, [fp, label, reply](CommandTarget &t) {
         if (!t.applyProfile(fp, label)) {
             throw std::runtime_error("cannot apply the profile");
         }
         reply->ok();
     });
+}
+
+
+// the completion of a command that writes an image: {"file", "width", "height"}
+ImageDone image_reply(const ReplyPtr &reply, const std::string &format = "")
+{
+    return [reply, format](bool ok, const Glib::ustring &msg, int w, int h) {
+        if (!ok) {
+            reply->fail(msg);
+            return;
+        }
+        json::Value r = json::Value::object();
+        r.set("file", msg);
+        if (w >= 0 && h >= 0) {
+            r.set("width", w).set("height", h);
+        }
+        if (!format.empty()) {
+            r.set("format", format);
+        }
+        if (w < 0 || h < 0) {
+            r.set("queued", true);
+        }
+        reply->ok(r);
+    };
 }
 
 
@@ -222,14 +358,7 @@ void cmd_preview(Context &c, Args &a)
     }
     auto reply = c.reply;
     c.host.whenReady(reply, [=](CommandTarget &t) {
-        t.renderPreview(out, scale, cx, cy, cw, ch,
-                        [reply](bool ok, const Glib::ustring &msg) {
-                            if (ok) {
-                                reply->ok(msg);
-                            } else {
-                                reply->fail(msg);
-                            }
-                        });
+        t.renderPreview(out, scale, cx, cy, cw, ch, image_reply(reply));
     });
 }
 
@@ -260,10 +389,11 @@ void cmd_export(Context &c, Args &a)
         if (!a.empty()) {
             throw std::runtime_error(usage);
         }
+        json::Value r = json::Value::array();
         for (auto &f : formats) {
-            c.reply->print(f);
+            r.push(f);
         }
-        c.reply->ok();
+        c.reply->ok(r);
         return;
     }
 
@@ -389,13 +519,7 @@ void cmd_export(Context &c, Args &a)
     }
     auto reply = c.reply;
     c.host.whenReady(reply, [=](CommandTarget &t) {
-        t.exportImage(req, [reply](bool ok, const Glib::ustring &msg) {
-            if (ok) {
-                reply->ok(msg);
-            } else {
-                reply->fail(msg);
-            }
-        });
+        t.exportImage(req, image_reply(reply, req.format));
     });
 }
 
@@ -450,12 +574,13 @@ void cmd_get_spot_wb(Context &c, Args &a)
             wb.blue /= wb.green;
             wb.green = 1;
         }
-        char buf[256];
-        snprintf(buf, sizeof(buf),
-                 "temperature: %.6g\ntint: %.6g\nred_multiplier: %.6g\n"
-                 "green_multiplier: %.6g\nblue_multiplier: %.6g",
-                 wb.temperature, wb.tint, wb.red, wb.green, wb.blue);
-        reply->ok(buf);
+        json::Value r = json::Value::object();
+        r.set("temperature", wb.temperature)
+            .set("tint", wb.tint)
+            .set("red_multiplier", wb.red)
+            .set("green_multiplier", wb.green)
+            .set("blue_multiplier", wb.blue);
+        reply->ok(r);
     });
 }
 
@@ -472,19 +597,23 @@ bool parse_count(Args &a, int &n)
 }
 
 
-Glib::ustring history_state(CommandTarget &t)
+// the state of the history after a move: the selected entry (-1 if none, as
+// when a snapshot is active), the number of entries, the text of the selected
+// entry (null if none) and the active snapshot (null if none)
+json::Value history_state(CommandTarget &t)
 {
     auto v = t.getHistoryEntries();
-    int i = t.getHistoryIndex();
-    if (i < 0) {
-        auto s = t.getSnapshotIndex();
-        auto names = t.getSnapshotNames();
-        return Glib::ustring::compose(
-            "history: %1 entries, none selected; active snapshot: %2",
-            v.size(), s >= 0 ? names[s] : Glib::ustring("(none)"));
-    }
-    return Glib::ustring::compose("history: entry %1 of %2 (%3) selected", i,
-                                  v.size() - 1, v[i].text);
+    const int i = t.getHistoryIndex();
+    const int s = t.getSnapshotIndex();
+    auto names = t.getSnapshotNames();
+    json::Value r = json::Value::object();
+    r.set("selected", i)
+        .set("count", v.size())
+        .set("text", i >= 0 && i < int(v.size()) ? json::Value(v[i].text)
+                                                 : json::Value())
+        .set("snapshot", s >= 0 && s < int(names.size()) ? json::Value(names[s])
+                                                         : json::Value());
+    return r;
 }
 
 
@@ -494,12 +623,18 @@ void cmd_get_history(Context &c, Args &a)
     with_target(c, [reply](CommandTarget &t) {
         auto v = t.getHistoryEntries();
         int sel = t.getHistoryIndex();
+        json::Value entries = json::Value::array();
         for (size_t i = 0; i < v.size(); ++i) {
-            reply->print(Glib::ustring::compose(
-                "%1\t%2\t%3\t%4", i, int(i) == sel ? "*" : "-", v[i].text,
-                v[i].value));
+            json::Value e = json::Value::object();
+            e.set("index", i)
+                .set("selected", int(i) == sel)
+                .set("text", v[i].text)
+                .set("value", v[i].value);
+            entries.push(e);
         }
-        reply->ok();
+        json::Value r = json::Value::object();
+        r.set("selected", sel).set("entries", entries);
+        reply->ok(r);
     });
 }
 
@@ -557,11 +692,13 @@ void cmd_get_snapshots(Context &c, Args &a)
     with_target(c, [reply](CommandTarget &t) {
         auto names = t.getSnapshotNames();
         int sel = t.getSnapshotIndex();
+        json::Value r = json::Value::array();
         for (size_t i = 0; i < names.size(); ++i) {
-            reply->print(Glib::ustring::compose("%1\t%2", int(i) == sel ? "*" : "-",
-                                                names[i]));
+            json::Value e = json::Value::object();
+            e.set("name", names[i]).set("active", int(i) == sel);
+            r.push(e);
         }
-        reply->ok();
+        reply->ok(r);
     });
 }
 
@@ -608,7 +745,9 @@ void cmd_snapshot_add(Context &c, Args &a)
         if (!t.addSnapshot(nm, params, err)) {
             throw std::runtime_error(err);
         }
-        reply->ok(nm);
+        json::Value r = json::Value::object();
+        r.set("name", nm);
+        reply->ok(r);
     });
 }
 
@@ -658,6 +797,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("apply", cmd_apply);
     d.add("get-params", cmd_get_params);
     d.add("get-info", cmd_get_info);
+    d.add("get-metadata", cmd_get_metadata);
     d.add("get-history", cmd_get_history);
     d.add("undo", [](Context &c, Args &a) { undo_redo(c, a, -1); });
     d.add("redo", [](Context &c, Args &a) { undo_redo(c, a, +1); });

@@ -21,6 +21,7 @@
 #include "../engine/imgiomanager.h"
 #include "../engine/improccoordinator.h"
 #include "../engine/profilestore.h"
+#include "../engine/remote/metadata_json.h"
 #include "../engine/refreshmap.h"
 #include "../engine/threadpool.h"
 #include "../utils/multilangmgr.h"
@@ -44,30 +45,6 @@ namespace pp = art::engine::procparams;
 namespace eng = art::engine;
 
 namespace {
-
-// the profile to start from for an image without a sidecar: the default
-// profile of the options (as ProfilePanel::initProfile)
-std::unique_ptr<pp::PartialProfile>
-default_profile(bool is_raw, const eng::FramesMetaData *md)
-{
-    const Glib::ustring name = is_raw ? options.defProfRaw : options.defProfImg;
-    auto store = eng::ProfileStore::getInstance();
-    const eng::ProfileStoreEntry *pse = store->findEntryFromFullPath(name);
-    if (!pse) {
-        pse = store->getInternalDefaultPSE();
-    }
-    if (pse == store->getInternalDefaultPSE() &&
-        name == Options::DEFPROFILE_DYNAMIC) {
-        auto dyn = store->loadDynamicProfile(md);
-        if (dyn) {
-            return dyn;
-        }
-    }
-    pp::ProcParams params;
-    store->getProfile(pse)->applyTo(params);
-    return std::unique_ptr<pp::PartialProfile>(new pp::FullPartialProfile(params));
-}
-
 
 // receives the rendered window of a preview
 class PreviewCatcher: public eng::DetailedCropListener {
@@ -180,7 +157,7 @@ void EditSession::open(const Glib::ustring &filename)
         if (have_sidecar) {
             start.reset(new pp::FullPartialProfile(saved.master));
         } else {
-            start = default_profile(is_raw_, ii->getMetaData());
+            start = options.loadDefaultProfile(is_raw_, ii->getMetaData());
         }
 
         auto params = changeParams(*start, eng::EvPhotoLoaded);
@@ -344,6 +321,38 @@ bool EditSession::getCurrentParams(pp::ProcParams &params)
 }
 
 
+bool EditSession::getMetadata(int makernotes, bool edits,
+                              art::engine::remote::json::Value &out,
+                              Glib::ustring &err)
+{
+    if (!ipc_) {
+        err = "no image is open in the editor";
+        return false;
+    }
+    pp::ProcParams params;
+    ipc_->getParams(&params);
+    try {
+        out = art::engine::remote::metadataToJson(
+            fname_, ipc_->getInitialImage()->getMetaData(), params, edits,
+            makernotes < 0 ? options.show_exiftool_makernotes : makernotes > 0);
+    } catch (std::exception &e) {
+        err = e.what();
+        return false;
+    }
+    return true;
+}
+
+
+std::unique_ptr<pp::PartialProfile> EditSession::getDefaultProfile()
+{
+    if (!ipc_) {
+        return nullptr;
+    }
+    return options.loadDefaultProfile(is_raw_,
+                                      ipc_->getInitialImage()->getMetaData());
+}
+
+
 bool EditSession::applyProfile(const pp::PartialProfile &profile,
                                const Glib::ustring &descr)
 {
@@ -359,10 +368,10 @@ bool EditSession::applyProfile(const pp::PartialProfile &profile,
 
 void EditSession::renderPreview(
     const Glib::ustring &outfile, double scale, int cx, int cy, int cw, int ch,
-    std::function<void(bool, const Glib::ustring &)> done)
+    std::function<void(bool, const Glib::ustring &, int, int)> done)
 {
     if (!isReady()) {
-        done(false, "no image ready in the editor");
+        done(false, "no image ready in the editor", 0, 0);
         return;
     }
     const int fw = ipc_->getFullWidth();
@@ -374,11 +383,11 @@ void EditSession::renderPreview(
     }
     if (cx < 0 || cy < 0 || cx + cw > fw || cy + ch > fh) {
         done(false, Glib::ustring::compose(
-                        "crop out of bounds (full image is %1x%2)", fw, fh));
+                        "crop out of bounds (full image is %1x%2)", fw, fh), 0, 0);
         return;
     }
     if (!(scale > 0)) {
-        done(false, "invalid scale");
+        done(false, "invalid scale", 0, 0);
         return;
     }
 
@@ -407,7 +416,7 @@ void EditSession::renderPreview(
     crop->setListener(nullptr);
     crop->destroy();
     if (!got) {
-        done(false, "timeout while rendering the preview");
+        done(false, "timeout while rendering the preview", 0, 0);
         return;
     }
 
@@ -430,34 +439,34 @@ void EditSession::renderPreview(
     const int rc = (e == "jpg" || e == "jpeg") ? out->saveAsJPEG(outfile, 90)
                                                : out->saveAsPNG(outfile, 8);
     if (rc != 0) {
-        done(false, "cannot write " + outfile);
+        done(false, "cannot write " + outfile, 0, 0);
         return;
     }
-    done(true, Glib::ustring::compose("%1 (%2x%3)", outfile, ow, oh));
+    done(true, outfile, ow, oh);
 }
 
 
 void EditSession::exportImage(
     const art::engine::remote::ExportRequest &req,
-    std::function<void(bool, const Glib::ustring &)> done)
+    std::function<void(bool, const Glib::ustring &, int, int)> done)
 {
     if (!ipc_) {
-        done(false, "no image is open in the editor");
+        done(false, "no image is open in the editor", 0, 0);
         return;
     }
     if (req.outfile == fname_) {
-        done(false, "cannot overwrite the input file: " + req.outfile);
+        done(false, "cannot overwrite the input file: " + req.outfile, 0, 0);
         return;
     }
     if (!req.overwrite && Glib::file_test(req.outfile, Glib::FILE_TEST_EXISTS)) {
-        done(false, req.outfile + " already exists (use --overwrite)");
+        done(false, req.outfile + " already exists (use --overwrite)", 0, 0);
         return;
     }
 
     // fail before the (long) rendering if the file cannot be written
     const Glib::ustring dir = Glib::path_get_dirname(req.outfile);
     if (!Glib::file_test(dir, Glib::FILE_TEST_IS_DIR)) {
-        done(false, "no such directory: " + dir);
+        done(false, "no such directory: " + dir, 0, 0);
         return;
     }
 
@@ -477,19 +486,19 @@ void EditSession::exportImage(
 
     auto job = create_processing_job(fname_, is_raw_, params, opts.fast);
     if (!job) {
-        done(false, "impossible to create the processing job");
+        done(false, "impossible to create the processing job", 0, 0);
         return;
     }
     int w = 0, h = 0;
     const int rc = runExportJob(job, opts, req.outfile, nullptr, w, h);
     if (rc == 1) {
-        done(false, "failure in processing " + fname_);
+        done(false, "failure in processing " + fname_, 0, 0);
     } else if (rc != 0) {
         // do not leave a truncated file behind
         g_unlink(req.outfile.c_str());
-        done(false, "failure in saving to " + req.outfile);
+        done(false, "failure in saving to " + req.outfile, 0, 0);
     } else {
-        done(true, Glib::ustring::compose("%1 (%2x%3)", req.outfile, w, h));
+        done(true, req.outfile, w, h);
     }
 }
 

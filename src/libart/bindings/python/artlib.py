@@ -2,21 +2,25 @@
 
 Runs the commands of ART's server mode, either against a running
 `ART-cli --server` or in the calling process (the in-process backend), with
-the same commands and output as `ART-cli --cmd`:
+the same commands and output as `ART-cli --cmd`. The output of every command
+is one JSON document, `{"ok": true, "result": ...}` or `{"ok": false,
+"error": "..."}`, parsed for you in Result.reply / .data:
 
     from artlib import Engine
 
     with Engine() as art:                       # the default server socket
         art.run("open", "photo.arw", check=True)
-        print(art.run("get-info", check=True).out)
+        info = art.run("get-info", check=True).data   # a dict
+        print(info["full_width"], info["model"])
 
     # in-process (no server, no socket); data_dir holds ART's data files
     with Engine(inprocess=True, data_dir="/path/to/ART/data") as art:
         r = art.run("get-spot-wb", 1500, 2000, 20, 20)
+        print(r.data["temperature"])
 
 `run()` returns a Result. A command that fails (exit status 1 of
-`ART-cli --cmd`) gives Result.code == 1 and its message in Result.err (or
-raises CommandError with check=True); a failure of the library itself (no
+`ART-cli --cmd`) gives Result.code == 1, its message in Result.error (and
+Result.err) (or raises CommandError with check=True); a failure of the library itself (no
 server, connection lost, timeout, ...) raises ArtError.
 
 The library is looked for in `library=`, $ART_LIBRARY, next to this file, and
@@ -25,6 +29,7 @@ then in the usual places.
 
 import ctypes
 import ctypes.util
+import json
 import os
 import sys
 import threading
@@ -55,7 +60,7 @@ class CommandError(Exception):
     """The command ran and failed (only with run(check=True))."""
 
     def __init__(self, args, result):
-        msg = result.err.strip() or "the command failed"
+        msg = result.error or "the command failed"
         super().__init__("%s: %s" % (" ".join(map(str, args)), msg))
         self.result = result
 
@@ -68,6 +73,29 @@ class Result(NamedTuple):
     @property
     def ok(self):
         return self.code == ART_OK
+
+    @property
+    def reply(self):
+        """The JSON document the command printed, parsed (None if there is
+        none: a library failure never gets here)."""
+        try:
+            return json.loads(self.out)
+        except ValueError:
+            return None
+
+    @property
+    def data(self):
+        """The "result" of a successful command (None if it returns no data)."""
+        r = self.reply
+        return r.get("result") if r else None
+
+    @property
+    def error(self):
+        """The message of a failed command (None on success)."""
+        r = self.reply
+        if r and r.get("ok") is False:
+            return r.get("error")
+        return self.err.strip() or None if self.code else None
 
 
 def _library_names():
@@ -165,7 +193,8 @@ class Engine:
     data_dir, config_dir, cache_dir, gpu    for inprocess (see art.h)
     cwd         base of relative paths in commands (default: the cwd)
     timeout     seconds, remote only (default: none)
-    verbose     diagnostics of the in-process engine, on stderr
+    verbose     diagnostics of the in-process engine (debugging; they go to the
+                process's stdout/stderr; 0, the default, prints nothing)
     on_output, on_error    called with each chunk of text (str) as the
                 command prints it; the text is also in the Result
     library     path of libART (see the module docstring)

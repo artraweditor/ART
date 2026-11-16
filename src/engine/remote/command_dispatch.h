@@ -60,6 +60,12 @@ struct ExportRequest {
     bool overwrite = false;  // replace an existing file
 };
 
+// Completion of a command that writes an image: on success `msg` is the file
+// written and `w` x `h` its size (-1 x -1 if the image is only queued for
+// export: it is not written yet); on failure `msg` is the error message
+using ImageDone =
+    std::function<void(bool ok, const Glib::ustring &msg, int w, int h)>;
+
 // The active image, as seen by the commands that operate on it. Implemented by
 // the GUI (an adaptor over EditorPanel/History) and by the ART-cli server.
 class CommandTarget {
@@ -71,15 +77,25 @@ public:
     // `key: value` lines: file, sizes, camera and exposure metadata
     virtual bool getInfoText(Glib::ustring &out) = 0;
     virtual bool getCurrentParams(procparams::ProcParams &pp) = 0;
+    // the metadata of the image as a JSON object (see metadata_json.h);
+    // `makernotes`: 1 = include the ExifTool maker notes, 0 = not, -1 = as the
+    // preferences say; `edits`: apply the metadata edits of the parameters.
+    // On failure sets `err`
+    virtual bool getMetadata(int makernotes, bool edits, json::Value &out,
+                             Glib::ustring &err) = 0;
+    // the default profile of the preferences for this image (the one for raw
+    // or for non-raw images, possibly the dynamic profile); null if it cannot
+    // be loaded
+    virtual std::unique_ptr<procparams::PartialProfile> getDefaultProfile() = 0;
     // apply a profile as a new (undoable) history entry
     virtual bool applyProfile(const procparams::PartialProfile &pp,
                               const Glib::ustring &descr) = 0;
     // render the window (cx, cy, cw, ch) of the full image (full-image
     // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
     // (format by extension). done() may be called later
-    virtual void renderPreview(
-        const Glib::ustring &outfile, double scale, int cx, int cy, int cw,
-        int ch, std::function<void(bool, const Glib::ustring &)> done) = 0;
+    virtual void renderPreview(const Glib::ustring &outfile, double scale,
+                               int cx, int cy, int cw, int ch,
+                               ImageDone done) = 0;
 
     // size of the full (processed) image, the reference of the coordinates of
     // getSpotWB() and renderPreview()
@@ -89,11 +105,10 @@ public:
     // would, and write it as the request says. done() receives the outcome
     // and the message to report; it may be called later. Not available by
     // default.
-    virtual void exportImage(const ExportRequest &req,
-                             std::function<void(bool, const Glib::ustring &)> done)
+    virtual void exportImage(const ExportRequest &req, ImageDone done)
     {
         (void)req;
-        done(false, "export is not available in this mode");
+        done(false, "export is not available in this mode", 0, 0);
     }
     // The white balance that makes the rectangle (x, y, w, h), in full-image
     // coordinates, neutral. The current parameters are not changed.

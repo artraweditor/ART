@@ -42,7 +42,6 @@ public:
     // resolved against `cwd`. The output goes to `sink`; it is always
     // finished when this returns. Does not throw.
     void execute(const std::vector<std::string> &args, const std::string &cwd,
-                 bool mark,
                  const std::shared_ptr<art::engine::remote::ReplySink> &sink);
 
     // Called when the `quit` command is executed. Without one, `quit` fails.

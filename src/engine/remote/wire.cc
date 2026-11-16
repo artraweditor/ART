@@ -64,7 +64,7 @@ bool writeRequest(ipc::Connection &c, const Request &r)
 {
     std::string payload = r.cwd;
     payload.push_back('\0');
-    payload += r.mark ? "1" : "0";
+    payload += "0"; // reserved
     payload.push_back('\0');
     for (auto &a : r.args) {
         payload += a;
@@ -116,7 +116,6 @@ bool readRequest(ipc::Connection &c, Request &r, std::string &err)
         return false;
     }
     r.cwd = fields[0];
-    r.mark = fields[1] == "1";
     r.args.assign(fields.begin() + 2, fields.end());
     return true;
 }

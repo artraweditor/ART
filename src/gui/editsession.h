@@ -73,13 +73,18 @@ public:
     bool getParamsText(Glib::ustring &out) override;
     bool getInfoText(Glib::ustring &out) override;
     bool getCurrentParams(art::engine::procparams::ProcParams &pp) override;
+    bool getMetadata(int makernotes, bool edits,
+                     art::engine::remote::json::Value &out,
+                     Glib::ustring &err) override;
     bool applyProfile(const art::engine::procparams::PartialProfile &pp,
                       const Glib::ustring &descr) override;
+    std::unique_ptr<art::engine::procparams::PartialProfile>
+    getDefaultProfile() override;
     // synchronous: done() is called before this returns (after waiting for
     // the render, 60 s at most)
     void renderPreview(
         const Glib::ustring &outfile, double scale, int cx, int cy, int cw,
-        int ch, std::function<void(bool, const Glib::ustring &)> done) override;
+        int ch, std::function<void(bool, const Glib::ustring &, int, int)> done) override;
 
     bool getFullSize(int &w, int &h) override;
     // synchronous: done() is called before this returns. The image is
@@ -87,7 +92,7 @@ public:
     // does, with the current parameters, including unsaved edits
     void exportImage(
         const art::engine::remote::ExportRequest &req,
-        std::function<void(bool, const Glib::ustring &)> done) override;
+        std::function<void(bool, const Glib::ustring &, int, int)> done) override;
     bool getSpotWB(int x, int y, int w, int h,
                    art::engine::remote::SpotWB &out) override;
     std::vector<art::engine::remote::HistoryEntryInfo>

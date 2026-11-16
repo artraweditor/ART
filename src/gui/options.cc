@@ -19,6 +19,7 @@
  */
 #include "options.h"
 #include "../engine/metadata.h"
+#include "../engine/profilestore.h"
 #include "addsetids.h"
 #include "guiutils.h"
 #include "../utils/multilangmgr.h"
@@ -2711,6 +2712,30 @@ void Options::saveToFile(Glib::ustring fname)
         std::cout << "options saved to " << fname << std::endl;
     }
 }
+
+std::unique_ptr<art::engine::procparams::PartialProfile>
+Options::loadDefaultProfile(bool is_raw,
+                            const art::engine::FramesMetaData *md) const
+{
+    namespace eng = art::engine;
+    const Glib::ustring name = is_raw ? defProfRaw : defProfImg;
+    auto store = eng::ProfileStore::getInstance();
+    const eng::ProfileStoreEntry *pse = store->findEntryFromFullPath(name);
+    if (!pse) {
+        pse = store->getInternalDefaultPSE();
+    }
+    if (pse == store->getInternalDefaultPSE() && name == DEFPROFILE_DYNAMIC) {
+        auto dyn = store->loadDynamicProfile(md);
+        if (dyn) {
+            return dyn;
+        }
+    }
+    eng::procparams::ProcParams params;
+    store->getProfile(pse)->applyTo(params);
+    return std::unique_ptr<eng::procparams::PartialProfile>(
+        new eng::procparams::FullPartialProfile(params));
+}
+
 
 void Options::load(bool lightweight, int verbose)
 {

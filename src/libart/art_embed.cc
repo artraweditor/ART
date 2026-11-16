@@ -159,7 +159,7 @@ int embed_exec(void *state, const ART_config *, const char *cwd, int argc,
     try {
         std::vector<std::string> args(argv, argv + argc);
         auto s = std::make_shared<CallbackSink>(sink);
-        st->core.execute(args, cwd, false, s);
+        st->core.execute(args, cwd, s);
         if (s->status() < 0) {
             ART_format_error(err, errsize, "the command did not complete");
             return ART_ERR_INTERNAL;

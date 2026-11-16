@@ -19,7 +19,9 @@
 
 #include "remotecmd.h"
 #include "../engine/procparams.h"
+#include "../engine/imgiomanager.h"
 #include "../engine/remote/command_dispatch.h"
+#include "../utils/pathutils.h"
 #include "cachemanager.h"
 #include "editorpanel.h"
 #include "filebrowser.h"
@@ -120,14 +122,61 @@ public:
     {
         return ep_->getCurrentParams(pp);
     }
+    bool getMetadata(int makernotes, bool edits, remote::json::Value &out,
+                     Glib::ustring &err) override
+    {
+        return ep_->getMetadata(makernotes, edits, out, err);
+    }
     bool applyProfile(const art::engine::procparams::PartialProfile &pp,
                       const Glib::ustring &descr) override
     {
         return ep_->applyProfile(pp, descr);
     }
+    std::unique_ptr<art::engine::procparams::PartialProfile>
+    getDefaultProfile() override
+    {
+        return ep_->getDefaultProfile();
+    }
+    // the GUI does not write the file: the image is added to the batch queue
+    // (as with the Save as dialog), which processes it and names the file
+    void exportImage(const remote::ExportRequest &req,
+                     remote::ImageDone done) override
+    {
+        if (req.overwrite) {
+            done(false,
+                 "--overwrite is not available in the GUI: the batch queue "
+                 "decides what happens to an existing file (see the "
+                 "preferences)",
+                 0, 0);
+            return;
+        }
+        SaveFormat sf;
+        sf.format = req.format;
+        sf.jpegQuality = req.quality;
+        sf.jpegSubSamp = req.subsampling;
+        sf.pngBits = req.format == "png" ? req.bits : 8;
+        sf.tiffBits = req.format == "tif" ? req.bits : 16;
+        sf.tiffFloat = req.isFloat;
+        sf.tiffUncompressed = req.uncompressed;
+        sf.saveParams = false;
+        Glib::ustring err;
+        if (!ep_->queueExport(req.outfile, sf, req.fast, err)) {
+            done(false, err, 0, 0);
+            return;
+        }
+        // the queue gives the file the extension of the format
+        std::string ext = req.format;
+        for (auto &p :
+             art::engine::ImageIOManager::getInstance()->getSaveFormats()) {
+            if (p.first == req.format) {
+                ext = p.second.extension;
+            }
+        }
+        done(true, removeExtension(req.outfile) + "." + ext, -1, -1);
+    }
     void renderPreview(const Glib::ustring &outfile, double scale, int cx,
                        int cy, int cw, int ch,
-                       std::function<void(bool, const Glib::ustring &)> done) override
+                       std::function<void(bool, const Glib::ustring &, int, int)> done) override
     {
         ep_->renderPreview(outfile, scale, cx, cy, cw, ch, std::move(done));
     }
@@ -262,15 +311,18 @@ void cmd_open_dir(Ctx &c, Args &a)
 
 void cmd_get_dir(Ctx &c, Args &a)
 {
-    c.reply->ok(c.win->fpanel->fileCatalog->lastSelectedDir());
+    remote::json::Value r = remote::json::Value::object();
+    r.set("directory", c.win->fpanel->fileCatalog->lastSelectedDir());
+    c.reply->ok(r);
 }
 
 void cmd_get_files(Ctx &c, Args &a)
 {
+    remote::json::Value r = remote::json::Value::array();
     for (auto ep : c.win->getEditorPanels()) {
-        c.reply->print(ep->getFileName());
+        r.push(ep->getFileName());
     }
-    c.reply->ok();
+    c.reply->ok(r);
 }
 
 void rate(Ctx &c, Args &a, bool is_rank)
@@ -444,8 +496,7 @@ const remote::Dispatcher &dispatcher()
 
 void run(RTWindow *win, const ClPtr &cl, const Args &args)
 {
-    const bool mark = atoi(cl->getenv("ART_CMD_MARK").c_str()) != 0;
-    auto reply = std::make_shared<remote::Reply>(std::make_shared<ClSink>(cl), mark);
+    auto reply = std::make_shared<remote::Reply>(std::make_shared<ClSink>(cl));
     GuiHost host(win);
     dispatcher().run(host, reply, cl->get_cwd(), args);
 }

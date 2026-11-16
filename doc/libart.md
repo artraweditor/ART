@@ -1,7 +1,7 @@
 # libART: the server mode as a C library
 
 libART runs the commands of ART's [server mode](server_mode.md) (the ones of
-`ART-cli --cmd`: `open`, `apply`, `get-info`, `get-spot-wb`, `preview`, `export`, the
+`ART-cli --cmd`: `open`, `apply`, `get-info`, `get-spot-wb`, `preview`, `export`, `get-metadata`, the
 history and snapshot commands, ...) from C, and, through a small C ABI, from
 Python (a binding is provided) and from any language with a foreign function
 interface.
@@ -63,7 +63,7 @@ ART_options_free(o);
 | `ART_options_set_cwd(o, dir)` | base of relative paths in commands (default: the current directory at the time of each call) |
 | `ART_options_set_timeout(o, ms)` | remote: give up after `ms` (-1 = never, the default). An in-process command cannot be interrupted |
 | `ART_options_set_gpu(o, mode)` | in-process: `"auto"`, `"off"`, `"force"` or a device name, as `ART_GPU` (default: from ART's options file) |
-| `ART_options_set_verbose(o, level)` | in-process: the engine's own diagnostics, printed on the process's stderr |
+| `ART_options_set_verbose(o, level)` | in-process: the engine's own diagnostics (a debugging aid), written by the engine to the process's stdout and stderr; the default, 0, prints nothing |
 
 ### Running commands
 
@@ -75,8 +75,13 @@ int ART_exec_cmd(ART_engine *e, const char *const *argv);
 `NULL`. Arguments are exact: they can contain spaces, or start with `--`. The
 call blocks until the command is done.
 
-The text the command prints goes to the output and error streams of the
-engine, through the callbacks:
+What the command prints goes to the output and error streams of the engine,
+through the callbacks. As for `ART-cli --cmd`, the output stream receives
+exactly one thing, the reply of the command as one line of JSON
+(`{"ok":true,"result":...}` or `{"ok":false,"error":"..."}`, see
+[server_mode.md](server_mode.md#replies)); the error stream gets the
+`ART: error: ...` line of a failed command. Nothing else is written to either
+(the in-process engine's own diagnostics are not, see below):
 
 ```c
 typedef void (*ART_write_fn)(void *user, const char *data, size_t len);
@@ -152,8 +157,9 @@ reports `ART_ERR_UNSUPPORTED`.
 * The first in-process engine initialises the engine of the process (options,
   thread pool, GPU context, ...); the last one to be destroyed cleans it up.
   Creating another one afterwards works.
-* The engine prints some messages directly on the process's stderr when
-  verbose (`ART_options_set_verbose`); nothing at level 0.
+* The engine prints some messages directly on the process's stdout and stderr
+  when verbose (`ART_options_set_verbose`); nothing at level 0, which is what
+  keeps the process's stdout free for the program.
 * Nothing is saved unless the `save` command is run; destroying the engine
   drops unsaved edits.
 * Porting ART's own dependencies to a platform (GLib, exiv2, LibRaw, lensfun,
@@ -234,14 +240,16 @@ from artlib import Engine
 
 with Engine() as art:                       # default server socket
     art.run("open", "photo.arw", check=True)
-    print(art.run("get-info", check=True).out)
+    info = art.run("get-info", check=True).data       # parsed "result": a dict
     r = art.run("get-spot-wb", 1500, 2000, 20, 20)    # r.code, r.out, r.err, r.ok
+    print(r.data["temperature"])                      # r.reply is the whole document
 
 with Engine(inprocess=True, data_dir="/path/to/data", gpu="off") as art:
     ...
 ```
 
-`run()` returns a `Result` (`code`, `out`, `err`, `ok`); a command that fails
+`run()` returns a `Result` (`code`, `out`, `err`, `ok`, and the parsed JSON as
+`reply`, `data` and `error`); a command that fails
 has `code == 1` (or raises `CommandError` with `check=True`); a failure of the
 library raises `ArtError`. `on_output=`/`on_error=` callbacks receive the text
 as it is printed.

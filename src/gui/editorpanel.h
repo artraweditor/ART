@@ -21,6 +21,7 @@
  */
 #pragma once
 
+#include "../engine/remote/json.h"
 #include "../engine/rtengine.h"
 #include "batchqueueentry.h"
 #include "filepanel.h"
@@ -195,16 +196,34 @@ public:
     // coordinates; the parameters are not changed
     bool getSpotWB(int x, int y, int w, int h, art::engine::ColorTemp &out);
     bool getCurrentParams(art::engine::procparams::ProcParams &pp);
+    // the default profile of the preferences for this image (see
+    // Options::loadDefaultProfile); null if there is no image ready
+    std::unique_ptr<art::engine::procparams::PartialProfile>
+    getDefaultProfile();
     // the current processing parameters, as the text of an .arp file
     bool getParamsText(Glib::ustring &out);
     // `key: value` lines: file, sizes, camera and exposure metadata
     bool getInfoText(Glib::ustring &out);
+    // the metadata as the metadata panel shows it, as a JSON object
+    // (makernotes: 1 = with the ExifTool maker notes, 0 = without, -1 = as in
+    // the preferences)
+    bool getMetadata(int makernotes, bool edits,
+                     art::engine::remote::json::Value &out,
+                     Glib::ustring &err);
+    // Add the image, with its current parameters, to the batch queue, as the
+    // "add to queue" button of the Save as dialog does. The queue forces the
+    // extension of `outfile` to that of the format, and handles an existing
+    // file as its preferences say (a numeric suffix, or replacing it), so the
+    // file written can have another name.
+    // Returns false (and sets `err`) if the image cannot be queued.
+    bool queueExport(const Glib::ustring &outfile, const SaveFormat &sf,
+                     bool fast_export, Glib::ustring &err);
     // render the window (cx, cy, cw, ch) of the full image (in full-image
     // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
     // (format by extension). done() is called later, in the GUI thread
     void renderPreview(const Glib::ustring &outfile, double scale, int cx,
                        int cy, int cw, int ch,
-                       std::function<void(bool, const Glib::ustring &)> done);
+                       std::function<void(bool, const Glib::ustring &, int, int)> done);
 
     Gtk::Paned *catalogPane;
 

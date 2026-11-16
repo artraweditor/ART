@@ -158,8 +158,10 @@ ART_API int ART_options_set_timeout(ART_options *opts, int ms);
  * file. */
 ART_API int ART_options_set_gpu(ART_options *opts, const char *mode);
 
-/* In-process only: verbosity of the engine's own diagnostics, which go to the
- * process's stderr (not to the error stream of the engine). Default 0. */
+/* In-process only: verbosity of the engine's own diagnostics (debugging
+ * aid). The engine writes them directly to the process's stdout and stderr,
+ * not to the streams of the engine: at the default, 0, the engine prints
+ * nothing, so leave it there in a program that uses its own stdout. */
 ART_API int ART_options_set_verbose(ART_options *opts, int level);
 
 /* Why the last ART_engine_create() with these options failed: the message
@@ -184,7 +186,10 @@ ART_API void ART_engine_destroy(ART_engine *engine);
 
 /* Execute a command: argv[0] is the verb, the others its arguments, the
  * array ends with a NULL pointer (arguments are exact: they can contain
- * spaces or start with "--"). Output goes to the streams of the engine.
+ * spaces or start with "--"). Output goes to the streams of the engine: the
+ * output stream gets the reply of the command, one line of JSON
+ * ({"ok":true,"result":...} or {"ok":false,"error":"..."}), the error stream
+ * the "ART: error: ..." line of a failed command.
  * Returns ART_OK, ART_ERR_COMMAND if the command failed, or another code
  * (see above). */
 ART_API int ART_exec_cmd(ART_engine *engine, const char *const *argv);

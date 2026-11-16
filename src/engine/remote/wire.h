@@ -28,17 +28,18 @@ namespace art { namespace engine { namespace remote { namespace wire {
 // The protocol between `ART-cli --cmd` and `ART-cli --server`, one request per
 // connection.
 //
-// Request:  "ART1 <len>\n" followed by <len> bytes: the fields `cwd`, `mark`
-//           ("0" or "1") and then the command line (verb and arguments), each
-//           terminated by a NUL byte. Arguments are therefore exact: they can
+// Request:  "ART1 <len>\n" followed by <len> bytes: the fields `cwd`, a
+//           reserved flag ("0" or "1"; it used to ask for marked output and
+//           is now ignored; clients send "0") and then the command line (verb
+//           and arguments), each terminated by a NUL byte. Arguments are therefore exact: they can
 //           hold spaces, newlines, or start with "--".
-// Response: a sequence of frames, "O <len>\n<bytes>" (text for the client's
-//           stdout) and "E <len>\n<bytes>" (stderr), ended by "X <status>\n"
-//           (the exit status of the client).
+// Response: a sequence of frames, "O <len>\n<bytes>" (for the client's
+//           stdout: the JSON reply document of the command, one line) and
+//           "E <len>\n<bytes>" (stderr), ended by "X <status>\n" (the exit
+//           status of the client).
 
 struct Request {
     std::string cwd;
-    bool mark = false;
     std::vector<std::string> args; // args[0] is the verb
 };
 

@@ -65,7 +65,6 @@ void test_roundtrip()
 
     wire::Request sent;
     sent.cwd = "/some dir";
-    sent.mark = true;
     sent.args = {"open", "a file with spaces.arw", "--odd", "", "line\nbreak",
                  "caf\xc3\xa9"};
 
@@ -92,7 +91,7 @@ void test_roundtrip()
     if (c) {
         wire::Request r;
         CHECK(wire::readRequest(*c, r, err));
-        CHECK(r.cwd == sent.cwd && r.mark == sent.mark && r.args == sent.args);
+        CHECK(r.cwd == sent.cwd && r.args == sent.args);
         CHECK(wire::writeFrame(*c, 'O', "hello\n"));
         CHECK(wire::writeFrame(*c, 'E', "oops\n"));
         CHECK(wire::writeFrame(*c, 'O', "")); // nothing is sent
@@ -121,7 +120,7 @@ void test_roundtrip()
     CHECK(c2 != nullptr);
     if (c2) {
         wire::Request r;
-        CHECK(wire::readRequest(*c2, r, err) && r.args.empty() && !r.mark);
+        CHECK(wire::readRequest(*c2, r, err) && r.args.empty());
     }
     client2.join();
 

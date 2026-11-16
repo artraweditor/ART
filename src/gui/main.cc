@@ -31,6 +31,7 @@
 #include "../utils/pathutils.h"
 #include "printhelp.h"
 #include "rtimage.h"
+#include "../engine/remote/remote_reply.h"
 #include "remotecmd.h"
 #include "rtwindow.h"
 #include "session.h"
@@ -388,6 +389,8 @@ private:
             const bool raise = !rtWindow;
             if (raise &&
                 !atoi(command_line->getenv("ART_CMD_START").c_str())) {
+                command_line->print(
+                    art::engine::remote::failureDocument("no running instance"));
                 command_line->printerr("ART: error: no running instance\n");
                 return 1;
             }
@@ -618,11 +621,26 @@ int main(int argc, char **argv)
     options.rtSettings.lensfunDbDirectory = LENSFUN_DB_PATH;
 #endif // BUILD_BUNDLE
 
+    // `--cmd` is parsed later (process_command_line); the options are loaded
+    // before that, so look for it here
+    bool cmd_client = false;
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--cmd") == 0) {
+            cmd_client = true;
+            break;
+        }
+    }
+
     Glib::ustring fatalError;
-    try {
-        Options::load();
-    } catch (Options::Error &e) {
-        fatalError = e.get_msg();
+    if (!cmd_client) {
+        // a command-mode client only talks to a running instance: it must not
+        // load the options (which also prints diagnostics to stdout, where
+        // only the reply of the command belongs)
+        try {
+            Options::load();
+        } catch (Options::Error &e) {
+            fatalError = e.get_msg();
+        }
     }
 
 #ifdef WIN32
@@ -764,6 +782,9 @@ int main(int argc, char **argv)
             } catch (Glib::Error &) {
             }
             if (!is_remote) {
+                std::cout << art::engine::remote::failureDocument(
+                                 "no running instance")
+                          << std::flush;
                 std::cerr << "ART: error: no running instance" << std::endl;
                 return 1;
             }

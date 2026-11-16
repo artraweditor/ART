@@ -80,17 +80,20 @@ ServerCore::ServerCore(const std::string &help_hint):
         c.reply->ok();
     });
     dispatcher_.add("get-files", [&session](Context &c, Args &a) {
+        remote::json::Value r = remote::json::Value::array();
         if (session.isOpen()) {
-            c.reply->print(session.fileName());
+            r.push(session.fileName());
         }
-        c.reply->ok();
+        c.reply->ok(r);
     });
     dispatcher_.add("save", [&session](Context &c, Args &a) {
         Glib::ustring err;
         if (!session.save(err)) {
             throw std::runtime_error(err);
         }
-        c.reply->ok(session.sidecarFile());
+        remote::json::Value r = remote::json::Value::object();
+        r.set("file", session.sidecarFile());
+        c.reply->ok(r);
     });
     dispatcher_.add("ping", [](Context &c, Args &a) { c.reply->ok("pong"); });
     dispatcher_.add("quit", [this](Context &c, Args &a) {
@@ -107,10 +110,10 @@ ServerCore::~ServerCore() {}
 
 
 void ServerCore::execute(const std::vector<std::string> &args,
-                         const std::string &cwd, bool mark,
+                         const std::string &cwd,
                          const std::shared_ptr<remote::ReplySink> &sink)
 {
-    auto reply = std::make_shared<remote::Reply>(sink, mark);
+    auto reply = std::make_shared<remote::Reply>(sink);
     try {
         remote::Args a(args.begin(), args.end());
         dispatcher_.run(*host_, reply, cwd, a);
