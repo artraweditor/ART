@@ -78,6 +78,9 @@ public:
                      Glib::ustring &err) override;
     bool applyProfile(const art::engine::procparams::PartialProfile &pp,
                       const Glib::ustring &descr) override;
+    bool applyProfileMerged(const art::engine::procparams::PartialProfile &pp,
+                            const Glib::ustring &descr,
+                            const std::string &merge_key) override;
     std::unique_ptr<art::engine::procparams::PartialProfile>
     getDefaultProfile() override;
     // synchronous: done() is called before this returns (after waiting for
@@ -121,7 +124,8 @@ private:
                  art::engine::ProcEvent ev);
     // add the change to the history
     void record(const art::engine::procparams::ProcParams &params,
-                art::engine::ProcEvent ev, const Glib::ustring &descr);
+                art::engine::ProcEvent ev, const Glib::ustring &descr,
+                const std::string &merge_key = std::string());
 
     std::shared_ptr<art::engine::StagedImageProcessor> ipc_;
     Model model_;

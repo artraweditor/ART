@@ -48,6 +48,8 @@ public:
         std::string text;
         std::string value;
         Params params;
+        // see procParamsChanged(); empty for the entries that cannot merge
+        std::string mergeKey;
     };
     struct Snapshot {
         std::string name;
@@ -65,13 +67,18 @@ public:
     //  - the entries after the selected one (if any) are dropped;
     //  - if the last remaining entry has the same event it is updated in
     //    place (so that dragging a slider makes one entry), except for
-    //    EvProfileChanged, which always makes a new one;
+    //    EvProfileChanged, which always makes a new one unless `mergeKey` is
+    //    given: then (and only then) an EvProfileChanged entry is updated in
+    //    place if it is the selected, last entry and was recorded with the
+    //    same key. This lets a client that applies a profile for each step of
+    //    a gesture (a slider drag) make one entry per gesture;
     //  - the new or updated entry becomes the selection and no snapshot is
     //    active, except for EvBookmarkSelected: that one only records the
     //    snapshot's parameters at the end of the list and leaves the
     //    selection (the snapshot) alone.
     bool procParamsChanged(const Params &params, ProcEvent ev,
-                           const std::string &text, const std::string &descr)
+                           const std::string &text, const std::string &descr,
+                           const std::string &mergeKey = std::string())
     {
         if (ev == EvHistoryBrowsed || ev == EvMonitorTransform) {
             return false;
@@ -86,9 +93,17 @@ public:
             entries_.erase(entries_.begin() + hsel_ + 1, entries_.end());
         }
         const bool select = ev != EvBookmarkSelected;
-        if (entries_.empty() || entries_.back().event != ev ||
-            ev == EvProfileChanged) {
-            entries_.push_back(Entry{ev, text, descr, params});
+        bool merge;
+        if (entries_.empty() || entries_.back().event != ev) {
+            merge = false;
+        } else if (ev == EvProfileChanged) {
+            merge = !mergeKey.empty() && entries_.back().mergeKey == mergeKey &&
+                    hsel_ == int(entries_.size()) - 1;
+        } else {
+            merge = true;
+        }
+        if (!merge) {
+            entries_.push_back(Entry{ev, text, descr, params, mergeKey});
         } else {
             auto &e = entries_.back();
             e.text = text;

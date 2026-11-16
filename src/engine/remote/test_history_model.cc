@@ -81,6 +81,37 @@ void test_coalescing()
     CHECK(*m.lastParams() == 5);
 }
 
+void test_merge_key()
+{
+    Model m = loaded();
+    // the steps of one gesture (same key) are one entry
+    m.procParamsChanged(1, EvProfileChanged, "P", "a", "drag#1");
+    m.procParamsChanged(2, EvProfileChanged, "P", "a", "drag#1");
+    m.procParamsChanged(3, EvProfileChanged, "P", "a", "drag#1");
+    CHECK(m.size() == 2);
+    CHECK(m.entry(1).params == 3 && m.selectedEntry() == 1);
+    // another key, or none, is a new entry
+    m.procParamsChanged(4, EvProfileChanged, "P", "a", "drag#2");
+    CHECK(m.size() == 3);
+    m.procParamsChanged(5, EvProfileChanged, "P", "a");
+    m.procParamsChanged(6, EvProfileChanged, "P", "a");
+    CHECK(m.size() == 5);
+    // an entry without a key never merges, even into one with a key
+    m.procParamsChanged(7, EvProfileChanged, "P", "a", "drag#3");
+    m.procParamsChanged(8, EvProfileChanged, "P", "a", "drag#3");
+    CHECK(m.size() == 6 && m.entry(5).params == 8);
+    // after an undo the same key starts a new entry (and drops the redo part)
+    CHECK(m.undo() && m.selectedEntry() == 4);
+    m.procParamsChanged(9, EvProfileChanged, "P", "a", "drag#3");
+    CHECK(m.size() == 6 && m.entry(5).params == 9 && m.selectedEntry() == 5);
+    // with a snapshot active nothing merges
+    std::string err;
+    CHECK(m.addSnapshot("s", 0, err));
+    CHECK(m.activateSnapshot("s") && m.selectedEntry() == -1);
+    m.procParamsChanged(10, EvProfileChanged, "P", "a", "drag#3");
+    CHECK(m.size() == 7);
+}
+
 void test_truncate_after_selection()
 {
     Model m = loaded();
@@ -264,6 +295,7 @@ int main()
 {
     test_ignored_events();
     test_coalescing();
+    test_merge_key();
     test_truncate_after_selection();
     test_selection_and_undo_redo();
     test_snapshots();

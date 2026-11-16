@@ -90,6 +90,15 @@ public:
     // apply a profile as a new (undoable) history entry
     virtual bool applyProfile(const procparams::PartialProfile &pp,
                               const Glib::ustring &descr) = 0;
+    // as applyProfile(), but consecutive applications with the same non-empty
+    // `mergeKey` are one history entry (`apply --merge KEY`). A target that
+    // cannot merge (the GUI) just records a new entry each time
+    virtual bool applyProfileMerged(const procparams::PartialProfile &pp,
+                                    const Glib::ustring &descr,
+                                    const std::string &mergeKey)
+    {
+        return applyProfile(pp, descr);
+    }
     // render the window (cx, cy, cw, ch) of the full image (full-image
     // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
     // (format by extension). done() may be called later

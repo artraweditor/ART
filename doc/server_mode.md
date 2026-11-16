@@ -73,7 +73,7 @@ JSON numbers (`null` stands for a missing value).
 | `open FILE` | load FILE and make it the active image, replacing the previous one (unsaved edits are dropped); replies when it is loaded. Starting parameters: the `FILE.arp` sidecar if there is one (with its snapshots), otherwise the default profile of the options |
 | `save` | write the current parameters and the snapshots to the sidecar; result `{"file": <sidecar path>}` |
 | `get-files` | the active image: an array of paths (empty if none) |
-| `apply [--append] PROFILE` | apply a (partial) profile; a new history entry |
+| `apply [--append] [--merge KEY] PROFILE` | apply a (partial) profile; a new history entry, or with `--merge`, the same one as the previous `apply --merge` with the same KEY (see below) |
 | `apply :neutral`, `apply :default` | apply the neutral profile, or the default profile of the preferences (see below) |
 | `get-params` | the current parameters: `{"params": <.arp text>}` |
 | `get-metadata [--makernotes\|--no-makernotes] [--edits\|--no-edits]` | the metadata as a JSON object (see below) |
@@ -95,6 +95,19 @@ GUI, `get-files` lists all the open images, the visible one first.
 Everything above except `open`, `save`, `export`, `ping`, `quit` and the
 server's single-image `get-files` is the same code in the GUI (`ART --cmd`) and
 in the server: `get-spot-wb` and the others behave identically in both.
+
+### `apply --merge KEY`
+
+For a client that applies a profile at every step of a gesture (a slider drag),
+which would otherwise fill the history with one entry per step. Consecutive
+`apply --merge KEY PROFILE` commands with the same non-empty KEY update one
+history entry, provided it is still the selected, last entry (so an `undo`, a
+history jump, an `apply` without `--merge` or another KEY starts a new entry).
+Use a new KEY (e.g. `exposure#17`) for each gesture, so that each is one undo
+step. The profiles are still applied one by one, so the final parameters are
+those of a sequence of plain `apply` commands. Not valid with `:neutral` and
+`:default`. The GUI (`ART --cmd`) accepts the option but records one entry per
+command, as without it.
 
 ### `apply :neutral` and `apply :default`
 

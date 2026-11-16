@@ -242,13 +242,19 @@ const char *const PROFILE_DEFAULT = ":default";
 void cmd_apply(Context &c, Args &a)
 {
     const char *usage =
-        "usage: apply [--append] PROFILE | apply :neutral | apply :default";
+        "usage: apply [--append] [--merge KEY] PROFILE | apply :neutral | "
+        "apply :default";
     const bool append = take_flag(a, "--append");
-    if (a.size() != 1) {
+    Glib::ustring merge_key;
+    const bool merge = take_option(a, "--merge", merge_key);
+    if (a.size() != 1 || (merge && merge_key.empty())) {
         throw std::runtime_error(usage);
     }
     auto reply = c.reply;
 
+    if (merge && (a[0] == PROFILE_NEUTRAL || a[0] == PROFILE_DEFAULT)) {
+        throw std::runtime_error("--merge cannot be used with " + a[0]);
+    }
     if (a[0] == PROFILE_NEUTRAL || a[0] == PROFILE_DEFAULT) {
         // the neutral profile, or the default one of the preferences (which
         // can be a dynamic profile, depending on the image): replaces all the
@@ -300,8 +306,10 @@ void cmd_apply(Context &c, Args &a)
     if (append) {
         label += "+";
     }
-    c.host.whenReady(reply, [fp, label, reply](CommandTarget &t) {
-        if (!t.applyProfile(fp, label)) {
+    const std::string key = merge_key.raw();
+    c.host.whenReady(reply, [fp, label, key, reply](CommandTarget &t) {
+        if (!(key.empty() ? t.applyProfile(fp, label)
+                          : t.applyProfileMerged(fp, label, key))) {
             throw std::runtime_error("cannot apply the profile");
         }
         reply->ok();

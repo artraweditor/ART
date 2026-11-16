@@ -260,11 +260,11 @@ pp::ProcParams EditSession::changeParams(const pp::PartialProfile &nparams,
 
 
 void EditSession::record(const pp::ProcParams &params, eng::ProcEvent ev,
-                         const Glib::ustring &descr)
+                         const Glib::ustring &descr, const std::string &merge_key)
 {
     const Glib::ustring text =
         M(ProcEventMapper::getInstance()->getHistoryMsg(ev));
-    model_.procParamsChanged(params, ev, text.raw(), descr.raw());
+    model_.procParamsChanged(params, ev, text.raw(), descr.raw(), merge_key);
 }
 
 
@@ -361,6 +361,20 @@ bool EditSession::applyProfile(const pp::PartialProfile &profile,
     }
     auto params = changeParams(profile, eng::EvProfileChanged);
     record(params, eng::EvProfileChanged, descr);
+    dirty_ = true;
+    return true;
+}
+
+
+bool EditSession::applyProfileMerged(const pp::PartialProfile &profile,
+                                     const Glib::ustring &descr,
+                                     const std::string &merge_key)
+{
+    if (!isReady()) {
+        return false;
+    }
+    auto params = changeParams(profile, eng::EvProfileChanged);
+    record(params, eng::EvProfileChanged, descr, merge_key);
     dirty_ = true;
     return true;
 }
