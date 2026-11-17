@@ -85,6 +85,7 @@ JSON numbers (`null` stands for a missing value).
 | `snapshot-activate NAME`, `snapshot-overwrite NAME`, `snapshot-remove NAME` | manage snapshots |
 | `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension); result `{"file", "width", "height"}` |
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
+| `get-clut-params FILE` | the parameters of a LUT or CTL script, to build their controls (see below); does not need an image |
 | `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (in the GUI: queue it; see below) |
 | `ping`, `quit` | liveness check (result `"pong"`); stop the server |
 
@@ -228,6 +229,33 @@ neutral; the multipliers are the equivalent per-channel gains relative to green
 The rectangle must lie inside the image and contain at most 1,000,000 pixels.
 The measure is the one the GUI's white balance spot tool uses, which is the
 case of a square of side 2r+1 centred on a point.
+
+### `get-clut-params FILE`
+
+The parameters that Film Simulation (and the LUT mode of Color/Tone Correction)
+shows for a LUT, read from the file by the engine: the `@ART-param`
+definitions of a CTL script, with the defaults of its `ART_main`, or the
+parameters of a JSON LUT. A plain LUT (CLF, Hald CLUT, cube, ...) has none.
+The command does not change the image and does not need one. The result:
+
+```
+{"params":[{"name":"gain","type":"float","label":"Gain","group":"","tooltip":"",
+            "min":-1,"max":1,"step":0.1,"default":[0.5]},
+           {"name":"mode","type":"choice","label":"Mode","group":"","tooltip":"",
+            "min":0,"max":0,"step":1,"default":[1],
+            "choices":[{"label":"A","value":0},{"label":"B","value":1}]}],
+ "presets":[{"key":"warm","label":"Warm","values":{"gain":[0.8]}}]}
+```
+
+`type` is `int`, `float`, `bool`, `choice`, `curve`, `flatcurve`,
+`flatcurve_periodic` or `huesat` (hue in radians and saturation: two values).
+`default` is the list of values of the parameter (a curve: its points as
+`ClutParams` stores them). Labels, groups, tooltips and presets are translated,
+as the GUI does it, into the language of the preferences: a script can give a
+label as `$KEY;text` or `$KEY`, a key of the translations, and the text is
+used when the language has no entry for the key. The values of a
+parameter are written in the profile as `[Film Simulation] ClutParams=name=v1,v2;...`.
+The file must exist; an unreadable or unsupported file gives an empty list.
 
 ## Behaviour
 

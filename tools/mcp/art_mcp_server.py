@@ -62,6 +62,8 @@ undoable from ART's History panel. They are saved to the .arp sidecar when the
 image is closed or the editor tab is left.
 art_get_spot_wb measures the white balance of a rectangle that should be neutral
 (a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
+art_get_clut_params lists the parameters of a LUT or CTL script, to fill
+Film Simulation's ClutParams.
 art_export writes the final full-size file (art_preview is only an approximation).
 """
 
@@ -87,6 +89,8 @@ Nothing is written to disk until art_save, which writes the edits and the
 snapshots to the image's .arp sidecar; opening another image drops unsaved edits.
 art_get_spot_wb measures the white balance of a rectangle that should be neutral
 (a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
+art_get_clut_params lists the parameters of a LUT or CTL script, to fill
+Film Simulation's ClutParams.
 """
 
 
@@ -681,6 +685,22 @@ def t_spot_wb(a):
                     int(round(float(temp))), tint))]
 
 
+def t_get_clut_params(a):
+    path = a["path"]
+    if not os.path.isabs(path):
+        raise ArtError("path must be absolute: %s" % path)
+    r = run_cmd("get-clut-params", path)
+    if not isinstance(r, dict) or "params" not in r:
+        raise ArtError("unexpected reply of get-clut-params")
+    if not r["params"] and not r.get("presets"):
+        return [text("%s has no parameters (a plain LUT, or a file ART cannot read)." % path)]
+    return [text("Parameters of %s. Set them in the profile as "
+                 "{\"Film Simulation\": {\"ClutParams\": \"name=v1,v2;name2=v\"}} (see "
+                 "art_reference); `default` is the list of values of a parameter, and a "
+                 "preset gives the values it sets.\n%s"
+                 % (path, json.dumps(r, ensure_ascii=False, indent=1)))]
+
+
 def t_save(a):
     return [text("Saved the edits and snapshots to %s." % run_cmd("save")["file"])]
 
@@ -848,6 +868,12 @@ TOOLS = [
      _obj({"x": {"type": "integer", "minimum": 0}, "y": {"type": "integer", "minimum": 0},
            "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1}},
           ["x", "y", "w", "h"]), t_spot_wb),
+    ("art_get_clut_params", "List the parameters of a LUT or CTL script (the controls that "
+     "Film Simulation shows for it): name, type (int, float, bool, choice, curve, ...), "
+     "label, group, tooltip, min, max, step, default values and the choices of a choice "
+     "parameter, plus the script's presets. A plain LUT (CLF, Hald, cube) has none. path is "
+     "absolute. It does not need an image and does not change anything.",
+     _obj({"path": {"type": "string"}}, ["path"]), t_get_clut_params),
     ("art_save", "Write the edits and snapshots of the active image to its .arp sidecar "
      "(server backend only: ART-cli never saves by itself).", _obj({}), t_save),
     ("art_export", "Write the visible image with its current edits at full size to an image "

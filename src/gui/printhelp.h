@@ -63,6 +63,7 @@ inline void ART_print_cmd_help(std::ostream &out)
            "editor, the visible one first\n"
         << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers) that makes\n"
         << "                                 the rectangle (full-image coordinates) of the visible editor image neutral\n"
+        << "    get-clut-params FILE         Print the parameters of a LUT or CTL script (JSON)\n"
         << "    preview OUT [--scale F] [--crop X,Y,W,H]\n"
         << "                                 Render the current editor image "
            "(crop in full-image coordinates) to a PNG/JPEG file\n"

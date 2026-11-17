@@ -189,6 +189,7 @@ void printHelp(std::ostream &out)
         << "    export --list-formats        Print the output formats\n"
         << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers)\n"
         << "                                 that makes the rectangle (full-image coordinates) neutral\n"
+        << "    get-clut-params FILE         Print the parameters of a LUT or CTL script (JSON)\n"
         << "    ping                         Check that the server answers\n"
         << "    quit                         Stop the server\n";
 }

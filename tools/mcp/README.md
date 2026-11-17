@@ -76,7 +76,9 @@ With this backend:
   as the `export` command of `doc/server_mode.md`), unlike `art_preview`, which
   is a quick approximation. It takes seconds to minutes, so it waits up to ten
   minutes (or `ART_MCP_TIMEOUT` if larger);
-* `art_get_spot_wb` (both backends) measures the white balance of a rectangle.
+* `art_get_spot_wb` (both backends) measures the white balance of a rectangle;
+* `art_get_clut_params` (both backends) lists the parameters and presets of a LUT
+  or CTL script (`get-clut-params`); it needs no image.
 
 `art_status` shows which backend is in use and whether it is reachable.
 
@@ -132,7 +134,7 @@ reference material was found.
 
 `art_status`, `art_reference`, `art_open_directory`, `art_get_directory`,
 `art_open_image`, `art_list_open_images`, `art_get_info`, `art_get_edit`,
-`art_apply_edit`, `art_apply_profile_file`, `art_preview`, `art_get_spot_wb`,
+`art_apply_edit`, `art_apply_profile_file`, `art_preview`, `art_get_spot_wb`, `art_get_clut_params`,
 `art_get_history`,
 `art_undo`, `art_redo`, `art_history_goto`, `art_get_snapshots`, `art_snapshot`,
 `art_set_rating`,

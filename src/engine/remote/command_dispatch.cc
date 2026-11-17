@@ -17,8 +17,11 @@
  */
 
 #include "command_dispatch.h"
+#include "../clutparams.h"
+#include "../clutstore.h"
 #include "../imgiomanager.h"
 #include "../profilestore.h"
+#include "../../utils/multilangmgr.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -593,6 +596,113 @@ void cmd_get_spot_wb(Context &c, Args &a)
 }
 
 
+// the parameters of a LUT (a CTL script, or an OCIO/JSON LUT): what a client
+// needs to build the controls that Film Simulation shows for it
+const char *clut_param_type(CLUTParamType t)
+{
+    switch (t) {
+    case CLUTParamType::PT_INT:
+        return "int";
+    case CLUTParamType::PT_FLOAT:
+        return "float";
+    case CLUTParamType::PT_BOOL:
+        return "bool";
+    case CLUTParamType::PT_CHOICE:
+        return "choice";
+    case CLUTParamType::PT_CURVE:
+        return "curve";
+    case CLUTParamType::PT_FLATCURVE:
+        return "flatcurve";
+    case CLUTParamType::PT_FLATCURVE_PERIODIC:
+        return "flatcurve_periodic";
+    case CLUTParamType::PT_HUESAT:
+        return "huesat";
+    }
+    return "float";
+}
+
+
+// A label of a script can be `$KEY;default text` or `$KEY`: a key of the GUI's
+// translations (the same rule as the labels of the GUI), in the language of the
+// preferences. Anything else is used as it is.
+Glib::ustring clut_label(const Glib::ustring &l)
+{
+    if (l.empty() || l[0] != '$') {
+        return l;
+    }
+    const auto pos = l.find(';');
+    if (pos == Glib::ustring::npos) {
+        return utils::M(l.substr(1));
+    }
+    const auto key = l.substr(1, pos - 1);
+    const auto res = utils::M(key);
+    return res == key ? l.substr(pos + 1) : res;
+}
+
+
+json::Value clut_values(const std::vector<double> &v)
+{
+    json::Value r = json::Value::array();
+    for (auto d : v) {
+        r.push(d);
+    }
+    return r;
+}
+
+
+void cmd_get_clut_params(Context &c, Args &a)
+{
+    if (a.size() != 1) {
+        throw std::runtime_error("usage: get-clut-params FILE");
+    }
+    const auto file = abspath(a[0], c.cwd);
+    if (!Glib::file_test(file, Glib::FILE_TEST_IS_REGULAR)) {
+        throw std::runtime_error("no such file: " + file);
+    }
+    auto list = CLUTApplication::get_param_descriptors(file);
+    json::Value params = json::Value::array();
+    for (auto &d : list) {
+        json::Value p = json::Value::object();
+        p.set("name", d.name)
+            .set("type", clut_param_type(d.type))
+            .set("label", clut_label(d.gui_name))
+            .set("group", clut_label(d.gui_group))
+            .set("tooltip", clut_label(d.gui_tooltip))
+            .set("min", d.value_min)
+            .set("max", d.value_max)
+            .set("step", d.gui_step)
+            .set("default", clut_values(d.value_default));
+        if (d.type == CLUTParamType::PT_CHOICE) {
+            json::Value ch = json::Value::array();
+            for (auto &o : d.choices) {
+                json::Value e = json::Value::object();
+                e.set("label", clut_label(o.first)).set("value", o.second);
+                ch.push(e);
+            }
+            p.set("choices", ch);
+        }
+        params.push(p);
+    }
+    json::Value presets = json::Value::array();
+    for (auto &pr : list.get_presets()) {
+        CLUTParamValueMap values;
+        if (!list.apply_preset(pr.first, values)) {
+            continue;
+        }
+        json::Value vals = json::Value::object();
+        for (auto &v : values) {
+            vals.set(v.first, clut_values(v.second));
+        }
+        json::Value e = json::Value::object();
+        e.set("key", pr.first).set("label", clut_label(pr.second)).set("values", vals);
+        presets.push(e);
+    }
+    json::Value r = json::Value::object();
+    r.set("params", params).set("presets", presets);
+    c.reply->ok(r);
+}
+
+
 // ---- history and snapshots -------------------------------------------------
 
 bool parse_count(Args &a, int &n)
@@ -817,6 +927,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("snapshot-overwrite", cmd_snapshot_overwrite);
     d.add("preview", cmd_preview);
     d.add("get-spot-wb", cmd_get_spot_wb);
+    d.add("get-clut-params", cmd_get_clut_params);
     d.add("export", cmd_export);
 }
 

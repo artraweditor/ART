@@ -191,6 +191,7 @@ private:
 // the commands that operate on the active image: apply, get-params, get-info,
 // get-history, undo, redo, history-goto, get-snapshots, snapshot-add,
 // snapshot-activate, snapshot-overwrite, snapshot-remove, preview, get-spot-wb
+// (and get-clut-params, which needs no image)
 void registerActiveImageVerbs(Dispatcher &d);
 
 
