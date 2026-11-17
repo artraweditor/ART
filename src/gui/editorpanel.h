@@ -217,7 +217,9 @@ public:
     // file written can have another name.
     // Returns false (and sets `err`) if the image cannot be queued.
     bool queueExport(const Glib::ustring &outfile, const SaveFormat &sf,
-                     bool fast_export, Glib::ustring &err, int fast_size = 0);
+                     bool fast_export, Glib::ustring &err, int fast_size = 0,
+                     const art::engine::procparams::PartialProfile *overrides =
+                         nullptr);
     // render the window (cx, cy, cw, ch) of the full image (in full-image
     // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
     // (format by extension). done() is called later, in the GUI thread

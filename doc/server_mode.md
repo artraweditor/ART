@@ -163,6 +163,7 @@ of `export` in the GUI, compared with the server:
 | `--compression none\|zip` | tif only; default `none` |
 | `--overwrite` | replace an existing `OUTFILE`; without it an existing file is an error |
 | `--fast [SIZE]` | the fast export pipeline (`ART-cli -f`). With `SIZE`, the long edge of the result is at most `SIZE` pixels, instead of the fast export size set in the preferences (the options file) |
+| `--profile FILE` | a partial profile (`.arp`) whose keys override the edit's parameters for this export only; nothing is applied to the image, so the history is unchanged |
 
 `OUTFILE` is written exactly as named (the extension is not changed to match
 the format) and must be in an existing directory; it cannot be the input file.

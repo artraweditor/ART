@@ -59,6 +59,8 @@ struct ExportRequest {
     bool fast = false;       // the fast export pipeline
     int fastSize = 0;        // fast: the long edge in pixels (0 = preferences)
     bool overwrite = false;  // replace an existing file
+    Glib::ustring profile;   // absolute; a partial profile (.arp) applied to
+                             // the parameters of the export only (empty: none)
 };
 
 // Completion of a command that writes an image: on success `msg` is the file

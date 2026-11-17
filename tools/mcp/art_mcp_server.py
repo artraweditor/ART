@@ -718,6 +718,10 @@ def t_export(a):
     for key in ("float", "overwrite"):
         if a.get(key):
             args.append("--" + key)
+    if a.get("profile"):
+        if not os.path.isabs(a["profile"]):
+            raise ArtError("profile must be an absolute path: %s" % a["profile"])
+        args += ["--profile", a["profile"]]
     if a.get("fast_size") is not None:
         args += ["--fast", a["fast_size"]]  # implies fast
     elif a.get("fast"):
@@ -889,7 +893,9 @@ TOOLS = [
      "float (tif, 16-bit floating point), compression (tif: none|zip). An existing file is "
      "not replaced unless overwrite is true. fast uses the quick export pipeline, which "
      "scales the image down to the size set in ART's preferences; fast_size (pixels) implies "
-     "fast and sets the longest edge of the result instead, e.g. 1600 for a web copy.",
+     "fast and sets the longest edge of the result instead, e.g. 1600 for a web copy. profile is the absolute path of a partial "
+     ".arp file whose keys override the edit for this export only (e.g. a Resize or "
+     "output profile for a web copy); the image and its history are not changed.",
      _obj({"path": {"type": "string"}, "format": {"type": "string"},
            "quality": {"type": "integer", "minimum": 0, "maximum": 100},
            "subsampling": {"type": "integer", "minimum": 1, "maximum": 3},
@@ -897,6 +903,7 @@ TOOLS = [
            "float": {"type": "boolean"},
            "compression": {"type": "string", "enum": ["none", "zip"]},
            "overwrite": {"type": "boolean", "default": False},
+           "profile": {"type": "string"},
            "fast": {"type": "boolean", "default": False},
            "fast_size": {"type": "integer", "minimum": 1, "maximum": 100000}},
           ["path"]), t_export),

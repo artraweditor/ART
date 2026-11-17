@@ -497,6 +497,15 @@ void EditSession::exportImage(
 
     pp::ProcParams params;
     ipc_->getParams(&params);
+    if (!req.profile.empty()) {
+        // overrides for this export only: the image and its history are not
+        // changed
+        if (!pp::FilePartialProfile(nullptr, req.profile, false)
+                 .applyTo(params)) {
+            done(false, "cannot load the profile: " + req.profile, 0, 0);
+            return;
+        }
+    }
     applyExportProfile(params, opts);
 
     auto job = create_processing_job(fname_, is_raw_, params, opts.fast,

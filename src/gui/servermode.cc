@@ -184,6 +184,7 @@ void printHelp(std::ostream &out)
         << "                                 coordinates) to a PNG/JPEG file\n"
         << "    export OUTFILE [--format F] [--quality N] [--subsampling 1-3] [--bits N]\n"
         << "           [--float] [--compression none|zip] [--overwrite] [--fast [SIZE]]\n"
+        << "           [--profile FILE]\n"
         << "                                 Write the image at full size, as ART-cli would; the format is\n"
         << "                                 that of OUTFILE unless --format is given\n"
         << "    export --list-formats        Print the output formats\n"

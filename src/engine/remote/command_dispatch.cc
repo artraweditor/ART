@@ -392,7 +392,7 @@ void cmd_export(Context &c, Args &a)
 {
     const char *usage =
         "usage: export OUTFILE [--format F] [--quality N] [--subsampling N] "
-        "[--bits N] [--float] [--compression none|zip] [--overwrite] [--fast [SIZE]]"
+        "[--bits N] [--float] [--compression none|zip] [--overwrite] [--fast [SIZE]] [--profile FILE]"
         " | export --list-formats";
     const auto formats = export_formats();
 
@@ -416,6 +416,19 @@ void cmd_export(Context &c, Args &a)
     const bool has_bits = take_option(a, "--bits", bv);
     const bool has_comp = take_option(a, "--compression", cv);
     const bool has_float = take_flag(a, "--float");
+    Glib::ustring pv;
+    if (take_option(a, "--profile", pv)) {
+        // a partial profile (sidecar) that overrides settings for this export
+        // only: it is not applied to the image, so the history is untouched
+        req.profile = abspath(pv, c.cwd);
+        if (!Glib::file_test(req.profile, Glib::FILE_TEST_IS_REGULAR)) {
+            throw std::runtime_error("no such profile: " + req.profile);
+        }
+        pp::ProcParams tmp;
+        if (!pp::FilePartialProfile(nullptr, req.profile, false).applyTo(tmp)) {
+            throw std::runtime_error("cannot load the profile: " + req.profile);
+        }
+    }
     req.overwrite = take_flag(a, "--overwrite");
     // `--fast` takes an optional SIZE (the long edge, in pixels): it is the
     // number that follows it, if the output file is still there without it

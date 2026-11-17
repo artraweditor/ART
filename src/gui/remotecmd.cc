@@ -160,7 +160,10 @@ public:
         sf.tiffUncompressed = req.uncompressed;
         sf.saveParams = false;
         Glib::ustring err;
-        if (!ep_->queueExport(req.outfile, sf, req.fast, err, req.fastSize)) {
+        art::engine::procparams::FilePartialProfile over(nullptr, req.profile,
+                                                         false);
+        if (!ep_->queueExport(req.outfile, sf, req.fast, err, req.fastSize,
+                              req.profile.empty() ? nullptr : &over)) {
             done(false, err, 0, 0);
             return;
         }

@@ -76,7 +76,8 @@ With this backend:
   as the `export` command of `doc/server_mode.md`), unlike `art_preview`, which
   is a quick approximation. `fast` selects the fast export pipeline, and
   `fast_size` (which implies `fast`) sets the long edge of the result in pixels,
-  instead of the size of the preferences. It takes seconds to minutes, so it
+  instead of the size of the preferences. `profile` is a partial `.arp` file
+  that overrides settings for that export only, leaving the history alone. It takes seconds to minutes, so it
   waits up to ten minutes (or `ART_MCP_TIMEOUT` if larger);
 * `art_get_spot_wb` (both backends) measures the white balance of a rectangle;
 * `art_get_clut_params` (both backends) lists the parameters and presets of a LUT

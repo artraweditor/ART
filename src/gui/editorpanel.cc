@@ -1216,13 +1216,14 @@ bool EditorPanel::getMetadata(int makernotes, bool edits,
 
 bool EditorPanel::queueExport(const Glib::ustring &outfile,
                               const SaveFormat &sf, bool fast_export,
-                              Glib::ustring &err, int fast_size)
+                              Glib::ustring &err, int fast_size,
+                              const art::engine::procparams::PartialProfile *overrides)
 {
     if (!ipc || !openThm) {
         err = "no image ready in the editor";
         return false;
     }
-    BatchQueueEntry *bqe = createBatchQueueEntry(fast_export, false, nullptr, fast_size);
+    BatchQueueEntry *bqe = createBatchQueueEntry(fast_export, false, overrides, fast_size);
     bqe->outFileName = outfile;
     bqe->saveFormat = sf;
     bqe->forceFormatOpts = true;
