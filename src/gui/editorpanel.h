@@ -217,7 +217,7 @@ public:
     // file written can have another name.
     // Returns false (and sets `err`) if the image cannot be queued.
     bool queueExport(const Glib::ustring &outfile, const SaveFormat &sf,
-                     bool fast_export, Glib::ustring &err);
+                     bool fast_export, Glib::ustring &err, int fast_size = 0);
     // render the window (cx, cy, cw, ch) of the full image (in full-image
     // coordinates; cw <= 0 means the whole image) scaled by `scale` to a file
     // (format by extension). done() is called later, in the GUI thread
@@ -235,7 +235,8 @@ public:
 private:
     BatchQueueEntry *createBatchQueueEntry(
         bool fast_export, bool use_batch_queue_profile,
-        const art::engine::procparams::PartialProfile *export_profile);
+        const art::engine::procparams::PartialProfile *export_profile,
+        int fast_size = 0);
     bool idle_imageSaved(ProgressConnector<int> *pc, art::engine::IImagefloat *img,
                          Glib::ustring fname, SaveFormat sf,
                          art::engine::procparams::ProcParams &pparams);

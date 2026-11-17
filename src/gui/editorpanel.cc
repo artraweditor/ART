@@ -1216,13 +1216,13 @@ bool EditorPanel::getMetadata(int makernotes, bool edits,
 
 bool EditorPanel::queueExport(const Glib::ustring &outfile,
                               const SaveFormat &sf, bool fast_export,
-                              Glib::ustring &err)
+                              Glib::ustring &err, int fast_size)
 {
     if (!ipc || !openThm) {
         err = "no image ready in the editor";
         return false;
     }
-    BatchQueueEntry *bqe = createBatchQueueEntry(fast_export, false, nullptr);
+    BatchQueueEntry *bqe = createBatchQueueEntry(fast_export, false, nullptr, fast_size);
     bqe->outFileName = outfile;
     bqe->saveFormat = sf;
     bqe->forceFormatOpts = true;
@@ -2354,7 +2354,8 @@ bool EditorPanel::idle_imageSaved(ProgressConnector<int> *pc,
 
 BatchQueueEntry *EditorPanel::createBatchQueueEntry(
     bool fast_export, bool use_batch_queue_profile,
-    const art::engine::procparams::PartialProfile *export_profile)
+    const art::engine::procparams::PartialProfile *export_profile,
+    int fast_size)
 {
     art::engine::procparams::ProcParams pparams;
     ipc->getParams(&pparams);
@@ -2365,7 +2366,7 @@ BatchQueueEntry *EditorPanel::createBatchQueueEntry(
     // (openThm->getFileName (), openThm->getType() == FT_Raw, pparams);
     art::engine::ProcessingJob *job = create_processing_job(
         openThm->getFileName(), openThm->getType() == FT_Raw, pparams,
-        fast_export);
+        fast_export, fast_size);
     static_cast<art::engine::ProcessingJobImpl *>(job)->use_batch_profile =
         use_batch_queue_profile;
     int fullW = 0, fullH = 0;

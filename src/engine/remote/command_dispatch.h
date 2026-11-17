@@ -57,6 +57,7 @@ struct ExportRequest {
     bool isFloat = false;    // tif
     bool uncompressed = true; // tif
     bool fast = false;       // the fast export pipeline
+    int fastSize = 0;        // fast: the long edge in pixels (0 = preferences)
     bool overwrite = false;  // replace an existing file
 };
 

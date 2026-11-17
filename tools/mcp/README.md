@@ -74,8 +74,10 @@ With this backend:
   called (the GUI saves when an image is closed);
 * `art_export` is offered: it writes the final full-size file (format and options
   as the `export` command of `doc/server_mode.md`), unlike `art_preview`, which
-  is a quick approximation. It takes seconds to minutes, so it waits up to ten
-  minutes (or `ART_MCP_TIMEOUT` if larger);
+  is a quick approximation. `fast` selects the fast export pipeline, and
+  `fast_size` (which implies `fast`) sets the long edge of the result in pixels,
+  instead of the size of the preferences. It takes seconds to minutes, so it
+  waits up to ten minutes (or `ART_MCP_TIMEOUT` if larger);
 * `art_get_spot_wb` (both backends) measures the white balance of a rectangle;
 * `art_get_clut_params` (both backends) lists the parameters and presets of a LUT
   or CTL script (`get-clut-params`); it needs no image.

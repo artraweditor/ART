@@ -392,7 +392,7 @@ void cmd_export(Context &c, Args &a)
 {
     const char *usage =
         "usage: export OUTFILE [--format F] [--quality N] [--subsampling N] "
-        "[--bits N] [--float] [--compression none|zip] [--overwrite] [--fast]"
+        "[--bits N] [--float] [--compression none|zip] [--overwrite] [--fast [SIZE]]"
         " | export --list-formats";
     const auto formats = export_formats();
 
@@ -417,7 +417,28 @@ void cmd_export(Context &c, Args &a)
     const bool has_comp = take_option(a, "--compression", cv);
     const bool has_float = take_flag(a, "--float");
     req.overwrite = take_flag(a, "--overwrite");
-    req.fast = take_flag(a, "--fast");
+    // `--fast` takes an optional SIZE (the long edge, in pixels): it is the
+    // number that follows it, if the output file is still there without it
+    for (auto it = a.begin(); it != a.end(); ++it) {
+        if (*it != "--fast") {
+            continue;
+        }
+        req.fast = true;
+        auto n = std::next(it);
+        int sz = 0;
+        const bool other = a.size() >= 3; // OUTFILE besides `--fast N`
+        if (n != a.end() && other && parse_int(*n, sz) && (*n)[0] != '-') {
+            if (sz < 1 || sz > 100000) {
+                throw std::runtime_error(
+                    "invalid --fast size (expected 1-100000): " + *n);
+            }
+            req.fastSize = sz;
+            a.erase(it, n + 1);
+        } else {
+            a.erase(it);
+        }
+        break;
+    }
     for (auto &x : a) {
         if (x.compare(0, 2, "--") == 0) {
             throw std::runtime_error("unknown option: " + x);

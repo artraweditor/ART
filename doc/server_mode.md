@@ -162,7 +162,7 @@ of `export` in the GUI, compared with the server:
 | `--float` | tif: 16-bit floating point (with `--bits 16`) |
 | `--compression none\|zip` | tif only; default `none` |
 | `--overwrite` | replace an existing `OUTFILE`; without it an existing file is an error |
-| `--fast` | the fast export pipeline (`ART-cli -f`) |
+| `--fast [SIZE]` | the fast export pipeline (`ART-cli -f`). With `SIZE`, the long edge of the result is at most `SIZE` pixels, instead of the fast export size set in the preferences (the options file) |
 
 `OUTFILE` is written exactly as named (the extension is not changed to match
 the format) and must be in an existing directory; it cannot be the input file.

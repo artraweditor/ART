@@ -24,13 +24,15 @@
 namespace art { namespace gui {
 
 
+// fast_size > 0: the long edge of the fast export, in pixels, instead of the
+// size set in the preferences
 art::engine::ProcessingJob *
 create_processing_job(const Glib::ustring &fname, bool is_raw,
-                      art::engine::procparams::ProcParams pparams, bool fast);
+                      art::engine::procparams::ProcParams pparams, bool fast, int fast_size = 0);
 
 art::engine::ProcessingJob *
 create_processing_job(art::engine::InitialImage *initialImage,
-                      art::engine::procparams::ProcParams params, bool fast);
+                      art::engine::procparams::ProcParams params, bool fast, int fast_size = 0);
 
 
 } } // namespace art::gui

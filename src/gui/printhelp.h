@@ -68,7 +68,7 @@ inline void ART_print_cmd_help(std::ostream &out)
         << "                                 Render the current editor image "
            "(crop in full-image coordinates) to a PNG/JPEG file\n"
         << "    export OUTFILE [--format F] [--quality N] [--subsampling 1-3] [--bits N]\n"
-        << "           [--float] [--compression none|zip] [--overwrite] [--fast]\n"
+        << "           [--float] [--compression none|zip] [--overwrite] [--fast [SIZE]]\n"
         << "                                 Add the current image to the batch queue with these settings (it is\n"
         << "                                 not written at once; the queue names the file and decides what to\n"
         << "                                 do with an existing one, so --overwrite is an error); the format is\n"

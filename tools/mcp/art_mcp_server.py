@@ -718,6 +718,10 @@ def t_export(a):
     for key in ("float", "overwrite"):
         if a.get(key):
             args.append("--" + key)
+    if a.get("fast_size") is not None:
+        args += ["--fast", a["fast_size"]]  # implies fast
+    elif a.get("fast"):
+        args.append("--fast")
     # a full-size export is slow: wait at least ten minutes
     timeout = max(600.0, float(os.environ.get("ART_MCP_TIMEOUT", "120")))
     r = run_cmd(*args, timeout=timeout)
@@ -882,14 +886,19 @@ TOOLS = [
      "format is that of its extension unless format is given (jpg, tif, png, ...). Options: "
      "quality (jpg, 0-100, default 92), subsampling (jpg, 1-3), bits (png 8|16; tif 8|16|32), "
      "float (tif, 16-bit floating point), compression (tif: none|zip). An existing file is "
-     "not replaced unless overwrite is true.",
+     "not replaced unless overwrite is true. fast uses the quick export pipeline, which "
+     "scales the image down to the size set in ART's preferences; fast_size (pixels) implies "
+     "fast and sets the longest edge of the result instead, e.g. 1600 for a web copy.",
      _obj({"path": {"type": "string"}, "format": {"type": "string"},
            "quality": {"type": "integer", "minimum": 0, "maximum": 100},
            "subsampling": {"type": "integer", "minimum": 1, "maximum": 3},
            "bits": {"type": "integer", "enum": [8, 16, 32]},
            "float": {"type": "boolean"},
            "compression": {"type": "string", "enum": ["none", "zip"]},
-           "overwrite": {"type": "boolean", "default": False}}, ["path"]), t_export),
+           "overwrite": {"type": "boolean", "default": False},
+           "fast": {"type": "boolean", "default": False},
+           "fast_size": {"type": "integer", "minimum": 1, "maximum": 100000}},
+          ["path"]), t_export),
     ("art_get_history", "The edit history of the visible image, oldest first, with the "
      "current entry marked. Each entry is one change (e.g. an Exposure adjustment).",
      _obj({}), t_get_history),

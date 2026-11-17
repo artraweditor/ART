@@ -498,7 +498,8 @@ void EditSession::exportImage(
     ipc_->getParams(&params);
     applyExportProfile(params, opts);
 
-    auto job = create_processing_job(fname_, is_raw_, params, opts.fast);
+    auto job = create_processing_job(fname_, is_raw_, params, opts.fast,
+                                       req.fastSize);
     if (!job) {
         done(false, "impossible to create the processing job", 0, 0);
         return;

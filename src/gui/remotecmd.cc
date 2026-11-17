@@ -160,7 +160,7 @@ public:
         sf.tiffUncompressed = req.uncompressed;
         sf.saveParams = false;
         Glib::ustring err;
-        if (!ep_->queueExport(req.outfile, sf, req.fast, err)) {
+        if (!ep_->queueExport(req.outfile, sf, req.fast, err, req.fastSize)) {
             done(false, err, 0, 0);
             return;
         }
