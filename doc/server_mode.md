@@ -83,7 +83,7 @@ JSON numbers (`null` stands for a missing value).
 | `get-snapshots` | an array of `{"name", "active"}` |
 | `snapshot-add [NAME]` | result `{"name": <the name given or generated>}` |
 | `snapshot-activate NAME`, `snapshot-overwrite NAME`, `snapshot-remove NAME` | manage snapshots |
-| `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension); result `{"file", "width", "height"}` |
+| `preview OUT [--scale F] [--crop X,Y,W,H]` | render the image (crop in full-image coordinates) to a PNG or JPEG (by extension), always in sRGB; result `{"file", "width", "height"}` |
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
 | `get-clut-params FILE` | the parameters of a LUT or CTL script, to build their controls (see below); does not need an image |
 | `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (in the GUI: queue it; see below) |
@@ -270,6 +270,15 @@ The file must exist; an unreadable or unsupported file gives an empty list.
   pipeline, so it can differ from a batch export of the same profile
   (measured: a mean difference of about 4 levels out of 255 on one test raw).
   Use `export` when the exact output matters.
+* **`preview` is always sRGB.** The pixels are converted to sRGB (relative
+  colorimetric, with black point compensation) whatever the output profile of
+  the edit, the working profile, the monitor or OS display profile and the
+  `HistogramWorking` option are, and no ICC profile is embedded (untagged
+  files are read as sRGB). Both `EditSession::renderPreview` (server) and
+  `EditorPanel::renderPreview` (GUI) request it with
+  `DetailedCrop::setSRGBOutput(true)`; `export` keeps using the output profile
+  and embeds it. Before this the preview was in the output profile, or in the
+  working profile when `HistogramWorking` is on, without telling which.
 * The server does not run the Crop tool's trimming after `apply`; a profile
   whose crop exceeds the image is applied as it is.
 * Set `ART_GPU=1` (or `0`) in the server's environment to choose the backend

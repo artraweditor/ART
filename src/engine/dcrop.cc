@@ -529,9 +529,15 @@ void Crop::updateImpl(int todo)
 
     if (cropImageListener) {
         // internal image in output color space for analysis
+        procparams::ColorManagementParams icm = params.icm;
+        if (srgbOutput_) {
+            icm.outputProfile = "RTv2_sRGB";
+            icm.outputIntent = RI_RELATIVE;
+            icm.outputBPC = true;
+        }
         Image8 *cropImgtrue =
             parent->ipf.rgb2out(bufs_[2], 0, 0, cropImg->getWidth(),
-                                cropImg->getHeight(), params.icm);
+                                cropImg->getHeight(), icm, !srgbOutput_);
 
         int finalW = rqcropw;
 

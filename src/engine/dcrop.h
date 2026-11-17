@@ -74,6 +74,7 @@ protected:
         leftBorder; /// extra border size really allocated for image processing
 
     bool cropAllocated;
+    bool srgbOutput_ = false;
     DetailedCropListener *cropImageListener;
 
     art::utils::MyMutex cropMutex;
@@ -108,6 +109,7 @@ public:
     ~Crop() override;
 
     void setEditSubscriber(art::gui::EditSubscriber *newSubscriber);
+    void setSRGBOutput(bool yes) override { srgbOutput_ = yes; }
     bool hasListener();
     void setWindow(int cropX, int cropY, int cropW, int cropH,
                    int skip) override

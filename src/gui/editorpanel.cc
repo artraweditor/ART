@@ -1384,6 +1384,7 @@ void EditorPanel::renderPreview(
     auto job = new RemotePreviewJob();
     job->ipc = ipc; // keep the processor alive
     job->crop = ipc->createCrop(nullptr, true);
+    job->crop->setSRGBOutput(true); // the preview is always sRGB
     job->listener.reset(new RemotePreview(cx, cy, cw, ch, skip));
     job->outfile = outfile;
     job->scale = scale;

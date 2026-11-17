@@ -411,6 +411,7 @@ void EditSession::renderPreview(
 
     auto ipc = ipc_; // keep the processor alive for the worker
     eng::DetailedCrop *crop = ipc->createCrop(nullptr, true);
+    crop->setSRGBOutput(true); // the preview is always sRGB
     PreviewCatcher catcher(cx, cy, cw, ch, skip);
     crop->setListener(&catcher);
     if (crop->tryUpdate()) {

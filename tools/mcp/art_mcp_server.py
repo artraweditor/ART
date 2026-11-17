@@ -855,7 +855,8 @@ TOOLS = [
           ["path"]), t_apply_profile),
     ("art_preview", "Render the visible image with its current edits and return it as an "
      "image. Optionally a crop (x, y, w, h in full-image pixels, see art_get_info) to inspect "
-     "details, and either scale or max_size (longest edge, default 1280).",
+     "details, and either scale or max_size (longest edge, default 1280). The colours are "
+     "always sRGB, whatever the output profile of the edit.",
      _obj({"scale": {"type": "number", "exclusiveMinimum": 0},
            "max_size": {"type": "integer", "minimum": 64},
            "crop": _obj({"x": {"type": "integer", "minimum": 0},

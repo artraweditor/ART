@@ -478,6 +478,12 @@ public:
     virtual void setListener(DetailedCropListener *il) {}
     /** Destroys the crop. */
     virtual void destroy() {}
+    /** If true, the image given to the listener as `imgtrue` is in sRGB
+     * (relative colorimetric, with black point compensation), whatever the
+     * output profile of the processing parameters, the working profile and
+     * the settings of the histogram or of the monitor say. Used for rendering
+     * images for other programs, which must not depend on the configuration. */
+    virtual void setSRGBOutput(bool yes) {}
 };
 
 enum GamutCheck { GAMUT_CHECK_OFF, GAMUT_CHECK_OUTPUT, GAMUT_CHECK_MONITOR };
