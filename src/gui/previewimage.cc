@@ -20,15 +20,15 @@
 
 #include <iostream>
 #include "previewimage.h"
-#include "iccstore.h"
-#include "iimage.h"
-#include "imgiomanager.h"
-#include "rawimagesource.h"
-#include "rtthumbnail.h"
-#include "stdimagesource.h"
-#include "utils.h"
+#include "../engine/iccstore.h"
+#include "../engine/iimage.h"
+#include "../engine/imgiomanager.h"
+#include "../engine/rawimagesource.h"
+#include "../engine/rtthumbnail.h"
+#include "../engine/stdimagesource.h"
+#include "../engine/utils.h"
 #define BENCHMARK
-#include "StopWatch.h"
+#include "../engine/StopWatch.h"
 
 namespace art { namespace engine {
 

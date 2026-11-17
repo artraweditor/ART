@@ -23,7 +23,7 @@
 #include <cstdint>
 #include <memory>
 
-#include <gtkmm.h>
+#include <glibmm.h>
 
 #include "alignedbuffer.h"
 #include "array2D.h"

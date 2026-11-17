@@ -18,7 +18,6 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "alpha.h"
 #include "guidedfilter.h"
 #include "imagefloat.h"
 #include "imagesource.h"

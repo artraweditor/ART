@@ -44,21 +44,22 @@ target_compile_definitions(art-lib-static PUBLIC ART_STATIC_LIB)
 # engine themselves)
 option(ART_LIBART_EMBED "libART: build the in-process backend into the shared library" ON)
 if(ART_LIBART_EMBED)
-    get_target_property(_cli_srcs art-cli SOURCES)
+    # the sources and libraries of ART-cli, which need not be built itself
     set(_embed_srcs art_embed.cc)
-    foreach(f ${_cli_srcs})
+    foreach(f ${ART_CLI_SOURCES})
         if(NOT f MATCHES "main-cli\\.cc|servermode\\.cc|\\.rc$")
             list(APPEND _embed_srcs ${CMAKE_SOURCE_DIR}/src/gui/${f})
         endif()
     endforeach()
     target_sources(art-lib PRIVATE ${_embed_srcs})
     target_compile_definitions(art-lib PRIVATE ART_LIBART_EMBED)
-    target_include_directories(art-lib PRIVATE
-        $<TARGET_PROPERTY:art-cli,INCLUDE_DIRECTORIES>)
-    # link_directories() are per directory: take those of the programs
+    # include_directories() and link_directories() are per directory: take
+    # those of the programs
+    get_directory_property(_gui_incdirs DIRECTORY ${CMAKE_SOURCE_DIR}/src/gui INCLUDE_DIRECTORIES)
+    target_include_directories(art-lib PRIVATE ${_gui_incdirs})
     get_directory_property(_gui_linkdirs DIRECTORY ${CMAKE_SOURCE_DIR}/src/gui LINK_DIRECTORIES)
     target_link_directories(art-lib PRIVATE ${_gui_linkdirs})
-    target_link_libraries(art-lib PRIVATE $<TARGET_PROPERTY:art-cli,LINK_LIBRARIES>)
+    target_link_libraries(art-lib PRIVATE ${ART_CLI_LIBRARIES})
     set_target_properties(art-lib PROPERTIES LINKER_LANGUAGE CXX)
     add_dependencies(art-lib UpdateInfo)
 endif()

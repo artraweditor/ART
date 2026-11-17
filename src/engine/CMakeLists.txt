@@ -1,6 +1,8 @@
 include_directories(${EXTRA_INCDIR}
     ${EXPAT_INCLUDE_DIRS}
     ${FFTW3F_INCLUDE_DIRS}
+    ${GIO_INCLUDE_DIRS}
+    ${GIOMM_INCLUDE_DIRS}
     ${GLIB2_INCLUDE_DIRS}
     ${GLIBMM_INCLUDE_DIRS}
     ${GOBJECT_INCLUDE_DIRS}
@@ -64,7 +66,6 @@ set(RTENGINESOURCEFILES
     badpixels.cc
     CA_correct_RT.cc
     PF_correct_RT.cc
-    alpha.cc
     ahd_demosaic_RT.cc
     amaze_demosaic_RT.cc
     cJSON.c
@@ -121,7 +122,6 @@ set(RTENGINESOURCEFILES
     pipelineprofile.cc
     pipettebuffer.cc
     pixelshift.cc
-    previewimage.cc
     processingjob.cc
     procparams.cc
     profilestore.cc

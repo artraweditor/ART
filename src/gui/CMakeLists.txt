@@ -178,11 +178,12 @@ set(NONCLISOURCEFILES
     thumbimgcache.cc
     clutparamspanel.cc
     gdkcolormgmt.cc
+    previewimage.cc
     )
 
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
 
-if(APPLE)
+if(APPLE AND ART_BUILD_GUI)
     pkg_check_modules(MacIntegration gtk-mac-integration-gtk3)
     if(NOT MacIntegration_FOUND)
         find_package(MacIntegration REQUIRED)
@@ -204,6 +205,7 @@ if(WIN32)
     endif()
     set(EXTRA_LIB_RTGUI winmm)
     include_directories(${EXTRA_INCDIR}
+        ${CAIROMM_INCLUDE_DIRS}
         ${GIOMM_INCLUDE_DIRS}
         ${GIO_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
@@ -216,6 +218,7 @@ if(WIN32)
         )
     link_directories(.
         ${EXTRA_LIBDIR}
+        ${CAIROMM_LIBRARY_DIRS}
         ${GIOMM_LIBRARY_DIRS}
         ${GIO_LIBRARY_DIRS}
         ${GLIB2_LIBRARY_DIRS}
@@ -230,6 +233,7 @@ else()
         ${CANBERRA-GTK_INCLUDE_DIRS}
         ${EXPAT_INCLUDE_DIRS}
         ${FFTW3F_LIBRARY_DIRS}
+        ${CAIROMM_INCLUDE_DIRS}
         ${GIOMM_INCLUDE_DIRS}
         ${GIO_INCLUDE_DIRS}
         ${GLIB2_INCLUDE_DIRS}
@@ -247,6 +251,7 @@ else()
         ${CANBERRA-GTK_LIBRARY_DIRS}
         ${EXPAT_LIBRARY_DIRS}
         ${FFTW3F_LIBRARY_DIRS}
+        ${CAIROMM_LIBRARY_DIRS}
         ${GIOMM_LIBRARY_DIRS}
         ${GIO_LIBRARY_DIRS}
         ${GLIB2_LIBRARY_DIRS}
@@ -281,122 +286,150 @@ if(SIMDE_INCLUDE_DIRS)
     include_directories("${SIMDE_INCLUDE_DIRS}")
 endif()
 
-# Create new executables targets
-add_executable(art ${EXTRA_SRC_NONCLI} ${NONCLISOURCEFILES})
-add_executable(art-cli ${EXTRA_SRC_CLI} ${CLISOURCEFILES})
-# zenity-like dialogs for user commands; deliberately independent of art_engine
-add_executable(art-dialogs ${EXTRA_SRC_NONCLI}
-    dialogs/main.cc
-    dialogs/dialogs.cc
-    dialogs/theme.cc)
+# Create new executables targets. Each one is optional (ART_BUILD_GUI,
+# ART_BUILD_CLI): what is not built does not need its dependencies
+if(ART_BUILD_GUI)
+    add_executable(art ${EXTRA_SRC_NONCLI} ${NONCLISOURCEFILES})
+    # zenity-like dialogs for user commands; deliberately independent of
+    # art_engine
+    add_executable(art-dialogs ${EXTRA_SRC_NONCLI}
+        dialogs/main.cc
+        dialogs/dialogs.cc
+        dialogs/theme.cc)
+endif()
+if(ART_BUILD_CLI)
+    add_executable(art-cli ${EXTRA_SRC_CLI} ${CLISOURCEFILES})
+endif()
+
+# What the command line program is made of, also used by libART (src/libart),
+# which embeds it: it exists even when ART-cli itself is not built
+set(ART_CLI_SOURCES ${EXTRA_SRC_CLI} ${CLISOURCEFILES} PARENT_SCOPE)
+set(ART_CLI_LIBRARIES
+    art_engine
+    art_utils
+    ${EXPAT_LIBRARIES}
+    ${EXTRA_LIB_RTGUI}
+    ${FFTW3F_LIBRARIES}
+    ${GIOMM_LIBRARIES}
+    ${GIO_LIBRARIES}
+    ${GLIB2_LIBRARIES}
+    ${GLIBMM_LIBRARIES}
+    ${GOBJECT_LIBRARIES}
+    ${GTHREAD_LIBRARIES}
+    ${JPEG_LIBRARIES}
+    ${LCMS_LIBRARIES}
+    ${PNG_LIBRARIES}
+    ${TIFF_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${LENSFUN_LIBRARIES}
+    ${RSVG_LIBRARIES}
+    ${EXIV2_LIBRARIES}
+    )
+if(HAS_MIMALLOC)
+    list(APPEND ART_CLI_LIBRARIES mimalloc)
+endif()
+if(APPLE)
+    list(APPEND ART_CLI_LIBRARIES "-framework Foundation")
+endif()
+set(ART_CLI_LIBRARIES ${ART_CLI_LIBRARIES} PARENT_SCOPE)
 
 # Add dependencies to executables targets
-add_dependencies(art UpdateInfo)
-add_dependencies(art-cli UpdateInfo)
-add_dependencies(art-dialogs UpdateInfo)
-
-#Define a target specific definition to use in code
-target_compile_definitions(art PUBLIC GUIVERSION)
-target_compile_definitions(art-cli PUBLIC CLIVERSION)
+if(ART_BUILD_GUI)
+    add_dependencies(art UpdateInfo)
+    add_dependencies(art-dialogs UpdateInfo)
+    target_compile_definitions(art PUBLIC GUIVERSION)
+endif()
+if(ART_BUILD_CLI)
+    add_dependencies(art-cli UpdateInfo)
+    target_compile_definitions(art-cli PUBLIC CLIVERSION)
+endif()
 
 # Set executables targets properties, i.e. output filename and compile flags
 # for "Debug" builds, open a console in all cases for Windows version
-if((WIN32) AND NOT(UPPER_CMAKE_BUILD_TYPE STREQUAL "DEBUG"))
-    set_target_properties(art PROPERTIES LINK_FLAGS "-mwindows")
-    set_target_properties(art-dialogs PROPERTIES LINK_FLAGS "-mwindows")
+if(ART_BUILD_GUI)
+    if((WIN32) AND NOT(UPPER_CMAKE_BUILD_TYPE STREQUAL "DEBUG"))
+        set_target_properties(art PROPERTIES LINK_FLAGS "-mwindows")
+        set_target_properties(art-dialogs PROPERTIES LINK_FLAGS "-mwindows")
+    endif()
+    set_target_properties(art PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART)
+    set_target_properties(art-dialogs PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART-dialogs)
 endif()
-set_target_properties(art PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART)
-set_target_properties(art-cli PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART-cli)
-set_target_properties(art-dialogs PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART-dialogs)
+if(ART_BUILD_CLI)
+    set_target_properties(art-cli PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}" OUTPUT_NAME ART-cli)
+endif()
 
 # Add linked libraries dependencies to executables targets
-target_link_libraries(art PUBLIC
-    art_engine
-    art_utils
-    ${CANBERRA-GTK_LIBRARIES}
-    ${EXPAT_LIBRARIES}
-    ${EXTRA_LIB_RTGUI}
-    ${FFTW3F_LIBRARIES}
-    ${GIOMM_LIBRARIES}
-    ${GIO_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${GLIBMM_LIBRARIES}
-    ${GOBJECT_LIBRARIES}
-    ${GTHREAD_LIBRARIES}
-    ${GTKMM_LIBRARIES}
-    ${GTK_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${LCMS_LIBRARIES}
-    ${PNG_LIBRARIES}
-    ${TIFF_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    ${LENSFUN_LIBRARIES}
-    ${RSVG_LIBRARIES}
-    ${EXIV2_LIBRARIES}
-    )
+if(ART_BUILD_GUI)
+    target_link_libraries(art PUBLIC
+        art_engine
+        art_utils
+        ${CANBERRA-GTK_LIBRARIES}
+        ${CAIROMM_LIBRARIES}
+        ${EXPAT_LIBRARIES}
+        ${EXTRA_LIB_RTGUI}
+        ${FFTW3F_LIBRARIES}
+        ${GIOMM_LIBRARIES}
+        ${GIO_LIBRARIES}
+        ${GLIB2_LIBRARIES}
+        ${GLIBMM_LIBRARIES}
+        ${GOBJECT_LIBRARIES}
+        ${GTHREAD_LIBRARIES}
+        ${GTKMM_LIBRARIES}
+        ${GTK_LIBRARIES}
+        ${JPEG_LIBRARIES}
+        ${LCMS_LIBRARIES}
+        ${PNG_LIBRARIES}
+        ${TIFF_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        ${LENSFUN_LIBRARIES}
+        ${RSVG_LIBRARIES}
+        ${EXIV2_LIBRARIES}
+        )
 
-target_link_libraries(art-cli PUBLIC
-    art_engine
-    art_utils
-    ${CAIROMM_LIBRARIES}
-    ${EXPAT_LIBRARIES}
-    ${EXTRA_LIB_RTGUI}
-    ${FFTW3F_LIBRARIES}
-    ${GIOMM_LIBRARIES}
-    ${GIO_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${GLIBMM_LIBRARIES}
-    ${GOBJECT_LIBRARIES}
-    ${GTHREAD_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${LCMS_LIBRARIES}
-    ${PNG_LIBRARIES}
-    ${TIFF_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    ${LENSFUN_LIBRARIES}
-    ${RSVG_LIBRARIES}
-    ${EXIV2_LIBRARIES}
-    )
+    target_link_libraries(art-dialogs PUBLIC
+        art_utils
+        ${GIOMM_LIBRARIES}
+        ${GIO_LIBRARIES}
+        ${GLIB2_LIBRARIES}
+        ${GLIBMM_LIBRARIES}
+        ${GOBJECT_LIBRARIES}
+        ${GTHREAD_LIBRARIES}
+        ${GTKMM_LIBRARIES}
+        ${GTK_LIBRARIES}
+        )
 
-target_link_libraries(art-dialogs PUBLIC
-    art_utils
-    ${GIOMM_LIBRARIES}
-    ${GIO_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${GLIBMM_LIBRARIES}
-    ${GOBJECT_LIBRARIES}
-    ${GTHREAD_LIBRARIES}
-    ${GTKMM_LIBRARIES}
-    ${GTK_LIBRARIES}
-    )
+    if(HAS_MIMALLOC)
+        target_link_libraries(art PUBLIC mimalloc)
+    endif()
 
-if(HAS_MIMALLOC)
-    target_link_libraries(art PUBLIC mimalloc)
-    target_link_libraries(art-cli PUBLIC mimalloc)
+    if(APPLE)
+        target_link_libraries(art PRIVATE "-framework ApplicationServices -framework Carbon -framework Foundation")
+        target_link_libraries(art-dialogs PRIVATE "-framework Foundation")
+    endif()
 endif()
 
-if(APPLE)
-    target_link_libraries(art PRIVATE "-framework ApplicationServices -framework Carbon -framework Foundation")
-    target_link_libraries(art-cli PRIVATE "-framework Foundation")
-    target_link_libraries(art-dialogs PRIVATE "-framework Foundation")
+if(ART_BUILD_CLI)
+    target_link_libraries(art-cli PUBLIC ${ART_CLI_LIBRARIES})
 endif()
 
 # Unit tests of the shortcut table (pure logic: needs GDK's keyval helpers but
 # no display); run with `ctest -R shortcuts`
-add_executable(art-shortcuts-test EXCLUDE_FROM_ALL
-    test_shortcuts.cc
-    shortcuttable.cc
-    systemshortcuts.cc
-    shortcutdefs.cc
-    ../engine/cJSON.c)
-target_link_libraries(art-shortcuts-test PRIVATE art_utils ${GTK_LIBRARIES} ${GLIB2_LIBRARIES} ${GLIBMM_LIBRARIES})
-if(APPLE)
-    target_link_libraries(art-shortcuts-test PRIVATE "-framework Carbon -framework Foundation")
+if(ART_BUILD_GUI)
+    add_executable(art-shortcuts-test EXCLUDE_FROM_ALL
+        test_shortcuts.cc
+        shortcuttable.cc
+        systemshortcuts.cc
+        shortcutdefs.cc
+        ../engine/cJSON.c)
+    target_link_libraries(art-shortcuts-test PRIVATE art_utils ${GTK_LIBRARIES} ${GLIB2_LIBRARIES} ${GLIBMM_LIBRARIES})
+    if(APPLE)
+        target_link_libraries(art-shortcuts-test PRIVATE "-framework Carbon -framework Foundation")
+    endif()
+    target_compile_definitions(art-shortcuts-test PRIVATE
+        ART_LANGUAGES_DIR="${PROJECT_SOURCE_DIR}/data/languages"
+        ART_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
+    add_test(NAME shortcuts COMMAND art-shortcuts-test)
 endif()
-target_compile_definitions(art-shortcuts-test PRIVATE
-    ART_LANGUAGES_DIR="${PROJECT_SOURCE_DIR}/data/languages"
-    ART_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
-add_test(NAME shortcuts COMMAND art-shortcuts-test)
 
 # Unit tests of the headless history/snapshot model (header-only, no engine, no
 # GTK); run with `ctest -R history-model`
@@ -415,7 +448,10 @@ target_link_libraries(art-ipc-test PRIVATE Threads::Threads)
 add_test(NAME ipc COMMAND art-ipc-test)
 
 # Install executables
-install(TARGETS art DESTINATION ${BINDIR})
-install(TARGETS art-cli DESTINATION ${BINDIR})
-install(TARGETS art-dialogs DESTINATION ${BINDIR})
-
+if(ART_BUILD_GUI)
+    install(TARGETS art DESTINATION ${BINDIR})
+    install(TARGETS art-dialogs DESTINATION ${BINDIR})
+endif()
+if(ART_BUILD_CLI)
+    install(TARGETS art-cli DESTINATION ${BINDIR})
+endif()

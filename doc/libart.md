@@ -131,7 +131,9 @@ engine while a call on it is running.
 
 ## Building
 
-libART is part of the CMake build (`-DART_BUILD_LIBART=ON`, the default):
+libART is part of the CMake build (`-DART_BUILD_LIBART=ON`, the default; with
+`-DART_BUILD_GUI=OFF -DART_BUILD_CLI=OFF` it is the only thing built, and GTK is
+not needed):
 
 | target | what |
 |---|---|

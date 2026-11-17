@@ -23,7 +23,7 @@
 #include <iomanip>
 
 #include "../engine/imagedata.h"
-#include "../engine/previewimage.h"
+#include "previewimage.h"
 #include "cursormanager.h"
 #include "filecatalog.h"
 #include "focusmask.h"

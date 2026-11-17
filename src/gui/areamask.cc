@@ -1014,7 +1014,7 @@ bool AreaMask::pick3(bool picked)
     return false;
 }
 
-bool AreaMask::scroll(int modifierKey, GdkScrollDirection direction,
+bool AreaMask::scroll(int modifierKey, int direction,
                       double deltaX, double deltaY, bool &propagateEvent)
 {
     EditDataProvider *provider = getEditProvider();

@@ -22,6 +22,7 @@
 namespace art { namespace gui {
 using namespace utils;
 
+#ifdef GUIVERSION // what draws with Cairo is GUI only (see edit.h)
 
 ObjectMOBuffer::ObjectMOBuffer(EditDataProvider *dataProvider)
     : objectMap(nullptr), objectMode(OM_255), dataProvider(dataProvider)
@@ -184,8 +185,6 @@ RGBColor Geometry::getOuterLineColor()
 
     return color;
 }
-
-#ifdef GUIVERSION
 
 namespace {
 

@@ -154,6 +154,12 @@ option(ENABLE_OCIO "Use OpenColorIOv2 for LUT application" ON)
 option(ENABLE_CTL "Enable support for the ACES Color Transformation Language" OFF)
 option(ENABLE_SIMDE "Build with SIMD Everywhere support" OFF)
 option(ENABLE_LCMS_FAST_FLOAT "Enable the fast-float plugin of LCMS2 (if available)" ON)
+option(ART_BUILD_GUI "Build ART, the graphical user interface (needs GTK)" ON)
+option(ART_BUILD_CLI "Build ART-cli, the command line program and server" ON)
+option(ART_BUILD_LIBART "Build libART, the C library for the server mode" ON)
+if(NOT (ART_BUILD_GUI OR ART_BUILD_CLI OR ART_BUILD_LIBART))
+    message(FATAL_ERROR "Nothing to build: enable at least one of ART_BUILD_GUI, ART_BUILD_CLI and ART_BUILD_LIBART")
+endif()
 option(ENABLE_VULKAN "Enable the Vulkan compute backend for GPU acceleration" OFF)
 option(ART_VULKAN_EMBED_SHADERS "Embed compiled SPIR-V modules in the binary instead of installing them as data files" ON)
 
@@ -318,6 +324,8 @@ endif()
 
 # Check for libraries:
 find_package(PkgConfig)
+# GTK is only needed by the GUI (ART, ART-dialogs)
+if(ART_BUILD_GUI)
 if(WIN32)
 pkg_check_modules (GTK     REQUIRED gtk+-3.0>=3.22.24)
 pkg_check_modules (GTKMM   REQUIRED gtkmm-3.0>=3.22)
@@ -334,10 +342,12 @@ if(GTK_VERSION VERSION_GREATER "3.24.1" AND GTK_VERSION VERSION_LESS "3.24.7")
     endif()
     message(WARNING "\nWarning! You are using GTK+ version " ${GTK_VERSION} " which is " ${CERTAINTY} " have an issue where combobox menu scroll-arrows are missing when a Gtk::ComboBox list does not fit vertically on the screen. As a result, users of your build will not be able to select items in the following comboboxes: Processing Profiles, Film Simulation, and the camera and lens profiles in Profiled Lens Correction.\nIt is recommended that you either downgrade GTK+ to <= 3.24.1 or upgrade to >= 3.24.7.")
 endif()
+# cairomm is only used for drawing in the GUI (it comes with gtkmm)
+pkg_check_modules (CAIROMM REQUIRED cairomm-1.0)
+endif()
 
 pkg_check_modules (GLIB2   REQUIRED glib-2.0>=2.44)
 pkg_check_modules (GLIBMM  REQUIRED glibmm-2.4>=2.44)
-pkg_check_modules (CAIROMM REQUIRED cairomm-1.0)
 pkg_check_modules (GIO     REQUIRED gio-2.0>=2.44)
 pkg_check_modules (GIOMM   REQUIRED giomm-2.4>=2.44)
 pkg_check_modules (GTHREAD REQUIRED gthread-2.0>=2.44)
@@ -400,7 +410,7 @@ endif()
 # endif()
 
 # Check for libcanberra-gtk3 (sound events on Linux):
-if(UNIX AND(NOT APPLE))
+if(ART_BUILD_GUI AND UNIX AND(NOT APPLE))
     pkg_check_modules(CANBERRA-GTK REQUIRED libcanberra-gtk3)
 endif()
 
@@ -772,6 +782,12 @@ else()
 endif()
 
 
+if(ART_BUILD_GUI AND GTKMM_VERSION)
+    set(ART_GTKMM_VERSION_INFO "${GTKMM_VERSION}")
+else()
+    set(ART_GTKMM_VERSION_INFO "N/A")
+endif()
+
 # Get C++ and linker flags for the engine (the GUI's C++ flags may have fewer flags):
 set(CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${UPPER_CMAKE_BUILD_TYPE}} ${RTENGINE_CXX_FLAGS}")
 set(LFLAGS "${CMAKE_EXE_LINKER_FLAGS} ${CMAKE_EXE_LINKER_FLAGS_${UPPER_CMAKE_BUILD_TYPE}}")
@@ -782,7 +798,7 @@ set(ABOUT_COMMAND_WITH_ARGS ${CMAKE_COMMAND}
     -DPROC_LABEL:STRING=${PROC_LABEL}
     -DPROC_BIT_DEPTH:STRING=${PROC_BIT_DEPTH}
     -DBUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-    -DGTKMM_VERSION:STRING=${GTKMM_VERSION}
+    -DGTKMM_VERSION:STRING=${ART_GTKMM_VERSION_INFO}
     -DOPTION_OMP:STRING=${OPTION_OMP}
     -DLENSFUN_VERSION:STRING=${LENSFUN_VERSION}
     -DEXIV2_VERSION:STRING=${EXIV2_VERSION}
@@ -874,7 +890,7 @@ endif()
 
 include(CheckSymbolExists)
 
-if(APPLE)
+if(APPLE AND ART_BUILD_GUI)
     set(CMAKE_REQUIRED_INCLUDES ${GTK_INCLUDE_DIRS})
     message(STATUS "Checking whether GDK supports specifying custom color spaces")
     check_symbol_exists(GDK_QUARTZ_WINDOW_SUPPORTS_COLORSPACE "gdk/gdkquartz.h" HAVE_GDK_QUARTZ_COLORSPACE)
@@ -913,8 +929,8 @@ endif()
 enable_testing()
 add_subdirectory(src/utils)
 add_subdirectory(src/engine)
+# src/gui also defines what libART embeds, so it is needed by all of them
 add_subdirectory(src/gui)
-option(ART_BUILD_LIBART "Build libART, the C library for the server mode" ON)
 if(ART_BUILD_LIBART)
     add_subdirectory(src/libart)
 endif()

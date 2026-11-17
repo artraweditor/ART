@@ -44,7 +44,7 @@ public:
     bool drag1(int modifierKey) override;
     bool button3Pressed(int modifierKey) override;
     bool pick3(bool picked) override;
-    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX,
+    bool scroll(int modifierKey, int direction, double deltaX,
                 double deltaY, bool &propagateEvent) override;
 
     size_t getPolygonSize();

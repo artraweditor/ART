@@ -19,6 +19,7 @@
  */
 
 #include "rtscalable.h"
+#include <gtkmm/window.h>
 #include "options.h"
 #include "../utils/pathutils.h"
 #include <glib/gstdio.h>

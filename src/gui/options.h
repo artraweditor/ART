@@ -24,7 +24,7 @@
 #include "exiffiltersettings.h"
 #include <exception>
 #include <memory>
-#include <gtkmm.h>
+#include <glibmm.h>
 #include <set>
 
 namespace art { namespace gui {
@@ -178,7 +178,7 @@ public:
     int adjusterMinDelay;
     int adjusterMaxDelay;
     int startupDir;
-    Gtk::SortType dirBrowserSortType;
+    int dirBrowserSortType; // a Gtk::SortType: 0 = ascending, 1 = descending
     bool dir_browser_single_click;
     Glib::ustring startupPath;
     Glib::ustring

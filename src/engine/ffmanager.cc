@@ -16,6 +16,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <giomm.h>
 #include "ffmanager.h"
 #include "../gui/options.h"
 #include "imagedata.h"

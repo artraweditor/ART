@@ -19,38 +19,11 @@
 #pragma once
 
 #include <gtkmm.h>
+#include "cursorshape.h"
 
 namespace art { namespace gui {
 
 
-enum CursorShape {
-    CSAddColPicker,
-    CSArrow,
-    CSCropSelect,
-    CSCrosshair,
-    CSEmpty,
-    CSHandClosed,
-    CSHandOpen,
-    CSMove,
-    CSMove1DH,
-    CSMove1DV,
-    CSMove2D,
-    CSMoveLeft,
-    CSMoveRight,
-    CSMoveRotate,
-    CSPlus,
-    CSResizeBottomLeft,
-    CSResizeBottomRight,
-    CSResizeDiagonal,
-    CSResizeHeight,
-    CSResizeTopLeft,
-    CSResizeTopRight,
-    CSResizeWidth,
-    CSSpotWB,
-    CSStraighten,
-    CSUndefined,
-    CSWait
-};
 
 class CursorManager {
 

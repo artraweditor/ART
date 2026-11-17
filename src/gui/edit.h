@@ -18,13 +18,18 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <gtkmm.h>
+#include <glibmm.h>
+#ifdef GUIVERSION
+#include <cairomm/cairomm.h>
+#endif
 // #include "../engine/imagefloat.h"
 #include "../engine/coord.h"
 #include "../engine/rt_math.h"
-#include "cursormanager.h"
+#include "cursorshape.h"
 #include "../utils/editid.h"
+#ifdef GUIVERSION
 #include "guiutils.h"
+#endif
 #include "options.h"
 
 #ifdef GUIVERSION
@@ -37,6 +42,8 @@ using namespace utils;
 
 class EditDataProvider;
 class EditSubscriber;
+class Geometry; // only defined (with its drawing code, which needs Cairo) in
+                // the GUI
 
 /** @file
  *
@@ -200,6 +207,8 @@ class EditSubscriber;
  *
  */
 
+#ifdef GUIVERSION // ObjectMOBuffer and Geometry draw with Cairo: GUI only
+
 class ObjectMOBuffer {
 private:
     // Used to draw the objects where the color correspond to the object's ID,
@@ -233,6 +242,8 @@ public:
 
     int getObjectID(const art::engine::Coord &location);
 };
+
+#endif // GUIVERSION
 
 /** @brief Coordinate system where the widgets will be drawn
  *
@@ -348,6 +359,8 @@ public:
     double getA();
 };
 
+#ifdef GUIVERSION
+
 /// @brief Displayable and MouseOver geometry base class
 class Geometry {
 public:
@@ -443,8 +456,6 @@ public:
                                  ObjectMOBuffer *objectBuffer,
                                  EditCoordSystem &coordSystem) = 0;
 };
-
-#ifdef GUIVERSION
 
 class Circle: public Geometry {
 public:
@@ -776,7 +787,9 @@ public:
      * @return false if the scroll event has to be propagated to the crop
      * window, true if the event has been processed
      */
-    virtual bool scroll(int modifierKey, GdkScrollDirection direction,
+    // `direction` is a GdkScrollDirection (an int so that this header does not
+    // need GDK)
+    virtual bool scroll(int modifierKey, int direction,
                         double deltaX, double deltaY, bool &propagateEvent);
 
     /** @brief Get the geometry to be shown to the user */
@@ -836,6 +849,8 @@ public:
     virtual void getImageSize(int &w, int &h) = 0;
 };
 
+#ifdef GUIVERSION
+
 inline EditDataProvider *ObjectMOBuffer::getDataProvider()
 {
     return dataProvider;
@@ -847,6 +862,8 @@ inline Cairo::RefPtr<Cairo::ImageSurface> &ObjectMOBuffer::getObjectMap()
 {
     return objectMap;
 }
+
+#endif // GUIVERSION
 
 inline void RGBColor::setColor(double r, double g, double b)
 {
@@ -881,6 +898,8 @@ inline void RGBAColor::setColor(char r, char g, char b, char a)
 }
 
 inline double RGBAColor::getA() { return a; }
+
+#ifdef GUIVERSION
 
 inline void Geometry::setInnerLineColor(double r, double g, double b)
 {
@@ -978,6 +997,8 @@ inline void Geometry::setDashed(bool dashed)
     }
 }
 
+#endif // GUIVERSION
+
 inline EditDataProvider *EditSubscriber::getEditProvider() const
 {
     return provider;
@@ -1014,7 +1035,7 @@ inline bool EditSubscriber::pick2(bool picked) { return false; }
 
 inline bool EditSubscriber::pick3(bool picked) { return false; }
 
-inline bool EditSubscriber::scroll(int bstate, GdkScrollDirection direction,
+inline bool EditSubscriber::scroll(int bstate, int direction,
                                    double deltaX, double deltaY,
                                    bool &propagateEvent)
 {
@@ -1037,6 +1058,8 @@ inline int EditDataProvider::getPipetteRectSize()
     return 8; // TODO: make a GUI
 }
 
+#ifdef GUIVERSION
+
 inline Geometry::Geometry()
     : innerLineColor(char(255), char(255), char(255)),
       outerLineColor(char(0), char(0), char(0)),
@@ -1044,6 +1067,8 @@ inline Geometry::Geometry()
       datum(IMAGE), state(NORMAL)
 {
 }
+
+#endif // GUIVERSION
 
 inline RGBAColor::RGBAColor(): RGBColor(0., 0., 0.), a(0.) {}
 

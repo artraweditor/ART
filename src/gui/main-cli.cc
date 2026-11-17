@@ -38,7 +38,6 @@
 #include "options.h"
 #include "../utils/pathutils.h"
 #include "printhelp.h"
-#include "rtimage.h"
 #include "bootstrap.h"
 #include "servermode.h"
 #include "soundman.h"
@@ -46,7 +45,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <giomm.h>
-#include <gtkmm.h>
 #include <iostream>
 #include <locale.h>
 #include <tiffio.h>

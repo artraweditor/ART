@@ -153,7 +153,7 @@ public:
 
     bool button1Released() override;
     bool pick3(bool picked) override;
-    bool scroll(int modifierKey, GdkScrollDirection direction, double deltaX,
+    bool scroll(int modifierKey, int direction, double deltaX,
                 double deltaY, bool &propagateEvent) override;
     void switchOffEditMode() override;
     void setEditProvider(EditDataProvider *provider);

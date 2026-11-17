@@ -610,7 +610,7 @@ public:
         return false;
     }
 
-    bool scroll(int bstate, GdkScrollDirection direction, double deltaX,
+    bool scroll(int bstate, int direction, double deltaX,
                 double deltaY, bool &propagateEvent) override
     {
         double delta = (fabs(deltaX) > fabs(deltaY)) ? deltaX : deltaY;
@@ -2545,7 +2545,7 @@ bool MasksPanel::pick3(bool picked)
     return false;
 }
 
-bool MasksPanel::scroll(int modifierKey, GdkScrollDirection direction,
+bool MasksPanel::scroll(int modifierKey, int direction,
                         double deltaX, double deltaY, bool &propagateEvent)
 {
     if (AreaMask::scroll(modifierKey, direction, deltaX, deltaY,

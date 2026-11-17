@@ -21,8 +21,8 @@
 #include "../engine/metadata.h"
 #include "../engine/profilestore.h"
 #include "addsetids.h"
-#include "guiutils.h"
 #include "../utils/multilangmgr.h"
+#include "../utils/pathutils.h"
 #include "../utils/version.h"
 #include <cstdio>
 #include <glib/gstdio.h>
@@ -440,7 +440,7 @@ void Options::setDefaults()
     detailWindowHeight = -1;
     dirBrowserWidth = 260;
     dirBrowserHeight = 350;
-    dirBrowserSortType = Gtk::SORT_ASCENDING;
+    dirBrowserSortType = 0; // ascending
     dir_browser_single_click = false;
     preferencesWidth = 800;
     preferencesHeight = 600;
@@ -1552,8 +1552,7 @@ void Options::readFromFile(Glib::ustring fname)
                 }
 
                 if (keyFile.has_key("GUI", "SortType")) {
-                    dirBrowserSortType = static_cast<Gtk::SortType>(
-                        keyFile.get_integer("GUI", "SortType"));
+                    dirBrowserSortType = keyFile.get_integer("GUI", "SortType");
                 }
 
                 if (keyFile.has_key("GUI", "DirBrowserSingleClick")) {

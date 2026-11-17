@@ -171,13 +171,15 @@ void DirBrowser::fillDirTree()
 
     dirtree->append_column(tvc);
 
-    tvc.set_sort_order(options.dirBrowserSortType);
+    tvc.set_sort_order(
+        static_cast<Gtk::SortType>(options.dirBrowserSortType));
     tvc.set_sort_column(dtColumns.filename);
     tvc.set_sort_indicator(true);
     tvc.set_clickable();
 
-    dirTreeModel->set_sort_column(dtColumns.filename,
-                                  options.dirBrowserSortType);
+    dirTreeModel->set_sort_column(
+        dtColumns.filename,
+        static_cast<Gtk::SortType>(options.dirBrowserSortType));
 
     crt.property_ypad() = 0;
     crb.property_ypad() = 0;
@@ -363,7 +365,7 @@ void DirBrowser::fillRoot()
 
 void DirBrowser::on_sort_column_changed() const
 {
-    options.dirBrowserSortType = tvc.get_sort_order();
+    options.dirBrowserSortType = int(tvc.get_sort_order());
 }
 
 void DirBrowser::row_expanded(const Gtk::TreeModel::iterator &iter,
@@ -400,7 +402,7 @@ void DirBrowser::row_expanded(const Gtk::TreeModel::iterator &iter,
         std::sort(
             subDirs.begin(), subDirs.end(),
             [](const Glib::ustring &firstDir, const Glib::ustring &secondDir) {
-                switch (options.dirBrowserSortType) {
+                switch (static_cast<Gtk::SortType>(options.dirBrowserSortType)) {
                 default:
                 case Gtk::SORT_ASCENDING:
                     return firstDir < secondDir;

@@ -19,9 +19,9 @@
  */
 #pragma once
 
-#include "image8.h"
+#include "../engine/image8.h"
 #include <cairomm/cairomm.h>
-#include <gtkmm.h>
+#include <glibmm.h>
 #include <memory>
 
 namespace art { namespace engine {
