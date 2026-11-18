@@ -36,6 +36,7 @@ unsigned fc(const unsigned int cfa[2][2], int r, int c)
 {
     return cfa[r & 1][c & 1];
 }
+
 } // namespace
 
 
@@ -81,6 +82,42 @@ void rcd_demosaic_cpu(int W, int H, const unsigned int cfarray[2][2],
     constexpr float epssq = 1e-10f;
     constexpr float scale = 65536.f;
 
+    /* Taken from darktable (src/iop/demosaicing/rcd.c),
+     * Copyright (C) 2010-2026 darktable developers.
+     *
+     * The green estimation at R/B photosites did not have any eps in the
+     * cardinal thus the calculated green was smaller than correctly
+     * estimated from surrounding sites, most notably in flat gray areas
+     * thus adding a bit of chroma noise and strengthening the maze like
+     * output.
+     *
+     * Simply adding eps to the cardinal leads to fully corrected greens
+     * at flat areas but also to stronger overshoots/chroma noise at
+     * edges.
+     * 
+     * Thus we modify the used eps based on the strongest gradient.
+     * 
+     * Reminder:
+     * One of the cases where we have a fixed eps but would profit from
+     * eps based on measured noise level and/or sensor resolution - exif
+     * ISO isn't a good estimate for current sensors any more.
+     */
+    const auto _cardinal_eps =
+        [eps](const float grad) -> float
+        {
+            // Full correction below this. Raise it to retain the correction
+            // on more noisy flat pixels
+            const float flat_end = eps + 1e-4f;
+            // No correction at or above this. Lower it to preserve the
+            // original RCD result at weaker edges
+            const float edge_start = eps + 1e-3f;
+            
+            const float t = (grad - flat_end) / (edge_start - flat_end);
+            const float u = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+            return eps * (1.0f - u * u * (3.0f - 2.0f * u));
+        };
+
+    
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -254,15 +291,18 @@ void rcd_demosaic_cpu(int W, int H, const unsigned int cfarray[2][2],
                             (std::fabs(cfa[indx + 1] - cfa[indx + 3]) +
                              std::fabs(cfa[indx + 2] - cfa[indx + 4]));
 
+                        const float cardinal_eps =
+                            _cardinal_eps(max(N_Grad, S_Grad, W_Grad, E_Grad));
                         // Cardinal pixel estimations
                         const float lpfi = lpf[lpindx];
-                        const float N_Est = cfa[indx - w1] * (lpfi + lpfi) /
+                        const float lpfi_n = lpfi + lpfi + cardinal_eps;
+                        const float N_Est = cfa[indx - w1] * lpfi_n /
                                             (eps + lpfi + lpf[lpindx - w1]);
-                        const float S_Est = cfa[indx + w1] * (lpfi + lpfi) /
+                        const float S_Est = cfa[indx + w1] * lpfi_n /
                                             (eps + lpfi + lpf[lpindx + w1]);
-                        const float W_Est = cfa[indx - 1] * (lpfi + lpfi) /
+                        const float W_Est = cfa[indx - 1] * lpfi_n /
                                             (eps + lpfi + lpf[lpindx - 1]);
-                        const float E_Est = cfa[indx + 1] * (lpfi + lpfi) /
+                        const float E_Est = cfa[indx + 1] * lpfi_n /
                                             (eps + lpfi + lpf[lpindx + 1]);
 
                         // Vertical and horizontal estimations
