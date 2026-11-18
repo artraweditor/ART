@@ -39,23 +39,23 @@ if(UNIX)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/images/png/ART-logo-256.png" DESTINATION "${ICONSDIR}/hicolor/256x256/apps" RENAME ART.png)
 endif()
 
-install(FILES ${LANGUAGEFILES} DESTINATION "${DATADIR}/languages")
+install(FILES ${LANGUAGEFILES} DESTINATION "${DATADIR}/languages" COMPONENT libart_data)
 install(FILES ${SOUNDFILES} DESTINATION "${DATADIR}/sounds")
-install(FILES ${INPUTICCFILES} DESTINATION "${DATADIR}/iccprofiles/input")
-install(FILES ${OUTPUTICCFILES} DESTINATION "${DATADIR}/iccprofiles/output")
-install(FILES ${DCPFILES} DESTINATION "${DATADIR}/dcpprofiles")
-install(FILES "cammatrices.json" DESTINATION "${DATADIR}")
-install(FILES "dcraw.json" DESTINATION "${DATADIR}")
-install(FILES "rt.json" DESTINATION "${DATADIR}")
-install(FILES "wbpresets.json" DESTINATION "${DATADIR}")
+install(FILES ${INPUTICCFILES} DESTINATION "${DATADIR}/iccprofiles/input" COMPONENT libart_data)
+install(FILES ${OUTPUTICCFILES} DESTINATION "${DATADIR}/iccprofiles/output" COMPONENT libart_data)
+install(FILES ${DCPFILES} DESTINATION "${DATADIR}/dcpprofiles" COMPONENT libart_data)
+install(FILES "cammatrices.json" DESTINATION "${DATADIR}" COMPONENT libart_data)
+install(FILES "dcraw.json" DESTINATION "${DATADIR}" COMPONENT libart_data)
+install(FILES "rt.json" DESTINATION "${DATADIR}" COMPONENT libart_data)
+install(FILES "wbpresets.json" DESTINATION "${DATADIR}" COMPONENT libart_data)
 install(FILES ${OPTIONSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ RENAME options)
 if(WIN32)
     install(FILES ${FONTS} DESTINATION "${DATADIR}/fonts")
 endif()
-install(FILES "dynamicprofile.cfg" DESTINATION "${DATADIR}")
+install(FILES "dynamicprofile.cfg" DESTINATION "${DATADIR}" COMPONENT libart_data)
 
 
-install(DIRECTORY ${PROFILESDIR} DESTINATION "${DATADIR}" FILES_MATCHING PATTERN "*.arp")
+install(DIRECTORY ${PROFILESDIR} DESTINATION "${DATADIR}" COMPONENT libart_data FILES_MATCHING PATTERN "*.arp")
 install(DIRECTORY ${THEMEDIR} DESTINATION "${DATADIR}")
 
 install(FILES ${IMG_SVG} DESTINATION "${DATADIR}/images")
@@ -63,5 +63,21 @@ install(FILES ${IMG_PNG} DESTINATION "${DATADIR}/images")
 install(FILES ${IMG_ICO} DESTINATION "${DATADIR}/images")
 install(DIRECTORY "images/icons" DESTINATION "${DATADIR}/images")
 
-install(DIRECTORY ${CTLSCRIPTSDIR} DESTINATION "${DATADIR}" FILES_MATCHING PATTERN "*.ctl")
-install(DIRECTORY ${LUTSDIR} DESTINATION "${DATADIR}" FILES_MATCHING REGEX ".*[^~]$")
+install(DIRECTORY ${CTLSCRIPTSDIR} DESTINATION "${DATADIR}" COMPONENT libart_data FILES_MATCHING PATTERN "*.ctl")
+install(DIRECTORY ${LUTSDIR} DESTINATION "${DATADIR}" COMPONENT libart_data FILES_MATCHING REGEX ".*[^~]$")
+
+# The lensfun database is not part of the source tree: point
+# LENSFUNDB_SOURCE_DIR at a version_1 directory (e.g. the one lensfun-update-data
+# fills) to ship it as <DATADIR>/lensfun
+set(LENSFUNDB_SOURCE_DIR "" CACHE PATH "Lensfun database (version_1 directory) to install as <DATADIR>/lensfun")
+if(LENSFUNDB_SOURCE_DIR)
+    install(DIRECTORY "${LENSFUNDB_SOURCE_DIR}/" DESTINATION "${DATADIR}/lensfun" COMPONENT libart_data)
+endif()
+
+# Only what libART (and ART-cli) needs at run time -- profiles, LUTs, CTL
+# scripts, camera data (camconst.json comes from src/engine), ICC/DCP profiles,
+# languages, the lensfun database -- without GUI icons, themes, sounds, fonts
+# or the options file, into a plain directory:
+#   cmake --install <builddir> --component libart_data --prefix <dir>
+# (on macOS/Windows the files land in <dir>/Contents/Resources resp. <dir>, since
+# DATADIR is relative to the prefix there)
