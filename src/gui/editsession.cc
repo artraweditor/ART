@@ -429,11 +429,16 @@ void EditSession::renderPreview(
         }
     }
     crop->setListener(nullptr);
-    crop->destroy();
     if (!got) {
+        // the update task may still be queued and holds the crop: leave it
         done(false, "timeout while rendering the preview", 0, 0);
         return;
     }
+    // DetailedCrop::destroy() does nothing: the crop must be deleted (its
+    // destructor leaves the list of the processor and frees its buffers, which
+    // are about a full image each), or every preview leaks it. The destructor
+    // waits for the update that is still finishing.
+    delete crop;
 
     // the engine output covers cw/skip pixels; bring it to the requested scale
     const int ow = std::max(1, int(std::lround(cw * scale)));
