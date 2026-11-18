@@ -656,7 +656,7 @@ if(ENABLE_OCIO)
 endif()
 
 if(ENABLE_CTL)
-    find_path(CTL_INCLUDE_DIR NAMES "CtlInterpeter.h" PATH_SUFFIXES "CTL")
+    find_path(CTL_INCLUDE_DIR NAMES "CtlInterpreter.h" PATH_SUFFIXES "CTL")
     pkg_check_modules(OPENEXR OpenEXR>=3)
     #find_path(_openexr_half OpenEXR/half.h)
     if(CTL_LIBRARY_DIR)
