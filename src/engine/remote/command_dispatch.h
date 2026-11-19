@@ -158,6 +158,11 @@ public:
     // through `reply` (as Reply::fail) by the host.
     virtual void whenReady(const ReplyPtr &reply,
                            std::function<void(CommandTarget &)> fn) = 0;
+    // the sidecar file (profile) of an image file, as the preferences say
+    virtual Glib::ustring paramFileFor(const Glib::ustring &imagefile)
+    {
+        return imagefile + ".arp";
+    }
 };
 
 
@@ -194,7 +199,7 @@ private:
 // the commands that operate on the active image: apply, get-params, get-info,
 // get-history, undo, redo, history-goto, get-snapshots, snapshot-add,
 // snapshot-activate, snapshot-overwrite, snapshot-remove, preview, get-spot-wb
-// (and get-clut-params, which needs no image)
+// (and get-clut-params and thumbnail, which need no image)
 void registerActiveImageVerbs(Dispatcher &d);
 
 

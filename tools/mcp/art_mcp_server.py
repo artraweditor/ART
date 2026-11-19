@@ -64,6 +64,9 @@ art_get_spot_wb measures the white balance of a rectangle that should be neutral
 (a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
 art_get_clut_params lists the parameters of a LUT or CTL script, to fill
 Film Simulation's ClutParams.
+art_thumbnail returns a small image of any image file, quickly and without
+opening it (it does not change the active image); use it to look at several
+files, e.g. to choose one.
 art_export writes the final full-size file (art_preview is only an approximation).
 """
 
@@ -91,6 +94,9 @@ art_get_spot_wb measures the white balance of a rectangle that should be neutral
 (a grey card, a white wall); set it with art_apply_edit {"White Balance": ...}.
 art_get_clut_params lists the parameters of a LUT or CTL script, to fill
 Film Simulation's ClutParams.
+art_thumbnail returns a small image of any image file, quickly and without
+opening it (it does not change the active image); use it to look at several
+files, e.g. to choose one.
 """
 
 
@@ -685,6 +691,39 @@ def t_spot_wb(a):
                     int(round(float(temp))), tint))]
 
 
+def t_thumbnail(a):
+    path = a["path"]
+    if not os.path.isabs(path):
+        raise ArtError("path must be absolute: %s" % path)
+    size = int(a.get("max_size", 256))
+    ext = "png" if a.get("format") == "png" else "jpg"
+    args = ["thumbnail", path, None, size]
+    if a.get("profile") is False:
+        args.append("--no-profile")
+    fd, out = tempfile.mkstemp(suffix="." + ext, prefix="art_mcp_thumb_")
+    os.close(fd)
+    try:
+        args[2] = out
+        r = run_cmd(*args)
+        with open(out, "rb") as f:
+            data = f.read()
+    finally:
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
+    if not isinstance(r, dict):
+        raise ArtError("unexpected reply of thumbnail")
+    src = {"embedded": "the preview embedded in the raw file",
+           "raw": "a quick rendering of the raw file",
+           "image": "the image file"}.get(r.get("source"), "the file")
+    return [text("Thumbnail %dx%d of %s, from %s%s." % (
+                r["width"], r["height"], path, src,
+                ", with its sidecar profile applied" if r.get("profile") else "")),
+            {"type": "image", "data": base64.b64encode(data).decode(),
+             "mimeType": "image/png" if ext == "png" else "image/jpeg"}]
+
+
 def t_get_clut_params(a):
     path = a["path"]
     if not os.path.isabs(path):
@@ -877,6 +916,19 @@ TOOLS = [
      _obj({"x": {"type": "integer", "minimum": 0}, "y": {"type": "integer", "minimum": 0},
            "w": {"type": "integer", "minimum": 1}, "h": {"type": "integer", "minimum": 1}},
           ["x", "y", "w", "h"]), t_spot_wb),
+    ("art_thumbnail", "Return a small image (longest edge at most max_size, default 256; "
+     "never enlarged) of an image file, as quickly as possible: it does not open the image, "
+     "so the active image and its edits are not touched, and it is much faster than opening "
+     "and previewing. path is absolute. By default the profile of the file's .arp sidecar, "
+     "if there is one, is applied (an approximation: a quick rendering of the raw); with "
+     "profile=false the sidecar is ignored and a raw file gives the preview embedded in it "
+     "(the fastest), or a quick rendering with the neutral profile if it has none. "
+     "The colours are always sRGB.",
+     _obj({"path": {"type": "string"},
+           "max_size": {"type": "integer", "minimum": 16, "maximum": 4096, "default": 256},
+           "profile": {"type": "boolean", "default": True},
+           "format": {"type": "string", "enum": ["jpeg", "png"], "default": "jpeg"}},
+          ["path"]), t_thumbnail),
     ("art_get_clut_params", "List the parameters of a LUT or CTL script (the controls that "
      "Film Simulation shows for it): name, type (int, float, bool, choice, curve, ...), "
      "label, group, tooltip, min, max, step, default values and the choices of a choice "

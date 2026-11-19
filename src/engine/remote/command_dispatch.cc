@@ -21,6 +21,7 @@
 #include "../clutstore.h"
 #include "../imgiomanager.h"
 #include "../profilestore.h"
+#include "../thumbfile.h"
 #include "../../utils/multilangmgr.h"
 #include <algorithm>
 #include <cmath>
@@ -371,6 +372,33 @@ void cmd_preview(Context &c, Args &a)
     c.host.whenReady(reply, [=](CommandTarget &t) {
         t.renderPreview(out, scale, cx, cy, cw, ch, image_reply(reply));
     });
+}
+
+
+// thumbnail INFILE OUTFILE SIZE [--no-profile]: needs no image
+void cmd_thumbnail(Context &c, Args &a)
+{
+    const bool no_profile = take_flag(a, "--no-profile");
+    int size = 0;
+    if (a.size() != 3 || !parse_int(a[2], size) || size < 1 || size > 32768) {
+        throw std::runtime_error(
+            "usage: thumbnail INFILE OUTFILE SIZE [--no-profile]");
+    }
+    const auto in = abspath(a[0], c.cwd);
+    const auto out = abspath(a[1], c.cwd);
+    const auto sidecar = no_profile ? Glib::ustring() : c.host.paramFileFor(in);
+    ThumbnailFileResult res;
+    Glib::ustring err;
+    if (!makeThumbnailFile(in, out, size, sidecar, res, err)) {
+        throw std::runtime_error(err);
+    }
+    json::Value r = json::Value::object();
+    r.set("file", out)
+        .set("width", res.width)
+        .set("height", res.height)
+        .set("source", res.source)
+        .set("profile", res.profile);
+    c.reply->ok(r);
 }
 
 
@@ -960,6 +988,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("snapshot-remove", cmd_snapshot_remove);
     d.add("snapshot-overwrite", cmd_snapshot_overwrite);
     d.add("preview", cmd_preview);
+    d.add("thumbnail", cmd_thumbnail);
     d.add("get-spot-wb", cmd_get_spot_wb);
     d.add("get-clut-params", cmd_get_clut_params);
     d.add("export", cmd_export);

@@ -255,6 +255,11 @@ public:
         return target_.get();
     }
 
+    Glib::ustring paramFileFor(const Glib::ustring &imagefile) override
+    {
+        return options.getParamFile(imagefile);
+    }
+
     // run fn(editor) as soon as the visible editor has finished
     // loading/processing (waits up to 60 s); exceptions thrown by fn are
     // reported to the client

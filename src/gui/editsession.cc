@@ -131,6 +131,12 @@ struct EditSession::PreviewCrop {
 
 EditSession::EditSession(): is_raw_(false), dirty_(false) {}
 
+
+Glib::ustring EditSession::paramFileFor(const Glib::ustring &imagefile)
+{
+    return options.getParamFile(imagefile);
+}
+
 EditSession::~EditSession() { close(); }
 
 

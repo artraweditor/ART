@@ -191,6 +191,10 @@ void printHelp(std::ostream &out)
         << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers)\n"
         << "                                 that makes the rectangle (full-image coordinates) neutral\n"
         << "    get-clut-params FILE         Print the parameters of a LUT or CTL script (JSON)\n"
+        << "    thumbnail INFILE OUTFILE SIZE [--no-profile]\n"
+        << "                                 Write a thumbnail of INFILE (longest edge at most SIZE,\n"
+        << "                                 never enlarged; needs no open image) to a PNG/JPEG file;\n"
+        << "                                 --no-profile: ignore the sidecar (raw: use the embedded preview)\n"
         << "    ping                         Check that the server answers\n"
         << "    quit                         Stop the server\n";
 }

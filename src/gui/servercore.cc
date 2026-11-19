@@ -33,6 +33,11 @@ public:
         return session.isOpen() ? &session : nullptr;
     }
 
+    Glib::ustring paramFileFor(const Glib::ustring &imagefile) override
+    {
+        return EditSession::paramFileFor(imagefile);
+    }
+
     // commands run one at a time, so waiting here blocks the other callers
     // until the image is ready: they queue up
     void whenReady(const remote::ReplyPtr &reply,

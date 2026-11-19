@@ -160,6 +160,9 @@ public:
 
     int get_profileLen() const { return profile_length; }
     char *get_profile() const { return profile_data; }
+    // the size of the embedded preview, if known (0 otherwise)
+    int get_thumbWidth() const { return int(thumb_width); }
+    int get_thumbHeight() const { return int(thumb_height); }
 
 protected:
     IMFILE *get_file() const { return ifp; }
@@ -167,8 +170,6 @@ protected:
     bool is_supportedThumb() const;
     bool is_ppmThumb() const;
     int get_thumbOffset() const { return int(thumb_offset); }
-    int get_thumbWidth() const { return int(thumb_width); }
-    int get_thumbHeight() const { return int(thumb_height); }
     int get_thumbBPS() const { return thumb_load_raw ? 16 : 8; }
     bool get_thumbSwap() const;
     unsigned get_thumbLength() const { return thumb_length; }

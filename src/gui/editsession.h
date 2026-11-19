@@ -53,6 +53,9 @@ public:
     // forget the active image (unsaved edits are dropped)
     void close();
 
+    // the sidecar file of an image, as the preferences say
+    static Glib::ustring paramFileFor(const Glib::ustring &imagefile);
+
     bool isOpen() const { return bool(ipc_); }
     const Glib::ustring &fileName() const { return fname_; }
     // true if an image is loaded and the processing pipeline is idle

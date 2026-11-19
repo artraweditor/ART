@@ -134,6 +134,7 @@ set(RTENGINESOURCEFILES
     rt_algo.cc
     rt_polygon.cc
     rtthumbnail.cc
+    thumbfile.cc
     simpleprocess.cc
     ipspot.cc
     slicer.cc
