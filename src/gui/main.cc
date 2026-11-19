@@ -682,7 +682,12 @@ int main(int argc, char **argv)
     gdk_threads_init();
     gtk_init(&argc, &argv); // use the "--g-fatal-warnings" command line flag to
                             // make warnings fatal
-    initGUIColorManagement();
+    // Options::load() failing means art::engine::init() never ran, so the
+    // engine's global settings pointer is null: touching the ICC store would
+    // segfault and hide the real error behind the fatal-error dialog below
+    if (fatalError.empty()) {
+        initGUIColorManagement();
+    }
 
     if (fatalError.empty() && remote) {
 #if 1 // ndef __APPLE__
