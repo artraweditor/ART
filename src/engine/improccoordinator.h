@@ -29,9 +29,11 @@
 #include "improcfun.h"
 #include "procevents.h"
 #include "rtengine.h"
+#include "stagecache.h"
 
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 
 namespace art { namespace engine {
@@ -61,8 +63,9 @@ protected:
     Imagefloat *orig_prev;
     Imagefloat *oprevi;
     Imagefloat *spotprev;
-    Imagefloat *bufs_[3];
-    std::array<bool, 4> pipeline_stop_;
+    // the images after the steps of STAGE_1..STAGE_3, see StageCache
+    std::unique_ptr<StageCache> stages_;
+    bool stage0_stop_;
 
     Imagefloat
         *drcomp_11_dcrop_cache; // global cache for dynamicRangeCompression used

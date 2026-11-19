@@ -23,6 +23,7 @@
 #include "../engine/profilestore.h"
 #include "../engine/remote/metadata_json.h"
 #include "../engine/refreshmap.h"
+#include "../engine/stagecache.h"
 #include "../engine/threadpool.h"
 #include "../utils/multilangmgr.h"
 #include "../utils/pathutils.h"
@@ -34,6 +35,7 @@
 #include <glib/gstdio.h>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <stdexcept>
@@ -55,8 +57,21 @@ public:
     {
     }
 
+    // wait for another window
+    void reset(int cx, int cy, int cw, int ch, int skip)
+    {
+        std::lock_guard<std::mutex> lck(mtx_);
+        cx_ = cx;
+        cy_ = cy;
+        cw_ = cw;
+        ch_ = ch;
+        skip_ = skip;
+        ready_ = false;
+    }
+
     void getWindow(int &cx, int &cy, int &cw, int &ch, int &skip) override
     {
+        std::lock_guard<std::mutex> lck(mtx_);
         cx = cx_;
         cy = cy_;
         cw = cw_;
@@ -70,11 +85,11 @@ public:
                          int ch, int skip) override
     {
         // called from a worker thread: copy the (non-shared) data
+        std::lock_guard<std::mutex> lck(mtx_);
         if (cx != cx_ || cy != cy_ || cw != cw_ || ch != ch_ ||
             skip != skip_ || !imgtrue) {
             return;
         }
-        std::lock_guard<std::mutex> lck(mtx_);
         w_ = imgtrue->getWidth();
         h_ = imgtrue->getHeight();
         data_.assign(imgtrue->getData(), imgtrue->getData() + 3 * w_ * h_);
@@ -104,6 +119,16 @@ private:
 } // namespace
 
 
+// The crop that renders the previews, kept between them (see renderPreview)
+struct EditSession::PreviewCrop {
+    PreviewCrop(): catcher(0, 0, 0, 0, 1) {}
+    std::unique_ptr<eng::DetailedCrop> crop;
+    PreviewCatcher catcher;
+    // an update that never delivered may still be queued and hold the crop
+    bool stuck = false;
+};
+
+
 EditSession::EditSession(): is_raw_(false), dirty_(false) {}
 
 EditSession::~EditSession() { close(); }
@@ -111,6 +136,7 @@ EditSession::~EditSession() { close(); }
 
 void EditSession::close()
 {
+    close_preview(); // before the processor, which owns what it uses
     if (ipc_) {
         ipc_->stopProcessing();
         // the processor releases the initial image
@@ -247,14 +273,20 @@ pp::ProcParams EditSession::changeParams(const pp::PartialProfile &nparams,
                              (params->filmNegative == merged.filmNegative) &&
                              (params->wb == merged.wb);
     }
-    *params = merged;
 
+    // The event says what a profile can change, the profiles themselves what
+    // it did: the stages, and the phases before them, that no changed tool
+    // affects are not redone (by the processor, and by the crop of the
+    // previews, which is told the same).
+    int action = eng::RefreshMapper::getInstance()->getAction(ev);
     if (filter_raw_refresh) {
-        ipc_->endUpdateParams(eng::RefreshMapper::getInstance()->getAction(ev) &
-                              eng::ALLNORAW);
-    } else {
-        ipc_->endUpdateParams(ev);
+        action &= eng::ALLNORAW;
     }
+    if (ev != eng::EvPhotoLoaded && incremental()) {
+        action = eng::refineEarlyTodo(*params, merged, action);
+    }
+    *params = merged;
+    ipc_->endUpdateParams(action);
     return merged;
 }
 
@@ -380,6 +412,29 @@ bool EditSession::applyProfileMerged(const pp::PartialProfile &profile,
 }
 
 
+// ART_NO_INCREMENTAL=1: do everything the event of a profile says, and render
+// each preview from scratch, as it used to be (for A/B tests)
+bool EditSession::incremental()
+{
+    const char *v = getenv("ART_NO_INCREMENTAL");
+    return !(v && *v && strcmp(v, "0"));
+}
+
+
+void EditSession::close_preview()
+{
+    if (preview_) {
+        if (preview_->stuck) {
+            // an update that is still queued uses the crop and the catcher,
+            // and the processor deletes the crop with itself: leave them
+            preview_.release();
+        } else {
+            preview_.reset();
+        }
+    }
+}
+
+
 void EditSession::renderPreview(
     const Glib::ustring &outfile, double scale, int cx, int cy, int cw, int ch,
     std::function<void(bool, const Glib::ustring &, int, int)> done)
@@ -409,10 +464,24 @@ void EditSession::renderPreview(
     // not exceeding 1/scale, and resample the result to the exact size
     const int skip = scale >= 1.0 ? 1 : std::max(1, int(std::floor(1.0 / scale)));
 
+    // The crop is kept from one preview to the next: told what the processor
+    // did in the meantime (see DetailedCrop::setIncremental), it only redoes
+    // what depends on it.  With ART_NO_INCREMENTAL=1 each preview is rendered
+    // by a new one (see incremental()).
     auto ipc = ipc_; // keep the processor alive for the worker
-    eng::DetailedCrop *crop = ipc->createCrop(nullptr, true);
-    crop->setSRGBOutput(true); // the preview is always sRGB
-    PreviewCatcher catcher(cx, cy, cw, ch, skip);
+    const bool keep = incremental();
+    if (preview_ && !keep) {
+        close_preview();
+    }
+    if (!preview_) {
+        preview_.reset(new PreviewCrop());
+        preview_->crop.reset(ipc->createCrop(nullptr, true));
+        preview_->crop->setSRGBOutput(true); // the preview is always sRGB
+        preview_->crop->setIncremental(true);
+    }
+    eng::DetailedCrop *crop = preview_->crop.get();
+    PreviewCatcher &catcher = preview_->catcher;
+    catcher.reset(cx, cy, cw, ch, skip);
     crop->setListener(&catcher);
     if (crop->tryUpdate()) {
         eng::ThreadPool::add_task(eng::ThreadPool::Priority::HIGH,
@@ -431,14 +500,20 @@ void EditSession::renderPreview(
     crop->setListener(nullptr);
     if (!got) {
         // the update task may still be queued and holds the crop: leave it
+        preview_->stuck = true;
         done(false, "timeout while rendering the preview", 0, 0);
         return;
     }
-    // DetailedCrop::destroy() does nothing: the crop must be deleted (its
-    // destructor leaves the list of the processor and frees its buffers, which
-    // are about a full image each), or every preview leaks it. The destructor
-    // waits for the update that is still finishing.
-    delete crop;
+    // no update in progress when the crop is used again, or deleted: it
+    // would also touch the processor
+    crop->waitIdle();
+    preview_->stuck = false;
+    if (!keep) {
+        // DetailedCrop::destroy() does nothing: the crop must be deleted (its
+        // destructor leaves the list of the processor and frees its buffers,
+        // which are about a full image each), or every preview leaks it
+        close_preview();
+    }
 
     // the engine output covers cw/skip pixels; bring it to the requested scale
     const int ow = std::max(1, int(std::lround(cw * scale)));

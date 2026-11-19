@@ -484,6 +484,15 @@ public:
      * the settings of the histogram or of the monitor say. Used for rendering
      * images for other programs, which must not depend on the configuration. */
     virtual void setSRGBOutput(bool yes) {}
+    /** If true, the crop is meant to be kept and updated over and over (e.g.
+     * a preview rendered on request) instead of being created for a single
+     * update.  The processor then tells it what changed in the meantime, even
+     * if it has no listener, and fullUpdate() redoes only what depends on
+     * those changes (and what changed in the window); the first one still
+     * does everything.  The window must be given by the listener. */
+    virtual void setIncremental(bool yes) {}
+    /** Waits until the update in progress (if any) is over. */
+    virtual void waitIdle() {}
 };
 
 enum GamutCheck { GAMUT_CHECK_OFF, GAMUT_CHECK_OUTPUT, GAMUT_CHECK_MONITOR };

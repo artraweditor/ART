@@ -23,6 +23,7 @@
 #include "image16.h"
 #include "image8.h"
 #include <chrono>
+#include <memory>
 
 #include "imagesource.h"
 #include "improccoordinator.h"
@@ -30,6 +31,7 @@
 #include "pipettebuffer.h"
 #include "procevents.h"
 #include "rtengine.h"
+#include "stagecache.h"
 
 namespace art { namespace engine {
 
@@ -44,8 +46,9 @@ protected:
     Imagefloat *origCrop; // "one chunk" allocation
     Imagefloat *spotCrop; // "one chunk" allocation
     Imagefloat *denoiseCrop;
-    Imagefloat *bufs_[3];
-    std::array<bool, 4> pipeline_stop_;
+    // the images after the steps of STAGE_1..STAGE_3, see StageCache
+    std::unique_ptr<StageCache> stages_;
+    bool stage0_stop_;
     Image8
         *cropImg; // "one chunk" allocation ; displayed image in monitor color
                   // space, showing the output profile as well (soft-proofing
@@ -98,6 +101,28 @@ private:
     /// What an update abandoned at its current phase would have to redo;
     /// kept up to date by updateImpl().
     int restoreOnAbort_ = 0;
+    /// see DetailedCrop::setIncremental()
+    bool incremental_ = false;
+    /// what the processor did since the last update (incremental only)
+    int accumTodo_ = 0;
+    /// the params of the last update that was not abandoned
+    std::unique_ptr<art::engine::procparams::ProcParams> lastParams_;
+    /// the window of the last update, and whether the transformed crop is
+    /// up to date (incremental only)
+    struct Geometry {
+        int x, y, w, h, skip, left, upper;
+        bool operator!=(const Geometry &o) const
+        {
+            return x != o.x || y != o.y || w != o.w || h != o.h ||
+                   skip != o.skip || left != o.left || upper != o.upper;
+        }
+    };
+    Geometry lastGeom_{};
+    bool haveGeom_ = false;
+    bool transformDone_ = false;
+    /// Called by the processor (with its mProcessing locked) for a crop that
+    /// is not updated, to record the changes it has not seen.
+    void noteChange(int todo);
     /// When this crop last made it to the end of an update.
     std::chrono::steady_clock::time_point lastShown_{};
 
@@ -110,6 +135,8 @@ public:
 
     void setEditSubscriber(art::gui::EditSubscriber *newSubscriber);
     void setSRGBOutput(bool yes) override { srgbOutput_ = yes; }
+    void setIncremental(bool yes) override;
+    void waitIdle() override;
     bool hasListener();
     void setWindow(int cropX, int cropY, int cropW, int cropH,
                    int skip) override

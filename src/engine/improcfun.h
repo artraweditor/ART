@@ -40,6 +40,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <vector>
 
 namespace art { namespace engine {
 
@@ -130,6 +131,28 @@ public:
     enum class Pipeline { THUMBNAIL, NAVIGATOR, PREVIEW, OUTPUT };
     void setPipeline(Pipeline pipeline) { cur_pipeline = pipeline; }
     bool process(Stage stage, Imagefloat *img);
+
+    /**
+     * The tools of STAGE_1..STAGE_3 as a single ordered list of steps, so
+     * that a caller can keep a copy of the image at any step boundary and
+     * resume from there (see StageCache).  process(Stage, img) runs all the
+     * steps of a stage.  STAGE_0 is not part of the list.
+     */
+    struct StopState {
+        int stage = -1;     // stage of the last step run
+        bool prev = false;  // a previous stage asked to stop: skip everything
+        bool cur = false;   // a tool of the current stage asked to stop
+        bool any() const { return prev || cur; }
+    };
+    static int numSteps();
+    static int stageBegin(Stage stage); // first step of the stage
+    static Stage stepStage(int step);
+    static const char *stepName(int step);
+    /** Copy into `dst` the ProcParams section(s) that the step reads. */
+    static void copyStepParams(int step, const ProcParams &src,
+                               ProcParams &dst);
+    /** Run steps [first, last).  Returns true if the pipeline must stop. */
+    bool processSteps(int first, int last, Imagefloat *img, StopState &stop);
 
     void setViewport(int ox, int oy, int fw, int fh);
     void setOutputHistograms(LUTu *histToneCurve, LUTu *histCCurve,
@@ -348,6 +371,9 @@ private:
     bool needsLCP();
     bool needsLensfun();
     bool needsDCPProfile();
+
+    struct StepDesc;
+    static const std::vector<StepDesc> &steps();
 
     template <class Ret, class Method>
     Ret apply(const char *name, Method op, Imagefloat *img, bool can_skip_sync);

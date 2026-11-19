@@ -280,6 +280,21 @@ The file must exist; an unreadable or unsupported file gives an empty list.
   `DetailedCrop::setSRGBOutput(true)`; `export` keeps using the output profile
   and embeds it. Before this the preview was in the output profile, or in the
   working profile when `HistogramWorking` is on, without telling which.
+* **Only what an `apply` changed is redone.** `EditSession::changeParams`
+  compares the profile with the previous parameters (`refineEarlyTodo`,
+  `stagecache.cc`) and narrows the refresh flags of `EvProfileChanged`
+  accordingly: if only tools of the stages (exposure ... prsharpening) or
+  denoise, spot removal, dehaze and DR compression changed, the raw is not
+  reloaded, and the processing resumes from the first step that changed
+  (`StageCache`, one image after each stage). The crop that renders the
+  previews is kept between `preview` commands (`DetailedCrop::setIncremental`):
+  the processor tells it what changed meanwhile, so it redoes only that, and
+  the geometric transform is kept too. A change of the window (`--crop`,
+  `--scale`) or of anything the code does not know to be independent (icm,
+  crop, transform, raw, wb, ...) redoes everything, as before.
+  `ART_STAGE_CACHE_TRACE=1` logs, for each update, the flags and the step it
+  resumed from; `ART_STAGE_CACHE_VERIFY=1` also renders from scratch and
+  compares; `ART_NO_INCREMENTAL=1` turns all this off, for A/B tests.
 * The server does not run the Crop tool's trimming after `apply`; a profile
   whose crop exceeds the image is applied as it is.
 * Set `ART_GPU=1` (or `0`) in the server's environment to choose the backend

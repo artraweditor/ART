@@ -649,12 +649,261 @@ bool ImProcFunctions::stage0NeedsFullImage()
     return params->dehaze.enabled || params->drcompression.enabled;
 }
 
+/**
+ * One tool (or one piece of glue between tools) of the STAGE_1..STAGE_3
+ * pipeline.  The order of the list is the order of execution.
+ *
+ * run:   runs the step, returns true if the pipeline must stop after it
+ * honor: whether the step is skipped once a tool of the same stage has asked
+ *        to stop (steps that always ran in the old per-stage code do not)
+ * own:   copies to `dst` the ProcParams section(s) the step reads.  A section
+ *        that no step owns (icm, crop, ...) is treated as "affects
+ *        everything" by the stage cache, so a step must list everything
+ *        besides the sections shared with other steps that it reads.
+ */
+struct ImProcFunctions::StepDesc {
+    Stage stage;
+    const char *name;
+    bool honor;
+    bool (*run)(ImProcFunctions &, Imagefloat *);
+    void (*own)(const ProcParams &, ProcParams &);
+};
+
+const std::vector<ImProcFunctions::StepDesc> &ImProcFunctions::steps()
+{
+#define RUN_(op, s) \
+    [](ImProcFunctions &f, Imagefloat *img) { \
+        f.apply<void>(#op, &ImProcFunctions::op, img, s); \
+        return false; \
+    }
+#define RUN_s_(op, s) \
+    [](ImProcFunctions &f, Imagefloat *img) { \
+        return f.apply<bool>(#op, &ImProcFunctions::op, img, s); \
+    }
+#define OWN_(...) \
+    [](const ProcParams &src, ProcParams &dst) { \
+        __VA_ARGS__; \
+    }
+#define SEC_(sec) dst.sec = src.sec
+    using S = Stage;
+    static const std::vector<StepDesc> ret = {
+        // STAGE_1
+        {S::STAGE_1, "channelMixer", false,
+         RUN_(channelMixer, !f.params->chmixer.enabled), OWN_(SEC_(chmixer))},
+        {S::STAGE_1, "exposure", false,
+         RUN_(exposure, !f.params->exposure.enabled), OWN_(SEC_(exposure))},
+        {S::STAGE_1, "hslEqualizer", false,
+         RUN_(hslEqualizer, !f.params->hsl.enabled), OWN_(SEC_(hsl))},
+        {S::STAGE_1, "toneEqualizer", false,
+         RUN_s_(toneEqualizer, !f.params->toneEqualizer.enabled),
+         OWN_(SEC_(toneEqualizer))},
+        {S::STAGE_1, "proPhotoBlue", false,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.params->icm.workingProfile == "ProPhoto") {
+                 img->syncCpuForWrite(); // funnel bypass: CPU-only free function
+                 proPhotoBlue(img, f.multiThread);
+             }
+             return false;
+         },
+         OWN_()},
+        // STAGE_2
+        {S::STAGE_2, "dcpProfileEarly", false,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.params->icm.dcp_look_early && f.needsDCPProfile()) {
+                 img->syncCpuForWrite(); // funnel bypass: CPU-only free function
+                 dcpProfile(img, f.dcpProf, f.dcpApplyState, f.multiThread);
+             }
+             return false;
+         },
+         OWN_()},
+        {S::STAGE_2, "sharpening", false,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.cur_pipeline == Pipeline::OUTPUT ||
+                 f.cur_pipeline == Pipeline::PREVIEW) {
+                 return f.apply<bool>("sharpening",
+                                      &ImProcFunctions::sharpening,
+                                      img, !f.params->sharpening.enabled);
+             }
+             return false;
+         },
+         OWN_(SEC_(sharpening))},
+        {S::STAGE_2, "impulsedenoise", true,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.cur_pipeline == Pipeline::OUTPUT ||
+                 f.cur_pipeline == Pipeline::PREVIEW) {
+                 f.apply<void>("impulsedenoise",
+                               &ImProcFunctions::impulsedenoise, img,
+                               !f.params->impulseDenoise.enabled);
+             }
+             return false;
+         },
+         OWN_(SEC_(impulseDenoise))},
+        {S::STAGE_2, "defringe", true,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.cur_pipeline == Pipeline::OUTPUT ||
+                 f.cur_pipeline == Pipeline::PREVIEW) {
+                 f.apply<void>("defringe", &ImProcFunctions::defringe, img,
+                               !f.params->defringe.enabled);
+             }
+             return false;
+         },
+         OWN_(SEC_(defringe))},
+        {S::STAGE_2, "colorCorrection", true,
+         RUN_s_(colorCorrection, !f.params->colorcorrection.enabled),
+         OWN_(SEC_(colorcorrection))},
+        {S::STAGE_2, "guidedSmoothing", true,
+         RUN_s_(guidedSmoothing, !f.params->smoothing.enabled),
+         OWN_(SEC_(smoothing))},
+        // STAGE_3
+        {S::STAGE_3, "creativeGradients", false,
+         RUN_(creativeGradients,
+              !(f.needsGradient() || f.needsPCVignetting())),
+         OWN_(SEC_(gradient); SEC_(pcvignette))},
+        {S::STAGE_3, "textureBoost", true,
+         RUN_s_(textureBoost, !f.params->textureBoost.enabled),
+         OWN_(SEC_(textureBoost))},
+        {S::STAGE_3, "filmGrain", true,
+         RUN_(filmGrain, !f.params->grain.enabled), OWN_(SEC_(grain))},
+        {S::STAGE_3, "logEncoding", true,
+         RUN_(logEncoding, !f.params->logenc.enabled), OWN_(SEC_(logenc))},
+        {S::STAGE_3, "saturationVibrance", true,
+         RUN_(saturationVibrance, !f.params->saturation.enabled),
+         OWN_(SEC_(saturation))},
+        {S::STAGE_3, "dcpProfileLate", true,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (!f.params->icm.dcp_look_early && f.needsDCPProfile()) {
+                 img->syncCpuForWrite(); // funnel bypass
+                 dcpProfile(img, f.dcpProf, f.dcpApplyState, f.multiThread);
+             }
+             return false;
+         },
+         OWN_()},
+        // the two filmSimulation steps and toneCurve read each other's
+        // ordering parameter (filmSimulation.after_tone_curve)
+        {S::STAGE_3, "filmSimulationBefore", true,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (!f.params->filmSimulation.after_tone_curve) {
+                 f.apply<void>("filmSimulation",
+                               &ImProcFunctions::filmSimulation, img,
+                               !f.params->filmSimulation.enabled);
+             }
+             return false;
+         },
+         OWN_(SEC_(filmSimulation))},
+        {S::STAGE_3, "toneCurve", true,
+         RUN_(toneCurve, !f.params->toneCurve.enabled), OWN_(SEC_(toneCurve))},
+        {S::STAGE_3, "filmSimulationAfter", true,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.params->filmSimulation.after_tone_curve) {
+                 f.apply<void>("filmSimulation",
+                               &ImProcFunctions::filmSimulation, img,
+                               !f.params->filmSimulation.enabled);
+             }
+             return false;
+         },
+         OWN_(SEC_(filmSimulation))},
+        {S::STAGE_3, "rgbCurves", true,
+         RUN_(rgbCurves, !f.params->rgbCurves.enabled), OWN_(SEC_(rgbCurves))},
+        {S::STAGE_3, "labAdjustments", true,
+         RUN_(labAdjustments, !f.params->labCurve.enabled),
+         OWN_(SEC_(labCurve))},
+        {S::STAGE_3, "softLight", true,
+         RUN_(softLight, !f.params->softlight.enabled),
+         OWN_(SEC_(softlight))},
+        {S::STAGE_3, "localContrast", true,
+         RUN_s_(localContrast, !f.params->localContrast.enabled),
+         OWN_(SEC_(localContrast))},
+        {S::STAGE_3, "blackAndWhite", true,
+         RUN_(blackAndWhite, !f.params->blackwhite.enabled),
+         OWN_(SEC_(blackwhite))},
+        {S::STAGE_3, "prsharpening", false,
+         [](ImProcFunctions &f, Imagefloat *img) {
+             if (f.cur_pipeline == Pipeline::PREVIEW &&
+                 f.params->prsharpening.enabled) {
+                 double s = f.scale;
+                 int fw = f.full_width * s, fh = f.full_height * s;
+                 int imw, imh;
+                 double s2 = f.resizeScale(f.params, fw, fh, imw, imh);
+                 f.scale = std::max(s * s2, 1.0);
+                 f.apply<bool>("prsharpening", &ImProcFunctions::prsharpening,
+                               img, false);
+                 f.scale = s;
+             }
+             return false;
+         },
+         OWN_(SEC_(prsharpening); SEC_(resize))},
+    };
+#undef SEC_
+#undef OWN_
+#undef RUN_s_
+#undef RUN_
+    return ret;
+}
+
+int ImProcFunctions::numSteps()
+{
+    return steps().size();
+}
+
+int ImProcFunctions::stageBegin(Stage stage)
+{
+    const auto &st = steps();
+    for (size_t i = 0; i < st.size(); ++i) {
+        if (st[i].stage == stage) {
+            return i;
+        }
+    }
+    // STAGE_0 has no steps; nothing follows STAGE_3
+    return stage == Stage::STAGE_0 ? 0 : st.size();
+}
+
+ImProcFunctions::Stage ImProcFunctions::stepStage(int step)
+{
+    return steps()[step].stage;
+}
+
+const char *ImProcFunctions::stepName(int step)
+{
+    return steps()[step].name;
+}
+
+void ImProcFunctions::copyStepParams(int step, const ProcParams &src,
+                                     ProcParams &dst)
+{
+    steps()[step].own(src, dst);
+}
+
+bool ImProcFunctions::processSteps(int first, int last, Imagefloat *img,
+                                   StopState &stop)
+{
+    const auto &st = steps();
+    last = std::min<int>(last, st.size());
+    for (int i = first; i < last; ++i) {
+        const auto &s = st[i];
+        if (int(s.stage) != stop.stage) {
+            // the "stop" asked by an earlier stage skips everything after it
+            stop.prev = stop.prev || stop.cur;
+            stop.cur = false;
+            stop.stage = int(s.stage);
+            if (s.stage == Stage::STAGE_2) {
+                linked_mask_mgr_.init(*params);
+            }
+        }
+        if (stop.prev || (s.honor && stop.cur)) {
+            continue;
+        }
+        if (s.run(*this, img)) {
+            stop.cur = true;
+        }
+    }
+    return stop.any();
+}
+
 bool ImProcFunctions::process(Stage stage, Imagefloat *img)
 {
     bool stop = false;
 
 #define STEP_(op, s) apply<void>(#op, &ImProcFunctions::op, img, s)
-#define STEP_s_(op, s) apply<bool>(#op, &ImProcFunctions::op, img, s)
 
     switch (stage) {
     // a tool added to STAGE_0 must also be added to stage0NeedsFullImage()
@@ -662,68 +911,15 @@ bool ImProcFunctions::process(Stage stage, Imagefloat *img)
         STEP_(dehaze, !params->dehaze.enabled);
         STEP_(dynamicRangeCompression, !params->drcompression.enabled);
         break;
-    case Stage::STAGE_1:
-        STEP_(channelMixer, !params->chmixer.enabled);
-        STEP_(exposure, !params->exposure.enabled);
-        STEP_(hslEqualizer, !params->hsl.enabled);
-        stop = STEP_s_(toneEqualizer, !params->toneEqualizer.enabled);
-        if (params->icm.workingProfile == "ProPhoto") {
-            img->syncCpuForWrite();   // funnel bypass: CPU-only free function
-            proPhotoBlue(img, multiThread);
-        }
+    default: {
+        StopState st;
+        processSteps(stageBegin(stage),
+                     stage == Stage::STAGE_3 ? numSteps()
+                                             : stageBegin(Stage(int(stage) + 1)),
+                     img, st);
+        stop = st.cur;
         break;
-    case Stage::STAGE_2:
-        if (params->icm.dcp_look_early && needsDCPProfile()) {
-            img->syncCpuForWrite();   // funnel bypass: CPU-only free function
-            dcpProfile(img, dcpProf, dcpApplyState, multiThread);
-        }
-        linked_mask_mgr_.init(*params);
-        if (cur_pipeline == Pipeline::OUTPUT || cur_pipeline == Pipeline::PREVIEW) {
-            stop = STEP_s_(sharpening, !params->sharpening.enabled);
-            if (!stop) {
-                STEP_(impulsedenoise, !params->impulseDenoise.enabled);
-                STEP_(defringe, !params->defringe.enabled);
-            }
-        }
-        stop = stop || STEP_s_(colorCorrection, !params->colorcorrection.enabled);
-        stop = stop || STEP_s_(guidedSmoothing, !params->smoothing.enabled);
-        break;
-    case Stage::STAGE_3:
-        STEP_(creativeGradients, !(needsGradient() || needsPCVignetting()));
-        stop = stop || STEP_s_(textureBoost, !params->textureBoost.enabled);
-        if (!stop) {
-            STEP_(filmGrain, !params->grain.enabled);
-            STEP_(logEncoding, !params->logenc.enabled);
-            STEP_(saturationVibrance, !params->saturation.enabled);
-            if (!params->icm.dcp_look_early && needsDCPProfile()) {
-                img->syncCpuForWrite();   // funnel bypass
-                dcpProfile(img, dcpProf, dcpApplyState, multiThread);
-            }
-            if (!params->filmSimulation.after_tone_curve) {
-                STEP_(filmSimulation, !params->filmSimulation.enabled);
-            }
-            STEP_(toneCurve, !params->toneCurve.enabled);
-            if (params->filmSimulation.after_tone_curve) {
-                STEP_(filmSimulation, !params->filmSimulation.enabled);
-            }
-            STEP_(rgbCurves, !params->rgbCurves.enabled);
-            STEP_(labAdjustments, !params->labCurve.enabled);
-            STEP_(softLight, !params->softlight.enabled);
-        }
-        stop = stop || STEP_s_(localContrast, !params->localContrast.enabled);
-        if (!stop) {
-            STEP_(blackAndWhite, !params->blackwhite.enabled);
-        }
-        if (cur_pipeline == Pipeline::PREVIEW && params->prsharpening.enabled) {
-            double s = scale;
-            int fw = full_width * s, fh = full_height * s;
-            int imw, imh;
-            double s2 = resizeScale(params, fw, fh, imw, imh);
-            scale = std::max(s * s2, 1.0);
-            STEP_s_(prsharpening, false);
-            scale = s;
-        }
-        break;
+    }
     }
     return stop;
 }

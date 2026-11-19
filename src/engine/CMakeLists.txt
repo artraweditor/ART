@@ -82,6 +82,7 @@ set(RTENGINESOURCEFILES
     dcp.cc
     dcraw.cc
     dcrop.cc
+    stagecache.cc
     demosaic_algos.cc
     dfmanager.cc
     diagonalcurves.cc

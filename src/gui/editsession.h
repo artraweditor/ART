@@ -128,6 +128,11 @@ private:
                 const std::string &merge_key = std::string());
 
     std::shared_ptr<art::engine::StagedImageProcessor> ipc_;
+    struct PreviewCrop;
+    // the crop that renders the previews
+    std::unique_ptr<PreviewCrop> preview_;
+    void close_preview();
+    static bool incremental();
     Model model_;
     Glib::ustring fname_;
     Glib::ustring sidecar_;

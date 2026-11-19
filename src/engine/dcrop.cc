@@ -25,6 +25,7 @@
 #include "refreshmap.h"
 #include "rt_math.h"
 
+#include <cstdlib>
 #include <iostream>
 
 namespace art { namespace engine {
@@ -54,12 +55,6 @@ Crop::Crop(ImProcCoordinator *parent, art::gui::EditDataProvider *editDataProvid
       upperBorder(0), leftBorder(0), cropAllocated(false),
       cropImageListener(nullptr), parent(parent), isDetailWindow(isDetailWindow)
 {
-    for (int i = 0; i < 3; ++i) {
-        bufs_[i] = nullptr;
-    }
-    for (auto &s : pipeline_stop_) {
-        s = false;
-    }
     parent->crops.push_back(this);
 }
 
@@ -159,9 +154,52 @@ constexpr int CROP_ALL =
 
 } // namespace
 
+void Crop::setIncremental(bool yes)
+{
+    art::utils::MyMutex::MyLock cropLock(cropMutex);
+    incremental_ = yes;
+    accumTodo_ = 0;
+    lastParams_.reset();
+    haveGeom_ = false;
+}
+
+
+void Crop::waitIdle()
+{
+    // fullUpdate() holds mProcessing for all its duration
+    art::utils::MyMutex::MyLock processingLock(parent->mProcessing);
+    art::utils::MyMutex::MyLock cropLock(cropMutex);
+}
+
+
+void Crop::noteChange(int todo)
+{
+    art::utils::MyMutex::MyLock cropLock(cropMutex);
+    if (incremental_) {
+        accumTodo_ |= todo;
+    }
+}
+
+
 void Crop::update(int todo)
 {
     art::utils::MyMutex::MyLock cropLock(cropMutex);
+
+    if (incremental_) {
+        // what changed since the last update: the processor's changes, and
+        // what the params say
+        todo |= accumTodo_;
+        accumTodo_ = 0;
+        if (lastParams_) {
+            todo = refineEarlyTodo(*lastParams_, parent->params, todo);
+        }
+        // not valid again until the update is over
+        const std::unique_ptr<ProcParams> last(std::move(lastParams_));
+        if (settings->verbose > 1 || getenv("ART_STAGE_CACHE_TRACE")) {
+            std::cerr << "Crop: todo=0x" << std::hex << todo << std::dec
+                      << (last ? "" : " (no previous params)") << std::endl;
+        }
+    }
 
     // redo whatever an abandoned update left unfinished
     todo |= pendingTodo_;
@@ -177,6 +215,9 @@ void Crop::update(int todo)
     try {
         updateImpl(todo);
         lastShown_ = std::chrono::steady_clock::now();
+        if (incremental_) {
+            lastParams_.reset(new ProcParams(parent->params));
+        }
     } catch (Cancelled &) {
         // Nothing of this update was shown (rgb2monitor is after the last
         // check), so the previous image stays up.
@@ -218,11 +259,26 @@ void Crop::updateImpl(int todo)
             setCropSizes(wx, wy, ww, wh, ws, true); // this set skip=ws
     }
 
+    if (incremental_) {
+        // the contents of the buffers also depend on the position of the
+        // window, not only on its size
+        const Geometry g{cropx, cropy, cropw, croph, skip, leftBorder,
+                         upperBorder};
+        if (!haveGeom_ || g != lastGeom_) {
+            needsinitupdate = true;
+        }
+        lastGeom_ = g;
+        haveGeom_ = true;
+    }
+
     // it something has been reallocated, all processing steps have to be
     // performed
     const bool full = needsinitupdate || (todo & M_HIGHQUAL);
     if (full) {
         todo = ALL;
+    }
+    if (todo & (M_INIT | M_LINDENOISE | M_SPOT | M_HDR | M_TRANSFORM)) {
+        transformDone_ = false; // until the transform is redone
     }
     // what to redo if abandoned from here to the next phase() call: a
     // reallocation is only reported once, so then everything
@@ -385,7 +441,7 @@ void Crop::updateImpl(int todo)
                 parent->drcomp_11_dcrop_cache) {
                 f = parent->drcomp_11_dcrop_cache;
                 need_drcomp = false;
-                pipeline_stop_[0] = parent->pipeline_stop_[0];
+                stage0_stop_ = parent->stage0_stop_;
             } else {
                 f = new Imagefloat(fw, fh, hdr_base_crop);
                 drCompCrop.reset(f);
@@ -424,7 +480,7 @@ void Crop::updateImpl(int todo)
         }
 
         if (need_drcomp) {
-            pipeline_stop_[0] =
+            stage0_stop_ =
                 parent->ipf.process(ImProcFunctions::Stage::STAGE_0, f);
         }
         if (cache_f) {
@@ -433,7 +489,7 @@ void Crop::updateImpl(int todo)
             parent->drcomp_11_dcrop_cache = f;
             drCompCrop.release();
         }
-        stop = pipeline_stop_[0];
+        stop = stage0_stop_;
 
         // crop back to the size expected by the rest of the pipeline
         baseCrop = hdr_base_crop;
@@ -462,25 +518,28 @@ void Crop::updateImpl(int todo)
 
     // transform
     phase(CROP_STAGES);
+    // An incremental crop keeps the result of the transform, which only
+    // depends on the phases above (and on params that, if changed, are not
+    // refined away, see refineEarlyTodo()).
+    const bool redo_transform =
+        !incremental_ || !transformDone_ ||
+        (todo & (M_INIT | M_LINDENOISE | M_SPOT | M_HDR | M_TRANSFORM));
     if (needstransform) {
         if (!transCrop) {
             transCrop = new Imagefloat(cropw, croph, baseCrop);
         }
 
-        if (needstransform) {
+        if (redo_transform) {
+            transformDone_ = false;
             parent->ipf.transform(
                 baseCrop, transCrop, cropx / skip, cropy / skip, trafx / skip,
                 trafy / skip, skips(parent->fw, skip), skips(parent->fh, skip),
                 parent->getFullWidth(), parent->getFullHeight(),
                 parent->imgsrc->getMetaData(),
                 parent->imgsrc->getRotateDegree(), false);
-        } else {
-            baseCrop->copyTo(transCrop);
         }
 
-        if (transCrop) {
-            baseCrop = transCrop;
-        }
+        baseCrop = transCrop;
     } else {
         if (transCrop) {
             delete transCrop;
@@ -488,44 +547,20 @@ void Crop::updateImpl(int todo)
 
         transCrop = nullptr;
     }
+    transformDone_ = true;
 
-    if (todo & M_RGBCURVE) {
-        Imagefloat *workingCrop = baseCrop;
-        workingCrop->copyTo(bufs_[0]);
-        pipeline_stop_[1] =
-            stop ||
-            parent->ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
-
-        if (workingCrop != baseCrop) {
-            delete workingCrop;
-        }
-    }
-    stop = stop || pipeline_stop_[1];
-
-    if (todo & M_LUMACURVE) {
-        restoreOnAbort_ = full ? CROP_ALL : (M_LUMACURVE | M_LUMINANCE | M_COLOR);
-        bufs_[0]->copyTo(bufs_[1]);
-
-        pipeline_stop_[2] =
-            stop ||
-            parent->ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
-    }
-    stop = stop || pipeline_stop_[2];
-
-    if (todo & (M_LUMINANCE | M_COLOR)) {
-        restoreOnAbort_ = full ? CROP_ALL : (M_LUMINANCE | M_COLOR);
-        bufs_[1]->copyTo(bufs_[2]);
-
-        pipeline_stop_[3] =
-            stop ||
-            parent->ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
-    }
-    stop = stop || pipeline_stop_[3];
+    // An abandoned run leaves the images it did not finish marked as such in
+    // the cache, so only a reallocation has to be redone from the start.
+    restoreOnAbort_ = full ? CROP_ALL : 0;
+    // while a tool is being edited through the pipette buffer it must run
+    // whenever its stage does: no skipping inside the stage
+    stop = stages_->run(parent->ipf, params, todo, baseCrop, stop,
+                        PipetteBuffer::getEditID() == art::utils::EUID_None);
 
     // all pipette buffer processing should be finished now
     PipetteBuffer::setReady();
 
-    parent->ipf.rgb2monitor(bufs_[2], cropImg);
+    parent->ipf.rgb2monitor(stages_->final(), cropImg);
 
     if (cropImageListener) {
         // internal image in output color space for analysis
@@ -536,7 +571,7 @@ void Crop::updateImpl(int todo)
             icm.outputBPC = true;
         }
         Image8 *cropImgtrue =
-            parent->ipf.rgb2out(bufs_[2], 0, 0, cropImg->getWidth(),
+            parent->ipf.rgb2out(stages_->final(), 0, 0, cropImg->getWidth(),
                                 cropImg->getHeight(), icm, !srgbOutput_);
 
         int finalW = rqcropw;
@@ -599,12 +634,7 @@ void Crop::freeAll()
             denoiseCrop = nullptr;
         }
 
-        for (int i = 3; i > 0; --i) {
-            if (bufs_[i - 1]) {
-                delete bufs_[i - 1];
-                bufs_[i - 1] = nullptr;
-            }
-        }
+        stages_.reset();
 
         if (cropImg) {
             delete cropImg;
@@ -777,12 +807,8 @@ bool Crop::setCropSizes(int rcx, int rcy, int rcw, int rch, int skip,
             denoiseCrop->allocate(cropw, croph);
         }
 
-        for (int i = 0; i < 3; ++i) {
-            if (!bufs_[i]) {
-                bufs_[i] = new Imagefloat();
-            }
-            bufs_[i]->allocate(cropw, croph);
-        }
+        stages_.reset(new StageCache());
+        stages_->allocate(cropw, croph);
 
         if (!cropImg) {
             cropImg = new Image8();
@@ -807,9 +833,7 @@ bool Crop::setCropSizes(int rcx, int rcy, int rcw, int rch, int skip,
     if (denoiseCrop) {
         denoiseCrop->assignColorSpace(parent->params.icm.workingProfile);
     }
-    for (int i = 0; i < 3; ++i) {
-        bufs_[i]->assignColorSpace(parent->params.icm.workingProfile);
-    }
+    stages_->assignColorSpace(parent->params.icm.workingProfile);
 
     cropx = bx1;
     cropy = by1;
@@ -897,7 +921,8 @@ void Crop::fullUpdate()
     PipelineTimeReport report;
     while (newUpdatePending) {
         newUpdatePending = false;
-        update(ALL);
+        // an incremental crop gets its changes from the processor
+        update(incremental_ ? 0 : ALL);
     }
     if (tweakOperator) {
         parent->restoreParams();

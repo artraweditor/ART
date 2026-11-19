@@ -53,7 +53,7 @@ extern const Settings *settings;
 
 ImProcCoordinator::ImProcCoordinator()
     : orig_prev(nullptr), oprevi(nullptr), spotprev(nullptr),
-
+      stage0_stop_(false),
       drcomp_11_dcrop_cache(nullptr), previmg(nullptr), workimg(nullptr),
       imgsrc(nullptr), lastAwbEqual(0.), ipf(&params, true),
       monitorIntent(RI_RELATIVE), softProof(false), gamutCheck(GAMUT_CHECK_OFF),
@@ -86,12 +86,6 @@ ImProcCoordinator::ImProcCoordinator()
       changeSinceLast(0), updaterRunning(false), destroying(false),
       highQualityComputed(false)
 {
-    for (int i = 0; i < 3; ++i) {
-        bufs_[i] = nullptr;
-    }
-    for (auto &s : pipeline_stop_) {
-        s = false;
-    }
 }
 
 void ImProcCoordinator::assign(ImageSource *imgsrc)
@@ -462,10 +456,10 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 drcomp_11_dcrop_cache = nullptr;
             }
 
-            pipeline_stop_[0] =
+            stage0_stop_ =
                 ipf.process(ImProcFunctions::Stage::STAGE_0, oprevi);
         }
-        stop = pipeline_stop_[0];
+        stop = stage0_stop_;
 
         progress("Rotate / Distortion...", 100 * readyphase / numofphases);
         // Remove transformation if unneeded
@@ -532,37 +526,15 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                  100 * readyphase / numofphases);
 
         if ((todo & M_RGBCURVE) || (todo & M_CROP)) {
-            // if it's just crop we just need the histogram, no image updates
-            if (todo & M_RGBCURVE) {
-                // initialize rrm bbm ggm different from zero to avoid black
-                // screen in some cases
-                oprevi->copyTo(bufs_[0]);
-                pipeline_stop_[1] =
-                    stop ||
-                    ipf.process(ImProcFunctions::Stage::STAGE_1, bufs_[0]);
-            }
-
             // compute L channel histogram
             int x1, y1, x2, y2;
             params.crop.mapToResized(pW, pH, scale, x1, x2, y1, y2);
         }
-        stop = stop || pipeline_stop_[1];
 
         readyphase++;
 
-        if (todo & M_LUMACURVE) {
-            bufs_[0]->copyTo(bufs_[1]);
-            pipeline_stop_[2] =
-                stop || ipf.process(ImProcFunctions::Stage::STAGE_2, bufs_[1]);
-        }
-        stop = stop || pipeline_stop_[2];
-
-        if (todo & (M_LUMINANCE | M_COLOR)) {
-            bufs_[1]->copyTo(bufs_[2]);
-            pipeline_stop_[3] =
-                stop || ipf.process(ImProcFunctions::Stage::STAGE_3, bufs_[2]);
-        }
-        stop = stop || pipeline_stop_[3];
+        // if it's just crop we just need the histogram, no image updates
+        stop = stages_->run(ipf, params, todo, oprevi, stop);
 
         // Update the monitor color transform if necessary
         if ((todo & M_MONITOR) ||
@@ -585,6 +557,8 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
              (todo & (M_MONITOR | M_RGBCURVE | M_LUMACURVE)) ||
              crops[i]->get_skip() == 1)) {
             crops[i]->update(todo); // may call ourselves
+        } else {
+            crops[i]->noteChange(todo);
         }
 
     if (panningRelatedChange || (todo & M_MONITOR)) {
@@ -598,16 +572,16 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                 // WCS->Monitor color space (soft-proofing disabled) or
                 // WCS->Printer profile->Monitor color space (soft-proofing
                 // enabled)
-                ipf.rgb2monitor(bufs_[2], previmg);
+                ipf.rgb2monitor(stages_->final(), previmg);
 
                 // Computing the internal image for analysis, i.e. conversion
                 // from WCS->Output profile
                 delete workimg;
-                workimg = ipf.rgb2out(bufs_[2], 0, 0, pW, pH, params.icm);
+                workimg = ipf.rgb2out(stages_->final(), 0, 0, pW, pH, params.icm);
 
-                /* Worker -> GUI handoff barrier.  bufs_[2] is read after this
+                /* Worker -> GUI handoff barrier.  the final image is read after this
                  * point by the scope panels (updateLRGBHistograms below, and
-                 * updateWaveforms, via bufs_[2]->getLab), which also run from
+                 * updateWaveforms, via final()->getLab), which also run from
                  * the GTK thread through requestUpdateHistogram() et al.
                  * without holding mProcessing.  Publishing it CPU-resident here,
                  * while the lock IS held, keeps those readers off the residency
@@ -615,7 +589,7 @@ void ImProcCoordinator::updatePreviewImage(int todo, bool panningRelatedChange)
                  * branch instead of a device download inside an OpenMP region.
                  *
                  * Free: the two conversions above have already forced it. */
-                bufs_[2]->syncCpu();
+                stages_->final()->syncCpu();
             } catch (char *str) {
                 progress("Error converting file...", 0);
                 return;
@@ -730,12 +704,7 @@ void ImProcCoordinator::freeAll()
         oprevi = nullptr;
         delete orig_prev;
         orig_prev = nullptr;
-        for (int i = 3; i > 0; --i) {
-            if (bufs_[i - 1]) {
-                delete bufs_[i - 1];
-                bufs_[i - 1] = nullptr;
-            }
-        }
+        stages_.reset();
 
         if (imageListener) {
             imageListener->delImage(previmg);
@@ -792,9 +761,8 @@ void ImProcCoordinator::setScale(int prevscale)
 
         orig_prev = new Imagefloat(pW, pH);
         oprevi = orig_prev;
-        for (int i = 0; i < 3; ++i) {
-            bufs_[i] = new Imagefloat(pW, pH);
-        }
+        stages_.reset(new StageCache());
+        stages_->allocate(pW, pH);
         previmg = new Image8(pW, pH);
         workimg = new Image8(pW, pH);
 
@@ -810,9 +778,7 @@ void ImProcCoordinator::setScale(int prevscale)
     if (oprevi && oprevi != orig_prev) {
         oprevi->assignColorSpace(params.icm.workingProfile);
     }
-    for (int i = 0; i < 3; ++i) {
-        bufs_[i]->assignColorSpace(params.icm.workingProfile);
-    }
+    stages_->assignColorSpace(params.icm.workingProfile);
 
     if (!sizeListeners.empty())
         for (size_t i = 0; i < sizeListeners.size(); i++) {
@@ -856,7 +822,7 @@ bool ImProcCoordinator::updateLRGBHistograms()
             for (int i = y1; i < y2; i++)
                 for (int j = x1; j < x2; j++) {
                     float L, a, b;
-                    bufs_[2]->getLab(i, j, L, a, b);
+                    stages_->final()->getLab(i, j, L, a, b);
                     histChroma[(int)(sqrtf(SQR(a) + SQR(b)) /
                                      188.f)]++; // 188 = 48000/256
                     histLuma[(int)(L / 128.f)]++;
@@ -1183,7 +1149,7 @@ bool ImProcCoordinator::updateWaveforms()
             waveformGreen[workimg->data[ofs++]][j]++;
             waveformBlue[workimg->data[ofs++]][j]++;
             float L, a, b;
-            bufs_[2]->getLab(i, j, L, a, b);
+            stages_->final()->getLab(i, j, L, a, b);
             waveformLuma[LIM<int>(L * luma_factor + 0.5, 0, 255)][j]++;
         }
     }
