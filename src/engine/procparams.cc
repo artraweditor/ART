@@ -2027,6 +2027,8 @@ bool LensProfParams::operator==(const LensProfParams &other) const
 {
     return lcMode == other.lcMode && lcpFile == other.lcpFile &&
            useCA == other.useCA &&
+           useDist == other.useDist &&
+           useVign == other.useVign &&
            ((lcMode == LcMode::LENSFUNAUTOMATCH || lcMode == LcMode::EXIF) ||
             (lfCameraMake == other.lfCameraMake)) &&
            ((lcMode == LcMode::LENSFUNAUTOMATCH || lcMode == LcMode::EXIF) ||
