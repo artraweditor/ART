@@ -1,6 +1,22 @@
-/*
- *  This file is part of ART. GPL-3.0-or-later, see ART.h.
+/* -*- C++ -*-
  *
+ *  This file is part of ART.
+ *
+ *  ART is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  ART is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
  *  libART: the in-process backend. The commands are executed in the calling
  *  process, by the same ServerCore that `ART-cli --server` uses behind its
  *  socket; the text they print goes to the callbacks of the engine.
