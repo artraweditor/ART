@@ -610,7 +610,9 @@ void ToolPanelCoordinator::profileChange(const PartialProfile *nparams,
             (params->raw == mergedParams.raw) &&
             (params->lensProf == mergedParams.lensProf) &&
             (params->filmNegative == mergedParams.filmNegative) &&
-            (params->wb == mergedParams.wb);
+            (params->wb == mergedParams.wb) &&
+            (params->exposure.hrmode == mergedParams.exposure.hrmode) &&
+            (params->exposure.hrblur == mergedParams.exposure.hrblur);
     }
 
     *params = mergedParams;

@@ -4277,16 +4277,20 @@ int ProcParams::load(ProgressListener *pl, bool load_general,
                                   exposure.expcomp);
                 assignFromKeyfile(keyFile, "Exposure", "Black", exposure.black);
                 if (ppVersion >= 1000) {
+                    // (a partial profile that does not mention the mode
+                    // leaves it as it is)
                     Glib::ustring hr;
-                    assignFromKeyfile(keyFile, "Exposure", "HLRecovery", hr);
-                    if (hr == "Blend") {
-                        exposure.hrmode = ExposureParams::HR_BLEND;
-                    } else if (hr == "Color") {
-                        exposure.hrmode = ExposureParams::HR_COLOR;
-                    } else if (hr == "ColorBlend" || hr == "Balanced") {
-                        exposure.hrmode = ExposureParams::HR_COLORSOFT;
-                    } else {
-                        exposure.hrmode = ExposureParams::HR_OFF;
+                    if (assignFromKeyfile(keyFile, "Exposure", "HLRecovery",
+                                          hr)) {
+                        if (hr == "Blend") {
+                            exposure.hrmode = ExposureParams::HR_BLEND;
+                        } else if (hr == "Color") {
+                            exposure.hrmode = ExposureParams::HR_COLOR;
+                        } else if (hr == "ColorBlend" || hr == "Balanced") {
+                            exposure.hrmode = ExposureParams::HR_COLORSOFT;
+                        } else {
+                            exposure.hrmode = ExposureParams::HR_OFF;
+                        }
                     }
                 } else {
                     bool en = false;

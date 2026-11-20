@@ -280,7 +280,11 @@ pp::ProcParams EditSession::changeParams(const pp::PartialProfile &nparams,
         filter_raw_refresh = (params->raw == merged.raw) &&
                              (params->lensProf == merged.lensProf) &&
                              (params->filmNegative == merged.filmNegative) &&
-                             (params->wb == merged.wb);
+                             (params->wb == merged.wb) &&
+                             (params->exposure.hrmode ==
+                              merged.exposure.hrmode) &&
+                             (params->exposure.hrblur ==
+                              merged.exposure.hrblur);
     }
 
     // The event says what a profile can change, the profiles themselves what
