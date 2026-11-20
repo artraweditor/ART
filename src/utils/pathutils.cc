@@ -89,16 +89,23 @@ Glib::ustring getExtension(const Glib::ustring &filename)
     }
 }
 
-// For an unknown reason, Glib::filename_to_utf8 doesn't work on reliably
-// Windows, so we're using Glib::filename_to_utf8 for Linux/Apple and
-// Glib::locale_to_utf8 for Windows.
+// On Windows, GLib always uses UTF-8 as its filename encoding (converting
+// to/from UTF-16 at the Win32 API boundary), so a std::string coming from
+// GLib/GIO is already UTF-8 and must be passed through as-is. The only case
+// that needs decoding from the system ANSI codepage is a legacy, truly
+// locale-encoded byte string (e.g. argv on some older runtimes), which is
+// why locale_to_utf8 is kept as a fallback for input that isn't valid UTF-8.
 Glib::ustring fname_to_utf8(const std::string &fname)
 {
 #ifdef WIN32
     try {
-        return Glib::locale_to_utf8(fname);
+        return Glib::filename_to_utf8(fname);
     } catch (Glib::Error &) {
-        return Glib::convert_with_fallback(fname, "UTF-8", "ISO-8859-1", "?");
+        try {
+            return Glib::locale_to_utf8(fname);
+        } catch (Glib::Error &) {
+            return Glib::convert_with_fallback(fname, "UTF-8", "ISO-8859-1", "?");
+        }
     }
 
 #else
