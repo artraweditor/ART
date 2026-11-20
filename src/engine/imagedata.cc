@@ -390,6 +390,47 @@ FramesData::FramesData(const Glib::ustring &fname, bool only_make_model)
             }
         }
 
+        if (!timeStamp) {
+            // No usable date/time found in the embedded Exif data. This can
+            // happen with a date entered through ART's metadata editor when
+            // the XMP sidecar sync is disabled: the sidecar is then never
+            // merged into the image's Exif data (see
+            // Exiv2Metadata::do_merge_xmp), so a date-only XMP sidecar is
+            // otherwise invisible here. Read it directly instead, converting
+            // it ourselves (see Exiv2Metadata::xmpDateTimeToExifString) since
+            // Exiv2's own XMP->Exif date conversion can fail for dates before
+            // 1970 on Windows (GitHub issue #567).
+            static const std::vector<std::string> date_keys = {
+                "Xmp.photoshop.DateCreated", "Xmp.xmp.CreateDate",
+                "Xmp.xmp.ModifyDate"
+            };
+            auto xmp = Exiv2Metadata::getXmpSidecar(fname_);
+            for (const auto &key : date_keys) {
+                auto it = xmp.findKey(Exiv2::XmpKey(key));
+                std::string exifdate;
+                if (it != xmp.end() && it->size() &&
+                    Exiv2Metadata::xmpDateTimeToExifString(it->toString(),
+                                                           exifdate) &&
+                    sscanf(exifdate.c_str(), "%d:%d:%d %d:%d:%d",
+                           &time.tm_year, &time.tm_mon, &time.tm_mday,
+                           &time.tm_hour, &time.tm_min, &time.tm_sec) == 6) {
+                    auto d = Glib::DateTime::create_utc(
+                        time.tm_year, time.tm_mon, time.tm_mday,
+                        time.tm_hour, time.tm_min, time.tm_sec);
+                    if (d.gobj()) {
+                        d.get_ymd(time.tm_year, time.tm_mon, time.tm_mday);
+                        time.tm_year -= 1900;
+                        time.tm_mon -= 1;
+                        time.tm_hour = d.get_hour();
+                        time.tm_min = d.get_minute();
+                        time.tm_sec = d.get_second();
+                        timeStamp = d.to_unix();
+                    }
+                    break;
+                }
+            }
+        }
+
         if (find_exif_tag("Exif.Image.ExposureBiasValue")) {
             expcomp = pos->toFloat();
         } else if (find_exif_tag("Exif.Photo.ExposureBiasValue")) {
