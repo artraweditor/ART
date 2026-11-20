@@ -418,7 +418,7 @@ bool CPBDump(const Glib::ustring &commFName, const Glib::ustring &imageFName,
     try {
 
         kf->set_string("RT General", "CachePath", options.cacheBaseDir);
-        kf->set_string("RT General", "AppVersion", RTVERSION);
+        kf->set_string("RT General", "AppVersion", ART_VERSION);
         kf->set_integer("RT General", "ProcParamsVersion", PPVERSION);
         kf->set_string("RT General", "ImageFileName", imageFName);
         kf->set_string("RT General", "OutputProfileFileName", profileFName);

@@ -23,6 +23,8 @@
 #include "../profilestore.h"
 #include "../thumbfile.h"
 #include "../../utils/multilangmgr.h"
+#include "../utils/version.h"
+#include "../../gui/options.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -969,6 +971,40 @@ void cmd_snapshot_overwrite(Context &c, Args &a)
     });
 }
 
+
+void cmd_get_version(Context &c, Args &a)
+{
+    if (a.size() != 0) {
+        throw std::runtime_error("usage: get-version");
+    }
+
+    json::Value r = json::Value::object();
+
+    std::string about_file_name =
+        Glib::build_filename(gui::Options::ART_base_dir, "AboutThisBuild.txt");
+
+    r.set("version", std::string(ART_VERSION));
+    
+    if (Glib::file_test(about_file_name, Glib::FILE_TEST_EXISTS)) {
+        FILE *f = g_fopen(about_file_name.c_str(), "rt");
+
+        if (f != nullptr) {
+            char buffer[1024];
+            std::ostringstream ostr;
+
+            while (fgets(buffer, 1024, f)) {
+                ostr << buffer;
+            }
+
+            fclose(f);
+
+            r.set("about", ostr.str());
+        }
+    }
+    
+    c.reply->ok(r);
+}       
+
 } // namespace
 
 
@@ -992,6 +1028,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("get-spot-wb", cmd_get_spot_wb);
     d.add("get-clut-params", cmd_get_clut_params);
     d.add("export", cmd_export);
+    d.add("get-version", cmd_get_version);
 }
 
 }}} // namespace art::engine::remote

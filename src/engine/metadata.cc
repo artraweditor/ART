@@ -524,7 +524,7 @@ void Exiv2Metadata::saveToImage(ProgressListener *pl, const Glib::ustring &path,
 
     if (!exif_keys_ ||
         exif_keys_->find("Exif.Image.Software") == exif_keys_->end()) {
-        dst->exifData()["Exif.Image.Software"] = RTNAME " " RTVERSION;
+        dst->exifData()["Exif.Image.Software"] = ART_NAME " " ART_VERSION;
     }
     if (!exif_keys_ ||
         exif_keys_->find("Exif.Image.DateTime") == exif_keys_->end()) {

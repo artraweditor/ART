@@ -106,7 +106,7 @@ void process_help_params(int argc, char **argv)
         if (currParam.length() > 1 && currParam[0] == '-') {
             switch (currParam[1]) {
             case 'v':
-                std::cout << RTNAME << ", version " << RTVERSION << std::endl;
+                std::cout << ART_NAME << ", version " << ART_VERSION << std::endl;
                 exit(0);
             case '?':
             case 'h':
@@ -147,7 +147,7 @@ int processLineParams(int argc, char **argv)
 #endif
 
             case 'v':
-                printf("%s, version %s\n", RTNAME, RTVERSION);
+                printf("%s, version %s\n", ART_NAME, ART_VERSION);
                 ret = 0;
                 break;
 
@@ -675,7 +675,7 @@ int main(int argc, char **argv)
                     SetConsoleCtrlHandler(NULL, true);
                     // Set title of console
                     char consoletitle[128];
-                    sprintf(consoletitle, "%s %s Console", RTNAME, RTVERSION);
+                    sprintf(consoletitle, "%s %s Console", ART_NAME, ART_VERSION);
                     SetConsoleTitle(consoletitle);
                     // increase size of screen buffer
                     COORD c;
@@ -708,7 +708,7 @@ int main(int argc, char **argv)
         if (ret <= 0) {
             fflush(stdout);
             if (consoleOpened) {
-                printf("Press any key to exit " RTNAME "\n");
+                printf("Press any key to exit " ART_NAME "\n");
                 FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
                 getch();
             }
@@ -843,7 +843,7 @@ int main(int argc, char **argv)
 #ifdef WIN32
 
     if (consoleOpened) {
-        printf("Press any key to exit " RTNAME "\n");
+        printf("Press any key to exit " ART_NAME "\n");
         fflush(stdout);
         FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
         getch();

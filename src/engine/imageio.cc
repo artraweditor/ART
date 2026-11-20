@@ -1328,7 +1328,7 @@ int ImageIO::saveTIFF(const Glib::ustring &fname, int bps, bool isFloat,
 
     bool needsReverse = false;
 
-    TIFFSetField(out, TIFFTAG_SOFTWARE, RTNAME " " RTVERSION);
+    TIFFSetField(out, TIFFTAG_SOFTWARE, ART_NAME " " ART_VERSION);
     TIFFSetField(out, TIFFTAG_IMAGEWIDTH, width);
     TIFFSetField(out, TIFFTAG_IMAGELENGTH, height);
     TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);

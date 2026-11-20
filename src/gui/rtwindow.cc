@@ -356,7 +356,7 @@ RTWindow::RTWindow()
     }
 #endif
 
-    versionStr = Glib::ustring(RTNAME " ") + versionString;
+    versionStr = Glib::ustring(ART_NAME " ") + versionString;
 
     set_title_decorated("");
     set_resizable(true);

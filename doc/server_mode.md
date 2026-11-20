@@ -87,6 +87,7 @@ JSON numbers (`null` stands for a missing value).
 | `thumbnail INFILE OUTFILE SIZE [--no-profile]` | write a thumbnail of INFILE to a PNG or JPEG (by extension, sRGB): the longest edge is at most SIZE pixels, and smaller if the best source is (it is never enlarged). Needs no active image and does not touch it. With the sidecar of INFILE (as the preferences name it), the profile is applied, as in the file browser (a quick rendering of the raw, or the reduced image, then processed). With `--no-profile`, or when there is no sidecar, a raw file gives its embedded preview (the fastest path), or, if it has none, a quick rendering with the neutral profile; other files are just reduced. Result `{"file", "width", "height", "source": "embedded"\|"raw"\|"image", "profile": <bool>}` |
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
 | `get-clut-params FILE` | the parameters of a LUT or CTL script, to build their controls (see below); does not need an image |
+| `get-version` | `{"version": <ART version string>, "about": <text>}`; `about` is the contents of `AboutThisBuild.txt` and is present only if that file exists; does not need an image |
 | `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (in the GUI: queue it; see below) |
 | `ping`, `quit` | liveness check (result `"pong"`); stop the server |
 

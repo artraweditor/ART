@@ -3006,7 +3006,7 @@ int ProcParams::save(ProgressListener *pl, bool save_general, KeyFile &keyFile,
 
         // Version
         if (save_general) {
-            keyFile.set_string("Version", "AppVersion", RTVERSION);
+            keyFile.set_string("Version", "AppVersion", ART_VERSION);
             keyFile.set_integer("Version", "Version", PPVERSION);
 
             if (RELEVANT_(general)) {
@@ -4182,7 +4182,7 @@ int ProcParams::load(ProgressListener *pl, bool load_general,
 
         if (load_general) {
             ppVersion = PPVERSION;
-            appVersion = RTVERSION;
+            appVersion = ART_VERSION;
 
             if (keyFile.has_group("Version")) {
                 if (keyFile.has_key("Version", "AppVersion")) {
@@ -6593,7 +6593,7 @@ int ProcParamsWithSnapshots::save(ProgressListener *pl,
     try {
         KeyFile keyfile;
 
-        keyfile.set_string("Version", "AppVersion", RTVERSION);
+        keyfile.set_string("Version", "AppVersion", ART_VERSION);
         keyfile.set_integer("Version", "Version", PPVERSION);
         if (master.rank >= 0) {
             saveToKeyfile("General", "Rank", master.rank, keyfile);

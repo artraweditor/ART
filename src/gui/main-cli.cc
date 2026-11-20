@@ -128,7 +128,7 @@ int processLineParams(int argc, char **argv);
 
 void printVersion()
 {
-    std::cout << RTNAME << ", version " << RTVERSION << ", command line."
+    std::cout << ART_NAME << ", version " << ART_VERSION << ", command line."
               << std::endl;
 }
 

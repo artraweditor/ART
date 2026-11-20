@@ -429,7 +429,7 @@ void EditWindow::set_title_decorated(Glib::ustring fname)
         subtitle = " - " + fname;
     }
 
-    set_title(Glib::ustring(RTNAME " ") + M("EDITWINDOW_TITLE") + subtitle);
+    set_title(Glib::ustring(ART_NAME " ") + M("EDITWINDOW_TITLE") + subtitle);
 }
 
 bool EditWindow::keyReleased(GdkEventKey *event)

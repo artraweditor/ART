@@ -57,7 +57,7 @@ const std::string Options::svg_dark_color{"#CCCCCC"};
 const std::string Options::svg_light_color{"#151515"};
 
 Options options;
-Glib::ustring versionString = RTVERSION;
+Glib::ustring versionString = ART_VERSION;
 Glib::ustring paramFileExtension = ".arp";
 
 Glib::ustring SaveFormat::getKey() const
@@ -2232,7 +2232,7 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_boolean("General", "LanguageAutoDetect",
                             languageAutoDetect);
         keyFile.set_string("General", "Theme", theme);
-        keyFile.set_string("General", "Version", RTVERSION);
+        keyFile.set_string("General", "Version", ART_VERSION);
         keyFile.set_string("General", "DarkFramesPath",
                            rtSettings.darkFramesPath);
         keyFile.set_string("General", "FlatFieldsPath",
@@ -3075,7 +3075,7 @@ bool Options::has_retained_extention(const Glib::ustring &fname)
 }
 
 // Pattern matches "5.1" from "5.1-23-g12345678", when comparing option.version
-// to RTVERSION
+// to ART_VERSION
 bool Options::is_new_version()
 {
     if (versionString.find('.') == Glib::ustring::npos) {

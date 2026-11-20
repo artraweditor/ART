@@ -1,6 +1,6 @@
 #pragma once
 
-#define RTNAME "ART"
-#define RTVERSION "${GIT_DESCRIBE}"
+#define ART_NAME "ART"
+#define ART_VERSION "${GIT_DESCRIBE}"
 #define CACHEFOLDERNAME "ART${CACHE_NAME_SUFFIX}"
 

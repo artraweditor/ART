@@ -148,7 +148,7 @@ bool write_dng(const RawImageSource::PreprocessedRaw &raw,
     const unsigned char dng_backward[4] = {1, 1, 0, 0};
 
     TIFFSetField(out, TIFFTAG_SUBFILETYPE, 0);
-    TIFFSetField(out, TIFFTAG_SOFTWARE, RTNAME " " RTVERSION);
+    TIFFSetField(out, TIFFTAG_SOFTWARE, ART_NAME " " ART_VERSION);
     if (!make.empty()) {
         TIFFSetField(out, TIFFTAG_MAKE, make.c_str());
     }
