@@ -73,6 +73,7 @@ class ThumbBrowserBase: public Gtk::Grid {
         bool on_button_press_event(GdkEventButton *event) override;
         bool on_button_release_event(GdkEventButton *event) override;
         bool on_motion_notify_event(GdkEventMotion *event) override;
+        bool on_enter_notify_event(GdkEventCrossing *event) override;
         bool on_scroll_event(GdkEventScroll *event) override;
         bool on_key_press_event(GdkEventKey *event) override;
         bool on_query_tooltip(int x, int y, bool keyboard_tooltip,

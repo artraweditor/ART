@@ -909,7 +909,7 @@ void ThumbBrowserBase::Internal::on_realize()
     add_events(Gdk::EXPOSURE_MASK | Gdk::BUTTON_PRESS_MASK |
                Gdk::BUTTON_RELEASE_MASK | Gdk::POINTER_MOTION_MASK |
                Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK |
-               Gdk::KEY_PRESS_MASK);
+               Gdk::KEY_PRESS_MASK | Gdk::ENTER_NOTIFY_MASK);
     set_has_tooltip(true);
     signal_query_tooltip().connect(
         sigc::mem_fun(*this, &ThumbBrowserBase::Internal::on_query_tooltip));
@@ -1134,6 +1134,22 @@ void ThumbBrowserBase::Internal::get_preferred_width_for_height_vfunc(
     int height, int &minimum_width, int &natural_width) const
 {
     get_preferred_width_vfunc(minimum_width, natural_width);
+}
+
+bool ThumbBrowserBase::Internal::on_enter_notify_event(GdkEventCrossing *event)
+{
+    // Gtk signals automatically acquire the GUI (i.e. this method is enclosed
+    // by gdk_thread_enter and gdk_thread_leave)
+
+    // On Windows, mouse wheel messages are delivered to the window that has
+    // keyboard focus rather than the one under the cursor, and GDK's
+    // redirection of such messages to the hovered widget is not always
+    // reliable (e.g. it can race with other software's mouse hooks). Grab
+    // focus as soon as the pointer enters the thumbnail area so that
+    // scrolling here works even if the user hasn't clicked in it yet.
+    grab_focus();
+
+    return false;
 }
 
 bool ThumbBrowserBase::Internal::on_button_release_event(GdkEventButton *event)

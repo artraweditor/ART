@@ -752,8 +752,13 @@ int main(int argc, char **argv)
     gdk_threads_init();
     gtk_init(&argc, &argv); // use the "--g-fatal-warnings" command line flag to
                             // make warnings fatal
-    if (!cmd_mode || cmd_start_ok) {
+    if ((!cmd_mode || cmd_start_ok) && fatalError.empty()) {
         // a pure remote-command client does not need it
+        //
+        // also, Options::load() failing means art::engine::init()
+        // never ran, so the engine's global settings pointer is null:
+        // touching the ICC store would segfault and hide the real
+        // error behind the fatal-error dialog below
         initGUIColorManagement();
     }
 
