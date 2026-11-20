@@ -40,6 +40,7 @@ art::engine::EditSession::Hooks editSessionHooks()
         w = options.fastexport_resize_width;
         h = options.fastexport_resize_height;
     };
+    hk.embedParams = []() { return options.params_out_embed; };
     return hk;
 }
 

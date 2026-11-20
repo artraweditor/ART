@@ -45,6 +45,7 @@ typedef struct ART_config { /* what an engine keeps of the options */
     char *cwd;
     int timeout_ms;
     int verbose;
+    int embed_params; /* in-process: embed the processing parameters in exported files; -1: as the options file says */
     ART_write_fn out_fn;
     void *out_user;
     ART_write_fn err_fn;

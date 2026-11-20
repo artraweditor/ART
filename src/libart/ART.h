@@ -158,6 +158,12 @@ ART_API int ART_options_set_timeout(ART_options *opts, int ms);
  * file. */
 ART_API int ART_options_set_gpu(ART_options *opts, const char *mode);
 
+/* In-process only: whether the files made by `export` get the processing
+ * parameters (the sidecar's content) embedded in their metadata, as ART's
+ * "embed the parameters in the metadata of the output" preference; without
+ * this call, the setting of the options file. */
+ART_API int ART_options_set_embed_params(ART_options *opts, int on);
+
 /* In-process only: verbosity of the engine's own diagnostics (debugging
  * aid). The engine writes them directly to the process's stdout and stderr,
  * not to the streams of the engine: at the default, 0, the engine prints

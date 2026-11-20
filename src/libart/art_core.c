@@ -145,6 +145,7 @@ ART_options *ART_options_new(void)
     if (o) {
         o->cfg.backend = ART_BACKEND_REMOTE;
         o->cfg.timeout_ms = -1;
+        o->cfg.embed_params = -1;
         o->cfg.out_fn = write_stdout;
         o->cfg.err_fn = write_stderr;
     }
@@ -278,6 +279,13 @@ int ART_options_set_gpu(ART_options *o, const char *mode)
 {
     CHECK_OPTS(o);
     return set_str(&o->cfg.gpu, mode);
+}
+
+int ART_options_set_embed_params(ART_options *o, int on)
+{
+    CHECK_OPTS(o);
+    o->cfg.embed_params = on ? 1 : 0;
+    return ART_OK;
 }
 
 int ART_options_set_verbose(ART_options *o, int level)

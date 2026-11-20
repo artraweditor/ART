@@ -109,6 +109,9 @@ int acquire(const ART_config *cfg, char *err, size_t errsize)
                              msg.c_str());
             return ART_ERR_INIT;
         }
+        if (cfg->embed_params >= 0) {
+            options.params_out_embed = cfg->embed_params != 0;
+        }
     } catch (std::exception &e) {
         ART_format_error(err, errsize, "cannot initialise the engine: %s",
                          e.what());

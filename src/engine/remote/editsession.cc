@@ -36,6 +36,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -619,6 +620,14 @@ void EditSession::exportImage(
         g_unlink(req.outfile.c_str());
         done(false, "failure in saving to " + req.outfile, 0, 0);
     } else {
+        if (hooks_.embedParams && hooks_.embedParams()) {
+            // the export is done: failing to embed the parameters is not an
+            // error of it
+            if (params.saveEmbedded(nullptr, req.outfile) != 0) {
+                std::cerr << "cannot embed the processing parameters in "
+                          << req.outfile << std::endl;
+            }
+        }
         done(true, req.outfile, w, h);
     }
 }

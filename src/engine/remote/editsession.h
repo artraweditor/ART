@@ -58,6 +58,9 @@ public:
         std::function<bool()> showMakernotes;
         // the size (long edge, in pixels) of the fast export
         std::function<void(int &width, int &height)> fastExportSize;
+        // whether exported files get the processing parameters embedded in
+        // their metadata
+        std::function<bool()> embedParams;
     };
 
     explicit EditSession(Hooks hooks);
