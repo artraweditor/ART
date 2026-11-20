@@ -18,11 +18,11 @@
 
 #pragma once
 
-#include "../engine/rtengine.h"
+#include "rtengine.h"
 #include <glibmm/ustring.h>
 #include <string>
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 // Output of a processed image to a file: what ART-cli does after the
 // parameters of an image are known, shared with the export command of the
@@ -56,4 +56,4 @@ int runExportJob(art::engine::ProcessingJob *job, const ExportOptions &opts,
                  const Glib::ustring &outfile,
                  art::engine::ProgressListener *pl, int &w, int &h);
 
-}} // namespace art::gui
+}} // namespace art::engine

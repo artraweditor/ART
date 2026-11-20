@@ -152,7 +152,7 @@ reports `ART_ERR_UNSUPPORTED`.
 
 ## The in-process backend
 
-* It runs the very code of `ART-cli --server` (`ServerCore`, `src/gui/servercore.*`),
+* It runs the very code of `ART-cli --server` (`ServerCore`, `src/engine/remote/servercore.*`),
   with the output going to the callbacks instead of a socket, and without any
   socket, `fork` or thread of its own: everything runs on the calling thread
   (the engine's worker threads never call the callbacks).

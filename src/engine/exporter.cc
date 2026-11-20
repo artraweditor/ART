@@ -17,10 +17,10 @@
  */
 
 #include "exporter.h"
-#include "../engine/iimage.h"
-#include "../engine/imgiomanager.h"
+#include "iimage.h"
+#include "imgiomanager.h"
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 void normalizeExportOptions(ExportOptions &opts)
 {
@@ -81,4 +81,4 @@ int runExportJob(art::engine::ProcessingJob *job, const ExportOptions &opts,
     return errorCode ? 2 : 0;
 }
 
-}} // namespace art::gui
+}} // namespace art::engine

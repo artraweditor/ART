@@ -32,14 +32,14 @@
 #include "../engine/settings.h"
 #include "../utils/config.h"
 #include "extprog.h"
-#include "exporter.h"
+#include "../engine/exporter.h"
 #include "fastexport.h"
 #include "makeicc.h"
 #include "options.h"
 #include "../utils/pathutils.h"
 #include "printhelp.h"
 #include "bootstrap.h"
-#include "servermode.h"
+#include "../engine/remote/servermode.h"
 #include "soundman.h"
 #include "../utils/version.h"
 #include <cstdlib>
@@ -164,6 +164,10 @@ int check_lut(int argc, char **argv)
 } } // namespace art::gui
 
 using namespace art::gui;
+using art::engine::ExportOptions;
+using art::engine::applyExportProfile;
+using art::engine::runExportJob;
+namespace servermode = art::engine::servermode;
 
 int main(int argc, char **argv)
 {
@@ -250,6 +254,7 @@ int main(int argc, char **argv)
     int ret = 0;
 
     if (server_opts.mode == servermode::Options::SERVER) {
+        server_opts.hooks = bootstrap::editSessionHooks();
         ret = servermode::runServer(server_opts, verbose);
     } else if (argc > 1) {
         ret = processLineParams(argc, argv);

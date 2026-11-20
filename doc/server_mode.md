@@ -338,8 +338,8 @@ For writing another client. One request per connection.
 | `src/engine/remote/remote_reply.*`, `json.h` | `Reply`/`ReplySink`: the JSON reply document and the error line; `json::Value`, a wrapper over cJSON |
 | `src/engine/remote/ipc_transport.h`, `unix_socket.cc`, `wire.*` | socket transport and framing |
 | `src/engine/remote/history_model.h` | history and snapshot rules (GUI-free) |
-| `src/gui/editsession.*` | the server's active image (processor, history, snapshots, sidecar) |
-| `src/gui/servermode.*` | `--server` / `--cmd` |
+| `src/engine/remote/editsession.*` | the server's active image (processor, history, snapshots, sidecar) |
+| `src/engine/remote/servermode.*` | `--server` / `--cmd` |
 | `src/gui/remotecmd.cc` | the GUI's host of the same verbs (D-Bus) |
 
 Tests: `ninja art-history-model-test art-ipc-test && ctest -R "history-model|ipc"`.

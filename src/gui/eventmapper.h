@@ -2,8 +2,6 @@
  *
  *  This file is part of ART.
  *
- *  Copyright (c) 2017 Alberto Griggio <alberto.griggio@gmail.com>
- *
  *  ART is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -19,28 +17,11 @@
  */
 #pragma once
 
-#include "../engine/refreshmap.h"
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
+// ProcEventMapper lives in the engine; the panels use it unqualified
+#include "../engine/eventmapper.h"
 
 namespace art { namespace gui {
 
+using art::engine::ProcEventMapper;
 
-class ProcEventMapper {
-public:
-    static ProcEventMapper *getInstance();
-    art::engine::ProcEvent newEvent(int action,
-                                 const std::string &history_msg = "");
-    art::engine::ProcEvent newAnonEvent(int action);
-    std::string getHistoryMsg(const art::engine::ProcEvent &event) const;
-
-private:
-    ProcEventMapper();
-
-    std::unordered_set<std::string> history_msgs_;
-    std::unordered_map<int, const char *> msgmap_;
-};
-
-
-} } // namespace art::gui
+}} // namespace art::gui

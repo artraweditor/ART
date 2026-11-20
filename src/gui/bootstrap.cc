@@ -26,6 +26,23 @@
 
 namespace art { namespace gui { namespace bootstrap {
 
+art::engine::EditSession::Hooks editSessionHooks()
+{
+    art::engine::EditSession::Hooks hk;
+    hk.paramFile = [](const Glib::ustring &fname) {
+        return options.getParamFile(fname);
+    };
+    hk.defaultProfile = [](bool is_raw, const art::engine::FramesMetaData *md) {
+        return options.loadDefaultProfile(is_raw, md);
+    };
+    hk.showMakernotes = []() { return options.show_exiftool_makernotes; };
+    hk.fastExportSize = [](int &w, int &h) {
+        w = options.fastexport_resize_width;
+        h = options.fastexport_resize_height;
+    };
+    return hk;
+}
+
 int init(bool quickstart, int verbose, std::string *error,
          const std::function<void(const char *)> &phase)
 {

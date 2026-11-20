@@ -182,6 +182,12 @@ set(RTENGINESOURCEFILES
     remote/metadata_json.cc
     remote/unix_socket.cc
     remote/wire.cc
+    remote/editsession.cc
+    remote/servercore.cc
+    remote/servermode.cc
+    exporter.cc
+    eventmapper.cc
+    fastexport.cc
     bayer_bilinear_demosaic.cc
     gainmap.cc
     base64.cc

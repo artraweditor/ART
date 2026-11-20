@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "../engine/remote/editsession.h"
 #include <functional>
 #include <string>
 
@@ -32,6 +33,10 @@ namespace art { namespace gui { namespace bootstrap {
 // Returns 0, or -2 if the options cannot be loaded: the message is then
 // stored in *error, or printed on stderr if `error` is null. `phase`, if
 // given, is told of the milestones (used for the ART_PROFILE timings).
+// The preferences of the application, as the active image of the server mode
+// (art::engine::EditSession) needs them. `options` must be loaded.
+art::engine::EditSession::Hooks editSessionHooks();
+
 int init(bool quickstart, int verbose, std::string *error = nullptr,
          const std::function<void(const char *)> &phase = nullptr);
 

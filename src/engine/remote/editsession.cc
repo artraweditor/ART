@@ -17,31 +17,31 @@
  */
 
 #include "editsession.h"
-#include "../engine/image8.h"
-#include "../engine/imgiomanager.h"
-#include "../engine/improccoordinator.h"
-#include "../engine/profilestore.h"
-#include "../engine/remote/metadata_json.h"
-#include "../engine/refreshmap.h"
-#include "../engine/stagecache.h"
-#include "../engine/threadpool.h"
-#include "../utils/multilangmgr.h"
-#include "../utils/pathutils.h"
-#include "eventmapper.h"
-#include "exporter.h"
-#include "fastexport.h"
-#include "options.h"
+#include "../image8.h"
+#include "../imgiomanager.h"
+#include "../improccoordinator.h"
+#include "../profilestore.h"
+#include "metadata_json.h"
+#include "../refreshmap.h"
+#include "../stagecache.h"
+#include "../threadpool.h"
+#include "../../utils/multilangmgr.h"
+#include "../../utils/pathutils.h"
+#include "../eventmapper.h"
+#include "../exporter.h"
+#include "../fastexport.h"
 #include <algorithm>
 #include <glib/gstdio.h>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 namespace pp = art::engine::procparams;
 namespace eng = art::engine;
@@ -129,12 +129,15 @@ struct EditSession::PreviewCrop {
 };
 
 
-EditSession::EditSession(): is_raw_(false), dirty_(false) {}
-
-
-Glib::ustring EditSession::paramFileFor(const Glib::ustring &imagefile)
+EditSession::EditSession(Hooks hooks):
+    hooks_(std::move(hooks)), is_raw_(false), dirty_(false)
 {
-    return options.getParamFile(imagefile);
+}
+
+
+Glib::ustring EditSession::paramFileFor(const Glib::ustring &imagefile) const
+{
+    return hooks_.paramFile(imagefile);
 }
 
 EditSession::~EditSession() { close(); }
@@ -178,7 +181,7 @@ void EditSession::open(const Glib::ustring &filename)
         ipc_.reset(eng::StagedImageProcessor::create(ii));
         ipc_->setPreviewScale(10); // as the editor does
         fname_ = filename;
-        sidecar_ = options.getParamFile(filename);
+        sidecar_ = paramFileFor(filename);
 
         // the sidecar, if there is one, else the default profile
         pp::ProcParamsWithSnapshots saved;
@@ -189,7 +192,7 @@ void EditSession::open(const Glib::ustring &filename)
         if (have_sidecar) {
             start.reset(new pp::FullPartialProfile(saved.master));
         } else {
-            start = options.loadDefaultProfile(is_raw_, ii->getMetaData());
+            start = hooks_.defaultProfile(is_raw_, ii->getMetaData());
         }
 
         auto params = changeParams(*start, eng::EvPhotoLoaded);
@@ -301,7 +304,7 @@ void EditSession::record(const pp::ProcParams &params, eng::ProcEvent ev,
                          const Glib::ustring &descr, const std::string &merge_key)
 {
     const Glib::ustring text =
-        M(ProcEventMapper::getInstance()->getHistoryMsg(ev));
+        art::utils::M(ProcEventMapper::getInstance()->getHistoryMsg(ev));
     model_.procParamsChanged(params, ev, text.raw(), descr.raw(), merge_key);
 }
 
@@ -372,7 +375,7 @@ bool EditSession::getMetadata(int makernotes, bool edits,
     try {
         out = art::engine::remote::metadataToJson(
             fname_, ipc_->getInitialImage()->getMetaData(), params, edits,
-            makernotes < 0 ? options.show_exiftool_makernotes : makernotes > 0);
+            makernotes < 0 ? hooks_.showMakernotes() : makernotes > 0);
     } catch (std::exception &e) {
         err = e.what();
         return false;
@@ -386,8 +389,8 @@ std::unique_ptr<pp::PartialProfile> EditSession::getDefaultProfile()
     if (!ipc_) {
         return nullptr;
     }
-    return options.loadDefaultProfile(is_raw_,
-                                      ipc_->getInitialImage()->getMetaData());
+    return hooks_.defaultProfile(is_raw_,
+                                 ipc_->getInitialImage()->getMetaData());
 }
 
 
@@ -594,8 +597,11 @@ void EditSession::exportImage(
     }
     applyExportProfile(params, opts);
 
-    auto job = create_processing_job(fname_, is_raw_, params, opts.fast,
-                                       req.fastSize);
+    int fw = req.fastSize, fh = req.fastSize;
+    if (opts.fast && req.fastSize <= 0) {
+        hooks_.fastExportSize(fw, fh);
+    }
+    auto job = create_processing_job(fname_, is_raw_, params, opts.fast, fw, fh);
     if (!job) {
         done(false, "impossible to create the processing job", 0, 0);
         return;
@@ -739,4 +745,4 @@ bool EditSession::overwriteSnapshot(const Glib::ustring &name,
     return true;
 }
 
-}} // namespace art::gui
+}} // namespace art::engine

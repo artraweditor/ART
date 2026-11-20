@@ -20,9 +20,8 @@
 #include <glibmm.h>
 #include <stdexcept>
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
-namespace remote = art::engine::remote;
 
 class ServerCore::Host: public remote::CommandHost {
 public:
@@ -35,7 +34,7 @@ public:
 
     Glib::ustring paramFileFor(const Glib::ustring &imagefile) override
     {
-        return EditSession::paramFileFor(imagefile);
+        return session.paramFileFor(imagefile);
     }
 
     // commands run one at a time, so waiting here blocks the other callers
@@ -60,8 +59,8 @@ public:
 };
 
 
-ServerCore::ServerCore(const std::string &help_hint):
-    host_(new Host(session_)), dispatcher_(help_hint)
+ServerCore::ServerCore(EditSession::Hooks hooks, const std::string &help_hint):
+    session_(std::move(hooks)), host_(new Host(session_)), dispatcher_(help_hint)
 {
     using remote::Args;
     using remote::Context;
@@ -133,4 +132,4 @@ void ServerCore::execute(const std::vector<std::string> &args,
     }
 }
 
-}} // namespace art::gui
+}} // namespace art::engine

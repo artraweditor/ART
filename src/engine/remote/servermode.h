@@ -18,11 +18,12 @@
 
 #pragma once
 
+#include "editsession.h"
 #include <iosfwd>
 #include <string>
 #include <vector>
 
-namespace art { namespace gui { namespace servermode {
+namespace art { namespace engine { namespace servermode {
 
 // ART-cli --server: a long-running process that keeps one image open and
 // executes the commands sent by other ART-cli processes (--cmd) over a Unix
@@ -34,6 +35,8 @@ struct Options {
     Mode mode = NONE;
     std::string socket;              // "" for the default
     std::vector<std::string> cmd;    // for CLIENT: the verb and its arguments
+    // for SERVER: the preferences of the application (not set by parseArgs)
+    EditSession::Hooks hooks;
 };
 
 // Recognise `[--socket PATH] --server` and `[--socket PATH] --cmd VERB ARGS...`
@@ -53,4 +56,4 @@ int runClient(const Options &opts);
 // SIGTERM). The engine must be initialised. Returns the exit code.
 int runServer(const Options &opts, int verbose);
 
-}}} // namespace art::gui::servermode
+}}} // namespace art::engine::servermode

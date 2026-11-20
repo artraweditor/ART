@@ -18,19 +18,15 @@
  *  along with ART.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "fastexport.h"
-#include "options.h"
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 
 namespace {
 
 void adjust_fast_params(art::engine::procparams::ProcParams &params,
-                        int size)
+                        int fw, int fh)
 {
-    // a size overrides the preferences: the long edge is at most `size`
-    const int fw = size > 0 ? size : options.fastexport_resize_width;
-    const int fh = size > 0 ? size : options.fastexport_resize_height;
     params.resize.unit = art::engine::procparams::ResizeParams::PX;
     if (params.resize.enabled) {
         params.resize.width = art::engine::min(params.resize.get_width(), fw);
@@ -51,10 +47,10 @@ void adjust_fast_params(art::engine::procparams::ProcParams &params,
 
 art::engine::ProcessingJob *
 create_processing_job(const Glib::ustring &fname, bool is_raw,
-                      art::engine::procparams::ProcParams params, bool fast, int fast_size)
+                      art::engine::procparams::ProcParams params, bool fast, int fast_width, int fast_height)
 {
     if (fast) {
-        adjust_fast_params(params, fast_size);
+        adjust_fast_params(params, fast_width, fast_height);
     }
 
     auto ret = art::engine::ProcessingJob::create(fname, is_raw, params, fast);
@@ -63,10 +59,10 @@ create_processing_job(const Glib::ustring &fname, bool is_raw,
 
 art::engine::ProcessingJob *
 create_processing_job(art::engine::InitialImage *initialImage,
-                      art::engine::procparams::ProcParams params, bool fast, int fast_size)
+                      art::engine::procparams::ProcParams params, bool fast, int fast_width, int fast_height)
 {
     if (fast) {
-        adjust_fast_params(params, fast_size);
+        adjust_fast_params(params, fast_width, fast_height);
     }
 
     auto ret = art::engine::ProcessingJob::create(initialImage, params, fast);
@@ -74,4 +70,4 @@ create_processing_job(art::engine::InitialImage *initialImage,
 }
 
 
-} } // namespace art::gui
+} } // namespace art::engine

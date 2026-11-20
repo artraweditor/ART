@@ -17,9 +17,9 @@
  */
 
 #include "servermode.h"
-#include "../engine/remote/command_dispatch.h"
-#include "../engine/remote/ipc_transport.h"
-#include "../engine/remote/wire.h"
+#include "command_dispatch.h"
+#include "ipc_transport.h"
+#include "wire.h"
 #include "servercore.h"
 #include <cerrno>
 #include <csignal>
@@ -29,9 +29,8 @@
 #include <iostream>
 #include <unistd.h>
 
-namespace art { namespace gui { namespace servermode {
+namespace art { namespace engine { namespace servermode {
 
-namespace remote = art::engine::remote;
 
 namespace {
 
@@ -272,7 +271,7 @@ int runServer(const Options &opts, int verbose)
     sigaction(SIGTERM, &sa, nullptr);
     signal(SIGPIPE, SIG_IGN);
 
-    ServerCore core(HELP_HINT);
+    ServerCore core(opts.hooks, HELP_HINT);
     bool quit = false;
     core.setQuitHandler([&quit]() { quit = true; });
 
@@ -292,4 +291,4 @@ int runServer(const Options &opts, int verbose)
     return 0;
 }
 
-}}} // namespace art::gui::servermode
+}}} // namespace art::engine::servermode

@@ -15,7 +15,7 @@
 #include "../engine/rtengine.h"
 #include "../gui/bootstrap.h"
 #include "../gui/options.h"
-#include "../gui/servercore.h"
+#include "../engine/remote/servercore.h"
 #include <cstdlib>
 #include <giomm.h>
 #include <glibmm.h>
@@ -147,8 +147,8 @@ private:
 };
 
 struct EmbedState {
-    EmbedState(): core("") {}
-    art::gui::ServerCore core;
+    EmbedState(): core(art::gui::bootstrap::editSessionHooks(), "") {}
+    art::engine::ServerCore core;
 };
 
 int embed_exec(void *state, const ART_config *, const char *cwd, int argc,

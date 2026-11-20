@@ -18,14 +18,14 @@
 
 #pragma once
 
-#include "../engine/remote/command_dispatch.h"
+#include "command_dispatch.h"
 #include "editsession.h"
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 // The commands of the server mode on one active image, independent of how
 // they arrive: the socket server (servermode.cc) and the in-process engine of
@@ -34,8 +34,10 @@ namespace art { namespace gui {
 // Not thread safe: one command at a time.
 class ServerCore {
 public:
-    // `help_hint` completes the "missing command" error
-    explicit ServerCore(const std::string &help_hint = "try: ART-cli --cmd help");
+    // `hooks` connect the active image to the preferences of the
+    // application; `help_hint` completes the "missing command" error
+    explicit ServerCore(EditSession::Hooks hooks,
+                        const std::string &help_hint = "try: ART-cli --cmd help");
     ~ServerCore();
 
     // Execute the command `args` (args[0] is the verb); relative paths are
@@ -57,4 +59,4 @@ private:
     std::function<void()> on_quit_;
 };
 
-}} // namespace art::gui
+}} // namespace art::engine

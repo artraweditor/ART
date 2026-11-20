@@ -1,8 +1,6 @@
-/** -*- C++ -*-
+/* -*- C++ -*-
  *
  *  This file is part of ART.
- *
- *  Copyright (c) 2019 Alberto Griggio <alberto.griggio@gmail.com>
  *
  *  ART is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,20 +17,34 @@
  */
 #pragma once
 
-#include "../engine/rtengine.h"
+#include "../engine/fastexport.h"
+#include "options.h"
 
 namespace art { namespace gui {
 
+// The processing jobs of the GUI and ART-cli: the size of the fast export
+// comes from the preferences, unless fast_size > 0 (the long edge, in pixels)
 
-// fast_size > 0: the long edge of the fast export, in pixels, instead of the
-// size set in the preferences
-art::engine::ProcessingJob *
+inline art::engine::ProcessingJob *
 create_processing_job(const Glib::ustring &fname, bool is_raw,
-                      art::engine::procparams::ProcParams pparams, bool fast, int fast_size = 0);
+                      art::engine::procparams::ProcParams pparams, bool fast,
+                      int fast_size = 0)
+{
+    return art::engine::create_processing_job(
+        fname, is_raw, std::move(pparams), fast,
+        fast_size > 0 ? fast_size : options.fastexport_resize_width,
+        fast_size > 0 ? fast_size : options.fastexport_resize_height);
+}
 
-art::engine::ProcessingJob *
+inline art::engine::ProcessingJob *
 create_processing_job(art::engine::InitialImage *initialImage,
-                      art::engine::procparams::ProcParams params, bool fast, int fast_size = 0);
+                      art::engine::procparams::ProcParams params, bool fast,
+                      int fast_size = 0)
+{
+    return art::engine::create_processing_job(
+        initialImage, std::move(params), fast,
+        fast_size > 0 ? fast_size : options.fastexport_resize_width,
+        fast_size > 0 ? fast_size : options.fastexport_resize_height);
+}
 
-
-} } // namespace art::gui
+}} // namespace art::gui

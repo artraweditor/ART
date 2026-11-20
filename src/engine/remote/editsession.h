@@ -18,15 +18,16 @@
 
 #pragma once
 
-#include "../engine/procparams.h"
-#include "../engine/remote/command_dispatch.h"
-#include "../engine/remote/history_model.h"
-#include "../engine/rtengine.h"
+#include "../procparams.h"
+#include "command_dispatch.h"
+#include "history_model.h"
+#include "../rtengine.h"
+#include <functional>
 #include <glibmm/ustring.h>
 #include <memory>
 #include <string>
 
-namespace art { namespace gui {
+namespace art { namespace engine {
 
 // The "active image" of the ART-cli server: a headless counterpart of what
 // EditorPanel + History + ToolPanelCoordinator do for the image open in the
@@ -43,7 +44,23 @@ namespace art { namespace gui {
 //    after a profile is applied.
 class EditSession final: public art::engine::remote::CommandTarget {
 public:
-    EditSession();
+    // What the session takes from the application's preferences, which the
+    // engine knows nothing about. All the functions are called when needed,
+    // so that later changes of the preferences apply.
+    struct Hooks {
+        // the sidecar file of an image
+        std::function<Glib::ustring(const Glib::ustring &)> paramFile;
+        // the profile a newly opened image starts from
+        std::function<std::unique_ptr<art::engine::procparams::PartialProfile>(
+            bool is_raw, const art::engine::FramesMetaData *md)>
+            defaultProfile;
+        // whether `metadata` includes the makernotes by default
+        std::function<bool()> showMakernotes;
+        // the size (long edge, in pixels) of the fast export
+        std::function<void(int &width, int &height)> fastExportSize;
+    };
+
+    explicit EditSession(Hooks hooks);
     ~EditSession() override;
 
     // Load `filename` (an absolute path) and make it the active image,
@@ -54,7 +71,7 @@ public:
     void close();
 
     // the sidecar file of an image, as the preferences say
-    static Glib::ustring paramFileFor(const Glib::ustring &imagefile);
+    Glib::ustring paramFileFor(const Glib::ustring &imagefile) const;
 
     bool isOpen() const { return bool(ipc_); }
     const Glib::ustring &fileName() const { return fname_; }
@@ -139,8 +156,9 @@ private:
     Model model_;
     Glib::ustring fname_;
     Glib::ustring sidecar_;
+    Hooks hooks_;
     bool is_raw_;
     bool dirty_;
 };
 
-}} // namespace art::gui
+}} // namespace art::engine

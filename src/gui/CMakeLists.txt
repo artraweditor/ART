@@ -5,15 +5,9 @@ set(CLISOURCEFILES
     main-cli.cc
     options.cc
     paramsedited.cc
-    fastexport.cc
-    exporter.cc
     exiffiltersettings.cc
     makeicc.cc
-    eventmapper.cc
     bootstrap.cc
-    editsession.cc
-    servercore.cc
-    servermode.cc
     )
 
 set(NONCLISOURCEFILES
@@ -146,7 +140,6 @@ set(NONCLISOURCEFILES
     zoompanel.cc
     drcompression.cc
     localcontrast.cc
-    eventmapper.cc
     metadatapanel.cc
     colorwheel.cc
     softlight.cc
@@ -157,7 +150,6 @@ set(NONCLISOURCEFILES
     grain.cc
     smoothing.cc
     colorcorrection.cc
-    fastexport.cc
     exposure.cc
     saturation.cc
     hslequalizer.cc
