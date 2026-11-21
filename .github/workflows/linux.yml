@@ -85,7 +85,7 @@ jobs:
           tar xzf lcms2-${LCMS2_VERSION}.tar.gz
           cd lcms2-${LCMS2_VERSION}
           autoreconf -i
-          ./configure --with-fastfloat
+          CFLAGS='-g -O2 -fPIC' ./configure --with-fastfloat
           make -j$(nproc)
           sudo make install
           cd ..
@@ -99,7 +99,7 @@ jobs:
           tar xzf v${EXIV2_VERSION}.tar.gz
           mkdir build
           cd build
-          cmake ../exiv2-${EXIV2_VERSION} -DCMAKE_BUILD_TYPE=Release -DEXIV2_ENABLE_BMFF=1
+          cmake ../exiv2-${EXIV2_VERSION} -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DEXIV2_ENABLE_BMFF=1
           make -j$(nproc)
           sudo make install
           cd ../..
@@ -110,7 +110,7 @@ jobs:
           git clone --depth 1 --branch "v$LENSFUN_VERSION" https://github.com/lensfun/lensfun.git
           mkdir build_lensfun
           cd build_lensfun
-          cmake -DCMAKE_BUILD_TYPE=Release ../lensfun
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON ../lensfun
           make -j$(nproc)
           sudo make install
           cd ..
@@ -120,7 +120,7 @@ jobs:
           git clone --depth 1 https://github.com/LibRaw/LibRaw.git
           cd LibRaw
           autoreconf -i
-          CPPFLAGS=-DUSE_X3FTOOLS ./configure
+          CPPFLAGS=-DUSE_X3FTOOLS CFLAGS='-g -O2 -fPIC' CXXFLAGS='-g -O2 -fPIC' ./configure
           make -j$(nproc)
           sudo make install
           cd ..
@@ -132,7 +132,8 @@ jobs:
           cd build-CTL
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_FLAGS=-fpermissive \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_CXX_FLAGS="-fpermissive -fPIC" \
             ../CTL
           make -j$(nproc)
           sudo make install
@@ -149,6 +150,7 @@ jobs:
           cd build
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DOCIO_BUILD_PYTHON=OFF \
             -DOCIO_BUILD_APPS=0 \
             -DOCIO_BUILD_TESTS=0 \
@@ -169,6 +171,7 @@ jobs:
           cd build
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             ../mimalloc-${MIMALLOC_VERSION}
           make -j$(nproc)
           sudo make install
