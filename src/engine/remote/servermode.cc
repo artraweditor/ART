@@ -262,6 +262,11 @@ int runServer(const Options &opts, int verbose)
         return 1;
     }
 
+#ifdef _WIN32
+    // no sigaction/SIGPIPE on Windows
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+#else
     // no SA_RESTART: a signal must interrupt the wait for a client
     struct sigaction sa;
     sa.sa_handler = on_signal;
@@ -270,6 +275,7 @@ int runServer(const Options &opts, int verbose)
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
     signal(SIGPIPE, SIG_IGN);
+#endif
 
     ServerCore core(opts.hooks, HELP_HINT);
     bool quit = false;

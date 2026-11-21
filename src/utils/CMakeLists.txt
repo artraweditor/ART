@@ -26,6 +26,8 @@ set(UTILSSOURCEFILES
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_library(art_utils ${UTILSSOURCEFILES})
+# linked into the shared libART
+set_target_properties(art_utils PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_dependencies(art_utils UpdateInfo)
 
 if(BUILD_SHARED_LIBS)

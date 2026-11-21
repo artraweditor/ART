@@ -301,6 +301,8 @@ include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_library(art_engine ${RTENGINESOURCEFILES})
 add_dependencies(art_engine UpdateInfo)
+# linked into the shared libART
+set_target_properties(art_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # It may be nice to store library version too
 if(BUILD_SHARED_LIBS)

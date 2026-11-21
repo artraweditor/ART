@@ -39,6 +39,8 @@ public:
     Value(long i): p_(cJSON_CreateNumber(static_cast<double>(i))) {}
     Value(long long i): p_(cJSON_CreateNumber(static_cast<double>(i))) {}
     Value(unsigned long i): p_(cJSON_CreateNumber(static_cast<double>(i))) {}
+    Value(unsigned long long i): p_(cJSON_CreateNumber(static_cast<double>(i))) {}
+    Value(unsigned i): p_(cJSON_CreateNumber(static_cast<double>(i))) {}
     // NaN and infinity are written as null (JSON has neither)
     Value(double d): p_(cJSON_CreateNumber(d)) {}
     Value(const char *s): p_(make_string(s ? s : "")) {}
