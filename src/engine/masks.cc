@@ -909,7 +909,18 @@ bool LinkedMaskManager::apply_mask(const Glib::ustring &toolname,
     constexpr uint32_t shift = 16U;
     constexpr uint32_t bitmask = (uint32_t(1) << shift) - 1U;
 
-    assert(out1);
+    // the stored mask is of the size of the image when it was made: if the
+    // masks to apply it to are not of that size (or the mask is empty), it
+    // cannot be used, and going on would read and write out of bounds
+    if (!out1 || out1->width() != W || out1->height() != H ||
+        (out2 && (out2->width() != W || out2->height() != H))) {
+        if (plistener) {
+            plistener->error(Glib::ustring::compose(
+                art::utils::M("LINKED_MASK_NOT_FOUND_WARNING"), toolname,
+                name));
+        }
+        return false;
+    }
 
 #ifdef _OPENMP
 #pragma omp parallel for if (multithread)
