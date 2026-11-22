@@ -187,6 +187,34 @@ bool save_xmp_metadata(const Glib::ustring &fname, const ExifPairs &exif,
     }
 }
 
+// Parses an Exif Ascii date/time string ("YYYY:MM:DD HH:MM:SS", as entered by
+// the user in the exif editor, or as found in the exif overrides of a .arp
+// sidecar) into a tm/time_t pair. Done by hand with Glib::DateTime rather
+// than strptime/mktime, since mktime() fails on Windows for dates before
+// 1970 (see GitHub issue #567).
+bool parse_exif_datetime(const std::string &s, tm &out_tm, time_t &out_ts)
+{
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0, se = 0;
+    if (sscanf(s.c_str(), "%d:%d:%d %d:%d:%d", &y, &mo, &d, &h, &mi, &se) !=
+            6 ||
+        mo < 1 || mo > 12 || d < 1 || d > 31) {
+        return false;
+    }
+    auto dt = Glib::DateTime::create_utc(y, mo, d, h, mi, se);
+    if (!dt.gobj()) {
+        return false;
+    }
+    memset(&out_tm, 0, sizeof(out_tm));
+    out_tm.tm_year = y - 1900;
+    out_tm.tm_mon = mo - 1;
+    out_tm.tm_mday = d;
+    out_tm.tm_hour = h;
+    out_tm.tm_min = mi;
+    out_tm.tm_sec = se;
+    out_ts = dt.to_unix();
+    return true;
+}
+
 } // namespace
 
 Thumbnail::Thumbnail(CacheManager *cm, const Glib::ustring &fname,
@@ -1177,6 +1205,38 @@ int Thumbnail::infoFromImage(const Glib::ustring &fname)
         cfs.lens = "Unknown";
         cfs.camMake = "Unknown";
         cfs.camModel = "Unknown";
+    }
+
+    // A date/time hand-entered (or edited) by the user in the exif
+    // editor is kept in the .arp/cache procparams, but is only ever
+    // merged into the image's actual metadata on export. If XMP
+    // sidecar sync is off, no XMP sidecar reflects it either, so
+    // idata above never sees it. Apply it here too, so that the date
+    // is also used in-app, overriding whatever (if anything) was
+    // found in the actual file.
+    if (pparams.master.metadata.mode == MetaDataParams::EDIT) {
+        static const std::vector<std::string> date_keys = {
+            "Exif.Photo.DateTimeOriginal", "Exif.Photo.DateTimeDigitized",
+            "Exif.Image.DateTime"
+        };
+        for (auto &key : date_keys) {
+            auto it = pparams.master.metadata.exif.find(key);
+            if (it != pparams.master.metadata.exif.end()) {
+                tm t;
+                time_t ts;
+                if (parse_exif_datetime(it->second, t, ts)) {
+                    cfs.year = 1900 + t.tm_year;
+                    cfs.month = t.tm_mon + 1;
+                    cfs.day = t.tm_mday;
+                    cfs.hour = t.tm_hour;
+                    cfs.min = t.tm_min;
+                    cfs.sec = t.tm_sec;
+                    cfs.timeValid = true;
+                    cfs.timestamp = ts;
+                }
+                break;
+            }
+        }
     }
 
     // get image filetype
