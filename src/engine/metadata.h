@@ -92,6 +92,15 @@ public:
     static Glib::ustring xmpSidecarPath(const Glib::ustring &path);
     static Exiv2::XmpData getXmpSidecar(const Glib::ustring &path);
 
+    // Converts an XMP date/time string (e.g. "1950-06-15T10:30:00") into
+    // the Exif Ascii date/time format ("1950:06:15 10:30:00"), by plain
+    // string reformatting, without any calendar/timezone computation.
+    // Exiv2 (through the bundled Adobe XMP toolkit) performs this
+    // conversion via ANSI C mktime(), which fails on Windows for dates
+    // before 1970 -- see GitHub issue #567.
+    static bool xmpDateTimeToExifString(const std::string &xmp_date,
+                                        std::string &exif_date);
+
     static void init(const Glib::ustring &base_dir,
                      const Glib::ustring &user_dir);
     static void cleanup();

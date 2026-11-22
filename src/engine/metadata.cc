@@ -449,6 +449,61 @@ void Exiv2Metadata::load() const
     }
 }
 
+bool Exiv2Metadata::xmpDateTimeToExifString(const std::string &xmp_date,
+                                            std::string &exif_date)
+{
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0, s = 0;
+    int n = sscanf(xmp_date.c_str(), "%d-%d-%dT%d:%d:%d", &y, &mo, &d,
+                   &h, &mi, &s);
+    if (n < 3) {
+        n = sscanf(xmp_date.c_str(), "%d-%d-%d %d:%d:%d", &y, &mo, &d,
+                  &h, &mi, &s);
+    }
+    if (n < 3 || mo < 1 || mo > 12 || d < 1 || d > 31) {
+        return false;
+    }
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%04d:%02d:%02d %02d:%02d:%02d", y, mo, d,
+             h, mi, s);
+    exif_date = buf;
+    return true;
+}
+
+namespace {
+
+// Exiv2::moveXmpToExif() converts these XMP date/time properties to the
+// corresponding Exif tags using the bundled Adobe XMP toolkit, which calls
+// ANSI C mktime() to work out the local UTC offset. On Windows, mktime()
+// fails for dates before 1970, silently dropping the conversion (a warning
+// is printed, but the target Exif tag is simply left unset). Fix those tags
+// up ourselves with a plain string reformat, which needs no timezone
+// arithmetic since Exif date/times don't carry timezone information anyway.
+// See GitHub issue #567.
+const std::vector<std::pair<std::string, std::string>> xmp_exif_date_keys = {
+    {"Xmp.photoshop.DateCreated", "Exif.Photo.DateTimeOriginal"},
+    {"Xmp.xmp.CreateDate", "Exif.Photo.DateTimeDigitized"},
+    {"Xmp.xmp.ModifyDate", "Exif.Image.DateTime"}
+};
+
+void fix_xmp_exif_dates(const Exiv2::XmpData &xmp, Exiv2::ExifData &exif)
+{
+    for (auto &p : xmp_exif_date_keys) {
+        auto src = xmp.findKey(Exiv2::XmpKey(p.first));
+        if (src == xmp.end() || !src->size()) {
+            continue;
+        }
+        if (exif.findKey(Exiv2::ExifKey(p.second)) != exif.end()) {
+            continue;
+        }
+        std::string s;
+        if (Exiv2Metadata::xmpDateTimeToExifString(src->toString(), s)) {
+            exif[p.second] = s;
+        }
+    }
+}
+
+} // namespace
+
 void Exiv2Metadata::do_merge_xmp(Exiv2::Image *dst, bool keep_all) const
 {
     try {
@@ -457,6 +512,7 @@ void Exiv2Metadata::do_merge_xmp(Exiv2::Image *dst, bool keep_all) const
         Exiv2::IptcData iptc;
         Exiv2::copyXmpToIptc(xmp, iptc);
         Exiv2::moveXmpToExif(xmp, exif);
+        fix_xmp_exif_dates(xmp, exif);
         std::unordered_map<std::string, std::unordered_set<std::string>> seen;
 
         if (!keep_all) {
