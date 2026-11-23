@@ -6,16 +6,18 @@ history and snapshot commands, ...) from C, and, through a small C ABI, from
 Python (a binding is provided) and from any language with a foreign function
 interface.
 
-An `ART_engine` executes commands in one of two ways:
+An `ART_engine` executes commands in one of three ways:
 
 | backend | what it does | needs |
 |---|---|---|
 | **remote** | talks to a running `ART-cli --server` over its Unix socket | nothing but the server (pure C99 code, no dependencies); POSIX only |
+| **GUI** | talks to a running ART GUI over D-Bus, as `ART --cmd` does | a running ART (the commands never start one); POSIX only. libART speaks the D-Bus protocol itself (pure C99, no D-Bus or GLib library needed) |
 | **in-process** | hosts the server in the calling process: the whole ART engine is inside the library | the data files of ART (`data_dir`); no socket, no other process, so it also works where those are not allowed, e.g. sandboxed apps |
 
-Both give the same commands, the same output and the same exit statuses as
-`ART-cli --cmd`; the only difference is that `quit` is not available
-in-process (destroy the engine instead).
+All give the same commands, the same output and the same exit statuses as
+`ART-cli --cmd` (the GUI has some more commands, and acts on the image that is
+visible in its editor: see `ART --cmd help`); the only difference is that `quit`
+is not available in-process (destroy the engine instead).
 
 ## The API
 
@@ -44,10 +46,10 @@ ART_engine_destroy(e);
 
 ```c
 ART_options *o = ART_options_new();
-ART_options_set_remote(o, "/path/to/server.sock");   // or ART_options_set_inprocess(...)
+ART_options_set_remote(o, "/path/to/server.sock");   // or ART_options_set_gui(...) or ART_options_set_inprocess(...)
 ART_options_set_output(o, on_text, my_data);         // command stdout
 ART_options_set_error(o, on_text, my_data);          // command stderr
-ART_options_set_timeout(o, 30000);                   // remote: milliseconds
+ART_options_set_timeout(o, 30000);                   // remote, gui: milliseconds
 ART_engine *e = ART_engine_create(o);     // NULL on failure
 if (!e) fprintf(stderr, "%s (%s)\n", ART_options_error(o),
                 ART_strerror(ART_options_error_code(o)));
@@ -57,11 +59,12 @@ ART_options_free(o);
 | function | |
 |---|---|
 | `ART_options_set_remote(o, socket)` | remote backend; `socket` NULL for the default (`$ART_SERVER_SOCKET`, else `$XDG_RUNTIME_DIR/ART/server.sock`, else `$TMPDIR/ART-$USER/server.sock`, as `ART-cli`) |
+| `ART_options_set_gui(o, bus)` | GUI backend: the commands go to the running ART GUI, which owns the D-Bus name `us.pixls.art.ART`. `bus` is a D-Bus address (`unix:path=...`, or `unix:abstract=...` on Linux); NULL for the session bus of ART: `$DBUS_SESSION_BUS_ADDRESS`, else `$XDG_RUNTIME_DIR/bus` (Linux), else the private bus the app bundle's launcher starts, `$TMPDIR/ART-$USER/dbus.sock` (macOS; the same places `tools/mcp` looks in). Fails with `ART_ERR_CONNECT` if there is no bus or no GUI on it: a command never starts the GUI. Relative paths are resolved against the client's directory (`ART_options_set_cwd()`), but files written by `preview` and `export` are written by the GUI process |
 | `ART_options_set_inprocess(o, data_dir, config_dir, cache_dir)` | in-process backend. `data_dir` holds ART's data files (profiles, luts, lensfun, ...; or set `ART_DATA_DIR`); the other two can be NULL for the defaults. The engine of a process is initialised once, by the first in-process engine: the directories of later ones are ignored |
 | `ART_options_set_output(o, fn, user)`, `ART_options_set_error(o, fn, user)` | where the text printed by the commands goes (see below); by default the process's stdout and stderr |
 | `ART_options_set_output_file(o, FILE *)`, `..._error_file`, `..._output_fd(o, fd)`, `..._error_fd` | the same for a stdio stream or a file descriptor (never closed by the library) |
 | `ART_options_set_cwd(o, dir)` | base of relative paths in commands (default: the current directory at the time of each call) |
-| `ART_options_set_timeout(o, ms)` | remote: give up after `ms` (-1 = never, the default). An in-process command cannot be interrupted |
+| `ART_options_set_timeout(o, ms)` | remote, gui: give up after `ms` (-1 = never, the default). An in-process command cannot be interrupted |
 | `ART_options_set_gpu(o, mode)` | in-process: `"auto"`, `"off"`, `"force"` or a device name, as `ART_GPU` (default: from ART's options file) |
 | `ART_options_set_verbose(o, level)` | in-process: the engine's own diagnostics (a debugging aid), written by the engine to the process's stdout and stderr; the default, 0, prints nothing |
 
@@ -99,7 +102,7 @@ library, with its message in `ART_engine_error(e)` (not on the streams):
 | code | meaning |
 |---|---|
 | `ART_ERR_INVALID` (2) | bad argument (NULL, no command, ...) |
-| `ART_ERR_CONNECT` (3) | no server on the socket |
+| `ART_ERR_CONNECT` (3) | no server on the socket; for the GUI backend, no bus or no GUI running |
 | `ART_ERR_IO` (4) | the connection broke |
 | `ART_ERR_PROTOCOL` (5) | the other end does not speak the protocol |
 | `ART_ERR_TIMEOUT` (6) | no answer within the timeout |
@@ -138,17 +141,33 @@ not needed):
 | target | what |
 |---|---|
 | `art-lib` | the shared library `libART.so` / `libART.dylib` / `ART.dll`; with `ART_LIBART_EMBED=ON` (the default) it contains the in-process backend, so it links the ART engine and its dependencies |
-| `art-lib-static` | `libART.a`, remote backend only (its users would have to link the engine themselves for the other one); define `ART_STATIC_LIB` when using it on Windows |
-| `art-lib-cmd` | `art_cmd`, an example: runs one command like `ART-cli --cmd`, with `--socket`, `--inprocess --data DIR ...` |
+| `art-lib-static` | `libART.a`, remote and GUI backends only (its users would have to link the engine themselves for the other one); define `ART_STATIC_LIB` when using it on Windows |
+| `art-lib-cmd` | `art_cmd`, an example: runs one command like `ART-cli --cmd`, with `--socket`, `--gui [BUS]`, `--inprocess --data DIR ...` |
 
-With `-DART_LIBART_EMBED=OFF` the library is just `art_core.c` and
-`art_remote.c`: plain C99, no dependencies, usable on its own (copy the four
-files `ART.h`, `art_internal.h`, `art_core.c`, `art_remote.c`).
+With `-DART_LIBART_EMBED=OFF` the library is just `art_core.c`, `art_remote.c`
+and `art_dbus.c`: plain C99, no dependencies, usable on its own (copy the five
+files `ART.h`, `art_internal.h`, `art_core.c`, `art_remote.c`, `art_dbus.c`).
 `ninja install` installs the library, its header, the documentation and a
 pkg-config file (see below); `-DART_INSTALL_LIBART=OFF` leaves them out.
 
-The remote backend is POSIX only for now (as the server); on Windows it
-reports `ART_ERR_UNSUPPORTED`.
+The remote and GUI backends are POSIX only for now (the server is); on Windows
+they report `ART_ERR_UNSUPPORTED`.
+
+## The GUI backend
+
+What `ART --cmd VERB ARGS...` does, without GLib: libART connects to the
+D-Bus session bus (Unix sockets, `EXTERNAL` authentication), checks that
+`us.pixls.art.ART` has an owner, and makes the `CommandLine` call of
+GApplication's `org.gtk.Application` interface with `{"ART", "--cmd", verb,
+args...}`, the working directory, and `ART_IS_CMD=1`, `ART_CMD_START=0` as the
+environment (the GUI tells commands from other command lines by it, and never
+starts a new instance for one). The GUI answers by calling `Print` and
+`PrintError` on an object that libART exports for the call, which give the two
+streams, and then replies with the exit status. One connection per command.
+
+Only that is implemented: no file descriptor passing, no `launchd:` or `tcp:`
+bus addresses, no autolaunch of a bus (the Windows case of `tools/mcp`).
+Nothing is needed at build time, so the backend is always built (on POSIX).
 
 ## The in-process backend
 
@@ -209,7 +228,7 @@ in-process backend:
   to `ART.exe`, not next to `libART.dll`: add that directory to `PATH`, or to
   the DLL search path of the program (`SetDllDirectory`, `AddDllDirectory`).
 
-The remote backend alone has no such requirement.
+The remote and GUI backends alone have no such requirement.
 
 ## Language binding
 
@@ -261,6 +280,11 @@ as it is printed.
 * `ninja art-libart-test art-libart-header-test && ctest -R libart`: the remote
   backend against fake servers (partial reads, hang-ups, bad protocol, timeouts,
   argument exactness, threads, ...), and the header compiled as C++.
+* `ninja art-libart-dbus-test && ctest -R libart-dbus`: the GUI backend against
+  a fake bus and GUI (authentication, the call, the output in pieces, status,
+  errors, timeout). The wire format was also checked once against GLib's own
+  `GApplication` (a small program with ART's flags and application id, on a
+  private `dbus-daemon`).
 * In-process, on a real image (the test is skipped unless the variables are set):
 
       ART_TEST_DATA_DIR=.../ART.app/Contents/Resources ART_TEST_IMAGE=photo.arw \
@@ -269,4 +293,4 @@ as it is printed.
   (add `DYLD_LIBRARY_PATH` / `LD_LIBRARY_PATH` if the engine's libraries are not
   found). It edits a copy of the image.
 * The Python binding: `bindings/python/test_artlib.py` (`remote` needs a running
-  server; see the top of the file).
+  server, `gui` a running ART GUI; see the top of the file).

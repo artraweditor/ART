@@ -41,6 +41,7 @@ typedef struct ART_sink {
 typedef struct ART_config { /* what an engine keeps of the options */
     int backend;
     char *socket_path; /* remote */
+    char *bus_address; /* gui */
     char *data_dir, *config_dir, *cache_dir, *gpu; /* in-process */
     char *cwd;
     int timeout_ms;
@@ -71,6 +72,12 @@ typedef struct ART_backend_ops {
 /* the remote backend (art_remote.c) */
 int ART_remote_create(const ART_config *cfg, const ART_backend_ops **ops,
                       void **state, char *err, size_t errsize);
+
+/* the GUI backend (art_dbus.c): a D-Bus client of a running ART GUI; a stub
+ * returning ART_ERR_UNSUPPORTED where it is not available (Windows) */
+int ART_dbus_create(const ART_config *cfg, const ART_backend_ops **ops,
+                    void **state, char *err, size_t errsize);
+int ART_dbus_available(void);
 
 /* the in-process backend (art_embed.cc); a stub returning ART_ERR_UNSUPPORTED
  * when it is not built in */

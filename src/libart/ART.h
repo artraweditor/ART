@@ -83,7 +83,7 @@ typedef struct ART_result ART_result; /* the collected output of a command */
 typedef void (*ART_write_fn)(void *user, const char *data, size_t len);
 
 /* the backends of ART_has_backend() */
-enum { ART_BACKEND_REMOTE = 0, ART_BACKEND_INPROCESS = 1 };
+enum { ART_BACKEND_REMOTE = 0, ART_BACKEND_INPROCESS = 1, ART_BACKEND_GUI = 2 };
 
 /* Status codes: plain ints, 0 on success. */
 enum {
@@ -95,8 +95,8 @@ enum {
      * ART_engine_error() (ART_options_error() for ART_engine_create) and are
      * not written to the streams. */
     ART_ERR_INVALID = 2,     /* bad argument */
-    ART_ERR_CONNECT = 3,     /* cannot connect to the server */
-    ART_ERR_IO = 4,          /* the connection to the server broke */
+    ART_ERR_CONNECT = 3,     /* cannot connect to the server, or no GUI running */
+    ART_ERR_IO = 4,          /* the connection to the server or bus broke */
     ART_ERR_PROTOCOL = 5,    /* the server does not speak the protocol */
     ART_ERR_TIMEOUT = 6,     /* no answer within the timeout */
     ART_ERR_INIT = 7,        /* the in-process engine cannot be initialised */
@@ -120,6 +120,16 @@ ART_API void ART_options_free(ART_options *opts); /* NULL is ok */
  * default: $ART_SERVER_SOCKET, else $XDG_RUNTIME_DIR/ART/server.sock, else
  * $TMPDIR/ART-$USER/server.sock (as `ART-cli`). */
 ART_API int ART_options_set_remote(ART_options *opts, const char *socket_path);
+
+/* Use the GUI backend: talk to a running ART GUI, as `ART --cmd` does, over
+ * D-Bus (no library is needed: libART speaks the protocol itself). A command
+ * never starts the GUI: without one running it fails with ART_ERR_CONNECT.
+ * `bus_address` is a D-Bus address ("unix:path=..."); NULL for the session
+ * bus of ART: $DBUS_SESSION_BUS_ADDRESS, else $XDG_RUNTIME_DIR/bus (Linux),
+ * else the private bus of the app bundle, $TMPDIR/ART-$USER/dbus.sock
+ * (macOS). The commands are those of the GUI (see doc/libart.md): the verbs
+ * of the server mode that act on the active image, and more. POSIX only. */
+ART_API int ART_options_set_gui(ART_options *opts, const char *bus_address);
 
 /* Use the in-process backend. `data_dir` is the directory with ART's data
  * files (profiles, luts, ...), `config_dir` the user configuration

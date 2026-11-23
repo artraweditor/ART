@@ -20,8 +20,13 @@ engine. Run with:
     ART_LIBRARY=.../libART.dylib python3 test_artlib.py remote   # a server is running
     ART_LIBRARY=... ART_TEST_DATA_DIR=... ART_TEST_IMAGE=... python3 test_artlib.py inprocess
 
+    ART_LIBRARY=... ART_TEST_IMAGE=... python3 test_artlib.py gui   # the GUI is running
+
 (`remote` needs ART_TEST_IMAGE too; the server's socket is the default one or
-ART_SERVER_SOCKET.) Edits a copy of the image.
+ART_SERVER_SOCKET. `gui` talks to the running ART GUI on its session bus, or on
+ART_TEST_BUS, a D-Bus address; it opens ART_TEST_IMAGE in the GUI, and runs only
+the commands the GUI shares with the server; the GUI has no `ping`.) The other modes edit a copy of the
+image.
 """
 import os
 import shutil
@@ -32,7 +37,42 @@ import artlib
 from artlib import Engine, ArtError
 
 
+def gui_main():
+    """The GUI has more verbs and queues exports instead of writing them: only
+    the commands both have, and the failures of the backend."""
+    image = os.environ["ART_TEST_IMAGE"]
+    bus = os.environ.get("ART_TEST_BUS")
+    assert artlib.has_gui_backend()
+    chunks = []
+    with Engine(gui=True, bus=bus, on_output=chunks.append, timeout=120) as art:
+        assert art.run("get-files", check=True).data is not None
+        assert chunks[0].startswith('{"ok":true,"result":['), chunks   # streaming
+        art.run("open", image, check=True)
+        info = art.run("get-info", check=True).data
+        assert info["full_width"] > 0 and info["file"].endswith(os.path.basename(image)), info
+        assert art.run("get-files", check=True).data == [info["file"]]
+        wb = art.run("get-spot-wb", 1500, 2000, 20, 20, check=True).data
+        assert wb["green_multiplier"] == 1, wb
+        r = art.run("get-spot-wb", 0, 0, 0, 5)           # fails: empty rectangle
+        assert not r.ok and r.code == 1 and "must not be empty" in r.error, r
+    try:
+        with Engine(gui=True, bus="unix:path=/nonexistent/bus") as art:
+            art.run("get-files")
+        raise AssertionError("no exception")
+    except ArtError as e:
+        assert e.code == 3 and "/nonexistent/bus" in e.message, e
+    for bad in (dict(bus="unix:path=/x"), dict(gui=True, inprocess=True)):
+        try:
+            Engine(**bad)
+            raise AssertionError("no exception")
+        except ValueError:
+            pass
+    print("python binding (gui): ok")
+
+
 def main(mode):
+    if mode == "gui":
+        return gui_main()
     image = os.environ["ART_TEST_IMAGE"]
     work = tempfile.mkdtemp(prefix="art-py-")
     img = os.path.join(work, os.path.basename(image))

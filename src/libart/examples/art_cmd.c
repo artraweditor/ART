@@ -22,6 +22,8 @@
  *
  *    art_cmd [options] COMMAND [ARGS...]
  *      --socket PATH     remote backend, server on PATH (default: the usual one)
+ *      --gui [BUS]       a running ART GUI, over D-Bus (BUS: bus address, default:
+ *                        the session bus of ART)
  *      --inprocess       in-process backend (if built in)
  *      --data DIR --config DIR --cache DIR     for --inprocess
  *      --gpu MODE        for --inprocess ("auto", "off", ...)
@@ -41,7 +43,8 @@ int main(int argc, char **argv)
     ART_options *o = ART_options_new();
     ART_engine *e = NULL;
     const char *socket_path = NULL, *data = NULL, *config = NULL, *cache = NULL;
-    int inprocess = 0, i, rc;
+    int inprocess = 0, gui = 0, i, rc;
+    const char *bus = NULL;
 
     if (!o) {
         return ART_ERR_NOMEM;
@@ -52,6 +55,12 @@ int main(int argc, char **argv)
         if (!strcmp(a, "--socket") && v) {
             socket_path = v;
             ++i;
+        } else if (!strcmp(a, "--gui")) {
+            gui = 1;
+            if (v && v[0] != '-' && strchr(v, ':')) { /* an address has a ':' */
+                bus = v;
+                ++i;
+            }
         } else if (!strcmp(a, "--inprocess")) {
             inprocess = 1;
         } else if (!strcmp(a, "--data") && v) {
@@ -86,7 +95,11 @@ int main(int argc, char **argv)
     if (inprocess) {
         ART_options_set_inprocess(o, data, config, cache);
     } else {
-        ART_options_set_remote(o, socket_path);
+        if (gui) {
+            ART_options_set_gui(o, bus);
+        } else {
+            ART_options_set_remote(o, socket_path);
+        }
     }
 
     e = ART_engine_create(o);

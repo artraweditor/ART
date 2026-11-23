@@ -4,7 +4,7 @@
 
 set(ART_LIBART_VERSION "1.26.12")
 
-set(ART_LIBART_C_SOURCES art_core.c art_remote.c)
+set(ART_LIBART_C_SOURCES art_core.c art_remote.c art_dbus.c)
 
 find_package(Threads REQUIRED)
 
@@ -72,6 +72,19 @@ add_executable(art-libart-test EXCLUDE_FROM_ALL test_libart.c)
 set_target_properties(art-libart-test PROPERTIES C_STANDARD 99)
 target_link_libraries(art-libart-test PRIVATE art-lib-static Threads::Threads)
 add_test(NAME libart COMMAND art-libart-test)
+
+# the GUI backend against a fake bus (it includes art_dbus.c, so it is built
+# from the sources rather than linked with the library)
+if(NOT WIN32)
+    add_executable(art-libart-dbus-test EXCLUDE_FROM_ALL test_dbus.c art_core.c art_remote.c)
+    set_target_properties(art-libart-dbus-test PROPERTIES C_STANDARD 99)
+    target_compile_definitions(art-libart-dbus-test PRIVATE
+        ART_STATIC_LIB ART_LIBART_VERSION="${ART_LIBART_VERSION}")
+    target_include_directories(art-libart-dbus-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(art-libart-dbus-test PRIVATE Threads::Threads)
+    add_test(NAME libart-dbus COMMAND art-libart-dbus-test)
+    set_tests_properties(libart-dbus PROPERTIES SKIP_RETURN_CODE 77)
+endif()
 
 # test of the in-process backend: needs data files and an image, see the file
 if(ART_LIBART_EMBED)

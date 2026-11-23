@@ -16,9 +16,10 @@
 
 """Python binding of libART (ctypes, standard library only).
 
-Runs the commands of ART's server mode, either against a running
-`ART-cli --server` or in the calling process (the in-process backend), with
-the same commands and output as `ART-cli --cmd`. The output of every command
+Runs the commands of ART's server mode, against a running `ART-cli --server`,
+against a running ART GUI (over D-Bus, like `ART --cmd`), or in the calling
+process (the in-process backend), with the same commands and output as
+`ART-cli --cmd`. The output of every command
 is one JSON document, `{"ok": true, "result": ...}` or `{"ok": false,
 "error": "..."}`, parsed for you in Result.reply / .data:
 
@@ -28,6 +29,10 @@ is one JSON document, `{"ok": true, "result": ...}` or `{"ok": false,
         art.run("open", "photo.arw", check=True)
         info = art.run("get-info", check=True).data   # a dict
         print(info["full_width"], info["model"])
+
+    # a running GUI: no server; D-Bus is spoken by the library itself
+    with Engine(gui=True) as art:
+        print(art.run("get-files", check=True).data)
 
     # in-process (no server, no socket); data_dir holds ART's data files
     with Engine(inprocess=True, data_dir="/path/to/ART/data") as art:
@@ -58,6 +63,7 @@ ART_OK = 0
 ART_ERR_COMMAND = 1
 
 _BACKEND_INPROCESS = 1
+_BACKEND_GUI = 2
 
 _WRITE_FN = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p,
                              ctypes.c_size_t)
@@ -165,6 +171,7 @@ def _api(path=None):
         decl("ART_options_new", vp)
         decl("ART_options_free", None, vp)
         decl("ART_options_set_remote", ci, vp, cs)
+        decl("ART_options_set_gui", ci, vp, cs)
         decl("ART_options_set_inprocess", ci, vp, cs, cs, cs)
         decl("ART_options_set_output", ci, vp, _WRITE_FN, vp)
         decl("ART_options_set_error", ci, vp, _WRITE_FN, vp)
@@ -206,9 +213,15 @@ class Engine:
 
     socket      path of the server's socket (default: the usual one)
     inprocess   True to run the engine in this process instead
+    gui         True to talk to a running ART GUI (over D-Bus) instead; the
+                commands never start it. POSIX only
+    bus         with gui: the D-Bus address ("unix:path=..."); default: the
+                session bus of ART ($DBUS_SESSION_BUS_ADDRESS, else
+                $XDG_RUNTIME_DIR/bus, else the app bundle's private bus on
+                macOS, $TMPDIR/ART-$USER/dbus.sock)
     data_dir, config_dir, cache_dir, gpu    for inprocess (see art.h)
     cwd         base of relative paths in commands (default: the cwd)
-    timeout     seconds, remote only (default: none)
+    timeout     seconds, remote and gui only (default: none)
     verbose     diagnostics of the in-process engine (debugging; they go to the
                 process's stdout/stderr; 0, the default, prints nothing)
     on_output, on_error    called with each chunk of text (str) as the
@@ -216,7 +229,8 @@ class Engine:
     library     path of libART (see the module docstring)
     """
 
-    def __init__(self, *, socket=None, inprocess=False, data_dir=None,
+    def __init__(self, *, socket=None, inprocess=False, gui=False, bus=None,
+                 data_dir=None,
                  config_dir=None, cache_dir=None, gpu=None, cwd=None,
                  timeout=None, verbose=0, on_output=None, on_error=None,
                  library=None):
@@ -239,7 +253,13 @@ class Engine:
         try:
             self._check(a.ART_options_set_output(opts, self._cb_out, None))
             self._check(a.ART_options_set_error(opts, self._cb_err, None))
-            if inprocess:
+            if inprocess and gui:
+                raise ValueError("inprocess and gui are exclusive")
+            if bus is not None and not gui:
+                raise ValueError("bus needs gui=True")
+            if gui:
+                self._check(a.ART_options_set_gui(opts, _enc(bus)))
+            elif inprocess:
                 self._check(a.ART_options_set_inprocess(
                     opts, _enc(data_dir), _enc(config_dir), _enc(cache_dir)))
             else:
@@ -336,3 +356,7 @@ def version():
 
 def has_inprocess_backend():
     return bool(_api().ART_has_backend(_BACKEND_INPROCESS))
+
+
+def has_gui_backend():
+    return bool(_api().ART_has_backend(_BACKEND_GUI))

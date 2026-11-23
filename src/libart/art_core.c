@@ -155,6 +155,7 @@ ART_options *ART_options_new(void)
 static void cfg_free(ART_config *c)
 {
     free(c->socket_path);
+    free(c->bus_address);
     free(c->data_dir);
     free(c->config_dir);
     free(c->cache_dir);
@@ -174,9 +175,10 @@ void ART_options_free(ART_options *o)
 static int cfg_copy(ART_config *dst, const ART_config *src)
 {
     *dst = *src;
-    dst->socket_path = dst->data_dir = dst->config_dir = dst->cache_dir = NULL;
+    dst->socket_path = dst->bus_address = dst->data_dir = dst->config_dir = dst->cache_dir = NULL;
     dst->gpu = dst->cwd = NULL;
     if (set_str(&dst->socket_path, src->socket_path) ||
+        set_str(&dst->bus_address, src->bus_address) ||
         set_str(&dst->data_dir, src->data_dir) ||
         set_str(&dst->config_dir, src->config_dir) ||
         set_str(&dst->cache_dir, src->cache_dir) ||
@@ -197,6 +199,13 @@ int ART_options_set_remote(ART_options *o, const char *socket_path)
     CHECK_OPTS(o);
     o->cfg.backend = ART_BACKEND_REMOTE;
     return set_str(&o->cfg.socket_path, socket_path);
+}
+
+int ART_options_set_gui(ART_options *o, const char *bus_address)
+{
+    CHECK_OPTS(o);
+    o->cfg.backend = ART_BACKEND_GUI;
+    return set_str(&o->cfg.bus_address, bus_address);
 }
 
 int ART_options_set_inprocess(ART_options *o, const char *data_dir,
@@ -349,6 +358,8 @@ static int engine_create(ART_options *opts, ART_engine **out)
     }
     if (e->cfg.backend == ART_BACKEND_REMOTE) {
         rc = ART_remote_create(&e->cfg, &e->ops, &e->state, err, sizeof(err));
+    } else if (e->cfg.backend == ART_BACKEND_GUI) {
+        rc = ART_dbus_create(&e->cfg, &e->ops, &e->state, err, sizeof(err));
     } else if (e->cfg.backend == ART_BACKEND_INPROCESS) {
         rc = ART_embed_create(&e->cfg, &e->ops, &e->state, err, sizeof(err));
     } else {
@@ -566,7 +577,7 @@ const char *ART_strerror(int code)
     case ART_OK: return "success";
     case ART_ERR_COMMAND: return "the command failed";
     case ART_ERR_INVALID: return "invalid argument";
-    case ART_ERR_CONNECT: return "cannot connect to the server";
+    case ART_ERR_CONNECT: return "cannot connect to the server or the GUI";
     case ART_ERR_IO: return "connection error";
     case ART_ERR_PROTOCOL: return "protocol error";
     case ART_ERR_TIMEOUT: return "timeout";
@@ -590,6 +601,9 @@ int ART_has_backend(int backend)
 #else
         return 1;
 #endif
+    }
+    if (backend == ART_BACKEND_GUI) {
+        return ART_dbus_available();
     }
     if (backend == ART_BACKEND_INPROCESS) {
         return ART_embed_available();
