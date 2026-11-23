@@ -245,6 +245,8 @@ class GuiHost: public remote::CommandHost {
 public:
     explicit GuiHost(RTWindow *w): win(w) {}
 
+    std::string mode() const override { return "gui"; }
+
     remote::CommandTarget *current() override
     {
         auto v = win->getEditorPanels();

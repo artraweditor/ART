@@ -190,6 +190,8 @@ void printHelp(std::ostream &out)
         << "    get-spot-wb X Y W H          Print the white balance (temperature, tint, multipliers)\n"
         << "                                 that makes the rectangle (full-image coordinates) neutral\n"
         << "    get-clut-params FILE         Print the parameters of a LUT or CTL script (JSON)\n"
+        << "    get-version                  Print the ART version and the build information (JSON)\n"
+        << "    get-config                   Print the mode, data, configuration and cache directories (JSON)\n"
         << "    thumbnail INFILE OUTFILE SIZE [--no-profile]\n"
         << "                                 Write a thumbnail of INFILE (longest edge at most SIZE,\n"
         << "                                 never enlarged; needs no open image) to a PNG/JPEG file;\n"
@@ -277,7 +279,7 @@ int runServer(const Options &opts, int verbose)
     signal(SIGPIPE, SIG_IGN);
 #endif
 
-    ServerCore core(opts.hooks, HELP_HINT);
+    ServerCore core(opts.hooks, "cli", HELP_HINT);
     bool quit = false;
     core.setQuitHandler([&quit]() { quit = true; });
 

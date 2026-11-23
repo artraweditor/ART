@@ -150,6 +150,9 @@ public:
 class CommandHost {
 public:
     virtual ~CommandHost() = default;
+    // what hosts the commands, as `get-config` reports it: "gui" (the GUI),
+    // "cli" (the server of ART-cli) or "lib" (the in-process engine of libART)
+    virtual std::string mode() const = 0;
     // the active image, nullptr if none is open
     virtual CommandTarget *current() = 0;
     // Run fn(target) as soon as the active image has finished loading and
@@ -199,7 +202,8 @@ private:
 // the commands that operate on the active image: apply, get-params, get-info,
 // get-history, undo, redo, history-goto, get-snapshots, snapshot-add,
 // snapshot-activate, snapshot-overwrite, snapshot-remove, preview, get-spot-wb
-// (and get-clut-params and thumbnail, which need no image)
+// (and get-clut-params, thumbnail, get-version and get-config, which need no
+// image)
 void registerActiveImageVerbs(Dispatcher &d);
 
 

@@ -1005,6 +1005,28 @@ void cmd_get_version(Context &c, Args &a)
     c.reply->ok(r);
 }       
 
+
+void cmd_get_config(Context &c, Args &a)
+{
+    if (a.size() != 0) {
+        throw std::runtime_error("usage: get-config");
+    }
+
+    // absolute and normalised (no "..", "." or repeated slashes), against the
+    // working directory of this process: they are its directories, not the
+    // client's. A directory that is not set stays empty
+    const auto dir = [](const Glib::ustring &d) {
+        return d.empty() ? std::string() : abspath(d, "").raw();
+    };
+
+    json::Value r = json::Value::object();
+    r.set("mode", c.host.mode());
+    r.set("data-dir", dir(gui::Options::ART_base_dir));
+    r.set("user-config-dir", dir(gui::Options::user_config_dir));
+    r.set("cache-dir", dir(gui::Options::cacheBaseDir));
+    c.reply->ok(r);
+}
+
 } // namespace
 
 
@@ -1029,6 +1051,7 @@ void registerActiveImageVerbs(Dispatcher &d)
     d.add("get-clut-params", cmd_get_clut_params);
     d.add("export", cmd_export);
     d.add("get-version", cmd_get_version);
+    d.add("get-config", cmd_get_config);
 }
 
 }}} // namespace art::engine::remote

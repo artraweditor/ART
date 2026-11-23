@@ -47,6 +47,8 @@ def gui_main():
     with Engine(gui=True, bus=bus, on_output=chunks.append, timeout=120) as art:
         assert art.run("get-files", check=True).data is not None
         assert chunks[0].startswith('{"ok":true,"result":['), chunks   # streaming
+        cfg = art.run("get-config", check=True).data
+        assert cfg["mode"] == "gui" and os.path.isdir(cfg["data-dir"]), cfg
         art.run("open", image, check=True)
         info = art.run("get-info", check=True).data
         assert info["full_width"] > 0 and info["file"].endswith(os.path.basename(image)), info
@@ -85,6 +87,12 @@ def main(mode):
     with Engine(on_output=chunks.append, **kw) as art:
         assert art.run("ping").data == "pong"
         assert chunks[0] == '{"ok":true,"result":"pong"}\n', chunks    # the streaming callback
+        cfg = art.run("get-config", check=True).data
+        assert cfg["mode"] == ("lib" if mode == "inprocess" else "cli"), cfg
+        assert set(cfg) == {"mode", "data-dir", "user-config-dir", "cache-dir"}, cfg
+        if mode == "inprocess":
+            assert cfg["data-dir"] == os.environ["ART_TEST_DATA_DIR"], cfg
+        assert not art.run("get-config", "x").ok
         art.run("open", img, check=True)
         info = art.run("get-info", check=True).data
         assert info["is_raw"] is True and info["full_width"] == 3124, info

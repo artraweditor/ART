@@ -25,7 +25,9 @@ namespace art { namespace engine {
 
 class ServerCore::Host: public remote::CommandHost {
 public:
-    explicit Host(EditSession &s): session(s) {}
+    Host(EditSession &s, const std::string &m): session(s), mode_(m) {}
+
+    std::string mode() const override { return mode_; }
 
     remote::CommandTarget *current() override
     {
@@ -56,11 +58,16 @@ public:
     }
 
     EditSession &session;
+
+private:
+    std::string mode_;
 };
 
 
-ServerCore::ServerCore(EditSession::Hooks hooks, const std::string &help_hint):
-    session_(std::move(hooks)), host_(new Host(session_)), dispatcher_(help_hint)
+ServerCore::ServerCore(EditSession::Hooks hooks, const std::string &mode,
+                       const std::string &help_hint):
+    session_(std::move(hooks)), host_(new Host(session_, mode)),
+    dispatcher_(help_hint)
 {
     using remote::Args;
     using remote::Context;

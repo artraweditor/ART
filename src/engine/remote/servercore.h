@@ -35,9 +35,11 @@ namespace art { namespace engine {
 class ServerCore {
 public:
     // `hooks` connect the active image to the preferences of the
-    // application; `help_hint` completes the "missing command" error
-    explicit ServerCore(EditSession::Hooks hooks,
-                        const std::string &help_hint = "try: ART-cli --cmd help");
+    // application; `mode` is what `get-config` reports as the "mode" ("cli"
+    // for the server of ART-cli, "lib" for the engine of libART); `help_hint`
+    // completes the "missing command" error
+    ServerCore(EditSession::Hooks hooks, const std::string &mode,
+               const std::string &help_hint = "try: ART-cli --cmd help");
     ~ServerCore();
 
     // Execute the command `args` (args[0] is the verb); relative paths are

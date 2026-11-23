@@ -65,6 +65,7 @@ inline void ART_print_cmd_help(std::ostream &out)
         << "                                 the rectangle (full-image coordinates) of the visible editor image neutral\n"
         << "    get-clut-params FILE         Print the parameters of a LUT or CTL script (JSON)\n"
         << "    get-version                  Print the ART version and the build information (JSON; needs no open image)\n"
+        << "    get-config                   Print the mode, data, configuration and cache directories (JSON; needs no open image)\n"
         << "    thumbnail INFILE OUTFILE SIZE [--no-profile]\n"
         << "                                 Write a thumbnail of INFILE (longest edge at most SIZE,\n"
         << "                                 never enlarged; needs no open image) to a PNG/JPEG file;\n"

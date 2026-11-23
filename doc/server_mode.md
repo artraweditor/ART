@@ -88,6 +88,7 @@ JSON numbers (`null` stands for a missing value).
 | `get-spot-wb X Y W H` | white balance that makes the rectangle neutral (see below) |
 | `get-clut-params FILE` | the parameters of a LUT or CTL script, to build their controls (see below); does not need an image |
 | `get-version` | `{"version": <ART version string>, "about": <text>}`; `about` is the contents of `AboutThisBuild.txt` and is present only if that file exists; does not need an image |
+| `get-config` | `{"mode": "cli", "data-dir": <path>, "user-config-dir": <path>, "cache-dir": <path>}` (absolute, normalised paths; empty if not set): the configuration of the process that executes the commands (`mode` is `cli` for `ART-cli --server`, `gui` for the GUI, `lib` for the in-process engine of [libART](libart.md)); does not need an image |
 | `export OUTFILE [options]` | write the image at full size, as `ART-cli` does (in the GUI: queue it; see below) |
 | `ping`, `quit` | liveness check (result `"pong"`); stop the server |
 

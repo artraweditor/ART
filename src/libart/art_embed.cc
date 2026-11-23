@@ -166,7 +166,7 @@ private:
 };
 
 struct EmbedState {
-    EmbedState(): core(art::gui::bootstrap::editSessionHooks(), "") {}
+    EmbedState(): core(art::gui::bootstrap::editSessionHooks(), "lib", "") {}
     art::engine::ServerCore core;
 };
 
