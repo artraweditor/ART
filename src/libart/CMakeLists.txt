@@ -64,6 +64,9 @@ if(ART_LIBART_EMBED)
     target_link_directories(art-lib PRIVATE ${_gui_linkdirs})
     target_link_libraries(art-lib PRIVATE ${ART_CLI_LIBRARIES})
     set_target_properties(art-lib PROPERTIES LINKER_LANGUAGE CXX)
+    if(TARGET art_gtk_retarget) # the GTK it links is the one of the GUI
+        add_dependencies(art-lib art_gtk_retarget)
+    endif()
     add_dependencies(art-lib UpdateInfo)
 endif()
 

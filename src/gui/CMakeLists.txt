@@ -278,6 +278,13 @@ if(SIMDE_INCLUDE_DIRS)
     include_directories("${SIMDE_INCLUDE_DIRS}")
 endif()
 
+# macOS: do not let gtkmm & co. load another GTK than the one that is linked
+# (cmake/modules/ARTRetargetGtk.cmake); the link directories must be final
+if(APPLE AND ART_BUILD_GUI)
+    include(ARTRetargetGtk)
+    art_retarget_gtk()
+endif()
+
 # Create new executables targets. Each one is optional (ART_BUILD_GUI,
 # ART_BUILD_CLI): what is not built does not need its dependencies
 if(ART_BUILD_GUI)
@@ -291,6 +298,14 @@ if(ART_BUILD_GUI)
 endif()
 if(ART_BUILD_CLI)
     add_executable(art-cli ${EXTRA_SRC_CLI} ${CLISOURCEFILES})
+endif()
+
+if(TARGET art_gtk_retarget)
+    foreach(_t art art-dialogs art-cli)
+        if(TARGET ${_t})
+            add_dependencies(${_t} art_gtk_retarget)
+        endif()
+    endforeach()
 endif()
 
 # What the command line program is made of, also used by libART (src/libart),
