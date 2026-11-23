@@ -318,8 +318,13 @@ that was killed) is replaced. The socket is removed on a normal exit. There is
 no authentication beyond file permissions: anything running as you can drive
 the server, including opening and saving files.
 
-On Windows the server mode is not available yet (the transport is behind
-`ipc_transport.h`, so another one can be added).
+On Windows (10 version 1803 or later) the same Unix domain sockets are used, via
+Winsock. The default socket is `%TEMP%\ART-%USERNAME%\server.sock`. There are no
+file modes: the directory inherits the access rules of your temporary
+directory, and where Windows reports the process id of the peer, connections
+from another user are dropped. A socket file left by a killed server is
+replaced, as on Unix. Socket paths must be ASCII (the ANSI code page) and
+shorter than 108 bytes.
 
 ## Protocol
 

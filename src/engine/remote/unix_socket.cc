@@ -341,29 +341,366 @@ std::unique_ptr<Listener> listen(const std::string &path, std::string &err)
 
 }}}} // namespace art::engine::remote::ipc
 
-#else // _WIN32: no transport yet
+#else // _WIN32: AF_UNIX sockets of Winsock (Windows 10 1803 and later)
+
+#include <winsock2.h>
+#include <afunix.h>
+#include <windows.h>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+
+#ifndef SIO_AF_UNIX_GETPEERPID
+#define SIO_AF_UNIX_GETPEERPID _WSAIOR(IOC_VENDOR, 256)
+#endif
 
 namespace art { namespace engine { namespace remote { namespace ipc {
 
-static const char *UNSUPPORTED =
-    "the server mode is not supported on this platform yet";
+namespace {
+
+constexpr DWORD REQUEST_TIMEOUT_MS = 10000;
+
+std::string winerr(const std::string &what, int e)
+{
+    char buf[256];
+    DWORD n = FormatMessageA(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr,
+        DWORD(e), 0, buf, sizeof(buf), nullptr);
+    std::string msg;
+    if (n == 0) {
+        msg = "error " + std::to_string(e);
+    } else {
+        while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' ||
+                         buf[n - 1] == ' ' || buf[n - 1] == '.')) {
+            --n;
+        }
+        msg.assign(buf, n);
+    }
+    return what + ": " + msg;
+}
+
+
+bool init_winsock()
+{
+    static const bool ok = []() {
+        WSADATA d;
+        return WSAStartup(MAKEWORD(2, 2), &d) == 0;
+    }();
+    return ok;
+}
+
+
+void no_inherit(SOCKET s)
+{
+    SetHandleInformation(reinterpret_cast<HANDLE>(s), HANDLE_FLAG_INHERIT, 0);
+}
+
+
+class SockConnection: public Connection {
+public:
+    explicit SockConnection(SOCKET s): s_(s) { no_inherit(s_); }
+    ~SockConnection() override { ::closesocket(s_); }
+
+    void setReceiveTimeout(DWORD ms)
+    {
+        setsockopt(s_, SOL_SOCKET, SO_RCVTIMEO,
+                   reinterpret_cast<const char *>(&ms), sizeof(ms));
+    }
+
+    bool read(void *buf, size_t n) override
+    {
+        char *p = static_cast<char *>(buf);
+        while (n > 0) {
+            int r = ::recv(s_, p, int(n > 0x100000 ? 0x100000 : n), 0);
+            if (r <= 0) {
+                return false; // end of stream, error or timeout
+            }
+            p += r;
+            n -= size_t(r);
+        }
+        return true;
+    }
+
+    bool write(const void *buf, size_t n) override
+    {
+        const char *p = static_cast<const char *>(buf);
+        while (n > 0) {
+            int r = ::send(s_, p, int(n > 0x100000 ? 0x100000 : n), 0);
+            if (r <= 0) {
+                return false;
+            }
+            p += r;
+            n -= size_t(r);
+        }
+        return true;
+    }
+
+private:
+    SOCKET s_;
+};
+
+
+bool fill_addr(const std::string &path, sockaddr_un &addr, std::string &err)
+{
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    if (path.empty() || path.size() >= sizeof(addr.sun_path)) {
+        err = "socket path too long (at most " +
+              std::to_string(sizeof(addr.sun_path) - 1) +
+              " bytes; use --socket or ART_SERVER_SOCKET to choose another): " +
+              path;
+        return false;
+    }
+    memcpy(addr.sun_path, path.c_str(), path.size());
+    return true;
+}
+
+
+// connected socket, or INVALID_SOCKET with WSAGetLastError() set (and `err`
+// set if the address is bad)
+SOCKET connect_sock(const std::string &path, std::string &err, bool &bad_addr)
+{
+    sockaddr_un addr;
+    bad_addr = !fill_addr(path, addr, err);
+    if (bad_addr) {
+        return INVALID_SOCKET;
+    }
+    SOCKET s = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (s == INVALID_SOCKET) {
+        return INVALID_SOCKET;
+    }
+    if (::connect(s, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) {
+        int e = WSAGetLastError();
+        ::closesocket(s);
+        WSASetLastError(e);
+        return INVALID_SOCKET;
+    }
+    return s;
+}
+
+
+// the SID of the user of a process (an open token); empty on failure
+std::vector<char> token_user(HANDLE token)
+{
+    DWORD n = 0;
+    GetTokenInformation(token, TokenUser, nullptr, 0, &n);
+    std::vector<char> v(n);
+    if (n == 0 || !GetTokenInformation(token, TokenUser, v.data(), n, &n)) {
+        v.clear();
+    }
+    return v;
+}
+
+
+bool same_user(const std::vector<char> &a, const std::vector<char> &b)
+{
+    return !a.empty() && !b.empty() &&
+           EqualSid(reinterpret_cast<const TOKEN_USER *>(a.data())->User.Sid,
+                    reinterpret_cast<const TOKEN_USER *>(b.data())->User.Sid);
+}
+
+
+// Is the client the same user as we are? Where Windows tells us the pid of the
+// peer, its user is compared with ours; otherwise (old Windows 10) the access
+// rules of the socket's directory are all that protects the server.
+bool peer_is_self(SOCKET s)
+{
+    ULONG pid = 0;
+    DWORD got = 0;
+    if (WSAIoctl(s, SIO_AF_UNIX_GETPEERPID, nullptr, 0, &pid, sizeof(pid),
+                 &got, nullptr, nullptr) != 0) {
+        return true;
+    }
+    HANDLE me = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &me)) {
+        return false;
+    }
+    std::vector<char> mine = token_user(me);
+    CloseHandle(me);
+
+    HANDLE proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!proc) {
+        return false;
+    }
+    HANDLE tok = nullptr;
+    bool ok = false;
+    if (OpenProcessToken(proc, TOKEN_QUERY, &tok)) {
+        ok = same_user(mine, token_user(tok));
+        CloseHandle(tok);
+    }
+    CloseHandle(proc);
+    return ok;
+}
+
+
+class SockListener: public Listener {
+public:
+    SockListener(SOCKET s, const std::string &path): s_(s), path_(path)
+    {
+        no_inherit(s_);
+    }
+
+    ~SockListener() override
+    {
+        ::closesocket(s_);
+        ::DeleteFileA(path_.c_str());
+    }
+
+    std::unique_ptr<Connection> accept(int timeout_ms) override
+    {
+        WSAPOLLFD p;
+        p.fd = s_;
+        p.events = POLLRDNORM;
+        p.revents = 0;
+        if (::WSAPoll(&p, 1, timeout_ms) <= 0 || !(p.revents & POLLRDNORM)) {
+            return nullptr;
+        }
+        SOCKET c = ::accept(s_, nullptr, nullptr);
+        if (c == INVALID_SOCKET) {
+            return nullptr;
+        }
+        if (!peer_is_self(c)) {
+            ::closesocket(c);
+            return nullptr;
+        }
+        auto ret = new SockConnection(c);
+        ret->setReceiveTimeout(REQUEST_TIMEOUT_MS);
+        return std::unique_ptr<Connection>(ret);
+    }
+
+private:
+    SOCKET s_;
+    std::string path_;
+};
+
+
+// make sure `dir` is a real directory (not a link) that exists; it lives under
+// the user's own temporary directory, whose access rules keep others out
+bool private_dir(const std::string &dir, std::string &err)
+{
+    if (!CreateDirectoryA(dir.c_str(), nullptr) &&
+        GetLastError() != ERROR_ALREADY_EXISTS) {
+        err = winerr("cannot create " + dir, int(GetLastError()));
+        return false;
+    }
+    DWORD a = GetFileAttributesA(dir.c_str());
+    if (a == INVALID_FILE_ATTRIBUTES) {
+        err = winerr("cannot examine " + dir, int(GetLastError()));
+        return false;
+    }
+    if (!(a & FILE_ATTRIBUTE_DIRECTORY) || (a & FILE_ATTRIBUTE_REPARSE_POINT)) {
+        err = dir + " is not a directory";
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
 
 std::string defaultSocketPath(std::string &err)
 {
-    err = UNSUPPORTED;
-    return "";
+    const char *env = getenv("ART_SERVER_SOCKET");
+    if (env && *env) {
+        return env;
+    }
+    const char *tmp = getenv("TEMP");
+    if (!tmp || !*tmp) {
+        tmp = getenv("TMP");
+    }
+    if (!tmp || !*tmp) {
+        err = "no temporary directory (TEMP) for the socket; use --socket or "
+              "ART_SERVER_SOCKET";
+        return "";
+    }
+    std::string t = tmp;
+    while (t.size() > 1 && (t.back() == '\\' || t.back() == '/')) {
+        t.pop_back();
+    }
+    const char *user = getenv("USERNAME");
+    // the same layout as the client of libART (art_remote.c)
+    std::string dir = t + "\\ART-" + ((user && *user) ? user : "user");
+    if (!private_dir(dir, err)) {
+        return "";
+    }
+    return dir + "\\server.sock";
 }
 
-std::unique_ptr<Connection> connect(const std::string &, std::string &err)
+
+std::unique_ptr<Connection> connect(const std::string &path, std::string &err)
 {
-    err = UNSUPPORTED;
-    return nullptr;
+    if (!init_winsock()) {
+        err = "cannot initialize Winsock";
+        return nullptr;
+    }
+    bool bad = false;
+    SOCKET s = connect_sock(path, err, bad);
+    if (s == INVALID_SOCKET) {
+        if (!bad) {
+            err = winerr(path, WSAGetLastError());
+        }
+        return nullptr;
+    }
+    return std::unique_ptr<Connection>(new SockConnection(s));
 }
 
-std::unique_ptr<Listener> listen(const std::string &, std::string &err)
+
+std::unique_ptr<Listener> listen(const std::string &path, std::string &err)
 {
-    err = UNSUPPORTED;
-    return nullptr;
+    if (!init_winsock()) {
+        err = "cannot initialize Winsock";
+        return nullptr;
+    }
+    sockaddr_un addr;
+    if (!fill_addr(path, addr, err)) {
+        return nullptr;
+    }
+
+    const DWORD attrs = GetFileAttributesA(path.c_str());
+    if (attrs != INVALID_FILE_ATTRIBUTES) {
+        // a socket file is a reparse point
+        if ((attrs & FILE_ATTRIBUTE_DIRECTORY) ||
+            !(attrs & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            err = path + " exists and is not a socket";
+            return nullptr;
+        }
+        std::string e;
+        bool bad;
+        SOCKET s = connect_sock(path, e, bad);
+        if (s != INVALID_SOCKET) {
+            ::closesocket(s);
+            err = "a server is already running on " + path;
+            return nullptr;
+        }
+        const int we = WSAGetLastError();
+        if (we != WSAECONNREFUSED && we != WSAEINVAL) {
+            err = winerr("cannot use " + path, we);
+            return nullptr;
+        }
+        // nobody is listening: left over by a server that did not exit cleanly
+        if (!DeleteFileA(path.c_str())) {
+            err = winerr("cannot remove " + path, int(GetLastError()));
+            return nullptr;
+        }
+    }
+
+    SOCKET s = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (s == INVALID_SOCKET) {
+        err = winerr("socket", WSAGetLastError());
+        return nullptr;
+    }
+    if (::bind(s, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) {
+        err = winerr("cannot bind " + path, WSAGetLastError());
+        ::closesocket(s);
+        return nullptr;
+    }
+    if (::listen(s, 16) != 0) {
+        err = winerr("cannot listen on " + path, WSAGetLastError());
+        ::closesocket(s);
+        ::DeleteFileA(path.c_str());
+        return nullptr;
+    }
+    return std::unique_ptr<Listener>(new SockListener(s, path));
 }
 
 }}}} // namespace art::engine::remote::ipc

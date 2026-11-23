@@ -26,6 +26,9 @@ foreach(t art-lib art-lib-static)
     target_compile_definitions(${t} PRIVATE
         ART_LIBART_VERSION="${ART_LIBART_VERSION}")
     target_link_libraries(${t} PRIVATE Threads::Threads)
+    if(WIN32)
+        target_link_libraries(${t} PRIVATE ws2_32) # the remote backend
+    endif()
 endforeach()
 target_compile_definitions(art-lib PRIVATE ART_BUILDING_LIB)
 # export only the ART_* functions of the shared library: with the engine

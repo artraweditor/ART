@@ -347,5 +347,8 @@ if(VULKAN_FOUND)
     # platform bundlers cannot pick up a loader and shadow the host's own.
     target_link_libraries(art_engine ${CMAKE_DL_LIBS})
 endif()
+if(WIN32)
+    target_link_libraries(art_engine ws2_32) # remote/unix_socket.cc
+endif()
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ COMPONENT libart_data)

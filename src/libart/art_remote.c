@@ -34,20 +34,21 @@
 #include <string.h>
 
 #ifdef _WIN32
+/* Winsock, with AF_UNIX sockets (Windows 10 1803 and later) */
+#include <winsock2.h>
+#include <afunix.h>
+#include <windows.h>
 
-int ART_remote_create(const ART_config *cfg, const ART_backend_ops **ops,
-                      void **state, char *err, size_t errsize)
-{
-    (void)cfg;
-    (void)ops;
-    (void)state;
-    ART_format_error(err, errsize,
-                     "the server mode is not supported on this platform yet");
-    return ART_ERR_UNSUPPORTED;
-}
-
+typedef SOCKET sock_t;
+typedef int io_ssize;
+#define BAD_SOCK INVALID_SOCKET
+#define SOCK_CLOSE(s) closesocket(s)
+#define SOCK_RECV(s, b, n) recv((s), (b), (int)(n), 0)
+#define SOCK_INTR() 0 /* no EINTR on Windows */
+#define SOCK_ERRSTR(buf, size) win_errstr((buf), (size), WSAGetLastError())
+#define POLLFD WSAPOLLFD
+#define SOCK_POLL(p, to) WSAPoll((p), 1, (to))
 #else /* POSIX */
-
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
@@ -56,10 +57,43 @@ int ART_remote_create(const ART_config *cfg, const ART_backend_ops **ops,
 #include <time.h>
 #include <unistd.h>
 
+typedef int sock_t;
+typedef ssize_t io_ssize;
+#define BAD_SOCK (-1)
+#define SOCK_CLOSE(s) close(s)
+#define SOCK_RECV(s, b, n) read((s), (b), (n))
+#define SOCK_INTR() (errno == EINTR)
+#define SOCK_ERRSTR(buf, size) \
+    snprintf((buf), (size), "%s", strerror(errno))
+#define POLLFD struct pollfd
+#define SOCK_POLL(p, to) poll((p), 1, (to))
+#endif
+
 #define MAX_REQUEST ((size_t)1 << 20)
 #define MAX_FRAME ((size_t)64 << 20)
 
-/* ---- time ----------------------------------------------------------------- */
+/* ---- platform helpers ------------------------------------------------------- */
+
+#ifdef _WIN32
+
+static long long now_ms(void) { return (long long)GetTickCount64(); }
+
+static void win_errstr(char *buf, size_t size, int code)
+{
+    DWORD n = FormatMessageA(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+        (DWORD)code, 0, buf, (DWORD)size, NULL);
+    if (n == 0) {
+        snprintf(buf, size, "error %d", code);
+        return;
+    }
+    while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' ||
+                     buf[n - 1] == ' ' || buf[n - 1] == '.')) {
+        buf[--n] = '\0';
+    }
+}
+
+#else
 
 static long long now_ms(void)
 {
@@ -68,11 +102,13 @@ static long long now_ms(void)
     return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+#endif
+
 /* 1: ready, 0: timed out, -1: error. deadline < 0: none. */
-static int wait_fd(int fd, short events, long long deadline)
+static int wait_fd(sock_t fd, short events, long long deadline)
 {
     for (;;) {
-        struct pollfd p;
+        POLLFD p;
         int timeout = -1, r;
         if (deadline >= 0) {
             long long left = deadline - now_ms();
@@ -84,8 +120,8 @@ static int wait_fd(int fd, short events, long long deadline)
         p.fd = fd;
         p.events = events;
         p.revents = 0;
-        r = poll(&p, 1, timeout);
-        if (r < 0 && errno == EINTR) {
+        r = SOCK_POLL(&p, timeout);
+        if (r < 0 && SOCK_INTR()) {
             continue;
         }
         if (r < 0) {
@@ -104,7 +140,7 @@ static int wait_fd(int fd, short events, long long deadline)
 /* ---- buffered reader ----------------------------------------------------- */
 
 typedef struct {
-    int fd;
+    sock_t fd;
     long long deadline;
     char buf[4096];
     size_t pos, len;
@@ -115,7 +151,7 @@ typedef struct {
 static int reader_fill(reader *r)
 {
     for (;;) {
-        ssize_t n;
+        io_ssize n;
         int w = wait_fd(r->fd, POLLIN, r->deadline);
         if (w == 0) {
             r->timed_out = 1;
@@ -124,8 +160,8 @@ static int reader_fill(reader *r)
         if (w < 0) {
             return -1;
         }
-        n = read(r->fd, r->buf, sizeof(r->buf));
-        if (n < 0 && errno == EINTR) {
+        n = SOCK_RECV(r->fd, r->buf, sizeof(r->buf));
+        if (n < 0 && SOCK_INTR()) {
             continue;
         }
         if (n < 0) {
@@ -187,16 +223,18 @@ static int reader_line(reader *r, char *line)
 
 /* ---- sending ----------------------------------------------------------------- */
 
-static int send_all(int fd, const char *p, size_t n, long long deadline,
+static int send_all(sock_t fd, const char *p, size_t n, long long deadline,
                     int *timed_out)
 {
-#ifdef MSG_NOSIGNAL
+#if defined(_WIN32)
+    const int flags = 0;
+#elif defined(MSG_NOSIGNAL)
     const int flags = MSG_NOSIGNAL;
 #else
     const int flags = 0;
 #endif
     while (n > 0) {
-        ssize_t r;
+        io_ssize r;
         int w = wait_fd(fd, POLLOUT, deadline);
         if (w == 0) {
             *timed_out = 1;
@@ -205,8 +243,12 @@ static int send_all(int fd, const char *p, size_t n, long long deadline,
         if (w < 0) {
             return -1;
         }
+#ifdef _WIN32
+        r = send(fd, p, n > 0x100000 ? 0x100000 : (int)n, flags);
+#else
         r = send(fd, p, n, flags);
-        if (r < 0 && errno == EINTR) {
+#endif
+        if (r < 0 && SOCK_INTR()) {
             continue;
         }
         if (r <= 0) {
@@ -232,6 +274,19 @@ static int socket_path(const ART_config *cfg, char *out, size_t size)
         n = snprintf(out, size, "%s", cfg->socket_path);
     } else if ((env = getenv("ART_SERVER_SOCKET")) && *env) {
         n = snprintf(out, size, "%s", env);
+#ifdef _WIN32
+    } else if ((xdg = getenv("TEMP")) || (xdg = getenv("TMP"))) {
+        /* the same layout as the POSIX default: <temp>\ART-<user>\server.sock */
+        const char *user = getenv("USERNAME");
+        n = snprintf(out, size, "%s\\ART-%s\\server.sock", xdg,
+                     (user && *user) ? user : "user");
+    } else {
+        n = snprintf(out, size, "C:\\Windows\\Temp\\ART\\server.sock");
+    }
+    (void)env;
+    return n > 0 && (size_t)n < size;
+}
+#else
     } else if ((xdg = getenv("XDG_RUNTIME_DIR")) && xdg[0] == '/') {
         n = snprintf(out, size, "%s/ART/server.sock", xdg);
     } else {
@@ -253,6 +308,7 @@ static int socket_path(const ART_config *cfg, char *out, size_t size)
     }
     return n > 0 && (size_t)n < size;
 }
+#endif
 
 typedef struct {
     int unused;
@@ -264,7 +320,9 @@ static int remote_exec(void *state, const ART_config *cfg, const char *cwd,
 {
     char path[1024];
     struct sockaddr_un addr;
-    int fd = -1, rc = ART_ERR_INTERNAL, i, timed_out = 0;
+    sock_t fd = BAD_SOCK;
+    char msg[256];
+    int rc = ART_ERR_INTERNAL, i, timed_out = 0;
     long long deadline = cfg->timeout_ms >= 0 ? now_ms() + cfg->timeout_ms : -1;
     size_t paylen = strlen(cwd) + 1 + 2, off = 0;
     char *req = NULL;
@@ -314,12 +372,15 @@ static int remote_exec(void *state, const ART_config *cfg, const char *cwd,
     addr.sun_family = AF_UNIX;
     memcpy(addr.sun_path, path, strlen(path));
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) {
-        ART_format_error(err, errsize, "cannot create a socket: %s",
-                         strerror(errno));
+    if (fd == BAD_SOCK) {
+        SOCK_ERRSTR(msg, sizeof(msg));
+        ART_format_error(err, errsize, "cannot create a socket: %s", msg);
         free(req);
         return ART_ERR_INTERNAL;
     }
+#ifdef _WIN32
+    SetHandleInformation((HANDLE)fd, HANDLE_FLAG_INHERIT, 0);
+#else
 #ifdef SO_NOSIGPIPE
     {
         int one = 1;
@@ -332,10 +393,11 @@ static int remote_exec(void *state, const ART_config *cfg, const char *cwd,
             fcntl(fd, F_SETFD, fl | FD_CLOEXEC);
         }
     }
+#endif
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-        ART_format_error(err, errsize, "no running server (%s: %s)", path,
-                         strerror(errno));
-        close(fd);
+        SOCK_ERRSTR(msg, sizeof(msg));
+        ART_format_error(err, errsize, "no running server (%s: %s)", path, msg);
+        SOCK_CLOSE(fd);
         free(req);
         return ART_ERR_CONNECT;
     }
@@ -432,12 +494,20 @@ static int remote_exec(void *state, const ART_config *cfg, const char *cwd,
     }
 
 done:
-    close(fd);
+    SOCK_CLOSE(fd);
     free(req);
     return rc;
 }
 
-static void remote_destroy(void *state) { free(state); }
+static void remote_destroy(void *state)
+{
+#ifdef _WIN32
+    if (state) {
+        WSACleanup(); /* pairs with the WSAStartup in ART_remote_create */
+    }
+#endif
+    free(state);
+}
 
 static const ART_backend_ops remote_ops = {remote_exec, remote_destroy};
 
@@ -446,15 +516,27 @@ int ART_remote_create(const ART_config *cfg, const ART_backend_ops **ops,
 {
     remote_state *s;
     (void)cfg;
+#ifdef _WIN32
+    {
+        WSADATA wsa;
+        int rc = WSAStartup(MAKEWORD(2, 2), &wsa);
+        if (rc != 0) {
+            ART_format_error(err, errsize, "cannot initialize Winsock (%d)", rc);
+            return ART_ERR_INTERNAL;
+        }
+    }
+#else
     (void)err;
     (void)errsize;
+#endif
     s = (remote_state *)calloc(1, sizeof(*s));
     if (!s) {
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return ART_ERR_NOMEM;
     }
     *ops = &remote_ops;
     *state = s;
     return ART_OK;
 }
-
-#endif /* POSIX */
