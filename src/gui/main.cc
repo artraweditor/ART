@@ -58,6 +58,9 @@
 #include <glibmm/thread.h>
 #endif
 
+#include <csignal>
+#include <gio/gio.h>
+
 #ifdef WITH_MIMALLOC
 #include <mimalloc.h>
 #endif
@@ -304,6 +307,64 @@ static gboolean osx_open_file_cb(GtkosxApplication *a, gchar *pth,
                                  gpointer data);
 
 #endif // __APPLE__
+
+namespace {
+
+/**
+ * The macOS (and Windows/Linux) bundle launchers start a private D-Bus session
+ * daemon for ART and flag it with ART_PRIVATE_DBUS. Nothing else ever stops it,
+ * so it would outlive ART, running in the background after quitting.
+ *
+ * The primary instance (i.e. not one that just forwarded its command line to a
+ * running one) stops it when it is done. The pid must be fetched while the bus
+ * is up, and the daemon killed only after the application object is gone:
+ * GDBus exits the process as soon as the session bus connection is closed,
+ * which would skip the shutdown work done in ~RTApplication.
+ */
+class PrivateBusGuard {
+public:
+    PrivateBusGuard()
+    {
+        if (!g_getenv("ART_PRIVATE_DBUS")) {
+            return;
+        }
+        GError *err = nullptr;
+        GDBusConnection *c = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &err);
+        if (!c) {
+            g_clear_error(&err);
+            return;
+        }
+        GVariant *r = g_dbus_connection_call_sync(
+            c, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+            "org.freedesktop.DBus", "GetConnectionUnixProcessID",
+            g_variant_new("(s)", "org.freedesktop.DBus"), G_VARIANT_TYPE("(u)"),
+            G_DBUS_CALL_FLAGS_NONE, 2000, nullptr, &err);
+        if (r) {
+            guint32 pid = 0;
+            g_variant_get(r, "(u)", &pid);
+            g_variant_unref(r);
+            pid_ = pid;
+        } else {
+            g_clear_error(&err);
+        }
+        g_object_unref(c);
+    }
+
+    ~PrivateBusGuard()
+    {
+        if (stop_ && pid_ > 1) {
+            kill(pid_, SIGTERM);
+        }
+    }
+
+    void stopOnExit(bool yes) { stop_ = yes; }
+
+private:
+    pid_t pid_ = 0;
+    bool stop_ = false;
+};
+
+} // namespace
 
 class RTApplication: public Gtk::Application {
 public:
@@ -778,6 +839,7 @@ int main(int argc, char **argv)
         Glib::setenv("ART_IS_CMD", "1");
         Glib::setenv("ART_CMD_START", cmd_start_ok ? "1" : "0");
 
+        PrivateBusGuard busGuard;
         RTApplication app;
         if (!cmd_start_ok) {
             // never start a GUI just to run a command
@@ -795,6 +857,7 @@ int main(int argc, char **argv)
             }
         }
         ret = app.run(int(app_argv.size()) - 1, app_argv.data());
+        busGuard.stopOnExit(!app.is_remote());
     } else if (fatalError.empty() && remote) {
 #if 1 // ndef __APPLE__
         char *app_argv[2] = {const_cast<char *>(options.ART_base_dir.c_str())};
@@ -809,8 +872,10 @@ int main(int argc, char **argv)
         auto app_argv = argv;
 #endif // __APPLE__
 
+        PrivateBusGuard busGuard;
         RTApplication app;
         ret = app.run(app_argc, app_argv);
+        busGuard.stopOnExit(!app.is_remote());
     } else {
         if (fatalError.empty() && init_rt()) {
             Gtk::Main m(&argc, &argv);

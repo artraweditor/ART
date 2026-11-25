@@ -435,6 +435,9 @@ int main(int argc, char **argv)
 #else
     fmtpath(buf, sizeof(buf), "unix:path=%s", sock);
     set_env("DBUS_SESSION_BUS_ADDRESS", buf);
+    /* tells ART that this bus is ours, so that it stops the daemon on exit
+     * instead of leaving it running in the background */
+    set_env_plain("ART_PRIVATE_DBUS", "1");
 #endif
 
     /* not set by us, but it must not leak into the helper programs either */
