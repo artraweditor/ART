@@ -588,18 +588,20 @@ void RawImageSource::getAutoMatchedToneCurve(const ColorManagementParams &cp,
             }
         }
 
-        float thumb_ratio = float(std::max(sw, sh)) / float(std::min(sw, sh));
-        float target_ratio = float(std::max(tw, th)) / float(std::min(tw, th));
+        // use width/height (not max/min), so that this works for portrait
+        // images too: the crop must always shrink the target, never grow it
+        float thumb_ratio = float(sw) / float(sh);
+        float target_ratio = float(tw) / float(th);
         int cx = 0, cy = 0;
         if (std::abs(thumb_ratio - target_ratio) > 0.01) {
             if (thumb_ratio > target_ratio) {
-                // crop the height
-                int ch = th - (tw * float(sh) / float(sw));
+                // the source is wider: crop the height
+                int ch = std::max(0, th - int(tw / thumb_ratio));
                 cy += ch / 2;
                 th -= ch;
             } else {
-                // crop the width
-                int cw = tw - (th * float(sw) / float(sh));
+                // the source is narrower: crop the width
+                int cw = std::max(0, tw - int(th * thumb_ratio));
                 cx += cw / 2;
                 tw -= cw;
             }
